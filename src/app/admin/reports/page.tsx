@@ -11,9 +11,9 @@ export default async function AdminReportsPage() {
   const [reports, stats] = await Promise.all([getAllReportsAdmin(), getReportStats()]);
 
   const cards = [
-    { label: "Открытые", value: stats.open },
-    { label: "На проверке", value: stats.reviewed },
-    { label: "Закрытые", value: stats.resolved },
+    { label: t.admin.statusOpenPlural, value: stats.open },
+    { label: t.admin.statusReviewedPlural, value: stats.reviewed },
+    { label: t.admin.statusResolvedPlural, value: stats.resolved },
   ];
 
   return (
@@ -31,11 +31,11 @@ export default async function AdminReportsPage() {
 
         <div className="rounded-[22px] border border-border bg-card p-6.5">
           <div className="mb-3 flex items-center gap-4 border-b border-border-soft pb-3 text-[12px] font-bold uppercase tracking-wide text-muted-2">
-            <span className="w-30">Тип</span>
-            <span className="flex-[1.4]">Причина</span>
-            <span className="w-32.5">Заявитель</span>
-            <span className="w-27.5">Дата</span>
-            <span className="w-42.5 text-right">Действие</span>
+            <span className="w-30">{t.admin.colType}</span>
+            <span className="flex-[1.4]">{t.admin.colReason}</span>
+            <span className="w-32.5">{t.admin.colReporter}</span>
+            <span className="w-27.5">{t.admin.colDate}</span>
+            <span className="w-42.5 text-right">{t.admin.colAction}</span>
           </div>
 
           {reports.length > 0 ? (
@@ -58,7 +58,7 @@ export default async function AdminReportsPage() {
               );
             })
           ) : (
-            <div className="py-8 text-center text-[13.5px] text-muted">Жалоб пока нет.</div>
+            <div className="py-8 text-center text-[13.5px] text-muted">{t.admin.noReportsYet}</div>
           )}
         </div>
       </div>

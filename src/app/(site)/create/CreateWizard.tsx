@@ -47,7 +47,7 @@ export function CreateWizard({ userId }: { userId: string }) {
       const { data } = supabase.storage.from("covers").getPublicUrl(path);
       setCoverUrl(data.publicUrl);
     } catch {
-      setCoverError("Не удалось загрузить обложку. Попробуйте ещё раз.");
+      setCoverError(t.create.coverError);
     } finally {
       setCoverUploading(false);
     }
@@ -222,9 +222,9 @@ export function CreateWizard({ userId }: { userId: string }) {
                 <div className="flex flex-col gap-3">
                   {(
                     [
-                      ["public", "Публичная", "Видна всем в поиске и на главной"],
-                      ["unlisted", "Только по ссылке", "Не показывается в поиске"],
-                      ["draft", "Черновик", "Видна только вам"],
+                      ["public", t.create.visibilityPublicLabel, t.create.visibilityPublicDesc],
+                      ["unlisted", t.create.visibilityUnlistedLabel, t.create.visibilityUnlistedDesc],
+                      ["draft", t.common.draft, t.create.visibilityDraftDesc],
                     ] as const
                   ).map(([value, titleText, desc]) => (
                     <button

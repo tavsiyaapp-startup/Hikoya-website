@@ -2,8 +2,10 @@
 
 import { useTransition } from "react";
 import { resolveReport, deleteReport } from "@/lib/actions/admin";
+import { useLocale } from "@/lib/i18n/LocaleProvider";
 
 export function ReportActions({ reportId }: { reportId: string }) {
+  const { t } = useLocale();
   const [pending, startTransition] = useTransition();
 
   return (
@@ -14,7 +16,7 @@ export function ReportActions({ reportId }: { reportId: string }) {
         onClick={() => startTransition(() => resolveReport(reportId, "resolved"))}
         className="h-8.5 cursor-pointer rounded-[9px] border border-primary-300 bg-white px-3 text-[12.5px] font-bold text-primary-900 disabled:opacity-50"
       >
-        Проверить
+        {t.admin.check}
       </button>
       <button
         type="button"

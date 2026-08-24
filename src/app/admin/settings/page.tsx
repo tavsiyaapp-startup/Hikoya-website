@@ -20,14 +20,14 @@ export default async function AdminSettingsPage() {
             <div className="flex flex-col gap-4">
               <ToggleRow
                 name="commentsRequireApproval"
-                title="Модерация комментариев"
-                desc="Комментарии проверяются перед публикацией"
+                title={t.admin.moderationCommentsTitle}
+                desc={t.admin.moderationCommentsDesc}
                 defaultChecked={settings?.comments_require_approval ?? false}
               />
               <ToggleRow
                 name="newStoryRequiresReview"
-                title="Проверка новых историй"
-                desc="Новые истории проходят проверку перед публикацией"
+                title={t.admin.moderationStoriesTitle}
+                desc={t.admin.moderationStoriesDesc}
                 defaultChecked={settings?.new_story_requires_review ?? false}
               />
             </div>
@@ -55,10 +55,10 @@ export default async function AdminSettingsPage() {
             <h3 className="mb-3.5 text-[17px] font-extrabold">{t.admin.platformLanguages}</h3>
             <div className="flex gap-2.5">
               <span className="flex h-9.5 items-center rounded-[11px] bg-primary-100 px-4 text-[13.5px] font-bold text-primary-800">
-                Русский
+                {t.languages.ru}
               </span>
               <span className="flex h-9.5 items-center rounded-[11px] bg-primary-100 px-4 text-[13.5px] font-bold text-primary-800">
-                Ўзбекча
+                {t.languages.uz}
               </span>
             </div>
           </div>

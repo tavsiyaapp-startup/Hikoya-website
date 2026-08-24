@@ -11,12 +11,6 @@ import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { createRequest, respondToRequest } from "@/lib/actions/requests";
 
-const STATUS_LABEL: Record<string, string> = {
-  open: "Открыта",
-  in_progress: "В работе",
-  fulfilled: "Выполнена",
-};
-
 export default async function BoardPage({
   searchParams,
 }: {
@@ -26,6 +20,12 @@ export default async function BoardPage({
   const locale = await getServerLocale();
   const t = getDictionary(locale);
   const user = await getCurrentUser();
+
+  const STATUS_LABEL: Record<string, string> = {
+    open: t.board.statusOpen,
+    in_progress: t.board.statusInProgress,
+    fulfilled: t.board.statusFulfilled,
+  };
 
   const [requests, selectedRequest] = await Promise.all([
     getBoardRequests(status),
@@ -60,8 +60,8 @@ export default async function BoardPage({
 
       {showNew && user && (
         <form action={createRequest} className="mb-6.5 rounded-3xl border border-border bg-card p-6.5">
-          <Input name="title" placeholder="О чём хотите почитать?" required className="mb-3.5" />
-          <Textarea name="text" placeholder="Опишите идею подробнее…" rows={3} required className="mb-3.5" />
+          <Input name="title" placeholder={t.board.newRequestTitlePlaceholder} required className="mb-3.5" />
+          <Textarea name="text" placeholder={t.board.newRequestTextPlaceholder} rows={3} required className="mb-3.5" />
           <Button type="submit">{t.board.leaveRequest}</Button>
         </form>
       )}
@@ -94,13 +94,13 @@ export default async function BoardPage({
                   </div>
                   <h3 className="mb-2 text-[17px] font-extrabold leading-snug">{r.title}</h3>
                   <p className="mb-3.5 line-clamp-2 text-[14.5px] leading-relaxed text-ink-soft">{r.text}</p>
-                  <span className="text-[13px] text-muted-2">{responseCount} откликов</span>
+                  <span className="text-[13px] text-muted-2">{responseCount} {t.board.responsesCountSuffix}</span>
                 </Link>
               );
             })
           ) : (
             <div className="rounded-2xl border border-dashed border-border-soft bg-surface px-6 py-14 text-center text-[14px] text-muted">
-              Заявок пока нет.
+              {t.board.noRequestsYet}
             </div>
           )}
         </div>
@@ -133,7 +133,7 @@ export default async function BoardPage({
                   action={respondToRequest.bind(null, selectedRequest.id)}
                   className="mb-5 flex flex-col gap-2.5"
                 >
-                  <Textarea name="text" placeholder="Опишите, как вы хотите откликнуться…" rows={3} required />
+                  <Textarea name="text" placeholder={t.board.responseTextPlaceholder} rows={3} required />
                   <Button type="submit" size="sm">
                     {t.board.respond}
                   </Button>

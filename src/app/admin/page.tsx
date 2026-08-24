@@ -57,7 +57,7 @@ export default async function AdminDashboardPage() {
                   </div>
                 ))
               ) : (
-                <EmptyLine />
+                <EmptyLine text={t.admin.emptyGeneric} />
               )}
             </div>
             <Link href={`${ROUTES.admin}/users`} className="mt-4 inline-block text-[13.5px] font-bold">
@@ -78,7 +78,7 @@ export default async function AdminDashboardPage() {
                   </div>
                 ))
               ) : (
-                <EmptyLine />
+                <EmptyLine text={t.admin.emptyGeneric} />
               )}
             </div>
             <Link href={`${ROUTES.admin}/reports`} className="mt-4 inline-block text-[13.5px] font-bold">
@@ -104,7 +104,7 @@ export default async function AdminDashboardPage() {
                 );
               })
             ) : (
-              <EmptyLine />
+              <EmptyLine text={t.admin.emptyGeneric} />
             )}
           </div>
           <Link href={`${ROUTES.admin}/stories`} className="mt-4 inline-block text-[13.5px] font-bold">
@@ -116,6 +116,6 @@ export default async function AdminDashboardPage() {
   );
 }
 
-function EmptyLine() {
-  return <div className="py-3 text-center text-[13.5px] text-muted">Пока пусто.</div>;
+function EmptyLine({ text }: { text: string }) {
+  return <div className="py-3 text-center text-[13.5px] text-muted">{text}</div>;
 }

@@ -3,6 +3,7 @@ import { Manrope, Kaushan_Script } from "next/font/google";
 import "./globals.css";
 import { LocaleProvider } from "@/lib/i18n/LocaleProvider";
 import { getServerLocale } from "@/lib/i18n/locale-server";
+import { getDictionary } from "@/lib/i18n";
 
 const manrope = Manrope({
   subsets: ["latin", "cyrillic"],
@@ -16,11 +17,11 @@ const kaushan = Kaushan_Script({
   weight: "400",
 });
 
-export const metadata: Metadata = {
-  title: "Hikoya — истории на русском и узбекском",
-  description:
-    "Платформа для чтения и публикации историй. Первые главы открыты без регистрации.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getServerLocale();
+  const t = getDictionary(locale);
+  return { title: t.meta.title, description: t.meta.description };
+}
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const locale = await getServerLocale();

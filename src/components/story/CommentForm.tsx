@@ -26,7 +26,7 @@ export function CommentForm({ chapterId, path }: { chapterId: string; path: stri
       <Textarea
         value={text}
         onChange={(e) => setText(e.target.value)}
-        placeholder="Ваш комментарий…"
+        placeholder={t.reader.commentPlaceholder}
         rows={2}
         className="flex-1"
       />

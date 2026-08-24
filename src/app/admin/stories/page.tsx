@@ -31,11 +31,11 @@ export default async function AdminStoriesPage({
           </div>
 
           <div className="mb-3 flex items-center gap-4 border-b border-border-soft pb-3 text-[12px] font-bold uppercase tracking-wide text-muted-2">
-            <span className="flex-[1.6]">История</span>
-            <span className="flex-1">Автор</span>
-            <span className="w-25">Главы</span>
-            <span className="w-27.5">Просмотры</span>
-            <span className="w-32.5">Статус</span>
+            <span className="flex-[1.6]">{t.admin.colStory}</span>
+            <span className="flex-1">{t.admin.colAuthor}</span>
+            <span className="w-25">{t.admin.colChapters}</span>
+            <span className="w-27.5">{t.admin.colViews}</span>
+            <span className="w-32.5">{t.admin.colStatus}</span>
           </div>
 
           {stories.map((s) => {

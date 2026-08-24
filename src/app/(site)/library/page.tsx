@@ -86,7 +86,7 @@ export default async function LibraryPage({
             })}
           </div>
         ) : (
-          <EmptyState text="Вы ещё не начали читать ни одной истории." />
+          <EmptyState text={t.library.notStartedReading} />
         ))}
 
       {tab === "bookmarks" &&
@@ -97,7 +97,7 @@ export default async function LibraryPage({
             ))}
           </div>
         ) : (
-          <EmptyState text="Закладок пока нет." />
+          <EmptyState text={t.library.noBookmarksYet} />
         ))}
 
       {tab === "collections" && (

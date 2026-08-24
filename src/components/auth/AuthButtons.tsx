@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { useLocale } from "@/lib/i18n/LocaleProvider";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import type { TelegramAuthData } from "@/lib/telegram";
@@ -11,6 +12,7 @@ function siteUrl() {
 }
 
 export function GoogleButton({ next = "/", className }: { next?: string; className?: string }) {
+  const { t } = useLocale();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -23,7 +25,7 @@ export function GoogleButton({ next = "/", className }: { next?: string; classNa
       options: { redirectTo: `${siteUrl()}/auth/callback?next=${encodeURIComponent(next)}` },
     });
     if (error) {
-      setError("Не удалось связаться с сервером входа. Попробуйте ещё раз позже.");
+      setError(t.auth.googleError);
       setPending(false);
     }
   }
@@ -46,6 +48,7 @@ export function GoogleButton({ next = "/", className }: { next?: string; classNa
 }
 
 export function EmailForm({ next = "/" }: { next?: string }) {
+  const { t } = useLocale();
   const [email, setEmail] = useState("");
   const [pending, setPending] = useState(false);
   const [sent, setSent] = useState(false);
@@ -63,7 +66,7 @@ export function EmailForm({ next = "/" }: { next?: string }) {
     });
     setPending(false);
     if (error) {
-      setError("Не удалось отправить ссылку для входа. Проверьте адрес и попробуйте снова.");
+      setError(t.auth.emailError);
     } else {
       setSent(true);
     }
@@ -72,7 +75,7 @@ export function EmailForm({ next = "/" }: { next?: string }) {
   if (sent) {
     return (
       <p className="rounded-[13px] border border-primary-200 bg-primary-50 px-4 py-3.5 text-[14px] text-primary-900">
-        Ссылка для входа отправлена на {email}. Проверьте почту.
+        {t.auth.emailSentTo} {email}. {t.auth.checkInbox}
       </p>
     );
   }
@@ -87,7 +90,7 @@ export function EmailForm({ next = "/" }: { next?: string }) {
         onChange={(e) => setEmail(e.target.value)}
       />
       <Button type="submit" disabled={pending} className="shrink-0">
-        Войти
+        {t.common.login}
       </Button>
       {error && <p className="text-[12.5px] text-danger">{error}</p>}
     </form>
@@ -101,6 +104,7 @@ declare global {
 }
 
 export function TelegramButton({ next = "/" }: { next?: string }) {
+  const { t } = useLocale();
   const containerRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<string | null>(null);
   const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME;
@@ -117,14 +121,14 @@ export function TelegramButton({ next = "/" }: { next?: string }) {
         });
         const body = await res.json();
         if (!res.ok || !body.redirect) {
-          setError("Не удалось войти через Telegram.");
+          setError(t.auth.telegramError);
           return;
         }
         const url = new URL(body.redirect);
         url.searchParams.set("next", next);
         window.location.href = url.toString();
       } catch {
-        setError("Не удалось войти через Telegram.");
+        setError(t.auth.telegramError);
       }
     };
 
@@ -141,12 +145,12 @@ export function TelegramButton({ next = "/" }: { next?: string }) {
     return () => {
       window.onHikoyaTelegramAuth = undefined;
     };
-  }, [botUsername, next]);
+  }, [botUsername, next, t]);
 
   if (!botUsername) {
     return (
       <div className="flex h-[50px] items-center justify-center rounded-[14px] border border-border bg-surface text-[13px] text-muted">
-        Telegram скоро
+        {t.auth.telegramSoon}
       </div>
     );
   }

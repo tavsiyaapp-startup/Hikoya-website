@@ -267,12 +267,14 @@ export default async function HomePage({
   );
 }
 
-function EmptyRow({ className = "" }: { className?: string }) {
+async function EmptyRow({ className = "" }: { className?: string }) {
+  const locale = await getServerLocale();
+  const t = getDictionary(locale);
   return (
     <div
       className={`rounded-2xl border border-dashed border-border-soft bg-surface px-6 py-10 text-center text-[14px] text-muted ${className}`}
     >
-      Пока здесь пусто — истории появятся, как только авторы начнут публиковать.
+      {t.home.emptyFeed}
     </div>
   );
 }

@@ -1,11 +1,16 @@
 import Link from "next/link";
 import Image from "next/image";
+import { getServerLocale } from "@/lib/i18n/locale-server";
+import { getDictionary } from "@/lib/i18n";
 import { ROUTES } from "@/lib/constants";
 import { HeartIcon } from "@/components/ui/icons";
 import { Badge } from "@/components/ui/Chip";
 import type { StoryCard as StoryCardData } from "@/lib/queries/stories";
 
-export function StoryCard({ story }: { story: StoryCardData }) {
+export async function StoryCard({ story }: { story: StoryCardData }) {
+  const locale = await getServerLocale();
+  const t = getDictionary(locale);
+
   return (
     <Link
       href={ROUTES.story(story.slug)}
@@ -21,7 +26,7 @@ export function StoryCard({ story }: { story: StoryCardData }) {
         </div>
         {story.status !== "published" && (
           <div className="absolute right-3 top-3">
-            <Badge tone="neutral">{story.status === "draft" ? "Черновик" : "Не в списках"}</Badge>
+            <Badge tone="neutral">{story.status === "draft" ? t.common.draft : t.common.unlisted}</Badge>
           </div>
         )}
       </div>

@@ -9,14 +9,33 @@ import { SearchIcon } from "@/components/ui/icons";
 
 type Query = { [key: string]: string | string[] | undefined };
 
-const RELATIONSHIPS = [
-  "Разнополые отношения",
-  "Однополые отношения",
-  "Множественные пары",
-  "Без романтической линии",
+// Value sent in the URL / matched against tags.label_ru in the DB is always
+// the Russian label (tuple[0]) — only the on-screen text switches with locale.
+const RELATIONSHIPS: [string, string][] = [
+  ["Разнополые отношения", "Turli jinsdagilar munosabati"],
+  ["Однополые отношения", "Bir jinsdagilar munosabati"],
+  ["Множественные пары", "Bir nechta juftlik"],
+  ["Без романтической линии", "Romantik chiziqsiz"],
 ];
-const WARNINGS = ["Нецензурная лексика", "Насилие", "Упоминание смерти", "Триггерные темы"];
-const STYLES = ["Ангст", "Флафф", "Юмор", "Экшн", "Хёрт/комфорт"];
+const WARNINGS: [string, string][] = [
+  ["Нецензурная лексика", "Soʻkinish soʻzlari"],
+  ["Насилие", "Zoʻravonlik"],
+  ["Упоминание смерти", "Oʻlim haqida eslatma"],
+  ["Триггерные темы", "Trigger mavzular"],
+];
+const STYLES: [string, string][] = [
+  ["Ангст", "Angst"],
+  ["Флафф", "Flaff"],
+  ["Юмор", "Yumor"],
+  ["Экшн", "Ekshn"],
+  ["Хёрт/комфорт", "Hyort/komfort"],
+];
+
+function localizedLabel(value: string | undefined, locale: "ru" | "uz"): string | undefined {
+  if (!value || locale === "ru") return value;
+  const pair = [...RELATIONSHIPS, ...WARNINGS, ...STYLES].find(([ru]) => ru === value);
+  return pair ? pair[1] : value;
+}
 
 function buildHref(current: Query, patch: Record<string, string | string[] | undefined>) {
   const params = new URLSearchParams();
@@ -111,25 +130,25 @@ export default async function SearchPage({
         <div className="my-1 h-px bg-border-soft" />
 
         <FilterGroup label={t.search.relationship} wrap>
-          {RELATIONSHIPS.map((r) => (
+          {RELATIONSHIPS.map(([r, rUz]) => (
             <Link key={r} href={buildHref(sp, { rel: filters.relationship === r ? undefined : r })}>
-              <Chip active={filters.relationship === r}>{r}</Chip>
+              <Chip active={filters.relationship === r}>{locale === "uz" ? rUz : r}</Chip>
             </Link>
           ))}
         </FilterGroup>
 
         <FilterGroup label={t.search.warnings} wrap>
-          {WARNINGS.map((w) => (
+          {WARNINGS.map(([w, wUz]) => (
             <Link key={w} href={buildHref(sp, { warn: toggleInArray(filters.warnings ?? [], w) })}>
-              <Chip active={filters.warnings?.includes(w)}>{w}</Chip>
+              <Chip active={filters.warnings?.includes(w)}>{locale === "uz" ? wUz : w}</Chip>
             </Link>
           ))}
         </FilterGroup>
 
         <FilterGroup label={t.search.style} wrap last>
-          {STYLES.map((s) => (
+          {STYLES.map(([s, sUz]) => (
             <Link key={s} href={buildHref(sp, { style: filters.style === s ? undefined : s })}>
-              <Chip active={filters.style === s}>{s}</Chip>
+              <Chip active={filters.style === s}>{locale === "uz" ? sUz : s}</Chip>
             </Link>
           ))}
         </FilterGroup>
@@ -161,7 +180,7 @@ export default async function SearchPage({
             {(["popular", "newest", "views"] as const).map((s) => (
               <Link key={s} href={buildHref(sp, { sort: s })}>
                 <Chip active={filters.sort === s}>
-                  {s === "popular" ? "По популярности" : s === "newest" ? "Сначала новые" : "По просмотрам"}
+                  {s === "popular" ? t.search.sortPopular : s === "newest" ? t.search.sortNewest : t.search.sortViews}
                 </Chip>
               </Link>
             ))}
@@ -188,7 +207,7 @@ export default async function SearchPage({
                   href={buildHref(sp, { [key]: undefined })}
                   className="flex items-center gap-1.5 rounded-[10px] border border-primary-300 bg-primary-50 px-3 py-1.5 text-[12.5px] font-semibold text-primary-900"
                 >
-                  <span>{value}</span>
+                  <span>{key === "rel" || key === "style" ? localizedLabel(value, locale) : value}</span>
                   <span className="text-[14px] leading-none">×</span>
                 </Link>
               ))}
@@ -198,7 +217,7 @@ export default async function SearchPage({
                 href={buildHref(sp, { warn: toggleInArray(filters.warnings ?? [], w) })}
                 className="flex items-center gap-1.5 rounded-[10px] border border-primary-300 bg-primary-50 px-3 py-1.5 text-[12.5px] font-semibold text-primary-900"
               >
-                <span>{w}</span>
+                <span>{localizedLabel(w, locale)}</span>
                 <span className="text-[14px] leading-none">×</span>
               </Link>
             ))}

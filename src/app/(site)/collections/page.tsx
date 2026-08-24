@@ -10,23 +10,23 @@ import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { Button } from "@/components/ui/Button";
 
-const TABS = [
-  ["all", undefined, "Все"],
-  ["moderator", "moderator", "Редакция"],
-  ["user", "user", "Читатели"],
-] as const;
-
 export default async function CollectionsPage({
   searchParams,
 }: {
   searchParams: Promise<{ tab?: string; create?: string }>;
 }) {
   const { tab: rawTab, create } = await searchParams;
-  const activeTab = TABS.find(([key]) => key === rawTab) ?? TABS[0];
 
   const locale = await getServerLocale();
   const t = getDictionary(locale);
   const user = await getCurrentUser();
+
+  const TABS = [
+    ["all", undefined, t.common.all],
+    ["moderator", "moderator", t.collections.tabEditorial],
+    ["user", "user", t.collections.tabReaders],
+  ] as const;
+  const activeTab = TABS.find(([key]) => key === rawTab) ?? TABS[0];
   const collections = await getPublicCollections(activeTab[1]);
 
   return (
@@ -49,8 +49,8 @@ export default async function CollectionsPage({
 
       {create && user && (
         <form action={createCollection} className="mb-7 rounded-3xl border border-border bg-card p-6.5">
-          <Input name="title" placeholder="Название подборки" required className="mb-3.5" />
-          <Textarea name="description" placeholder="О чём эта подборка?" rows={2} className="mb-3.5" />
+          <Input name="title" placeholder={t.collections.createTitlePlaceholder} required className="mb-3.5" />
+          <Textarea name="description" placeholder={t.collections.createDescPlaceholder} rows={2} className="mb-3.5" />
           <label className="mb-4 flex items-center gap-2 text-[13.5px] text-ink-soft">
             <input type="checkbox" name="isPrivate" className="h-4 w-4" />
             {t.collections.private}
@@ -78,7 +78,7 @@ export default async function CollectionsPage({
         </div>
       ) : (
         <div className="rounded-2xl border border-dashed border-border-soft bg-surface px-6 py-14 text-center text-[14px] text-muted">
-          Подборок пока нет.
+          {t.collections.noneYet}
         </div>
       )}
     </div>

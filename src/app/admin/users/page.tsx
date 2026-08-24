@@ -26,12 +26,12 @@ export default async function AdminUsersPage({
           </form>
 
           <div className="mb-3 flex items-center gap-4 border-b border-border-soft pb-3 text-[12px] font-bold uppercase tracking-wide text-muted-2">
-            <span className="flex-[1.4]">Пользователь</span>
-            <span className="w-27.5">Роль</span>
-            <span className="w-22.5">Истории</span>
-            <span className="w-32.5">Регистрация</span>
-            <span className="w-30">Статус</span>
-            <span className="w-30 text-right">Действие</span>
+            <span className="flex-[1.4]">{t.admin.colUser}</span>
+            <span className="w-27.5">{t.admin.colRole}</span>
+            <span className="w-22.5">{t.admin.colStories}</span>
+            <span className="w-32.5">{t.admin.colRegistered}</span>
+            <span className="w-30">{t.admin.colStatus}</span>
+            <span className="w-30 text-right">{t.admin.colAction}</span>
           </div>
 
           {users.map((u) => (

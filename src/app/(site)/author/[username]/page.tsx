@@ -114,7 +114,7 @@ export default async function AuthorPage({
             ))}
           </div>
         ) : (
-          <EmptyState text="Здесь пока нет опубликованных историй." />
+          <EmptyState text={t.author.noStoriesYet} />
         ))}
 
       {tab === "requests" &&
@@ -133,7 +133,7 @@ export default async function AuthorPage({
             })}
           </div>
         ) : (
-          <EmptyState text="Заявок пока нет." />
+          <EmptyState text={t.board.noRequestsYet} />
         ))}
     </div>
   );

@@ -100,7 +100,7 @@ export default async function ManagePage({
               >
                 <div className="min-w-0 flex-1">
                   <div className="mb-0.5 text-[15px] font-bold">{ch.title}</div>
-                  <div className="text-[12.5px] text-muted-3">{ch.word_count} слов</div>
+                  <div className="text-[12.5px] text-muted-3">{ch.word_count} {t.reader.wordsLabel}</div>
                 </div>
                 <div className="w-24 shrink-0 text-[14px] font-bold">{ch.view_count}</div>
                 <Badge tone={ch.status === "published" ? "success" : "neutral"}>
@@ -110,7 +110,7 @@ export default async function ManagePage({
             ))
           ) : (
             <div className="px-6 py-10 text-center text-[14px] text-muted-2">
-              Пока нет глав — добавьте первую.
+              {t.manage.noChaptersYet}
             </div>
           )}
         </div>
@@ -146,7 +146,7 @@ export default async function ManagePage({
             })
           ) : (
             <div className="rounded-2xl border border-dashed border-border-soft bg-surface px-6 py-10 text-center text-[14px] text-muted">
-              Заявок для вас пока нет.
+              {t.manage.noRequestsForYouYet}
             </div>
           )}
         </div>

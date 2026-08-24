@@ -37,7 +37,7 @@ export default async function CollectionDetailPage({
         </div>
       ) : (
         <div className="rounded-2xl border border-dashed border-border-soft bg-surface px-6 py-14 text-center text-[14px] text-muted">
-          В этой подборке пока нет историй.
+          {t.collections.emptyInCollection}
         </div>
       )}
     </div>

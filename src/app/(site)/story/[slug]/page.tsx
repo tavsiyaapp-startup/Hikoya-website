@@ -52,7 +52,7 @@ export default async function StoryPage({ params }: { params: Promise<{ slug: st
           </Link>
         ) : (
           <div className="mb-2.5 flex h-13.5 w-full items-center justify-center rounded-2xl border border-dashed border-border-soft text-[13px] text-muted">
-            Пока нет опубликованных глав
+            {t.story.noChaptersYet}
           </div>
         )}
 
@@ -123,14 +123,14 @@ export default async function StoryPage({ params }: { params: Promise<{ slug: st
                 <span className="w-8 shrink-0 text-[14px] font-bold text-muted-3">{ch.order_index}</span>
                 <div className="min-w-0 flex-1">
                   <span className="text-[15px] font-semibold">{ch.title}</span>
-                  <div className="mt-1 text-[12.5px] text-muted-3">{ch.word_count} слов</div>
+                  <div className="mt-1 text-[12.5px] text-muted-3">{ch.word_count} {t.reader.wordsLabel}</div>
                 </div>
                 {ch.is_free && <Badge tone="primary">{t.common.read}</Badge>}
               </Link>
             ))
           ) : (
             <div className="px-6 py-10 text-center text-[14px] text-muted-2">
-              Автор ещё не опубликовал ни одной главы.
+              {t.story.noChaptersBody}
             </div>
           )}
         </div>

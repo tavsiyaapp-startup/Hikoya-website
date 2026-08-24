@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 44 44" fill="none">
+  <defs>
+    <linearGradient id="hikoya-logo-g" x1="0" y1="0" x2="44" y2="44" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#7C3AED" />
+      <stop offset="1" stop-color="#9333EA" />
+    </linearGradient>
+  </defs>
+  <rect width="44" height="44" rx="13" fill="url(#hikoya-logo-g)" />
+  <path d="M13 12v20M13 22h9M22 12v20" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" />
+  <circle cx="30.5" cy="15.5" r="2.6" fill="#fff" />
+</svg>

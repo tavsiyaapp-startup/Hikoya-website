@@ -6,14 +6,16 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { clsx } from "clsx";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
+import { useMobileNav } from "@/components/layout/MobileNavContext";
 import { ROUTES } from "@/lib/constants";
 import { Button } from "@/components/ui/Button";
 import { Avatar } from "@/components/ui/Avatar";
-import { BellIcon, SearchIcon } from "@/components/ui/icons";
+import { BellIcon, MenuIcon, SearchIcon } from "@/components/ui/icons";
 import type { CurrentUser } from "@/lib/current-user";
 
 export function Header({ user }: { user: CurrentUser | null }) {
   const { locale, setLocale, t } = useLocale();
+  const { setOpen } = useMobileNav();
   const router = useRouter();
   const [query, setQuery] = useState("");
 
@@ -23,13 +25,24 @@ export function Header({ user }: { user: CurrentUser | null }) {
   }
 
   return (
-    <header className="sticky top-0 z-20 flex h-[76px] items-center gap-7 border-b border-border bg-white/92 px-8 backdrop-blur-md">
-      <Link href={ROUTES.home} className="flex w-52 shrink-0 items-center gap-3">
-        <Image src="/images/logo.png" alt="Hikoya" width={44} height={44} className="object-contain" />
-        <span className="font-script text-[30px] leading-none text-ink">{t.common.brand}</span>
+    <header className="sticky top-0 z-20 flex h-[64px] items-center gap-3 border-b border-border bg-white/92 px-3 backdrop-blur-md sm:h-[76px] sm:gap-5 sm:px-5 lg:gap-7 lg:px-8">
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        aria-label={t.nav.home}
+        className="flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-[12px] text-ink-soft transition hover:bg-surface lg:hidden"
+      >
+        <MenuIcon />
+      </button>
+
+      <Link href={ROUTES.home} className="flex shrink-0 items-center gap-2.5 lg:w-52 lg:gap-3">
+        <Image src="/images/logo.png" alt="Hikoya" width={36} height={36} className="object-contain sm:h-11 sm:w-11" />
+        <span className="hidden font-script text-[24px] leading-none text-ink sm:inline sm:text-[30px]">
+          {t.common.brand}
+        </span>
       </Link>
 
-      <form onSubmit={handleSearchSubmit} className="relative mx-auto max-w-[620px] flex-1">
+      <form onSubmit={handleSearchSubmit} className="relative mx-auto hidden max-w-[620px] flex-1 md:block">
         <SearchIcon className="pointer-events-none absolute left-[18px] top-[15px] text-muted-3" />
         <input
           value={query}
@@ -39,8 +52,16 @@ export function Header({ user }: { user: CurrentUser | null }) {
         />
       </form>
 
-      <div className="ml-auto flex items-center gap-2.5">
-        <div className="flex gap-0.5 rounded-xl border border-border bg-primary-50 p-[3px]">
+      <Link
+        href={ROUTES.search}
+        aria-label={t.nav.search}
+        className="ml-auto flex h-10 w-10 shrink-0 items-center justify-center rounded-[12px] text-ink-soft transition hover:bg-surface md:hidden"
+      >
+        <SearchIcon />
+      </Link>
+
+      <div className="flex items-center gap-1.5 sm:ml-auto sm:gap-2.5">
+        <div className="hidden gap-0.5 rounded-xl border border-border bg-primary-50 p-[3px] xs:flex">
           {(["ru", "uz"] as const).map((code) => (
             <button
               key={code}
@@ -60,7 +81,7 @@ export function Header({ user }: { user: CurrentUser | null }) {
           href={user ? "/library?tab=notifications" : ROUTES.onboarding}
           title={user ? t.nav.notifications : t.common.guestLockedTitle}
           className={clsx(
-            "flex h-11 w-11 items-center justify-center rounded-[13px] border border-border bg-white text-ink-soft transition",
+            "flex h-10 w-10 shrink-0 items-center justify-center rounded-[13px] border border-border bg-white text-ink-soft transition sm:h-11 sm:w-11",
             !user && "cursor-not-allowed opacity-50"
           )}
         >
@@ -68,16 +89,20 @@ export function Header({ user }: { user: CurrentUser | null }) {
         </Link>
 
         {user ? (
-          <Link href={ROUTES.author(user.profile?.username ?? "")} className="flex items-center gap-2">
-            <Avatar name={user.profile?.display_name ?? "?"} src={user.profile?.avatar_url} size={40} />
+          <Link href={ROUTES.author(user.profile?.username ?? "")} className="flex shrink-0 items-center gap-2">
+            <Avatar name={user.profile?.display_name ?? "?"} src={user.profile?.avatar_url} size={38} />
           </Link>
         ) : (
           <>
-            <Link href={ROUTES.onboarding}>
-              <Button variant="secondary">{t.common.login}</Button>
+            <Link href={ROUTES.onboarding} className="hidden sm:block">
+              <Button variant="secondary" size="sm" className="sm:h-[46px] sm:px-5 sm:text-[14.5px]">
+                {t.common.login}
+              </Button>
             </Link>
             <Link href={ROUTES.onboarding}>
-              <Button variant="primary">{t.common.register}</Button>
+              <Button variant="primary" size="sm" className="sm:h-[46px] sm:px-5 sm:text-[14.5px]">
+                {t.common.register}
+              </Button>
             </Link>
           </>
         )}

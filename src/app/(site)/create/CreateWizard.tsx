@@ -100,18 +100,18 @@ export function CreateWizard({ userId }: { userId: string }) {
         ))}
       </div>
 
-      <div className="mx-auto flex max-w-195 gap-8">
-        <div className="min-w-0 max-w-190 flex-1">
+      <div className="mx-auto flex max-w-195 flex-col gap-6 lg:flex-row lg:gap-8">
+        <div className="min-w-0 w-full lg:max-w-190 lg:flex-1">
           {step === 1 && (
             <>
-              <div className="mb-5 rounded-3xl border border-border bg-card p-7.5">
+              <div className="mb-5 rounded-3xl border border-border bg-card p-5 sm:p-7.5">
                 <h2 className="mb-1.5 text-[22px] font-extrabold">{t.create.coverTitle}</h2>
                 <p className="mb-5.5 text-[14px] text-muted">{t.create.coverBody}</p>
-                <div className="flex items-start gap-5">
-                  <div className="relative h-56 w-42 shrink-0 overflow-hidden rounded-2xl bg-primary-200 shadow-[0_10px_26px_rgba(60,40,120,0.16)]">
+                <div className="flex flex-col items-start gap-5 sm:flex-row">
+                  <div className="relative h-56 w-full shrink-0 overflow-hidden rounded-2xl bg-primary-200 shadow-[0_10px_26px_rgba(60,40,120,0.16)] sm:w-42">
                     {coverUrl && <Image src={coverUrl} alt="" fill className="object-cover" />}
                   </div>
-                  <label className="flex h-56 flex-1 cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-primary-300 bg-surface text-center hover:bg-primary-50">
+                  <label className="flex h-40 w-full flex-1 cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-primary-300 bg-surface text-center hover:bg-primary-50 sm:h-56">
                     <input type="file" accept="image/*" onChange={handleCoverChange} className="hidden" />
                     <span className="text-[14.5px] font-bold text-primary-800">
                       {coverUploading ? t.common.loading : t.create.uploadCover}
@@ -122,7 +122,7 @@ export function CreateWizard({ userId }: { userId: string }) {
                 </div>
               </div>
 
-              <div className="rounded-3xl border border-border bg-card p-7.5">
+              <div className="rounded-3xl border border-border bg-card p-5 sm:p-7.5">
                 <label className="mb-2 block text-[14px] font-bold">{t.create.titleLabel} *</label>
                 <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t.create.titlePlaceholder} className="mb-5" />
 
@@ -193,7 +193,7 @@ export function CreateWizard({ userId }: { userId: string }) {
           )}
 
           {step === 2 && (
-            <div className="rounded-3xl border border-border bg-card p-7.5">
+            <div className="rounded-3xl border border-border bg-card p-5 sm:p-7.5">
               <h2 className="mb-5.5 text-[22px] font-extrabold">{t.create.step2}</h2>
               <label className="mb-2 block text-[14px] font-bold">{t.create.chapterTitleLabel} *</label>
               <Input
@@ -217,7 +217,7 @@ export function CreateWizard({ userId }: { userId: string }) {
 
           {step === 3 && (
             <>
-              <div className="mb-5 rounded-3xl border border-border bg-card p-7.5">
+              <div className="mb-5 rounded-3xl border border-border bg-card p-5 sm:p-7.5">
                 <h2 className="mb-5 text-[22px] font-extrabold">{t.create.visibilityTitle}</h2>
                 <div className="flex flex-col gap-3">
                   {(
@@ -251,7 +251,7 @@ export function CreateWizard({ userId }: { userId: string }) {
                 </div>
               </div>
 
-              <div className="rounded-3xl border border-border bg-card p-7.5">
+              <div className="rounded-3xl border border-border bg-card p-5 sm:p-7.5">
                 <label className="mb-2 block text-[14px] font-bold">
                   {t.create.announceLabel} <span className="font-medium text-muted-2">{t.create.announceHint}</span>
                 </label>
@@ -286,12 +286,12 @@ export function CreateWizard({ userId }: { userId: string }) {
           </div>
         </div>
 
-        <div className="sticky top-26 w-75 shrink-0 rounded-[22px] border border-border bg-card p-5.5">
+        <div className="w-full rounded-[22px] border border-border bg-card p-5.5 lg:sticky lg:top-26 lg:w-75 lg:shrink-0">
           <div className="mb-3.5 text-[13px] font-bold uppercase tracking-wide text-muted-2">
             {t.create.previewTitle}
           </div>
-          <div className="mb-4 overflow-hidden rounded-[18px] border border-border">
-            <div className="relative aspect-[3/4] bg-primary-200">
+          <div className="mb-4 flex gap-3.5 overflow-hidden rounded-[18px] border border-border sm:block">
+            <div className="relative aspect-[3/4] w-28 shrink-0 bg-primary-200 sm:w-full">
               {coverUrl && <Image src={coverUrl} alt="" fill className="object-cover" />}
             </div>
             <div className="p-3.5">

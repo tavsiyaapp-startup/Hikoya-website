@@ -31,7 +31,7 @@ export default async function CollectionsPage({
 
   return (
     <div>
-      <h1 className="mb-2 text-[32px] font-extrabold tracking-tight">{t.collections.title}</h1>
+      <h1 className="mb-2 text-[26px] font-extrabold tracking-tight sm:text-[32px]">{t.collections.title}</h1>
       <p className="mb-6.5 max-w-155 text-[15px] leading-relaxed text-muted">{t.collections.body}</p>
 
       <div className="mb-7 flex items-center gap-2.5">
@@ -48,7 +48,7 @@ export default async function CollectionsPage({
       </div>
 
       {create && user && (
-        <form action={createCollection} className="mb-7 rounded-3xl border border-border bg-card p-6.5">
+        <form action={createCollection} className="mb-7 rounded-3xl border border-border bg-card p-4.5 sm:p-6.5">
           <Input name="title" placeholder={t.collections.createTitlePlaceholder} required className="mb-3.5" />
           <Textarea name="description" placeholder={t.collections.createDescPlaceholder} rows={2} className="mb-3.5" />
           <label className="mb-4 flex items-center gap-2 text-[13.5px] text-ink-soft">
@@ -60,7 +60,7 @@ export default async function CollectionsPage({
       )}
 
       {collections.length > 0 ? (
-        <div className="grid grid-cols-3 gap-5.5">
+        <div className="grid grid-cols-1 gap-4.5 xs:grid-cols-2 sm:grid-cols-3 sm:gap-5.5">
           {collections.map((col) => (
             <Link
               key={col.id}

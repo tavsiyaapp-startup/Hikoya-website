@@ -25,10 +25,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   ];
 
   return (
-    <div className="flex min-h-screen items-stretch bg-bg">
-      <aside className="flex w-62 shrink-0 flex-col bg-ink-darker px-4.5 py-6.5">
-        <div className="mb-8.5 flex items-center gap-3">
-          <div className="flex h-10.5 w-10.5 items-center justify-center rounded-xl bg-white/90">
+    <div className="flex min-h-screen flex-col items-stretch bg-bg lg:flex-row">
+      <aside className="flex w-full shrink-0 flex-col bg-ink-darker px-4.5 py-4 lg:w-62 lg:py-6.5">
+        <div className="mb-4 flex items-center gap-3 lg:mb-8.5">
+          <div className="flex h-10.5 w-10.5 shrink-0 items-center justify-center rounded-xl bg-white/90">
             <Image src="/images/logo.png" alt="" width={32} height={32} className="object-contain" />
           </div>
           <div>
@@ -37,7 +37,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           </div>
         </div>
 
-        <nav className="flex flex-col gap-1.5">
+        <nav className="flex gap-1.5 overflow-x-auto lg:flex-col lg:overflow-visible">
           {nav.map((item) => (
             <AdminNavLink key={item.href} href={item.href} label={item.label}>
               <item.icon width={20} height={20} />
@@ -47,7 +47,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
         <Link
           href={ROUTES.home}
-          className="mt-auto flex h-11.5 items-center gap-3 rounded-xl px-3.5 text-[14.5px] font-semibold text-[#8B82A8] hover:bg-white/6"
+          className="mt-3 flex h-11.5 shrink-0 items-center gap-3 rounded-xl px-3.5 text-[14.5px] font-semibold text-[#8B82A8] hover:bg-white/6 lg:mt-auto"
         >
           ← {t.nav.home}
         </Link>

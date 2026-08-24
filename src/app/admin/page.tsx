@@ -32,8 +32,8 @@ export default async function AdminDashboardPage() {
   return (
     <div>
       <AdminHeader title={t.admin.dashboard} />
-      <div className="px-8.5 pb-15 pt-7">
-        <div className="mb-6 grid grid-cols-4 gap-5">
+      <div className="px-4 pb-15 pt-7 sm:px-8.5">
+        <div className="mb-6 grid grid-cols-2 gap-5 lg:grid-cols-4">
           {cards.map((c) => (
             <div key={c.label} className="rounded-[20px] border border-border bg-card px-6 py-5.5">
               <div className="mb-3.5 text-[14px] text-muted-2">{c.label}</div>
@@ -42,7 +42,7 @@ export default async function AdminDashboardPage() {
           ))}
         </div>
 
-        <div className="mb-5 grid grid-cols-2 gap-5">
+        <div className="mb-5 grid grid-cols-1 gap-5 lg:grid-cols-2">
           <div className="rounded-[20px] border border-border bg-card px-6.5 py-6">
             <h3 className="mb-4.5 text-[17px] font-extrabold">{t.admin.allUsers}</h3>
             <div className="flex flex-col gap-3">

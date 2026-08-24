@@ -43,14 +43,14 @@ export default async function HomePage({
 
   return (
     <div>
-      <div className="mb-6 flex items-center gap-2.5">
+      <div className="mb-6 flex items-center gap-2.5 overflow-x-auto">
         {TABS.map((key) => {
           const locked = !user && (key === "forYou" || key === "following");
           return (
             <Link
               key={key}
               href={locked ? ROUTES.onboarding : `?tab=${key}`}
-              className="inline-flex"
+              className="inline-flex shrink-0"
             >
               <Chip active={tab === key}>
                 <span>{t.home.tabs[key]}</span>
@@ -60,25 +60,25 @@ export default async function HomePage({
           );
         })}
         {!user && (
-          <div className="ml-auto flex items-center gap-2 rounded-xl bg-primary-50 px-3.5 py-2 text-[12.5px] font-semibold text-[#5B4B8A]">
+          <div className="ml-auto hidden shrink-0 items-center gap-2 rounded-xl bg-primary-50 px-3.5 py-2 text-[12.5px] font-semibold text-[#5B4B8A] sm:flex">
             <span>{t.home.guestHint}</span>
           </div>
         )}
       </div>
 
-      <section className="mb-9.5 flex overflow-hidden rounded-[26px] border border-primary-100 bg-linear-to-br from-primary-50 via-[#F6ECFB] to-pink-bg">
-        <div className="flex-1 p-11">
+      <section className="mb-9.5 flex flex-col overflow-hidden rounded-[26px] border border-primary-100 bg-linear-to-br from-primary-50 via-[#F6ECFB] to-pink-bg sm:flex-row">
+        <div className="flex-1 p-6 sm:p-11">
           <div className="mb-4.5 inline-flex items-center gap-1.5 rounded-full bg-white/75 px-3.5 py-1.5 text-[12px] font-bold text-primary-800">
             <SparkleIcon className="text-primary-700" />
             <span>{t.home.heroKicker}</span>
           </div>
-          <h1 className="mb-3 max-w-[480px] text-[40px] font-extrabold leading-tight tracking-tight text-balance">
+          <h1 className="mb-3 max-w-[480px] text-[28px] font-extrabold leading-tight tracking-tight text-balance sm:text-[40px]">
             {t.home.heroTitle}
           </h1>
-          <p className="mb-6.5 max-w-[430px] text-[15.5px] leading-relaxed text-ink-soft">
+          <p className="mb-6.5 max-w-[430px] text-[14.5px] leading-relaxed text-ink-soft sm:text-[15.5px]">
             {t.home.heroBody}
           </p>
-          <div className="flex gap-3">
+          <div className="flex flex-wrap gap-3">
             <Link href={user ? ROUTES.create : ROUTES.onboarding}>
               <Button size="lg">{t.home.heroCta}</Button>
             </Link>
@@ -89,14 +89,14 @@ export default async function HomePage({
             </Link>
           </div>
         </div>
-        <div className="relative min-h-75 w-[46%]">
+        <div className="relative h-48 w-full sm:h-auto sm:min-h-75 sm:w-[46%]">
           <Image
             src="/images/banner-write.jpg"
             alt=""
             fill
             className="object-cover object-right"
           />
-          <div className="absolute inset-0 bg-linear-to-r from-primary-50 to-transparent" />
+          <div className="absolute inset-0 bg-linear-to-r from-primary-50 to-transparent sm:block hidden" />
         </div>
       </section>
 
@@ -105,7 +105,7 @@ export default async function HomePage({
           <h2 className="mb-4.5 text-2xl font-extrabold tracking-tight">
             {t.home.continueReading}
           </h2>
-          <div className="mb-11 grid grid-cols-3 gap-4.5">
+          <div className="mb-11 grid grid-cols-1 gap-4.5 xs:grid-cols-2 sm:grid-cols-3">
             {continueReading.map((item, i) => {
               const story = item.story as unknown as {
                 id: string;
@@ -150,7 +150,7 @@ export default async function HomePage({
         </Link>
       </div>
       {feed.length > 0 ? (
-        <div className="mb-11 grid grid-cols-4 gap-5.5">
+        <div className="mb-11 grid grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-5.5 lg:grid-cols-4">
           {feed.map((story) => (
             <StoryCard key={story.id} story={story} />
           ))}
@@ -166,7 +166,7 @@ export default async function HomePage({
         </Link>
       </div>
       {weekly.length > 0 ? (
-        <div className="mb-11 grid grid-cols-3 gap-4.5">
+        <div className="mb-11 grid grid-cols-1 gap-4.5 xs:grid-cols-2 sm:grid-cols-3">
           {weekly.map((row) => {
             const story = row.story as unknown as { title: string; slug: string; cover_url: string | null } | null;
             if (!story) return null;
@@ -206,7 +206,7 @@ export default async function HomePage({
         </Link>
       </div>
       {collections.length > 0 ? (
-        <div className="mb-11 grid grid-cols-3 gap-5.5">
+        <div className="mb-11 grid grid-cols-1 gap-4.5 xs:grid-cols-2 sm:grid-cols-3 sm:gap-5.5">
           {collections.map((col) => (
             <Link
               key={col.id}
@@ -222,7 +222,7 @@ export default async function HomePage({
         <EmptyRow className="mb-11" />
       )}
 
-      <div className="rounded-3xl border border-border bg-card px-7 py-6.5">
+      <div className="rounded-3xl border border-border bg-card px-4 py-6 sm:px-7 sm:py-6.5">
         <div className="mb-4.5 flex items-center gap-3.5">
           <h2 className="text-[22px] font-extrabold tracking-tight">{t.home.genreTitle}</h2>
         </div>
@@ -234,7 +234,7 @@ export default async function HomePage({
           ))}
         </div>
         {genreStories.length > 0 ? (
-          <div className="grid grid-cols-4 gap-5.5">
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-5.5 lg:grid-cols-4">
             {genreStories.map((story) => (
               <StoryCard key={story.id} story={story} />
             ))}
@@ -245,7 +245,7 @@ export default async function HomePage({
       </div>
 
       {!user && (
-        <div className="mt-11 flex items-center gap-6 rounded-3xl bg-linear-to-br from-ink-dark to-primary-950 px-8 py-6.5 text-white">
+        <div className="mt-11 flex flex-col items-start gap-4 rounded-3xl bg-linear-to-br from-ink-dark to-primary-950 px-5 py-6 text-white sm:flex-row sm:items-center sm:gap-6 sm:px-8 sm:py-6.5">
           <div className="flex h-13 w-13 shrink-0 items-center justify-center rounded-2xl bg-white/12">
             <LockIcon className="h-6 w-6" />
           </div>
@@ -253,9 +253,9 @@ export default async function HomePage({
             <div className="mb-1 text-[18px] font-extrabold">{t.home.gateTitle}</div>
             <div className="text-[14px] leading-relaxed text-primary-200">{t.home.gateBody}</div>
           </div>
-          <Link href={ROUTES.onboarding} className="shrink-0">
+          <Link href={ROUTES.onboarding} className="w-full shrink-0 sm:w-auto">
             <Button
-              className="border-none shadow-none"
+              className="w-full justify-center border-none shadow-none sm:w-auto"
               style={{ background: "#fff", color: "#4C1D95" }}
             >
               {t.home.gateCta}

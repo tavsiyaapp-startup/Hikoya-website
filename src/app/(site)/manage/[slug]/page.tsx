@@ -51,8 +51,8 @@ export default async function ManagePage({
 
   return (
     <div>
-      <div className="mb-6 flex gap-6.5 rounded-3xl border border-border bg-card p-6.5">
-        <div className="relative h-50 w-37.5 shrink-0 overflow-hidden rounded-2xl bg-primary-200 shadow-[0_10px_24px_rgba(60,40,120,0.16)]">
+      <div className="mb-6 flex flex-col gap-4.5 rounded-3xl border border-border bg-card p-4.5 sm:flex-row sm:gap-6.5 sm:p-6.5">
+        <div className="relative mx-auto h-42 w-31.5 shrink-0 overflow-hidden rounded-2xl bg-primary-200 shadow-[0_10px_24px_rgba(60,40,120,0.16)] sm:mx-0 sm:h-50 sm:w-37.5">
           {story.cover_url && <Image src={story.cover_url} alt="" fill className="object-cover" />}
         </div>
         <div className="min-w-0 flex-1">
@@ -60,8 +60,8 @@ export default async function ManagePage({
             <Badge tone="success">{story.status === "published" ? t.common.published : t.common.draft}</Badge>
             <Badge tone="pink">{story.genre}</Badge>
           </div>
-          <h1 className="mb-4.5 text-[34px] font-extrabold tracking-tight">{story.title}</h1>
-          <div className="flex gap-10">
+          <h1 className="mb-4.5 text-[24px] font-extrabold tracking-tight sm:text-[34px]">{story.title}</h1>
+          <div className="flex flex-wrap gap-6 sm:gap-10">
             {metrics.map((m) => (
               <div key={m.label}>
                 <div className="mb-0.5 text-[22px] font-extrabold">{m.value}</div>
@@ -72,7 +72,7 @@ export default async function ManagePage({
         </div>
       </div>
 
-      <div className="mb-4.5 flex items-center gap-2.5">
+      <div className="mb-4.5 flex flex-wrap items-center gap-2.5">
         {(
           [
             ["chapters", t.manage.tabChapters],
@@ -125,7 +125,7 @@ export default async function ManagePage({
       )}
 
       {tab === "stats" && (
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
           {metrics.map((m) => (
             <div key={m.label} className="rounded-[18px] border border-border bg-card px-5.5 py-4.5">
               <div className="mb-1.5 text-[13px] text-muted-2">{m.label}</div>

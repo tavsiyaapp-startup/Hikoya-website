@@ -38,9 +38,9 @@ export default async function StoryPage({ params }: { params: Promise<{ slug: st
   ];
 
   return (
-    <div className="flex items-start gap-9">
-      <div className="sticky top-26 w-75 shrink-0">
-        <div className="relative mb-4.5 aspect-[3/4] overflow-hidden rounded-[22px] bg-primary-200 shadow-[0_18px_40px_rgba(60,40,120,0.18)]">
+    <div className="flex flex-col items-start gap-6 lg:flex-row lg:gap-9">
+      <div className="w-full lg:sticky lg:top-26 lg:w-75 lg:shrink-0">
+        <div className="relative mx-auto mb-4.5 aspect-[3/4] w-full max-w-60 overflow-hidden rounded-[22px] bg-primary-200 shadow-[0_18px_40px_rgba(60,40,120,0.18)] sm:max-w-70 lg:mx-0 lg:max-w-none">
           {story.cover_url && <Image src={story.cover_url} alt={story.title} fill className="object-cover" />}
         </div>
 
@@ -90,11 +90,11 @@ export default async function StoryPage({ params }: { params: Promise<{ slug: st
           <Badge tone="success">{story.status === "published" ? t.common.ongoing : t.common.finished}</Badge>
           <Badge tone="neutral">{t.languages[story.language]}</Badge>
         </div>
-        <h1 className="mb-5 max-w-175 text-[44px] font-extrabold leading-tight tracking-tight text-balance">
+        <h1 className="mb-5 max-w-175 text-[28px] font-extrabold leading-tight tracking-tight text-balance sm:text-[36px] lg:text-[44px]">
           {story.title}
         </h1>
 
-        <div className="mb-6.5 flex gap-11 rounded-[20px] border border-border bg-card px-6.5 py-5.5">
+        <div className="mb-6.5 flex flex-wrap gap-6 rounded-[20px] border border-border bg-card px-4.5 py-5 sm:gap-11 sm:px-6.5 sm:py-5.5">
           {metrics.map((m) => (
             <div key={m.label}>
               <div className="mb-0.5 text-2xl font-extrabold tracking-tight">{m.value}</div>
@@ -136,13 +136,13 @@ export default async function StoryPage({ params }: { params: Promise<{ slug: st
         </div>
 
         {!user && (
-          <div className="mt-7 flex items-center gap-5 rounded-[22px] border border-primary-100 bg-linear-to-br from-primary-50 to-pink-bg px-7 py-6">
+          <div className="mt-7 flex flex-col items-start gap-4 rounded-[22px] border border-primary-100 bg-linear-to-br from-primary-50 to-pink-bg px-5 py-5 sm:flex-row sm:items-center sm:gap-5 sm:px-7 sm:py-6">
             <div className="flex-1">
               <div className="mb-1 text-[17px] font-extrabold">{t.story.authorCta}</div>
               <div className="text-[14px] leading-relaxed text-ink-soft">{t.story.authorCtaBody}</div>
             </div>
-            <Link href={ROUTES.onboarding} className="shrink-0">
-              <Button>{t.story.authorCtaButton}</Button>
+            <Link href={ROUTES.onboarding} className="w-full shrink-0 sm:w-auto">
+              <Button className="w-full justify-center sm:w-auto">{t.story.authorCtaButton}</Button>
             </Link>
           </div>
         )}

@@ -62,14 +62,14 @@ export function EditStoryForm({
   }
 
   return (
-    <div className="rounded-3xl border border-border bg-card p-7.5">
+    <div className="rounded-3xl border border-border bg-card p-4.5 sm:p-7.5">
       <h2 className="mb-1.5 text-[20px] font-extrabold">{t.manage.editStory}</h2>
 
-      <div className="mt-5 flex items-start gap-5">
-        <div className="relative h-45 w-34 shrink-0 overflow-hidden rounded-2xl bg-primary-200 shadow-[0_10px_26px_rgba(60,40,120,0.16)]">
+      <div className="mt-5 flex flex-col items-start gap-5 sm:flex-row">
+        <div className="relative h-45 w-full shrink-0 overflow-hidden rounded-2xl bg-primary-200 shadow-[0_10px_26px_rgba(60,40,120,0.16)] sm:w-34">
           {coverUrl && <Image src={coverUrl} alt="" fill className="object-cover" />}
         </div>
-        <label className="flex h-45 flex-1 cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-primary-300 bg-surface text-center hover:bg-primary-50">
+        <label className="flex h-40 w-full flex-1 cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-primary-300 bg-surface text-center hover:bg-primary-50 sm:h-45">
           <input type="file" accept="image/*" onChange={handleCoverChange} className="hidden" />
           <span className="text-[14.5px] font-bold text-primary-800">
             {coverUploading ? t.common.loading : t.create.uploadCover}

@@ -13,9 +13,9 @@ export default async function AdminSettingsPage() {
   return (
     <div>
       <AdminHeader title={t.admin.settings} />
-      <div className="px-8.5 pb-15 pt-7">
-        <form action={updatePlatformSettings} className="grid grid-cols-2 items-start gap-5">
-          <div className="rounded-[22px] border border-border bg-card p-6.5">
+      <div className="px-4 pb-15 pt-7 sm:px-8.5">
+        <form action={updatePlatformSettings} className="grid grid-cols-1 items-start gap-5 lg:grid-cols-2">
+          <div className="rounded-[22px] border border-border bg-card p-4.5 sm:p-6.5">
             <h3 className="mb-5 text-[17px] font-extrabold">{t.admin.moderationTitle}</h3>
             <div className="flex flex-col gap-4">
               <ToggleRow
@@ -33,7 +33,7 @@ export default async function AdminSettingsPage() {
             </div>
           </div>
 
-          <div className="rounded-[22px] border border-border bg-card p-6.5">
+          <div className="rounded-[22px] border border-border bg-card p-4.5 sm:p-6.5">
             <h3 className="mb-2 text-[17px] font-extrabold">{t.admin.guestAccessTitle}</h3>
             <p className="mb-4.5 text-[13.5px] leading-relaxed text-muted">{t.admin.guestAccessBody}</p>
             <div className="mb-6.5 flex gap-2.5">
@@ -63,7 +63,7 @@ export default async function AdminSettingsPage() {
             </div>
           </div>
 
-          <div className="col-span-2">
+          <div className="col-span-1 lg:col-span-2">
             <Button type="submit">{t.common.save}</Button>
           </div>
         </form>

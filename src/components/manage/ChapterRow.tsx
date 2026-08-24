@@ -59,14 +59,14 @@ export function ChapterRow({
   }
 
   return (
-    <div className={`flex items-center gap-3.5 px-5.5 py-4 ${border}`}>
-      <div className="min-w-0 flex-1">
+    <div className={`flex flex-wrap items-center gap-x-3.5 gap-y-2 px-4 py-4 sm:flex-nowrap sm:px-5.5 ${border}`}>
+      <div className="min-w-0 flex-1 basis-full sm:basis-auto">
         <div className="mb-0.5 text-[15px] font-bold">{chapter.title}</div>
         <div className="text-[12.5px] text-muted-3">
           {chapter.word_count} {t.reader.wordsLabel}
         </div>
       </div>
-      <div className="w-24 shrink-0 text-[14px] font-bold">{chapter.view_count}</div>
+      <div className="w-16 shrink-0 text-[14px] font-bold sm:w-24">{chapter.view_count}</div>
       <Badge tone={chapter.status === "published" ? "success" : "neutral"}>
         {chapter.status === "published" ? t.common.published : t.common.draft}
       </Badge>

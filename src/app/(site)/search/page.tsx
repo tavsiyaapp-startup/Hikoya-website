@@ -83,14 +83,17 @@ export default async function SearchPage({
   );
 
   return (
-    <div className="flex items-start gap-7">
-      <aside className="sticky top-26 w-73 shrink-0 rounded-[22px] border border-border bg-card p-5.5">
-        <div className="mb-4.5 flex items-center">
+    <div className="flex flex-col items-start gap-5 lg:flex-row lg:gap-7">
+      <details
+        open
+        className="w-full shrink-0 rounded-[22px] border border-border bg-card p-5.5 lg:sticky lg:top-26 lg:w-73"
+      >
+        <summary className="mb-4.5 flex cursor-pointer list-none items-center marker:hidden lg:pointer-events-none lg:cursor-default [&::-webkit-details-marker]:hidden">
           <span className="text-[17px] font-extrabold">{t.search.filters}</span>
-          <Link href="/search" className="ml-auto text-[13px] font-semibold text-primary-800">
+          <Link href="/search" className="ml-auto text-[13px] font-semibold text-primary-800 lg:pointer-events-auto">
             {t.common.reset}
           </Link>
-        </div>
+        </summary>
 
         <FilterGroup label={t.search.language}>
           {["ru", "uz"].map((code) => (
@@ -152,13 +155,13 @@ export default async function SearchPage({
             </Link>
           ))}
         </FilterGroup>
-      </aside>
+      </details>
 
-      <div className="min-w-0 flex-1">
-        <div className="mb-5 flex items-center gap-3.5">
+      <div className="min-w-0 w-full flex-1">
+        <div className="mb-5 flex flex-wrap items-center gap-3.5">
           <h1 className="text-2xl font-extrabold tracking-tight">{t.search.title}</h1>
           <span className="text-[14px] text-muted-2">{results.length}</span>
-          <form action="/search" className="ml-auto flex gap-1.5">
+          <form action="/search" className="order-3 flex w-full gap-1.5 sm:order-none sm:ml-auto sm:w-auto">
             {Object.entries(sp)
               .filter(([k]) => k !== "q")
               .flatMap(([k, v]) =>
@@ -166,17 +169,17 @@ export default async function SearchPage({
                   <input key={`${k}-${i}`} type="hidden" name={k} value={val as string} />
                 ))
               )}
-            <div className="relative">
+            <div className="relative w-full sm:w-64">
               <SearchIcon className="pointer-events-none absolute left-3 top-2.5 text-muted-3" />
               <Input
                 name="q"
                 defaultValue={filters.q}
                 placeholder={t.common.searchPlaceholder}
-                className="h-9 w-64 rounded-[10px] pl-9 text-[13px]"
+                className="h-9 w-full rounded-[10px] pl-9 text-[13px]"
               />
             </div>
           </form>
-          <div className="flex gap-1.5">
+          <div className="flex flex-wrap gap-1.5">
             {(["popular", "newest", "views"] as const).map((s) => (
               <Link key={s} href={buildHref(sp, { sort: s })}>
                 <Chip active={filters.sort === s}>
@@ -230,9 +233,9 @@ export default async function SearchPage({
               <Link
                 key={story.id}
                 href={`/story/${story.slug}`}
-                className="flex gap-5 rounded-[20px] border border-border bg-card p-4.5 hover:border-primary-300 hover:shadow-[0_12px_28px_rgba(60,40,120,0.09)]"
+                className="flex gap-3.5 rounded-[20px] border border-border bg-card p-3.5 hover:border-primary-300 hover:shadow-[0_12px_28px_rgba(60,40,120,0.09)] sm:gap-5 sm:p-4.5"
               >
-                <div className="h-38.75 w-29 shrink-0 overflow-hidden rounded-[14px] bg-primary-200" />
+                <div className="h-28 w-20 shrink-0 overflow-hidden rounded-[14px] bg-primary-200 sm:h-38.75 sm:w-29" />
                 <div className="flex min-w-0 flex-1 flex-col">
                   <div className="mb-1.5 flex items-center gap-2">
                     <h3 className="text-[18.5px] font-extrabold tracking-tight">{story.title}</h3>

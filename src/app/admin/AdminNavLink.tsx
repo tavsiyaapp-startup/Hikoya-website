@@ -20,7 +20,7 @@ export function AdminNavLink({
     <Link
       href={href}
       className={clsx(
-        "flex h-11.5 items-center gap-3 rounded-xl px-3.5 text-[14.5px] font-semibold transition",
+        "flex h-11.5 shrink-0 items-center gap-3 whitespace-nowrap rounded-xl px-3.5 text-[14.5px] font-semibold transition",
         active ? "bg-white/12 text-white" : "text-[#B7AFD1] hover:bg-white/6"
       )}
     >

@@ -24,13 +24,13 @@ export default async function CollectionDetailPage({
         {collection.owner_type === "moderator" && <Badge tone="pink">{t.collections.editorial}</Badge>}
         {collection.is_private && <Badge tone="neutral">{t.collections.private}</Badge>}
       </div>
-      <h1 className="mb-2 text-[32px] font-extrabold tracking-tight">{collection.title}</h1>
+      <h1 className="mb-2 text-[26px] font-extrabold tracking-tight sm:text-[32px]">{collection.title}</h1>
       {collection.description && (
         <p className="mb-7 max-w-155 text-[15px] leading-relaxed text-muted">{collection.description}</p>
       )}
 
       {stories.length > 0 ? (
-        <div className="grid grid-cols-4 gap-5.5">
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-5.5 lg:grid-cols-4">
           {stories.map((story) => (
             <StoryCard key={story.id} story={story} />
           ))}

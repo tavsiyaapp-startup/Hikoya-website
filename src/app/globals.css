@@ -1,6 +1,8 @@
 @import "tailwindcss";
 
 @theme {
+  --breakpoint-xs: 26rem;
+
   --font-sans: var(--font-manrope), system-ui, sans-serif;
   --font-script: var(--font-kaushan), cursive;
 

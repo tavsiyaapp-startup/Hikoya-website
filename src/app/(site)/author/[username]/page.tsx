@@ -52,12 +52,12 @@ export default async function AuthorPage({
 
   return (
     <div>
-      <div className="mb-6 flex items-start gap-6.5 rounded-3xl border border-border bg-card p-7">
-        <Avatar name={profile.display_name} src={profile.avatar_url} size={96} />
+      <div className="mb-6 flex flex-col items-start gap-5 rounded-3xl border border-border bg-card p-4.5 sm:flex-row sm:gap-6.5 sm:p-7">
+        <Avatar name={profile.display_name} src={profile.avatar_url} size={80} className="sm:!h-24 sm:!w-24" />
         <div className="min-w-0 flex-1">
-          <h1 className="mb-2 text-[30px] font-extrabold tracking-tight">{profile.display_name}</h1>
+          <h1 className="mb-2 text-[24px] font-extrabold tracking-tight sm:text-[30px]">{profile.display_name}</h1>
           {profile.bio && <p className="mb-4 max-w-155 text-[15px] leading-relaxed text-ink-soft">{profile.bio}</p>}
-          <div className="mb-4.5 flex gap-8.5">
+          <div className="mb-4.5 flex flex-wrap gap-6 sm:gap-8.5">
             {stats.map((s) => (
               <div key={s.label}>
                 <div className="text-[21px] font-extrabold">{s.value}</div>
@@ -83,7 +83,7 @@ export default async function AuthorPage({
           )}
         </div>
         {!isOwner && (
-          <div className="w-47.5 shrink-0">
+          <div className="w-full shrink-0 sm:w-47.5">
             <FollowButton
               authorId={profile.id}
               isAuthenticated={Boolean(user)}
@@ -120,7 +120,7 @@ export default async function AuthorPage({
 
       {tab === "stories" &&
         (stories.length > 0 ? (
-          <div className="grid grid-cols-4 gap-5.5">
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-5.5 lg:grid-cols-4">
             {stories.map((s) => (
               <StoryCard key={s.id} story={s} />
             ))}

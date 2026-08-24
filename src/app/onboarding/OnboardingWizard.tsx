@@ -27,9 +27,9 @@ export function OnboardingWizard({ initialStep, next }: { initialStep: 1 | 2; ne
   }
 
   return (
-    <div className="flex min-h-screen items-start justify-center bg-bg px-5 py-15">
-      <div className="w-full max-w-[780px] overflow-hidden rounded-[28px] bg-white shadow-[0_30px_80px_rgba(30,20,60,0.2)]">
-        <div className="flex items-center gap-4 border-b border-border-soft px-7.5 py-5.5">
+    <div className="flex min-h-screen items-start justify-center bg-bg px-3 py-6 sm:px-5 sm:py-15">
+      <div className="w-full max-w-[780px] overflow-hidden rounded-[24px] bg-white shadow-[0_30px_80px_rgba(30,20,60,0.2)] sm:rounded-[28px]">
+        <div className="flex items-center gap-3 border-b border-border-soft px-5 py-4.5 sm:gap-4 sm:px-7.5 sm:py-5.5">
           <span className="font-script text-[25px]">{t.common.brand}</span>
           <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-border-soft">
             <div
@@ -43,13 +43,13 @@ export function OnboardingWizard({ initialStep, next }: { initialStep: 1 | 2; ne
         </div>
 
         {step === 1 && (
-          <div className="px-11.5 pb-11.5 pt-10">
-            <h2 className="mb-2 text-[30px] font-extrabold tracking-tight">
+          <div className="px-5 pb-8 pt-6 sm:px-11.5 sm:pb-11.5 sm:pt-10">
+            <h2 className="mb-2 text-[22px] font-extrabold tracking-tight sm:text-[30px]">
               {t.onboarding.welcomeTitle}
             </h2>
             <p className="mb-7 text-[15px] leading-relaxed text-muted">{t.onboarding.welcomeBody}</p>
 
-            <div className="mb-7.5 grid grid-cols-2 gap-4">
+            <div className="mb-7.5 grid grid-cols-1 gap-4 xs:grid-cols-2">
               {(
                 [
                   ["reader", t.onboarding.roleReaderTitle, t.onboarding.roleReaderDesc],
@@ -79,7 +79,7 @@ export function OnboardingWizard({ initialStep, next }: { initialStep: 1 | 2; ne
               <div className="h-px flex-1 bg-border-soft" />
             </div>
 
-            <div className="mb-6.5 grid grid-cols-3 gap-3">
+            <div className="mb-6.5 grid grid-cols-1 gap-3 sm:grid-cols-3">
               <GoogleButton next={next} />
               <TelegramButton next={next} />
               <div className="col-span-1">
@@ -90,13 +90,13 @@ export function OnboardingWizard({ initialStep, next }: { initialStep: 1 | 2; ne
         )}
 
         {step === 2 && (
-          <div className="px-11.5 pb-11.5 pt-10">
-            <h2 className="mb-2 text-[30px] font-extrabold tracking-tight">
+          <div className="px-5 pb-8 pt-6 sm:px-11.5 sm:pb-11.5 sm:pt-10">
+            <h2 className="mb-2 text-[22px] font-extrabold tracking-tight sm:text-[30px]">
               {t.onboarding.interestsTitle}
             </h2>
             <p className="mb-6.5 text-[15px] leading-relaxed text-muted">{t.onboarding.interestsBody}</p>
 
-            <div className="mb-7.5 grid grid-cols-5 gap-3">
+            <div className="mb-7.5 grid grid-cols-2 gap-3 xs:grid-cols-3 sm:grid-cols-5">
               {t.genres.map((genre) => {
                 const active = interests.includes(genre);
                 return (
@@ -143,14 +143,14 @@ export function OnboardingWizard({ initialStep, next }: { initialStep: 1 | 2; ne
         )}
 
         {step === 3 && (
-          <form action={completeOnboarding} className="px-11.5 pb-11.5 pt-10">
+          <form action={completeOnboarding} className="px-5 pb-8 pt-6 sm:px-11.5 sm:pb-11.5 sm:pt-10">
             <input type="hidden" name="next" value={next} />
             <input type="hidden" name="locale" value={chosenLocale} />
             {interests.map((g) => (
               <input key={g} type="hidden" name="interests" value={g} />
             ))}
 
-            <h2 className="mb-2 text-[30px] font-extrabold tracking-tight">{t.onboarding.langTitle}</h2>
+            <h2 className="mb-2 text-[22px] font-extrabold tracking-tight sm:text-[30px]">{t.onboarding.langTitle}</h2>
             <p className="mb-6.5 text-[15px] leading-relaxed text-muted">{t.onboarding.langBody}</p>
 
             <div className="mb-6.5 grid grid-cols-2 gap-3.5">

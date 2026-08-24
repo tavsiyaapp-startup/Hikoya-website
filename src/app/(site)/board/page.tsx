@@ -35,39 +35,39 @@ export default async function BoardPage({
 
   return (
     <div>
-      <div className="mb-6.5 flex items-start gap-6">
+      <div className="mb-6.5 flex flex-col items-start gap-4 sm:flex-row sm:gap-6">
         <div className="flex-1">
-          <h1 className="mb-2 text-[32px] font-extrabold tracking-tight">{t.board.title}</h1>
+          <h1 className="mb-2 text-[26px] font-extrabold tracking-tight sm:text-[32px]">{t.board.title}</h1>
           <p className="max-w-160 text-[15px] leading-relaxed text-muted">{t.board.body}</p>
         </div>
-        <Link href={user ? "?new=1" : ROUTES.onboarding} className="shrink-0">
-          <Button size="lg">{t.board.leaveRequest}</Button>
+        <Link href={user ? "?new=1" : ROUTES.onboarding} className="w-full shrink-0 sm:w-auto">
+          <Button size="lg" className="w-full justify-center sm:w-auto">{t.board.leaveRequest}</Button>
         </Link>
       </div>
 
-      <div className="mb-6 flex gap-2.5">
+      <div className="mb-6 flex gap-2.5 overflow-x-auto">
         {[
           [undefined, t.common.all],
           ["open", STATUS_LABEL.open],
           ["in_progress", STATUS_LABEL.in_progress],
           ["fulfilled", STATUS_LABEL.fulfilled],
         ].map(([value, label]) => (
-          <Link key={label} href={value ? `?status=${value}` : "?"}>
+          <Link key={label} href={value ? `?status=${value}` : "?"} className="shrink-0">
             <Chip active={status === value || (!status && !value)}>{label}</Chip>
           </Link>
         ))}
       </div>
 
       {showNew && user && (
-        <form action={createRequest} className="mb-6.5 rounded-3xl border border-border bg-card p-6.5">
+        <form action={createRequest} className="mb-6.5 rounded-3xl border border-border bg-card p-4.5 sm:p-6.5">
           <Input name="title" placeholder={t.board.newRequestTitlePlaceholder} required className="mb-3.5" />
           <Textarea name="text" placeholder={t.board.newRequestTextPlaceholder} rows={3} required className="mb-3.5" />
           <Button type="submit">{t.board.leaveRequest}</Button>
         </form>
       )}
 
-      <div className="flex items-start gap-5.5">
-        <div className="grid min-w-0 flex-1 grid-cols-1 gap-4">
+      <div className="flex flex-col items-start gap-5.5 lg:flex-row">
+        <div className="grid w-full min-w-0 flex-1 grid-cols-1 gap-4">
           {requests.length > 0 ? (
             requests.map((r) => {
               const from = r.from_user as unknown as { display_name: string } | null;
@@ -106,7 +106,7 @@ export default async function BoardPage({
         </div>
 
         {selectedRequest && (
-          <div className="sticky top-26 w-100 shrink-0 overflow-hidden rounded-[22px] border border-border bg-card">
+          <div className="w-full shrink-0 overflow-hidden rounded-[22px] border border-border bg-card lg:sticky lg:top-26 lg:w-100">
             <div className="border-b border-border-soft px-6 py-5.5">
               <div className="mb-2.5 flex items-center gap-2.5">
                 <span className="text-[12px] font-bold uppercase tracking-wide text-muted-2">

@@ -33,8 +33,8 @@ export default async function LibraryPage({
 
   return (
     <div>
-      <h1 className="mb-5.5 text-[32px] font-extrabold tracking-tight">{t.library.title}</h1>
-      <div className="mb-6.5 flex gap-2.5">
+      <h1 className="mb-5.5 text-[26px] font-extrabold tracking-tight sm:text-[32px]">{t.library.title}</h1>
+      <div className="mb-6.5 flex gap-2.5 overflow-x-auto">
         {(
           [
             ["reading", t.library.tabReading],
@@ -63,13 +63,13 @@ export default async function LibraryPage({
                 <Link
                   key={i}
                   href={ROUTES.story(story.slug)}
-                  className="flex items-center gap-4.5 rounded-[20px] border border-border bg-card p-4.5 hover:border-primary-300"
+                  className="flex items-center gap-3 rounded-[20px] border border-border bg-card p-3.5 hover:border-primary-300 sm:gap-4.5 sm:p-4.5"
                 >
-                  <div className="relative h-25 w-19 shrink-0 overflow-hidden rounded-[13px] bg-primary-200">
+                  <div className="relative h-20 w-15 shrink-0 overflow-hidden rounded-[13px] bg-primary-200 sm:h-25 sm:w-19">
                     {story.cover_url && <Image src={story.cover_url} alt="" fill className="object-cover" />}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <h3 className="mb-2.5 text-[17px] font-extrabold">{story.title}</h3>
+                    <h3 className="mb-2.5 line-clamp-2 text-[15px] font-extrabold sm:text-[17px]">{story.title}</h3>
                     <div className="h-2 max-w-115 overflow-hidden rounded-full bg-border-soft">
                       <div
                         className="h-full rounded-full bg-linear-to-r from-primary-700 to-primary-500"
@@ -77,9 +77,9 @@ export default async function LibraryPage({
                       />
                     </div>
                   </div>
-                  <div className="w-22 shrink-0 text-right">
-                    <div className="text-xl font-extrabold">{Math.round(item.percent)}%</div>
-                    <div className="text-[12.5px] text-muted-2">{t.library.percentRead}</div>
+                  <div className="w-14 shrink-0 text-right sm:w-22">
+                    <div className="text-[15px] font-extrabold sm:text-xl">{Math.round(item.percent)}%</div>
+                    <div className="hidden text-[12.5px] text-muted-2 sm:block">{t.library.percentRead}</div>
                   </div>
                 </Link>
               );
@@ -91,7 +91,7 @@ export default async function LibraryPage({
 
       {tab === "bookmarks" &&
         (bookmarks.length > 0 ? (
-          <div className="grid grid-cols-4 gap-5.5">
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-5.5 lg:grid-cols-4">
             {bookmarks.map((story) => (
               <StoryCard key={story.id} story={story} />
             ))}
@@ -101,7 +101,7 @@ export default async function LibraryPage({
         ))}
 
       {tab === "collections" && (
-        <div className="grid grid-cols-3 gap-5.5">
+        <div className="grid grid-cols-1 gap-4.5 xs:grid-cols-2 sm:grid-cols-3 sm:gap-5.5">
           {collections.map((col) => (
             <Link
               key={col.id}

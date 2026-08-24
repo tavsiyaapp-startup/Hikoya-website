@@ -51,7 +51,7 @@ export default async function ReaderPage({
   const paragraphs = ch.content.split(/\n+/).filter(Boolean);
 
   return (
-    <div className="flex justify-center gap-9">
+    <div className="flex flex-col gap-6 lg:flex-row lg:justify-center lg:gap-9">
       {isUnlocked && (
         <ChapterReadingRecorder
           chapterId={ch.id}
@@ -61,7 +61,7 @@ export default async function ReaderPage({
         />
       )}
 
-      <div className="min-w-0 max-w-190 flex-1">
+      <div className="min-w-0 w-full lg:max-w-190 lg:flex-1">
         <Link
           href={ROUTES.story(slug)}
           className="mb-5 inline-flex items-center gap-2 text-[14px] font-semibold"
@@ -73,7 +73,7 @@ export default async function ReaderPage({
         <div className="mb-2.5 text-[14px] font-bold text-muted-2">
           {t.reader.chapterLabel} {ch.order_index}
         </div>
-        <h1 className="mb-4.5 text-[40px] font-extrabold leading-tight tracking-tight">{ch.title}</h1>
+        <h1 className="mb-4.5 text-[26px] font-extrabold leading-tight tracking-tight sm:text-[32px] lg:text-[40px]">{ch.title}</h1>
         <div className="mb-7.5 flex flex-wrap gap-5 border-b border-border pb-5.5 text-[13.5px] text-muted-2">
           <span>{ch.word_count} {t.reader.wordsLabel}</span>
           <span>{readMinutes} {t.reader.readTimeLabel}</span>
@@ -91,7 +91,7 @@ export default async function ReaderPage({
             ))}
           </div>
         ) : (
-          <div className="rounded-3xl bg-linear-to-br from-ink-dark to-primary-950 px-9 py-8.5 text-white">
+          <div className="rounded-3xl bg-linear-to-br from-ink-dark to-primary-950 px-5 py-6 text-white sm:px-9 sm:py-8.5">
             <div className="mb-3.5 flex items-center gap-3">
               <LockIcon className="h-5.5 w-5.5 text-primary-300" />
               <span className="text-[13px] font-bold uppercase tracking-wide text-primary-300">
@@ -129,7 +129,7 @@ export default async function ReaderPage({
             {user ? (
               <CommentForm chapterId={ch.id} path={ROUTES.chapter(slug, orderIndex)} />
             ) : (
-              <div className="mb-5 flex items-center gap-3.5 rounded-2xl border border-dashed border-primary-300 bg-card px-5 py-4">
+              <div className="mb-5 flex flex-wrap items-center gap-3 rounded-2xl border border-dashed border-primary-300 bg-card px-5 py-4">
                 <LockIcon className="text-muted-2" />
                 <span className="text-[14px] text-ink-soft">{t.reader.commentsLocked}</span>
                 <Link href={ROUTES.onboarding} className="ml-auto">
@@ -161,7 +161,7 @@ export default async function ReaderPage({
         )}
       </div>
 
-      <div className="sticky top-26 flex w-74 shrink-0 flex-col gap-4">
+      <div className="flex w-full flex-col gap-4 lg:sticky lg:top-26 lg:w-74 lg:shrink-0">
         <div className="rounded-[20px] border border-border bg-card p-4.5">
           <Link href={ROUTES.author(story.author.username)} className="flex items-center gap-3">
             <Avatar name={story.author.display_name} src={story.author.avatar_url} />

@@ -23,11 +23,10 @@ export async function toggleStoryLike(storyId: string, path: string) {
     .eq("target_id", storyId)
     .maybeSingle();
 
-  if (existing) {
-    await supabase.from("likes").delete().eq("id", existing.id);
-  } else {
-    await supabase.from("likes").insert({ user_id: user.id, target_type: "story", target_id: storyId });
-  }
+  const { error } = existing
+    ? await supabase.from("likes").delete().eq("id", existing.id)
+    : await supabase.from("likes").insert({ user_id: user.id, target_type: "story", target_id: storyId });
+  if (error) console.error("toggleStoryLike failed:", error);
   revalidatePath(path);
 }
 
@@ -42,11 +41,10 @@ export async function toggleStoryBookmark(storyId: string, path: string) {
     .eq("story_id", storyId)
     .maybeSingle();
 
-  if (existing) {
-    await supabase.from("bookmarks").delete().eq("id", existing.id);
-  } else {
-    await supabase.from("bookmarks").insert({ user_id: user.id, story_id: storyId });
-  }
+  const { error } = existing
+    ? await supabase.from("bookmarks").delete().eq("id", existing.id)
+    : await supabase.from("bookmarks").insert({ user_id: user.id, story_id: storyId });
+  if (error) console.error("toggleStoryBookmark failed:", error);
   revalidatePath(path);
 }
 
@@ -61,11 +59,10 @@ export async function toggleFollowAuthor(authorId: string, path: string) {
     .eq("author_id", authorId)
     .maybeSingle();
 
-  if (existing) {
-    await supabase.from("follows").delete().eq("id", existing.id);
-  } else {
-    await supabase.from("follows").insert({ follower_id: user.id, author_id: authorId });
-  }
+  const { error } = existing
+    ? await supabase.from("follows").delete().eq("id", existing.id)
+    : await supabase.from("follows").insert({ follower_id: user.id, author_id: authorId });
+  if (error) console.error("toggleFollowAuthor failed:", error);
   revalidatePath(path);
 }
 
@@ -73,6 +70,9 @@ export async function postComment(chapterId: string, text: string, path: string)
   const { supabase, user } = await requireUser();
   if (!user || !text.trim()) return;
 
-  await supabase.from("comments").insert({ chapter_id: chapterId, user_id: user.id, text: text.trim() });
+  const { error } = await supabase
+    .from("comments")
+    .insert({ chapter_id: chapterId, user_id: user.id, text: text.trim() });
+  if (error) console.error("postComment failed:", error);
   revalidatePath(path);
 }

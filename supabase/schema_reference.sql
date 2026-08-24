@@ -268,11 +268,18 @@ insert into platform_settings (id) values (1);
 
 -- Денормализованные счётчики на stories (like/bookmark/comment_count)
 -- обновляются автоматически при insert/delete в соответствующих таблицах.
+-- ВАЖНО: new.target_type проверяется ТОЛЬКО внутри ветки tg_table_name =
+-- 'likes' (вложенный if, не единое and-условие) — см. changelog 0009: если
+-- вынести new.target_type в общее условие верхнего уровня, Postgres пытается
+-- резолвить это поле у NEW и для bookmarks/comments, где такой колонки нет,
+-- и роняет insert с "record \"new\" has no field \"target_type\"".
 create or replace function bump_story_counters() returns trigger as $$
 begin
   if tg_op = 'INSERT' then
-    if tg_table_name = 'likes' and new.target_type = 'story' then
-      update stories set like_count = like_count + 1 where id = new.target_id;
+    if tg_table_name = 'likes' then
+      if new.target_type = 'story' then
+        update stories set like_count = like_count + 1 where id = new.target_id;
+      end if;
     elsif tg_table_name = 'bookmarks' then
       update stories set bookmark_count = bookmark_count + 1 where id = new.story_id;
     elsif tg_table_name = 'comments' then
@@ -281,8 +288,10 @@ begin
     end if;
     return new;
   elsif tg_op = 'DELETE' then
-    if tg_table_name = 'likes' and old.target_type = 'story' then
-      update stories set like_count = greatest(like_count - 1, 0) where id = old.target_id;
+    if tg_table_name = 'likes' then
+      if old.target_type = 'story' then
+        update stories set like_count = greatest(like_count - 1, 0) where id = old.target_id;
+      end if;
     elsif tg_table_name = 'bookmarks' then
       update stories set bookmark_count = greatest(bookmark_count - 1, 0) where id = old.story_id;
     elsif tg_table_name = 'comments' then
@@ -599,3 +608,10 @@ on conflict (code) do nothing;
 --   редактировать уже опубликованные главы (заголовок/текст/теги/обложку/
 --   жанр/описание истории) — нужна была дата последнего изменения главы,
 --   у stories она уже была.
+-- [2026-08-24] Исправлен bump_story_counters() (миграция 0009). Баг с самого
+--   первого варианта функции: new.target_type проверялось в общем
+--   and-условии, из-за чего insert в comments и bookmarks падал с ошибкой
+--   "record \"new\" has no field \"target_type\"" и откатывался целиком —
+--   комментарии и закладки молча никогда не сохранялись. Нашли через прямую
+--   проверку insert в базе (0 комментариев при том что пользователь пробовал
+--   несколько раз). Исправлено вложенным if вместо составного условия.

@@ -28,6 +28,8 @@ export default async function StoryPage({ params }: { params: Promise<{ slug: st
     getFollowerCount(story.author.id),
   ]);
 
+  const isStaff = user?.profile && ["admin", "moderator"].includes(user.profile.role);
+  const canManage = user?.id === story.author.id || isStaff;
   const path = ROUTES.story(slug);
   const firstChapter = chapters[0];
   const metrics = [
@@ -89,6 +91,13 @@ export default async function StoryPage({ params }: { params: Promise<{ slug: st
           <Badge tone={story.age_rating === "18+" ? "danger" : "neutral"}>{story.age_rating}</Badge>
           <Badge tone="success">{story.status === "published" ? t.common.ongoing : t.common.finished}</Badge>
           <Badge tone="neutral">{t.languages[story.language]}</Badge>
+          {canManage && (
+            <Link href={ROUTES.manage(slug)} className="ml-auto">
+              <Button variant="secondary" size="sm">
+                {t.story.manageCta}
+              </Button>
+            </Link>
+          )}
         </div>
         <h1 className="mb-5 max-w-175 text-[28px] font-extrabold leading-tight tracking-tight text-balance sm:text-[36px] lg:text-[44px]">
           {story.title}

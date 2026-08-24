@@ -112,6 +112,7 @@ const uz: typeof ru = {
     authorCtaBody:
       "Hikoyalaringizni chop eting va oʻquvchilaringizni toping — birinchi bob bir kechada yoziladi.",
     authorCtaButton: "Chop etish",
+    manageCta: "Hikoyani boshqarish",
     noChaptersYet: "Hozircha chop etilgan boblar yoʻq",
     noChaptersBody: "Muallif hali birorta ham bob chop etmagan.",
   },

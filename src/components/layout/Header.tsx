@@ -69,7 +69,7 @@ export function Header({ user }: { user: CurrentUser | null }) {
 
         {user ? (
           <Link href={ROUTES.author(user.profile?.username ?? "")} className="flex items-center gap-2">
-            <Avatar name={user.profile?.display_name ?? "?"} size={40} />
+            <Avatar name={user.profile?.display_name ?? "?"} src={user.profile?.avatar_url} size={40} />
           </Link>
         ) : (
           <>

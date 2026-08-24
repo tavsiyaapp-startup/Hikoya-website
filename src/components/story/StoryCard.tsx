@@ -16,9 +16,18 @@ export async function StoryCard({ story }: { story: StoryCardData }) {
       href={ROUTES.story(story.slug)}
       className="group block overflow-hidden rounded-[20px] border border-border bg-card shadow-[0_2px_10px_rgba(60,40,120,0.05)] transition hover:-translate-y-0.5 hover:shadow-[0_14px_30px_rgba(60,40,120,0.12)]"
     >
-      <div className="relative aspect-[3/4] bg-primary-200">
-        {story.cover_url && (
+      <div className="relative flex aspect-[3/4] items-center justify-center bg-primary-200 p-4">
+        {story.cover_url ? (
           <Image src={story.cover_url} alt="" fill className="object-cover" />
+        ) : (
+          <div className="text-center">
+            <div className="line-clamp-4 text-[15px] font-extrabold leading-snug text-primary-900">
+              {story.title}
+            </div>
+            <div className="mt-2 truncate text-[12.5px] font-semibold text-primary-800/80">
+              {story.author?.display_name}
+            </div>
+          </div>
         )}
         <div className="absolute bottom-3 left-3 flex items-center gap-1.5 rounded-full bg-black/50 px-2.5 py-1.5 text-[12.5px] font-bold text-white backdrop-blur-sm">
           <HeartIcon filled />

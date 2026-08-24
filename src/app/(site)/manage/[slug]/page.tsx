@@ -4,13 +4,15 @@ import { notFound, redirect } from "next/navigation";
 import { getServerLocale } from "@/lib/i18n/locale-server";
 import { getDictionary } from "@/lib/i18n";
 import { getCurrentUser } from "@/lib/current-user";
-import { getStoryBySlug, getChaptersForStory } from "@/lib/queries/stories";
+import { getStoryBySlug, getChaptersForStory, getTagsForStory } from "@/lib/queries/stories";
 import { getRequestsForAuthor } from "@/lib/queries/requests";
 import { ROUTES } from "@/lib/constants";
 import { Badge, Chip } from "@/components/ui/Chip";
 import { AddChapterForm } from "@/components/manage/AddChapterForm";
+import { ChapterRow } from "@/components/manage/ChapterRow";
+import { EditStoryForm } from "@/components/manage/EditStoryForm";
 
-const TABS = ["chapters", "stats", "requests"] as const;
+const TABS = ["chapters", "edit", "stats", "requests"] as const;
 type Tab = (typeof TABS)[number];
 
 export default async function ManagePage({
@@ -34,9 +36,10 @@ export default async function ManagePage({
   const isStaff = user.profile && ["admin", "moderator"].includes(user.profile.role);
   if (story.author.id !== user.id && !isStaff) redirect(ROUTES.home);
 
-  const [chapters, requests] = await Promise.all([
+  const [chapters, requests, tags] = await Promise.all([
     getChaptersForStory(story.id, true),
     tab === "requests" ? getRequestsForAuthor(story.author.id) : Promise.resolve([]),
+    tab === "edit" ? getTagsForStory(story.id) : Promise.resolve([]),
   ]);
 
   const metrics = [
@@ -73,6 +76,7 @@ export default async function ManagePage({
         {(
           [
             ["chapters", t.manage.tabChapters],
+            ["edit", t.manage.editStory],
             ["stats", t.manage.tabStats],
             ["requests", t.manage.tabRequests],
           ] as const
@@ -92,21 +96,13 @@ export default async function ManagePage({
         <div className="overflow-hidden rounded-[22px] border border-border bg-card">
           {chapters.length > 0 ? (
             chapters.map((ch, i) => (
-              <div
+              <ChapterRow
                 key={ch.id}
-                className={`flex items-center gap-3.5 px-5.5 py-4 ${
-                  i < chapters.length - 1 ? "border-b border-border-soft" : ""
-                }`}
-              >
-                <div className="min-w-0 flex-1">
-                  <div className="mb-0.5 text-[15px] font-bold">{ch.title}</div>
-                  <div className="text-[12.5px] text-muted-3">{ch.word_count} {t.reader.wordsLabel}</div>
-                </div>
-                <div className="w-24 shrink-0 text-[14px] font-bold">{ch.view_count}</div>
-                <Badge tone={ch.status === "published" ? "success" : "neutral"}>
-                  {ch.status === "published" ? t.common.published : t.common.draft}
-                </Badge>
-              </div>
+                chapter={ch}
+                storyId={story.id}
+                storySlug={slug}
+                isLast={i === chapters.length - 1}
+              />
             ))
           ) : (
             <div className="px-6 py-10 text-center text-[14px] text-muted-2">
@@ -114,6 +110,18 @@ export default async function ManagePage({
             </div>
           )}
         </div>
+      )}
+
+      {tab === "edit" && (
+        <EditStoryForm
+          storyId={story.id}
+          storySlug={slug}
+          authorId={story.author.id}
+          initialCoverUrl={story.cover_url}
+          initialGenre={story.genre}
+          initialDescription={story.description}
+          initialTags={tags}
+        />
       )}
 
       {tab === "stats" && (

@@ -95,6 +95,7 @@ create table chapters (
   is_free boolean not null default false,   -- глава бесплатна вне зависимости от лимита гостя
   view_count integer not null default 0,
   created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),   -- добавлено в 0008: дата последнего редактирования главы
   published_at timestamptz,
   unique (story_id, order_index)
 );
@@ -594,3 +595,7 @@ on conflict (code) do nothing;
 --   схема таблиц, RLS-политики, storage-бакеты (covers/avatars),
 --   стартовые теги и достижения, триггер автосоздания профиля,
 --   telegram_id/onboarded_at на profiles, RPC increment_view_counts.
+-- [2026-08-24] chapters.updated_at (миграция 0008). Автор теперь может
+--   редактировать уже опубликованные главы (заголовок/текст/теги/обложку/
+--   жанр/описание истории) — нужна была дата последнего изменения главы,
+--   у stories она уже была.

@@ -183,6 +183,17 @@ const uz: typeof ru = {
     takeInWork: "Ishga olish",
     noRequestsForYouYet: "Siz uchun soʻrovlar hozircha yoʻq.",
     noChaptersYet: "Hozircha boblar yoʻq — birinchisini qoʻshing.",
+    editChapter: "Tahrirlash",
+    delete: "Oʻchirish",
+    confirmDeleteChapter: "Bobni oʻchirasizmi? Bu amalni bekor qilib boʻlmaydi.",
+  },
+  profile: {
+    editProfile: "Profilni tahrirlash",
+    changeAvatar: "Rasmni oʻzgartirish",
+    usernameLabel: "Foydalanuvchi nomi",
+    usernameHint: "Oʻzgartirib boʻlmaydi — roʻyxatdan oʻtishda berilgan",
+    displayNameLabel: "Koʻrsatiladigan ism",
+    avatarError: "Rasmni yuklab boʻlmadi. Qaytadan urinib koʻring.",
   },
   author: {
     subscribers: "obunachi",

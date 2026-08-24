@@ -66,6 +66,7 @@ export interface Chapter {
   is_free: boolean;
   view_count: number;
   created_at: string;
+  updated_at: string;
   published_at: string | null;
 }
 

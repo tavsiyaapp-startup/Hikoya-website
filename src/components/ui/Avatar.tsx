@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { clsx } from "clsx";
 
 function initialsOf(name: string) {
@@ -11,13 +12,26 @@ function initialsOf(name: string) {
 
 export function Avatar({
   name,
+  src,
   size = 42,
   className,
 }: {
   name: string;
+  src?: string | null;
   size?: number;
   className?: string;
 }) {
+  if (src) {
+    return (
+      <div
+        className={clsx("relative shrink-0 overflow-hidden rounded-full", className)}
+        style={{ width: size, height: size }}
+      >
+        <Image src={src} alt="" fill className="object-cover" sizes={`${size}px`} />
+      </div>
+    );
+  }
+
   return (
     <div
       className={clsx(

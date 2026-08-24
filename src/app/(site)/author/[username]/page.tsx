@@ -12,6 +12,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { Chip } from "@/components/ui/Chip";
 import { StoryCard } from "@/components/story/StoryCard";
 import { FollowButton } from "@/components/story/StoryActions";
+import { EditProfileForm } from "@/components/profile/EditProfileForm";
 
 const TABS = ["stories", "requests"] as const;
 type Tab = (typeof TABS)[number];
@@ -52,7 +53,7 @@ export default async function AuthorPage({
   return (
     <div>
       <div className="mb-6 flex items-start gap-6.5 rounded-3xl border border-border bg-card p-7">
-        <Avatar name={profile.display_name} size={96} />
+        <Avatar name={profile.display_name} src={profile.avatar_url} size={96} />
         <div className="min-w-0 flex-1">
           <h1 className="mb-2 text-[30px] font-extrabold tracking-tight">{profile.display_name}</h1>
           {profile.bio && <p className="mb-4 max-w-155 text-[15px] leading-relaxed text-ink-soft">{profile.bio}</p>}
@@ -92,6 +93,17 @@ export default async function AuthorPage({
           </div>
         )}
       </div>
+
+      {isOwner && (
+        <div className="mb-6">
+          <EditProfileForm
+            userId={profile.id}
+            username={profile.username}
+            displayName={profile.display_name}
+            avatarUrl={profile.avatar_url}
+          />
+        </div>
+      )}
 
       <div className="mb-5.5 flex gap-2.5">
         {(

@@ -87,6 +87,96 @@ export async function createStory(input: CreateStoryInput) {
   redirect(ROUTES.manage(story.slug));
 }
 
+export interface UpdateStoryInput {
+  description: string;
+  coverUrl: string | null;
+  genre: string;
+  tags: string[];
+}
+
+export async function updateStory(
+  storyId: string,
+  storySlug: string,
+  input: UpdateStoryInput
+) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect(ROUTES.onboarding);
+
+  await supabase
+    .from("stories")
+    .update({
+      description: input.description,
+      cover_url: input.coverUrl,
+      genre: input.genre,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", storyId);
+
+  await supabase.from("story_tags").delete().eq("story_id", storyId);
+  if (input.tags.length > 0) {
+    const { data: tagRows } = await supabase
+      .from("tags")
+      .select("id, label_ru")
+      .in("label_ru", input.tags);
+    if (tagRows && tagRows.length > 0) {
+      await supabase
+        .from("story_tags")
+        .insert(tagRows.map((tag) => ({ story_id: storyId, tag_id: tag.id })));
+    }
+  }
+
+  revalidatePath(ROUTES.manage(storySlug));
+  revalidatePath(ROUTES.story(storySlug));
+  revalidatePath(ROUTES.home);
+}
+
+export async function updateChapter(
+  chapterId: string,
+  storyId: string,
+  storySlug: string,
+  formData: FormData
+) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect(ROUTES.onboarding);
+
+  const title = String(formData.get("title") ?? "").trim();
+  const content = String(formData.get("content") ?? "").trim();
+  if (!title || !content) return;
+
+  await supabase
+    .from("chapters")
+    .update({
+      title,
+      content,
+      word_count: wordCount(content),
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", chapterId)
+    .eq("story_id", storyId);
+
+  revalidatePath(ROUTES.manage(storySlug));
+  revalidatePath(ROUTES.story(storySlug));
+}
+
+export async function deleteChapter(chapterId: string, storyId: string, storySlug: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect(ROUTES.onboarding);
+
+  await supabase.from("chapters").delete().eq("id", chapterId).eq("story_id", storyId);
+
+  revalidatePath(ROUTES.manage(storySlug));
+  revalidatePath(ROUTES.story(storySlug));
+}
+
 export async function addChapter(storyId: string, storySlug: string, formData: FormData) {
   const supabase = await createClient();
   const {

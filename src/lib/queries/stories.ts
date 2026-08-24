@@ -291,6 +291,21 @@ export async function getCollectionWithStories(id: string) {
   }
 }
 
+export async function getTagsForStory(storyId: string): Promise<string[]> {
+  try {
+    const supabase = await createClient();
+    const { data } = await supabase
+      .from("story_tags")
+      .select("tag:tags(label_ru)")
+      .eq("story_id", storyId);
+    return (data ?? [])
+      .map((row) => (row.tag as unknown as { label_ru: string } | null)?.label_ru)
+      .filter((label): label is string => Boolean(label));
+  } catch {
+    return [];
+  }
+}
+
 export async function getGuestFreeChapterCount(): Promise<number> {
   try {
     const supabase = await createClient();

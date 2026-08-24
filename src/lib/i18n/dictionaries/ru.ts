@@ -181,6 +181,17 @@ const ru = {
     takeInWork: "Взять в работу",
     noRequestsForYouYet: "Заявок для вас пока нет.",
     noChaptersYet: "Пока нет глав — добавьте первую.",
+    editChapter: "Редактировать",
+    delete: "Удалить",
+    confirmDeleteChapter: "Удалить главу? Это действие нельзя отменить.",
+  },
+  profile: {
+    editProfile: "Редактировать профиль",
+    changeAvatar: "Изменить фото",
+    usernameLabel: "Имя пользователя",
+    usernameHint: "Нельзя изменить — присвоено при регистрации",
+    displayNameLabel: "Отображаемое имя",
+    avatarError: "Не удалось загрузить фото. Попробуйте ещё раз.",
   },
   author: {
     subscribers: "подписчиков",

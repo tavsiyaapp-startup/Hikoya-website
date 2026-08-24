@@ -164,7 +164,7 @@ export default async function ReaderPage({
       <div className="sticky top-26 flex w-74 shrink-0 flex-col gap-4">
         <div className="rounded-[20px] border border-border bg-card p-4.5">
           <Link href={ROUTES.author(story.author.username)} className="flex items-center gap-3">
-            <Avatar name={story.author.display_name} />
+            <Avatar name={story.author.display_name} src={story.author.avatar_url} />
             <div>
               <div className="text-[14.5px] font-bold">{story.author.display_name}</div>
               <div className="text-[12.5px] text-muted-2">{t.story.authorLabel}</div>

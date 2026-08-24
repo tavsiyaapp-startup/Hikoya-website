@@ -66,7 +66,7 @@ export default async function StoryPage({ params }: { params: Promise<{ slug: st
 
         <div className="rounded-[18px] border border-border bg-card p-4.5">
           <Link href={ROUTES.author(story.author.username)} className="mb-3.5 flex items-center gap-2.5">
-            <Avatar name={story.author.display_name} />
+            <Avatar name={story.author.display_name} src={story.author.avatar_url} />
             <div className="min-w-0">
               <div className="text-[14.5px] font-bold">{story.author.display_name}</div>
               <div className="text-[12.5px] text-muted-2">

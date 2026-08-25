@@ -222,7 +222,7 @@ export default async function HomePage({
         </div>
         <div className="mb-6 flex flex-wrap gap-2">
           {t.genres.map((g) => (
-            <Link key={g} href={`?tab=${tab}&genre=${encodeURIComponent(g)}`}>
+            <Link key={g} href={`?tab=${tab}&genre=${encodeURIComponent(g)}`} scroll={false}>
               <Chip active={g === genre}>{g}</Chip>
             </Link>
           ))}

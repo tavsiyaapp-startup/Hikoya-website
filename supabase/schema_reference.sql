@@ -34,6 +34,7 @@ create type request_response_status as enum ('proposed', 'accepted', 'declined')
 create type report_target_type as enum ('story', 'chapter', 'comment');
 create type report_status as enum ('open', 'reviewed', 'resolved');
 create type like_target_type as enum ('story', 'chapter', 'comment');
+create type reading_status as enum ('want_to_read', 'read', 'dropped');
 
 -- ── profiles ───────────────────────────────────────────────────────────────
 -- 1:1 с auth.users. Создаётся автоматически триггером handle_new_user()
@@ -152,6 +153,20 @@ create table reading_progress (
   updated_at timestamptz not null default now(),
   primary key (user_id, story_id)
 );
+
+-- добавлено в 0016: ручной статус ("хочу прочитать"/"прочитано"/"брошено"),
+-- отдельно от reading_progress выше (тот — авто-процент по факту открытия
+-- глав). Может существовать без reading_progress вообще — например
+-- "хочу прочитать" ставится ещё до того, как открыта хоть одна глава.
+create table reading_statuses (
+  user_id uuid not null references profiles (id) on delete cascade,
+  story_id uuid not null references stories (id) on delete cascade,
+  status reading_status not null,
+  updated_at timestamptz not null default now(),
+  primary key (user_id, story_id)
+);
+
+create index reading_statuses_user_status_idx on reading_statuses (user_id, status);
 
 -- добавлено в 0012: уведомления. user_id — получатель, actor_id — кто
 -- вызвал событие (null для системных/модераторских событий, хотя сейчас
@@ -474,6 +489,10 @@ alter table reading_progress enable row level security;
 create policy "users manage their own reading progress" on reading_progress for all
   using (user_id = auth.uid()) with check (user_id = auth.uid());
 
+alter table reading_statuses enable row level security;
+create policy "users manage their own reading statuses" on reading_statuses for all
+  using (user_id = auth.uid()) with check (user_id = auth.uid());
+
 -- notifications — читает/помечает прочитанным только получатель. Намеренно
 -- нет insert-политики для обычного клиента: уведомление всегда пишется от
 -- имени ДРУГОГО пользователя (user_id получателя != auth.uid() автора
@@ -716,3 +735,10 @@ on conflict (code) do nothing;
 --   просто что заявку больше не принимают (её мог отменить сам автор без
 --   единого отклика). RLS не менялась — политики уже написаны через
 --   is_staff()/from_user_id, а не перечисление статусов.
+-- [2026-08-25] Таблица reading_statuses (миграция 0016). Читатель теперь
+--   может вручную поставить истории статус «хочу прочитать» / «прочитано» /
+--   «брошено» — отдельная сущность от reading_progress (та считает процент
+--   автоматически по факту открытия глав). Значок «добавить в подборку» на
+--   странице истории миграции не потребовал — collections/collection_items
+--   существовали с самого начала, просто не было UI, вызывающего insert/
+--   delete в collection_items с клиента.

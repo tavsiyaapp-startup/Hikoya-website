@@ -2,10 +2,10 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 
 export async function getUserStoryState(userId: string | undefined, storyId: string) {
-  if (!userId) return { liked: false, bookmarked: false };
+  if (!userId) return { liked: false, bookmarked: false, readingStatus: null as string | null };
   try {
     const supabase = await createClient();
-    const [{ data: like }, { data: bookmark }] = await Promise.all([
+    const [{ data: like }, { data: bookmark }, { data: status }] = await Promise.all([
       supabase
         .from("likes")
         .select("id")
@@ -14,10 +14,11 @@ export async function getUserStoryState(userId: string | undefined, storyId: str
         .eq("target_id", storyId)
         .maybeSingle(),
       supabase.from("bookmarks").select("id").eq("user_id", userId).eq("story_id", storyId).maybeSingle(),
+      supabase.from("reading_statuses").select("status").eq("user_id", userId).eq("story_id", storyId).maybeSingle(),
     ]);
-    return { liked: Boolean(like), bookmarked: Boolean(bookmark) };
+    return { liked: Boolean(like), bookmarked: Boolean(bookmark), readingStatus: status?.status ?? null };
   } catch {
-    return { liked: false, bookmarked: false };
+    return { liked: false, bookmarked: false, readingStatus: null };
   }
 }
 

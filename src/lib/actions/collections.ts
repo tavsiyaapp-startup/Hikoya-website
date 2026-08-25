@@ -37,3 +37,30 @@ async function isAuthor(userId: string) {
   const { data } = await supabase.from("profiles").select("role").eq("id", userId).single();
   return data?.role === "author";
 }
+
+// RLS on collection_items already restricts writes to the collection's own
+// owner, so a foreign collectionId just silently affects 0 rows here.
+export async function toggleStoryInCollection(collectionId: string, storyId: string, path: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect(ROUTES.onboarding);
+
+  const { data: existing } = await supabase
+    .from("collection_items")
+    .select("story_id")
+    .eq("collection_id", collectionId)
+    .eq("story_id", storyId)
+    .maybeSingle();
+
+  if (existing) {
+    await supabase.from("collection_items").delete().eq("collection_id", collectionId).eq("story_id", storyId);
+  } else {
+    await supabase.from("collection_items").insert({ collection_id: collectionId, story_id: storyId });
+  }
+
+  updateTag("collections");
+  revalidatePath(path);
+  revalidatePath(ROUTES.library);
+}

@@ -283,6 +283,43 @@ export async function getMyCollections(userId: string): Promise<Collection[]> {
   }
 }
 
+export type CollectionPickerItem = { id: string; title: string; hasStory: boolean };
+
+// The list an "add to collection" dropdown needs: every collection the
+// viewer owns, flagged with whether this particular story is already in it.
+export async function getMyCollectionsWithStory(userId: string, storyId: string): Promise<CollectionPickerItem[]> {
+  try {
+    const supabase = await createClient();
+    const [{ data: collections }, { data: items }] = await Promise.all([
+      supabase
+        .from("collections")
+        .select("id, title")
+        .eq("owner_id", userId)
+        .order("created_at", { ascending: false }),
+      supabase.from("collection_items").select("collection_id").eq("story_id", storyId),
+    ]);
+    const inCollectionIds = new Set((items ?? []).map((i) => i.collection_id));
+    return (collections ?? []).map((c) => ({ id: c.id, title: c.title, hasStory: inCollectionIds.has(c.id) }));
+  } catch {
+    return [];
+  }
+}
+
+export async function getStoriesByReadingStatus(userId: string, status: string): Promise<StoryCard[]> {
+  try {
+    const supabase = await createClient();
+    const { data } = await supabase
+      .from("reading_statuses")
+      .select("story:stories(*, author:profiles!stories_author_id_fkey(username, display_name))")
+      .eq("user_id", userId)
+      .eq("status", status)
+      .order("updated_at", { ascending: false });
+    return ((data ?? []).map((row) => row.story).filter(Boolean) as unknown) as StoryCard[];
+  } catch {
+    return [];
+  }
+}
+
 export async function getAuthorStories(authorId: string, includeDrafts: boolean): Promise<StoryCard[]> {
   try {
     const supabase = await createClient();

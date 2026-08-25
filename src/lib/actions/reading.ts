@@ -1,7 +1,10 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { ROUTES } from "@/lib/constants";
+import type { ReadingStatus } from "@/types/database";
 
 // Called once per chapter view from the client. View counters are bumped
 // with the admin client (RLS has no public "increment" story of write access
@@ -44,4 +47,26 @@ export async function recordChapterView(input: {
   } catch {
     // best-effort
   }
+}
+
+export async function setReadingStatus(storyId: string, status: ReadingStatus | null, path: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return;
+
+  if (status === null) {
+    await supabase.from("reading_statuses").delete().eq("user_id", user.id).eq("story_id", storyId);
+  } else {
+    await supabase
+      .from("reading_statuses")
+      .upsert(
+        { user_id: user.id, story_id: storyId, status, updated_at: new Date().toISOString() },
+        { onConflict: "user_id,story_id" }
+      );
+  }
+
+  revalidatePath(path);
+  revalidatePath(ROUTES.library);
 }

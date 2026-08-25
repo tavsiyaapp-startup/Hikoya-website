@@ -4,12 +4,17 @@ import { redirect } from "next/navigation";
 import { getServerLocale } from "@/lib/i18n/locale-server";
 import { getDictionary } from "@/lib/i18n";
 import { getCurrentUser } from "@/lib/current-user";
-import { getContinueReading, getBookmarkedStories, getMyCollections } from "@/lib/queries/stories";
+import {
+  getContinueReading,
+  getBookmarkedStories,
+  getMyCollections,
+  getStoriesByReadingStatus,
+} from "@/lib/queries/stories";
 import { ROUTES } from "@/lib/constants";
 import { StoryCard } from "@/components/story/StoryCard";
 import { Chip } from "@/components/ui/Chip";
 
-const TABS = ["reading", "bookmarks", "collections"] as const;
+const TABS = ["reading", "wantToRead", "read", "dropped", "bookmarks", "collections"] as const;
 type Tab = (typeof TABS)[number];
 
 export default async function LibraryPage({
@@ -25,11 +30,25 @@ export default async function LibraryPage({
   const user = await getCurrentUser();
   if (!user) redirect(`${ROUTES.onboarding}?next=${encodeURIComponent(ROUTES.library)}`);
 
-  const [reading, bookmarks, collections] = await Promise.all([
+  const [reading, wantToRead, read, dropped, bookmarks, collections] = await Promise.all([
     tab === "reading" ? getContinueReading(user.id, 20) : Promise.resolve([]),
+    tab === "wantToRead" ? getStoriesByReadingStatus(user.id, "want_to_read") : Promise.resolve([]),
+    tab === "read" ? getStoriesByReadingStatus(user.id, "read") : Promise.resolve([]),
+    tab === "dropped" ? getStoriesByReadingStatus(user.id, "dropped") : Promise.resolve([]),
     tab === "bookmarks" ? getBookmarkedStories(user.id) : Promise.resolve([]),
     tab === "collections" ? getMyCollections(user.id) : Promise.resolve([]),
   ]);
+
+  const gridTab =
+    tab === "wantToRead"
+      ? { items: wantToRead, empty: t.library.noWantToReadYet }
+      : tab === "read"
+        ? { items: read, empty: t.library.noReadYet }
+        : tab === "dropped"
+          ? { items: dropped, empty: t.library.noDroppedYet }
+          : tab === "bookmarks"
+            ? { items: bookmarks, empty: t.library.noBookmarksYet }
+            : null;
 
   return (
     <div>
@@ -38,6 +57,9 @@ export default async function LibraryPage({
         {(
           [
             ["reading", t.library.tabReading],
+            ["wantToRead", t.library.tabWantToRead],
+            ["read", t.library.tabRead],
+            ["dropped", t.library.tabDropped],
             ["bookmarks", t.library.tabBookmarks],
             ["collections", t.library.tabCollections],
           ] as const
@@ -89,15 +111,15 @@ export default async function LibraryPage({
           <EmptyState text={t.library.notStartedReading} />
         ))}
 
-      {tab === "bookmarks" &&
-        (bookmarks.length > 0 ? (
+      {gridTab &&
+        (gridTab.items.length > 0 ? (
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-5.5 lg:grid-cols-4">
-            {bookmarks.map((story) => (
+            {gridTab.items.map((story) => (
               <StoryCard key={story.id} story={story} />
             ))}
           </div>
         ) : (
-          <EmptyState text={t.library.noBookmarksYet} />
+          <EmptyState text={gridTab.empty} />
         ))}
 
       {tab === "collections" && (

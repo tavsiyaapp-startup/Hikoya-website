@@ -15,6 +15,7 @@ export type RequestResponseStatus = "proposed" | "accepted" | "declined";
 export type ReportTargetType = "story" | "chapter" | "comment";
 export type ReportStatus = "open" | "reviewed" | "resolved";
 export type LikeTargetType = "story" | "chapter" | "comment";
+export type ReadingStatus = "want_to_read" | "read" | "dropped";
 export type NotificationType =
   | "new_comment"
   | "comment_reply"
@@ -117,6 +118,13 @@ export interface ReadingProgress {
   story_id: string;
   chapter_id: string;
   percent: number;
+  updated_at: string;
+}
+
+export interface ReadingStatusRow {
+  user_id: string;
+  story_id: string;
+  status: ReadingStatus;
   updated_at: string;
 }
 

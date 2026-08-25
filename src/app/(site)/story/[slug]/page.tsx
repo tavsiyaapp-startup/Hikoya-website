@@ -4,14 +4,15 @@ import { notFound } from "next/navigation";
 import { getServerLocale } from "@/lib/i18n/locale-server";
 import { getDictionary } from "@/lib/i18n";
 import { getCurrentUser } from "@/lib/current-user";
-import { getStoryBySlug, getChaptersForStory } from "@/lib/queries/stories";
+import { getStoryBySlug, getChaptersForStory, getMyCollectionsWithStory } from "@/lib/queries/stories";
 import { getUserStoryState, isFollowingAuthor, getFollowerCount } from "@/lib/queries/social";
 import { getLinkedRequestForStory } from "@/lib/queries/requests";
 import { ROUTES } from "@/lib/constants";
 import { Avatar } from "@/components/ui/Avatar";
 import { Badge } from "@/components/ui/Chip";
 import { Button } from "@/components/ui/Button";
-import { LikeBookmarkRow, FollowButton } from "@/components/story/StoryActions";
+import { LikeBookmarkRow, FollowButton, ReadingStatusSelect } from "@/components/story/StoryActions";
+import type { ReadingStatus } from "@/types/database";
 
 export default async function StoryPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -22,12 +23,13 @@ export default async function StoryPage({ params }: { params: Promise<{ slug: st
   const story = await getStoryBySlug(slug);
   if (!story) notFound();
 
-  const [chapters, social, following, followerCount, linkedRequestId] = await Promise.all([
+  const [chapters, social, following, followerCount, linkedRequestId, myCollections] = await Promise.all([
     getChaptersForStory(story.id),
     getUserStoryState(user?.id, story.id),
     isFollowingAuthor(user?.id, story.author.id),
     getFollowerCount(story.author.id),
     getLinkedRequestForStory(story.id),
+    user ? getMyCollectionsWithStory(user.id, story.id) : Promise.resolve([]),
   ]);
 
   const canManage = user?.id === story.author.id;
@@ -64,8 +66,17 @@ export default async function StoryPage({ params }: { params: Promise<{ slug: st
           isAuthenticated={Boolean(user)}
           initialLiked={social.liked}
           initialBookmarked={social.bookmarked}
+          collections={myCollections}
           path={path}
         />
+
+        {user && (
+          <ReadingStatusSelect
+            storyId={story.id}
+            initialStatus={social.readingStatus as ReadingStatus | null}
+            path={path}
+          />
+        )}
 
         <div className="rounded-[18px] border border-border bg-card p-4.5">
           <Link href={ROUTES.author(story.author.username)} className="mb-3.5 flex items-center gap-2.5">

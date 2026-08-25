@@ -34,8 +34,7 @@ export default async function ManagePage({
 
   const story = await getStoryBySlug(slug);
   if (!story) notFound();
-  const isStaff = user.profile && ["admin", "moderator"].includes(user.profile.role);
-  if (story.author.id !== user.id && !isStaff) redirect(ROUTES.home);
+  if (story.author.id !== user.id) redirect(ROUTES.home);
 
   const [chapters, requests, tags] = await Promise.all([
     getChaptersForStory(story.id, true),
@@ -80,10 +79,16 @@ export default async function ManagePage({
               </div>
             ))}
           </div>
-          {story.status === "pending_review" && !isStaff && (
+          {story.status === "pending_review" && (
             <p className="mb-3 text-[13px] text-muted-2">{t.manage.pendingReviewNotice}</p>
           )}
-          <StoryModerationActions storyId={story.id} storySlug={slug} status={story.status} isStaff={!!isStaff} />
+          {story.status === "draft" && story.rejection_reason && (
+            <div className="mb-3 rounded-[14px] bg-danger-bg px-4 py-3">
+              <div className="mb-1 text-[12.5px] font-bold text-danger">{t.manage.rejectionReasonLabel}</div>
+              <p className="text-[13.5px] leading-relaxed text-ink-soft">{story.rejection_reason}</p>
+            </div>
+          )}
+          <StoryModerationActions storyId={story.id} storySlug={slug} status={story.status} />
         </div>
       </div>
 
@@ -117,7 +122,6 @@ export default async function ManagePage({
                 storyId={story.id}
                 storySlug={slug}
                 isLast={i === chapters.length - 1}
-                isStaff={!!isStaff}
               />
             ))
           ) : (

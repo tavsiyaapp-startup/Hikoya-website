@@ -190,6 +190,7 @@ const ru = {
     approve: "Одобрить",
     reject: "Отклонить",
     pendingReviewNotice: "Ожидает проверки модератором и пока не видна читателям.",
+    rejectionReasonLabel: "Причина отказа",
   },
   profile: {
     editProfile: "Редактировать профиль",
@@ -284,6 +285,9 @@ const ru = {
     moderationCommentsDesc: "Комментарии проверяются перед публикацией",
     moderationStoriesTitle: "Проверка новых историй",
     moderationStoriesDesc: "Новые истории проходят проверку перед публикацией",
+    readChapter: "Читать",
+    rejectReasonPlaceholder: "Почему отклонено? Автор увидит этот текст.",
+    confirmReject: "Отклонить",
     statusOpenPlural: "Открытые",
     statusReviewedPlural: "На проверке",
     statusResolvedPlural: "Закрытые",

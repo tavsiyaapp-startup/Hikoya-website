@@ -7,6 +7,8 @@ export const ROUTES = {
   library: "/library",
   admin: "/admin",
   adminLogin: "/admin-login",
+  adminStory: (id: string) => `/admin/stories/${id}`,
+  adminChapter: (storyId: string, chapterId: string) => `/admin/stories/${storyId}/chapters/${chapterId}`,
   onboarding: "/onboarding",
   author: (username: string) => `/author/${username}`,
   story: (slug: string) => `/story/${slug}`,

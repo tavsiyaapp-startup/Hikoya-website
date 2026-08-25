@@ -192,6 +192,7 @@ const uz: typeof ru = {
     approve: "Tasdiqlash",
     reject: "Rad etish",
     pendingReviewNotice: "Moderator tekshiruvini kutmoqda, oʻquvchilarga hali koʻrinmaydi.",
+    rejectionReasonLabel: "Rad etish sababi",
   },
   profile: {
     editProfile: "Profilni tahrirlash",
@@ -286,6 +287,9 @@ const uz: typeof ru = {
     moderationCommentsDesc: "Izohlar chop etishdan oldin tekshiriladi",
     moderationStoriesTitle: "Yangi hikoyalarni tekshirish",
     moderationStoriesDesc: "Yangi hikoyalar chop etishdan oldin tekshiruvdan oʻtadi",
+    readChapter: "Oʻqish",
+    rejectReasonPlaceholder: "Nega rad etilyapti? Muallif shu matnni koʻradi.",
+    confirmReject: "Rad etish",
     statusOpenPlural: "Ochiq",
     statusReviewedPlural: "Tekshiruvda",
     statusResolvedPlural: "Yopilgan",

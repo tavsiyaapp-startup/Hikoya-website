@@ -40,24 +40,26 @@ export async function approveStory(storyId: string, storySlug: string) {
   const admin = createAdminClient();
   await admin
     .from("stories")
-    .update({ status: "published", published_at: new Date().toISOString() })
+    .update({ status: "published", published_at: new Date().toISOString(), rejection_reason: null })
     .eq("id", storyId);
   updateTag("stories");
   revalidatePath(ROUTES.manage(storySlug));
   revalidatePath(ROUTES.story(storySlug));
   revalidatePath(`${ROUTES.admin}/stories`);
+  revalidatePath(ROUTES.adminStory(storyId));
   revalidatePath(ROUTES.admin);
   revalidatePath(ROUTES.home);
 }
 
-export async function rejectStory(storyId: string, storySlug: string) {
+export async function rejectStory(storyId: string, storySlug: string, reason: string) {
   await requireStaff();
   const admin = createAdminClient();
-  await admin.from("stories").update({ status: "draft" }).eq("id", storyId);
+  await admin.from("stories").update({ status: "draft", rejection_reason: reason }).eq("id", storyId);
   updateTag("stories");
   revalidatePath(ROUTES.manage(storySlug));
   revalidatePath(ROUTES.story(storySlug));
   revalidatePath(`${ROUTES.admin}/stories`);
+  revalidatePath(ROUTES.adminStory(storyId));
   revalidatePath(ROUTES.admin);
 }
 
@@ -66,21 +68,29 @@ export async function approveChapter(chapterId: string, storyId: string, storySl
   const admin = createAdminClient();
   await admin
     .from("chapters")
-    .update({ status: "published", published_at: new Date().toISOString() })
+    .update({ status: "published", published_at: new Date().toISOString(), rejection_reason: null })
     .eq("id", chapterId)
     .eq("story_id", storyId);
   updateTag("stories");
   revalidatePath(ROUTES.manage(storySlug));
   revalidatePath(ROUTES.story(storySlug));
+  revalidatePath(ROUTES.adminStory(storyId));
+  revalidatePath(ROUTES.adminChapter(storyId, chapterId));
 }
 
-export async function rejectChapter(chapterId: string, storyId: string, storySlug: string) {
+export async function rejectChapter(chapterId: string, storyId: string, storySlug: string, reason: string) {
   await requireStaff();
   const admin = createAdminClient();
-  await admin.from("chapters").update({ status: "draft" }).eq("id", chapterId).eq("story_id", storyId);
+  await admin
+    .from("chapters")
+    .update({ status: "draft", rejection_reason: reason })
+    .eq("id", chapterId)
+    .eq("story_id", storyId);
   updateTag("stories");
   revalidatePath(ROUTES.manage(storySlug));
   revalidatePath(ROUTES.story(storySlug));
+  revalidatePath(ROUTES.adminStory(storyId));
+  revalidatePath(ROUTES.adminChapter(storyId, chapterId));
 }
 
 export async function toggleUserStatus(userId: string, currentStatus: string) {

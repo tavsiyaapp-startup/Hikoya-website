@@ -1,5 +1,6 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
+import type { Chapter, Story } from "@/types/database";
 
 // Admin panel reads always use the service-role client — staff need to see
 // everything regardless of RLS (draft stories, all users, all reports).
@@ -108,6 +109,59 @@ export async function getStoryChapterCounts(storyIds: string[]) {
     return counts;
   } catch {
     return {};
+  }
+}
+
+// Moderation reads always go through the admin client — staff need to see
+// a story/chapter regardless of its status (pending_review, draft after a
+// rejection, etc), and this view is intentionally decoupled from the
+// author's own /manage page: admins can read here, never edit, and their
+// reads never touch view_count (no ChapterReadingRecorder on these routes).
+
+export type StoryForModeration = Story & {
+  author: { id: string; username: string; display_name: string } | null;
+};
+
+export async function getStoryForModeration(id: string): Promise<StoryForModeration | null> {
+  try {
+    const admin = createAdminClient();
+    const { data } = await admin
+      .from("stories")
+      .select("*, author:profiles!stories_author_id_fkey(id, username, display_name)")
+      .eq("id", id)
+      .single();
+    return (data as StoryForModeration) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export type ChapterListItem = Pick<
+  Chapter,
+  "id" | "story_id" | "order_index" | "title" | "word_count" | "status" | "rejection_reason" | "updated_at"
+>;
+
+export async function getChaptersForModeration(storyId: string): Promise<ChapterListItem[]> {
+  try {
+    const admin = createAdminClient();
+    const { data } = await admin
+      .from("chapters")
+      .select("id, story_id, order_index, title, word_count, status, rejection_reason, updated_at")
+      .eq("story_id", storyId)
+      .order("order_index", { ascending: true });
+    return (data as ChapterListItem[]) ?? [];
+  } catch {
+    return [];
+  }
+}
+
+export async function getChapterForModeration(chapterId: string): Promise<Chapter | null> {
+  try {
+    const admin = createAdminClient();
+    const { data } = await admin.from("chapters").select("*").eq("id", chapterId).single();
+    return (data as Chapter) ?? null;
+  } catch {
+    return null;
   }
 }
 

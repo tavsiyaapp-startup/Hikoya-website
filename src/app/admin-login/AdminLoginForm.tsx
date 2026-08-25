@@ -7,13 +7,17 @@ import { useLocale } from "@/lib/i18n/LocaleProvider";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 
-export function AdminLoginForm() {
+export function AdminLoginForm({ next }: { next?: string }) {
   const { t } = useLocale();
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Only ever follow an internal /admin destination — next comes from a URL
+  // query param, so treat it as untrusted input rather than a safe redirect.
+  const destination = next && next.startsWith("/admin") ? next : "/admin";
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -26,7 +30,7 @@ export function AdminLoginForm() {
       setPending(false);
       return;
     }
-    router.push("/admin");
+    router.push(destination);
     router.refresh();
   }
 

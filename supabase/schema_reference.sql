@@ -77,7 +77,8 @@ create table stories (
   bookmark_count integer not null default 0,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  published_at timestamptz
+  published_at timestamptz,
+  rejection_reason text   -- добавлено в 0011: причина отказа модератора, показывается автору
 );
 
 create index stories_author_id_idx on stories (author_id);
@@ -97,6 +98,7 @@ create table chapters (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),   -- добавлено в 0008: дата последнего редактирования главы
   published_at timestamptz,
+  rejection_reason text,   -- добавлено в 0011: причина отказа модератора для этой главы
   unique (story_id, order_index)
 );
 
@@ -625,3 +627,11 @@ on conflict (code) do nothing;
 --   нажмут "Одобрить" в панели управления историей (RLS уже фильтровал
 --   публичное чтение по status = 'published', так что отдельных RLS-правок
 --   не потребовалось — только новое значение enum + логика в actions).
+-- [2026-08-25] rejection_reason на stories/chapters (миграция 0011).
+--   Модерация переехала целиком в /admin — отдельный read-only экран
+--   для чтения историй/глав, без доступа к редактированию (у admin'а
+--   в принципе нет прав что-то менять в тексте автора, только читать
+--   и одобрить/отклонить). При отклонении модератор обязан написать
+--   причину — она пишется сюда и показывается автору на /manage, статус
+--   при этом откатывается в 'draft', откуда автор может исправить и
+--   отправить на повторную проверку.

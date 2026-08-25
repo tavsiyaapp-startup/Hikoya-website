@@ -1,8 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { updateChapter, deleteChapter } from "@/lib/actions/stories";
-import { approveChapter, rejectChapter } from "@/lib/actions/admin";
+import { updateChapter, deleteChapter, submitChapterForReview } from "@/lib/actions/stories";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 import { Badge } from "@/components/ui/Chip";
 import { Input } from "@/components/ui/Input";
@@ -15,13 +14,11 @@ export function ChapterRow({
   storyId,
   storySlug,
   isLast,
-  isStaff,
 }: {
   chapter: Chapter;
   storyId: string;
   storySlug: string;
   isLast: boolean;
-  isStaff: boolean;
 }) {
   const { t } = useLocale();
   const [editing, setEditing] = useState(false);
@@ -62,60 +59,58 @@ export function ChapterRow({
   }
 
   return (
-    <div className={`flex flex-wrap items-center gap-x-3.5 gap-y-2 px-4 py-4 sm:flex-nowrap sm:px-5.5 ${border}`}>
-      <div className="min-w-0 flex-1 basis-full sm:basis-auto">
-        <div className="mb-0.5 text-[15px] font-bold">{chapter.title}</div>
-        <div className="text-[12.5px] text-muted-3">
-          {chapter.word_count} {t.reader.wordsLabel}
+    <div className={`px-4 py-4 sm:px-5.5 ${border}`}>
+      <div className="flex flex-wrap items-center gap-x-3.5 gap-y-2 sm:flex-nowrap">
+        <div className="min-w-0 flex-1 basis-full sm:basis-auto">
+          <div className="mb-0.5 text-[15px] font-bold">{chapter.title}</div>
+          <div className="text-[12.5px] text-muted-3">
+            {chapter.word_count} {t.reader.wordsLabel}
+          </div>
         </div>
+        <div className="w-16 shrink-0 text-[14px] font-bold sm:w-24">{chapter.view_count}</div>
+        <Badge
+          tone={
+            chapter.status === "published" ? "success" : chapter.status === "pending_review" ? "warning" : "neutral"
+          }
+        >
+          {chapter.status === "published"
+            ? t.common.published
+            : chapter.status === "pending_review"
+              ? t.common.pendingReview
+              : t.common.draft}
+        </Badge>
+        {chapter.status === "draft" && (
+          <button
+            type="button"
+            disabled={pending}
+            onClick={() => startTransition(() => submitChapterForReview(chapter.id, storyId, storySlug))}
+            className="cursor-pointer text-[12.5px] font-bold text-primary-800 disabled:opacity-50"
+          >
+            {t.manage.submitForReview}
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={() => setEditing(true)}
+          className="cursor-pointer text-[12.5px] font-bold text-primary-800"
+        >
+          {t.manage.editChapter}
+        </button>
+        <button
+          type="button"
+          disabled={pending}
+          onClick={handleDelete}
+          className="cursor-pointer text-[12.5px] font-bold text-danger disabled:opacity-50"
+        >
+          {t.manage.delete}
+        </button>
       </div>
-      <div className="w-16 shrink-0 text-[14px] font-bold sm:w-24">{chapter.view_count}</div>
-      <Badge
-        tone={
-          chapter.status === "published" ? "success" : chapter.status === "pending_review" ? "warning" : "neutral"
-        }
-      >
-        {chapter.status === "published"
-          ? t.common.published
-          : chapter.status === "pending_review"
-            ? t.common.pendingReview
-            : t.common.draft}
-      </Badge>
-      {isStaff && chapter.status === "pending_review" && (
-        <>
-          <button
-            type="button"
-            disabled={pending}
-            onClick={() => startTransition(() => approveChapter(chapter.id, storyId, storySlug))}
-            className="cursor-pointer text-[12.5px] font-bold text-success disabled:opacity-50"
-          >
-            {t.manage.approve}
-          </button>
-          <button
-            type="button"
-            disabled={pending}
-            onClick={() => startTransition(() => rejectChapter(chapter.id, storyId, storySlug))}
-            className="cursor-pointer text-[12.5px] font-bold text-danger disabled:opacity-50"
-          >
-            {t.manage.reject}
-          </button>
-        </>
+      {chapter.status === "draft" && chapter.rejection_reason && (
+        <div className="mt-3 rounded-[12px] bg-danger-bg px-3.5 py-2.5">
+          <div className="mb-0.5 text-[12px] font-bold text-danger">{t.manage.rejectionReasonLabel}</div>
+          <p className="text-[13px] leading-relaxed text-ink-soft">{chapter.rejection_reason}</p>
+        </div>
       )}
-      <button
-        type="button"
-        onClick={() => setEditing(true)}
-        className="cursor-pointer text-[12.5px] font-bold text-primary-800"
-      >
-        {t.manage.editChapter}
-      </button>
-      <button
-        type="button"
-        disabled={pending}
-        onClick={handleDelete}
-        className="cursor-pointer text-[12.5px] font-bold text-danger disabled:opacity-50"
-      >
-        {t.manage.delete}
-      </button>
     </div>
   );
 }

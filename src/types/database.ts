@@ -53,6 +53,7 @@ export interface Story {
   created_at: string;
   updated_at: string;
   published_at: string | null;
+  rejection_reason: string | null;
 }
 
 export interface Chapter {
@@ -68,6 +69,7 @@ export interface Chapter {
   created_at: string;
   updated_at: string;
   published_at: string | null;
+  rejection_reason: string | null;
 }
 
 export interface Comment {

@@ -18,7 +18,6 @@ import {
   LockIcon,
   PlusIcon,
   SearchIcon,
-  ShieldIcon,
   SidebarToggleIcon,
   UserIcon,
 } from "@/components/ui/icons";
@@ -29,7 +28,6 @@ export function Sidebar({ user }: { user: CurrentUser | null }) {
   const pathname = usePathname();
   const { open, setOpen } = useMobileNav();
   const [expanded, setExpanded] = useState(true);
-  const isStaff = user?.profile && ["admin", "moderator"].includes(user.profile.role);
 
   const items = [
     { href: ROUTES.home, icon: HomeIcon, label: t.nav.home, locked: false },
@@ -50,7 +48,6 @@ export function Sidebar({ user }: { user: CurrentUser | null }) {
       label: t.nav.profile,
       locked: !user,
     },
-    ...(isStaff ? [{ href: ROUTES.admin, icon: ShieldIcon, label: t.nav.admin, locked: false }] : []),
   ];
 
   return (

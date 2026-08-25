@@ -6,12 +6,22 @@ import { isSupabaseConfigured } from "./config";
 // /admin to signed-in staff. Called from proxy.ts (Next.js 16's renamed
 // middleware.ts — same mechanics, request-scoped, no DB calls beyond the
 // lightweight profile-role lookup needed for the admin gate).
+// "/admin" and "/admin/..." are gated below, but NOT "/admin-login" — a
+// plain startsWith("/admin") also matches "/admin-login" itself, which
+// would bounce a signed-out visitor away from the login page before they
+// could ever use it.
+function isAdminPath(pathname: string) {
+  return pathname === "/admin" || pathname.startsWith("/admin/");
+}
+
 export async function updateSession(request: NextRequest) {
   // Runs on every request — never let an unconfigured/unreachable Supabase
   // project hang the whole app behind a slow DNS/connect timeout.
   if (!isSupabaseConfigured()) {
-    if (request.nextUrl.pathname.startsWith("/admin")) {
-      return NextResponse.redirect(new URL("/onboarding?next=/admin", request.url));
+    if (isAdminPath(request.nextUrl.pathname)) {
+      return NextResponse.redirect(
+        new URL(`/admin-login?next=${encodeURIComponent(request.nextUrl.pathname)}`, request.url)
+      );
     }
     return NextResponse.next({ request });
   }
@@ -41,9 +51,11 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (request.nextUrl.pathname.startsWith("/admin")) {
+  if (isAdminPath(request.nextUrl.pathname)) {
     if (!user) {
-      return NextResponse.redirect(new URL("/onboarding?next=/admin", request.url));
+      return NextResponse.redirect(
+        new URL(`/admin-login?next=${encodeURIComponent(request.nextUrl.pathname)}`, request.url)
+      );
     }
     const { data: profile } = await supabase
       .from("profiles")

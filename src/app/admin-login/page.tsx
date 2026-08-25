@@ -3,7 +3,12 @@ import { getServerLocale } from "@/lib/i18n/locale-server";
 import { getDictionary } from "@/lib/i18n";
 import { AdminLoginForm } from "./AdminLoginForm";
 
-export default async function AdminLoginPage() {
+export default async function AdminLoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ next?: string }>;
+}) {
+  const { next } = await searchParams;
   const locale = await getServerLocale();
   const t = getDictionary(locale);
 
@@ -16,7 +21,7 @@ export default async function AdminLoginPage() {
         <span className="font-script text-xl text-white">{t.common.brand}</span>
       </div>
       <h1 className="text-[20px] font-extrabold text-white">{t.admin.loginTitle}</h1>
-      <AdminLoginForm />
+      <AdminLoginForm next={next} />
     </div>
   );
 }

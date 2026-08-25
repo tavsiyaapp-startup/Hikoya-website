@@ -45,7 +45,7 @@ export default async function AdminStoriesPage({
                 return (
                   <Link
                     key={s.id}
-                    href={ROUTES.manage(s.slug)}
+                    href={ROUTES.adminStory(s.id)}
                     className="flex items-center gap-4 border-b border-border-soft py-3.5 last:border-0 hover:bg-surface"
                   >
                     <span className="flex-[1.6] truncate text-[14.5px] font-bold">{s.title}</span>

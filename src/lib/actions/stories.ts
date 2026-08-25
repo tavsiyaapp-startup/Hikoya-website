@@ -240,7 +240,11 @@ export async function submitStoryForReview(storyId: string, storySlug: string) {
 
   await supabase
     .from("stories")
-    .update({ status, published_at: status === "published" ? new Date().toISOString() : null })
+    .update({
+      status,
+      published_at: status === "published" ? new Date().toISOString() : null,
+      rejection_reason: null,
+    })
     .eq("id", storyId)
     .eq("status", "draft");
 
@@ -248,4 +252,29 @@ export async function submitStoryForReview(storyId: string, storySlug: string) {
   revalidatePath(ROUTES.manage(storySlug));
   revalidatePath(ROUTES.story(storySlug));
   revalidatePath(ROUTES.home);
+}
+
+export async function submitChapterForReview(chapterId: string, storyId: string, storySlug: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect(ROUTES.onboarding);
+
+  const status: ChapterStatus = (await requiresReview(supabase)) ? "pending_review" : "published";
+
+  await supabase
+    .from("chapters")
+    .update({
+      status,
+      published_at: status === "published" ? new Date().toISOString() : null,
+      rejection_reason: null,
+    })
+    .eq("id", chapterId)
+    .eq("story_id", storyId)
+    .eq("status", "draft");
+
+  updateTag("stories");
+  revalidatePath(ROUTES.manage(storySlug));
+  revalidatePath(ROUTES.story(storySlug));
 }

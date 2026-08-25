@@ -10,8 +10,9 @@ import { AdminNavLink } from "./AdminNavLink";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUser();
-  const isStaff = user?.profile && ["admin", "moderator"].includes(user.profile.role);
-  if (!user || !isStaff) redirect(ROUTES.home);
+  if (!user) redirect(ROUTES.adminLogin);
+  const isStaff = user.profile && ["admin", "moderator"].includes(user.profile.role);
+  if (!isStaff) redirect(ROUTES.home);
 
   const locale = await getServerLocale();
   const t = getDictionary(locale);

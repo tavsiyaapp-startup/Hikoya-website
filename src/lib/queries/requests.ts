@@ -51,7 +51,9 @@ export async function getRequestResponses(requestId: string) {
     const supabase = await createClient();
     const { data } = await supabase
       .from("request_responses")
-      .select("*, author:profiles!request_responses_author_id_fkey(username, display_name)")
+      .select(
+        "*, author:profiles!request_responses_author_id_fkey(username, display_name), story:stories(slug, title)"
+      )
       .eq("request_id", requestId)
       .order("created_at", { ascending: false });
     return data ?? [];

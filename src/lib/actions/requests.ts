@@ -56,3 +56,22 @@ export async function respondToRequest(requestId: string, formData: FormData) {
 
   revalidatePath(ROUTES.board);
 }
+
+// Only the requester who opened it can close their own request (staff use
+// the separate admin action, which also allows reopening/deleting).
+export async function closeRequest(requestId: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect(ROUTES.onboarding);
+
+  await supabase
+    .from("requests")
+    .update({ status: "closed" })
+    .eq("id", requestId)
+    .eq("from_user_id", user.id)
+    .neq("status", "closed");
+
+  revalidatePath(ROUTES.board);
+}

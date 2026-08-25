@@ -22,6 +22,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     { href: `${ROUTES.admin}/users`, icon: UserIcon, label: t.admin.users },
     { href: `${ROUTES.admin}/stories`, icon: CollectionsIcon, label: t.admin.stories },
     { href: `${ROUTES.admin}/reports`, icon: BoardIcon, label: t.admin.reports },
+    { href: `${ROUTES.admin}/requests`, icon: BoardIcon, label: t.admin.requests },
     { href: `${ROUTES.admin}/settings`, icon: ShieldIcon, label: t.admin.settings },
   ];
 

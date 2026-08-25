@@ -194,6 +194,21 @@ export async function getReportStats() {
   }
 }
 
+export async function getAllRequestsAdmin(statusFilter?: string) {
+  try {
+    const admin = createAdminClient();
+    let q = admin
+      .from("requests")
+      .select("*, from_user:profiles!requests_from_user_id_fkey(display_name)")
+      .order("created_at", { ascending: false });
+    if (statusFilter) q = q.eq("status", statusFilter);
+    const { data } = await q.limit(100);
+    return data ?? [];
+  } catch {
+    return [];
+  }
+}
+
 export async function getPlatformSettingsAdmin() {
   try {
     const admin = createAdminClient();

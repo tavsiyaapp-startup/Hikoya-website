@@ -147,6 +147,22 @@ export async function deleteReport(reportId: string) {
   revalidatePath(`${ROUTES.admin}/reports`);
 }
 
+export async function setRequestStatusAdmin(requestId: string, status: "open" | "closed") {
+  await requireStaff();
+  const admin = createAdminClient();
+  await admin.from("requests").update({ status }).eq("id", requestId);
+  revalidatePath(`${ROUTES.admin}/requests`);
+  revalidatePath(ROUTES.board);
+}
+
+export async function deleteRequestAdmin(requestId: string) {
+  await requireStaff();
+  const admin = createAdminClient();
+  await admin.from("requests").delete().eq("id", requestId);
+  revalidatePath(`${ROUTES.admin}/requests`);
+  revalidatePath(ROUTES.board);
+}
+
 export async function updateStoryStatusAdmin(storyId: string, status: "draft" | "published" | "unlisted") {
   await requireStaff();
   const admin = createAdminClient();

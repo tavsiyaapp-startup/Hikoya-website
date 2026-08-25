@@ -29,7 +29,7 @@ create type content_language as enum ('ru', 'uz');
 create type chapter_status as enum ('draft', 'published', 'pending_review');
 create type tag_category as enum ('genre', 'relationship', 'warning', 'style', 'age_rating');
 create type collection_owner_type as enum ('user', 'author', 'moderator');
-create type request_status as enum ('open', 'in_progress', 'fulfilled');
+create type request_status as enum ('open', 'in_progress', 'fulfilled', 'closed');
 create type request_response_status as enum ('proposed', 'accepted', 'declined');
 create type report_target_type as enum ('story', 'chapter', 'comment');
 create type report_status as enum ('open', 'reviewed', 'resolved');
@@ -707,3 +707,12 @@ on conflict (code) do nothing;
 --   документ картинки заливаются в этот бакет, <img src> переписывается на
 --   итоговый public URL. chapters.content/rejection_reason не менялись —
 --   HTML это по-прежнему просто text, ничего в схеме таблиц не потребовалось.
+-- [2026-08-25] Значение 'closed' в request_status (миграция 0015). Автор
+--   заявки (или staff) теперь может закрыть её — новые отклики после этого
+--   не принимаются, но уже оставленные отклики и привязанные к ним истории
+--   (request_responses.story_id) остаются видны и доступны по ссылке.
+--   'fulfilled' сознательно не переиспользован под "закрыта" — это разные
+--   вещи: fulfilled подразумевает, что работу реально дописали, closed —
+--   просто что заявку больше не принимают (её мог отменить сам автор без
+--   единого отклика). RLS не менялась — политики уже написаны через
+--   is_staff()/from_user_id, а не перечисление статусов.

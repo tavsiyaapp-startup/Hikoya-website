@@ -12,6 +12,7 @@ import {
 } from "@/lib/queries/stories";
 import { ROUTES } from "@/lib/constants";
 import { StoryCard } from "@/components/story/StoryCard";
+import { CollectionCard } from "@/components/collections/CollectionCard";
 import { Chip } from "@/components/ui/Chip";
 
 const TABS = ["reading", "wantToRead", "read", "dropped", "bookmarks", "collections"] as const;
@@ -125,14 +126,7 @@ export default async function LibraryPage({
       {tab === "collections" && (
         <div className="grid grid-cols-1 gap-4.5 xs:grid-cols-2 sm:grid-cols-3 sm:gap-5.5">
           {collections.map((col) => (
-            <Link
-              key={col.id}
-              href={ROUTES.collection(col.id)}
-              className="rounded-[22px] border border-border bg-card p-5 hover:border-primary-300"
-            >
-              <h3 className="mb-1.5 text-[16.5px] font-extrabold">{col.title}</h3>
-              <p className="text-[13.5px] text-muted-2">{col.description}</p>
-            </Link>
+            <CollectionCard key={col.id} collection={col} />
           ))}
           <Link
             href={`${ROUTES.collections}?create=1`}

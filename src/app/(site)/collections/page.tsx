@@ -3,8 +3,8 @@ import { getServerLocale } from "@/lib/i18n/locale-server";
 import { getDictionary } from "@/lib/i18n";
 import { getCurrentUser } from "@/lib/current-user";
 import { getPublicCollections } from "@/lib/queries/stories";
-import { ROUTES } from "@/lib/constants";
-import { Chip, Badge } from "@/components/ui/Chip";
+import { Chip } from "@/components/ui/Chip";
+import { CollectionCard } from "@/components/collections/CollectionCard";
 import { createCollection } from "@/lib/actions/collections";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
@@ -22,8 +22,8 @@ export default async function CollectionsPage({
   const user = await getCurrentUser();
 
   const TABS = [
-    ["all", undefined, t.common.all],
     ["moderator", "moderator", t.collections.tabEditorial],
+    ["author", "author", t.collections.tabAuthors],
     ["user", "user", t.collections.tabReaders],
   ] as const;
   const activeTab = TABS.find(([key]) => key === rawTab) ?? TABS[0];
@@ -62,18 +62,7 @@ export default async function CollectionsPage({
       {collections.length > 0 ? (
         <div className="grid grid-cols-1 gap-4.5 xs:grid-cols-2 sm:grid-cols-3 sm:gap-5.5">
           {collections.map((col) => (
-            <Link
-              key={col.id}
-              href={ROUTES.collection(col.id)}
-              className="rounded-[22px] border border-border bg-card p-5 hover:border-primary-300 hover:shadow-[0_14px_30px_rgba(60,40,120,0.1)]"
-            >
-              <div className="mb-2 flex items-center gap-2">
-                {col.owner_type === "moderator" && <Badge tone="pink">{t.collections.editorial}</Badge>}
-                {col.is_private && <Badge tone="neutral">{t.collections.private}</Badge>}
-              </div>
-              <h3 className="mb-1.5 text-[17px] font-extrabold">{col.title}</h3>
-              <p className="line-clamp-2 text-[13.5px] leading-relaxed text-muted">{col.description}</p>
-            </Link>
+            <CollectionCard key={col.id} collection={col} />
           ))}
         </div>
       ) : (

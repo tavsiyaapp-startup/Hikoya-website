@@ -13,6 +13,7 @@ import {
   getContinueReading,
 } from "@/lib/queries/stories";
 import { StoryCard } from "@/components/story/StoryCard";
+import { CollectionCard } from "@/components/collections/CollectionCard";
 import { Button } from "@/components/ui/Button";
 import { Badge, Chip } from "@/components/ui/Chip";
 import { SparkleIcon, LockIcon } from "@/components/ui/icons";
@@ -208,14 +209,7 @@ export default async function HomePage({
       {collections.length > 0 ? (
         <div className="mb-11 grid grid-cols-1 gap-4.5 xs:grid-cols-2 sm:grid-cols-3 sm:gap-5.5">
           {collections.map((col) => (
-            <Link
-              key={col.id}
-              href={ROUTES.collection(col.id)}
-              className="rounded-[22px] border border-border bg-card p-5 hover:border-primary-300 hover:shadow-[0_14px_30px_rgba(60,40,120,0.1)]"
-            >
-              <h3 className="mb-1.5 text-[17px] font-extrabold">{col.title}</h3>
-              <p className="text-[13.5px] leading-relaxed text-muted">{col.description}</p>
-            </Link>
+            <CollectionCard key={col.id} collection={col} />
           ))}
         </div>
       ) : (

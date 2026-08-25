@@ -1,5 +1,6 @@
 import "server-only";
 import { unstable_cache } from "next/cache";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { createPublicClient } from "@/lib/supabase/public";
 import type { Story, Chapter, Collection, Profile } from "@/types/database";
@@ -80,18 +81,57 @@ export const getStoriesByGenre = unstable_cache(
   { revalidate: CACHE_SECONDS, tags: ["stories"] }
 );
 
+export type CollectionCardData = Collection & {
+  owner: Pick<Profile, "display_name"> | null;
+  coverUrls: string[];
+  storyCount: number;
+};
+
+// Cover art for a collection card is a collage of its first 3 stories'
+// covers — there's no separate uploaded image, this is derived from
+// collection_items so it always reflects what's actually inside.
+async function attachCollectionCovers(
+  supabase: SupabaseClient,
+  collections: Collection[]
+): Promise<CollectionCardData[]> {
+  if (collections.length === 0) return [];
+  const { data: items } = await supabase
+    .from("collection_items")
+    .select("collection_id, story:stories(cover_url)")
+    .in(
+      "collection_id",
+      collections.map((c) => c.id)
+    )
+    .order("position", { ascending: true });
+  const covers = new Map<string, string[]>();
+  const counts = new Map<string, number>();
+  for (const item of items ?? []) {
+    counts.set(item.collection_id, (counts.get(item.collection_id) ?? 0) + 1);
+    const coverUrl = (item.story as unknown as { cover_url: string | null } | null)?.cover_url;
+    if (!coverUrl) continue;
+    const arr = covers.get(item.collection_id) ?? [];
+    if (arr.length < 3) arr.push(coverUrl);
+    covers.set(item.collection_id, arr);
+  }
+  return (collections as CollectionCardData[]).map((c) => ({
+    ...c,
+    coverUrls: covers.get(c.id) ?? [],
+    storyCount: counts.get(c.id) ?? 0,
+  }));
+}
+
 export const getFeaturedCollections = unstable_cache(
-  async (limit = 3): Promise<Collection[]> => {
+  async (limit = 3): Promise<CollectionCardData[]> => {
     try {
       const supabase = createPublicClient();
       const { data } = await supabase
         .from("collections")
-        .select("*")
+        .select("*, owner:profiles!collections_owner_id_fkey(display_name)")
         .eq("is_featured", true)
         .eq("is_private", false)
         .order("created_at", { ascending: false })
         .limit(limit);
-      return (data as Collection[]) ?? [];
+      return attachCollectionCovers(supabase, (data as Collection[]) ?? []);
     } catch {
       return [];
     }
@@ -269,15 +309,15 @@ export async function getBookmarkedStories(userId: string): Promise<StoryCard[]>
   }
 }
 
-export async function getMyCollections(userId: string): Promise<Collection[]> {
+export async function getMyCollections(userId: string): Promise<CollectionCardData[]> {
   try {
     const supabase = await createClient();
     const { data } = await supabase
       .from("collections")
-      .select("*")
+      .select("*, owner:profiles!collections_owner_id_fkey(display_name)")
       .eq("owner_id", userId)
       .order("created_at", { ascending: false });
-    return (data as Collection[]) ?? [];
+    return attachCollectionCovers(supabase, (data as Collection[]) ?? []);
   } catch {
     return [];
   }
@@ -336,15 +376,18 @@ export async function getAuthorStories(authorId: string, includeDrafts: boolean)
 }
 
 export const getPublicCollections = unstable_cache(
-  async (ownerType?: string): Promise<Collection[]> => {
+  async (ownerType?: string): Promise<CollectionCardData[]> => {
     try {
       const supabase = createPublicClient();
-      let query = supabase.from("collections").select("*").eq("is_private", false);
+      let query = supabase
+        .from("collections")
+        .select("*, owner:profiles!collections_owner_id_fkey(display_name)")
+        .eq("is_private", false);
       if (ownerType) query = query.eq("owner_type", ownerType);
       const { data } = await query
         .order("is_featured", { ascending: false })
         .order("created_at", { ascending: false });
-      return (data as Collection[]) ?? [];
+      return attachCollectionCovers(supabase, (data as Collection[]) ?? []);
     } catch {
       return [];
     }

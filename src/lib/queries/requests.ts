@@ -59,3 +59,20 @@ export async function getRequestResponses(requestId: string) {
     return [];
   }
 }
+
+// A story is "written per a request" when some response to a request
+// attached it via request_responses.story_id (set in respondToRequest).
+export async function getLinkedRequestForStory(storyId: string): Promise<string | null> {
+  try {
+    const supabase = await createClient();
+    const { data } = await supabase
+      .from("request_responses")
+      .select("request_id")
+      .eq("story_id", storyId)
+      .limit(1)
+      .maybeSingle();
+    return data?.request_id ?? null;
+  } catch {
+    return null;
+  }
+}

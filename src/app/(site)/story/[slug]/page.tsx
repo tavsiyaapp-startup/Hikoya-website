@@ -6,6 +6,7 @@ import { getDictionary } from "@/lib/i18n";
 import { getCurrentUser } from "@/lib/current-user";
 import { getStoryBySlug, getChaptersForStory } from "@/lib/queries/stories";
 import { getUserStoryState, isFollowingAuthor, getFollowerCount } from "@/lib/queries/social";
+import { getLinkedRequestForStory } from "@/lib/queries/requests";
 import { ROUTES } from "@/lib/constants";
 import { Avatar } from "@/components/ui/Avatar";
 import { Badge } from "@/components/ui/Chip";
@@ -21,11 +22,12 @@ export default async function StoryPage({ params }: { params: Promise<{ slug: st
   const story = await getStoryBySlug(slug);
   if (!story) notFound();
 
-  const [chapters, social, following, followerCount] = await Promise.all([
+  const [chapters, social, following, followerCount, linkedRequestId] = await Promise.all([
     getChaptersForStory(story.id),
     getUserStoryState(user?.id, story.id),
     isFollowingAuthor(user?.id, story.author.id),
     getFollowerCount(story.author.id),
+    getLinkedRequestForStory(story.id),
   ]);
 
   const canManage = user?.id === story.author.id;
@@ -90,6 +92,11 @@ export default async function StoryPage({ params }: { params: Promise<{ slug: st
           <Badge tone={story.age_rating === "18+" ? "danger" : "neutral"}>{story.age_rating}</Badge>
           <Badge tone="success">{story.status === "published" ? t.common.ongoing : t.common.finished}</Badge>
           <Badge tone="neutral">{t.languages[story.language]}</Badge>
+          {linkedRequestId && (
+            <Link href={`${ROUTES.board}?selected=${linkedRequestId}`}>
+              <Badge tone="primary">{t.story.requestBadge}</Badge>
+            </Link>
+          )}
           {canManage && (
             <Link href={ROUTES.manage(slug)} className="ml-auto">
               <Button variant="secondary" size="sm">

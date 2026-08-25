@@ -31,7 +31,7 @@ export function AddChapterForm({ storyId, storySlug }: { storyId: string; storyS
           setOpen(false);
         })
       }
-      className="mb-6 rounded-2xl border border-border bg-card p-5.5"
+      className="mb-6 w-full rounded-2xl border border-border bg-card p-5.5"
     >
       <Input name="title" placeholder={t.create.chapterTitlePlaceholder} className="mb-3.5" required />
       <RichTextEditor name="content" placeholder={t.create.chapterTextPlaceholder} />

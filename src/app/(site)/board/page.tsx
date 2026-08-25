@@ -3,6 +3,7 @@ import { getServerLocale } from "@/lib/i18n/locale-server";
 import { getDictionary } from "@/lib/i18n";
 import { getCurrentUser } from "@/lib/current-user";
 import { getBoardRequests, getRequestById, getRequestResponses } from "@/lib/queries/requests";
+import { getAuthorStories } from "@/lib/queries/stories";
 import { ROUTES } from "@/lib/constants";
 import { Avatar } from "@/components/ui/Avatar";
 import { Badge, Chip } from "@/components/ui/Chip";
@@ -32,6 +33,7 @@ export default async function BoardPage({
     selected ? getRequestById(selected) : Promise.resolve(null),
   ]);
   const responses = selectedRequest ? await getRequestResponses(selectedRequest.id) : [];
+  const myStories = selectedRequest && user ? await getAuthorStories(user.id, true) : [];
 
   return (
     <div>
@@ -134,6 +136,25 @@ export default async function BoardPage({
                   className="mb-5 flex flex-col gap-2.5"
                 >
                   <Textarea name="text" placeholder={t.board.responseTextPlaceholder} rows={3} required />
+                  {myStories.length > 0 && (
+                    <div>
+                      <label className="mb-1.5 block text-[12.5px] font-bold text-muted-2">
+                        {t.board.attachStoryLabel}
+                      </label>
+                      <select
+                        name="storyId"
+                        defaultValue=""
+                        className="h-10 w-full rounded-[10px] border border-border bg-white px-2.5 text-[13.5px] outline-none"
+                      >
+                        <option value="">{t.board.attachStoryNone}</option>
+                        {myStories.map((s) => (
+                          <option key={s.id} value={s.id}>
+                            {s.title}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
                   <Button type="submit" size="sm">
                     {t.board.respond}
                   </Button>

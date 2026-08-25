@@ -37,7 +37,21 @@ export async function respondToRequest(requestId: string, formData: FormData) {
   const text = String(formData.get("text") ?? "").trim();
   if (!text) return;
 
-  await supabase.from("request_responses").insert({ request_id: requestId, author_id: user.id, text });
+  const rawStoryId = String(formData.get("storyId") ?? "").trim();
+  let storyId: string | null = null;
+  if (rawStoryId) {
+    const { data: story } = await supabase
+      .from("stories")
+      .select("id")
+      .eq("id", rawStoryId)
+      .eq("author_id", user.id)
+      .maybeSingle();
+    storyId = story?.id ?? null;
+  }
+
+  await supabase
+    .from("request_responses")
+    .insert({ request_id: requestId, author_id: user.id, text, story_id: storyId });
   await supabase.from("requests").update({ status: "in_progress" }).eq("id", requestId).eq("status", "open");
 
   revalidatePath(ROUTES.board);

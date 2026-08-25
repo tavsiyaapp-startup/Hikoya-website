@@ -78,7 +78,7 @@ export function Header({ user, unreadCount = 0 }: { user: CurrentUser | null; un
         </div>
 
         <Link
-          href={user ? "/library?tab=notifications" : ROUTES.onboarding}
+          href={user ? `${ROUTES.author(user.profile?.username ?? "")}?tab=notifications` : ROUTES.onboarding}
           title={user ? t.nav.notifications : t.common.guestLockedTitle}
           className={clsx(
             "relative flex h-10 w-10 shrink-0 items-center justify-center rounded-[13px] border border-border bg-white text-ink-soft transition sm:h-11 sm:w-11",

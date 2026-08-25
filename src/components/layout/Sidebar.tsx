@@ -42,7 +42,7 @@ export function Sidebar({ user, unreadCount = 0 }: { user: CurrentUser | null; u
       dot: false,
     },
     {
-      href: user ? "/library?tab=notifications" : ROUTES.onboarding,
+      href: user ? `${ROUTES.author(user.profile?.username ?? "")}?tab=notifications` : ROUTES.onboarding,
       icon: BellIcon,
       label: t.nav.notifications,
       locked: !user,

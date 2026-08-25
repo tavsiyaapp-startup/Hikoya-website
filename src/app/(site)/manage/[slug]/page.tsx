@@ -11,6 +11,7 @@ import { Badge, Chip } from "@/components/ui/Chip";
 import { AddChapterForm } from "@/components/manage/AddChapterForm";
 import { ChapterRow } from "@/components/manage/ChapterRow";
 import { EditStoryForm } from "@/components/manage/EditStoryForm";
+import { StoryModerationActions } from "@/components/manage/StoryModerationActions";
 
 const TABS = ["chapters", "edit", "stats", "requests"] as const;
 type Tab = (typeof TABS)[number];
@@ -56,12 +57,22 @@ export default async function ManagePage({
           {story.cover_url && <Image src={story.cover_url} alt="" fill className="object-cover" />}
         </div>
         <div className="min-w-0 flex-1">
-          <div className="mb-3 flex items-center gap-2.5">
-            <Badge tone="success">{story.status === "published" ? t.common.published : t.common.draft}</Badge>
+          <div className="mb-3 flex flex-wrap items-center gap-2.5">
+            <Badge
+              tone={
+                story.status === "published" ? "success" : story.status === "pending_review" ? "warning" : "neutral"
+              }
+            >
+              {story.status === "published"
+                ? t.common.published
+                : story.status === "pending_review"
+                  ? t.common.pendingReview
+                  : t.common.draft}
+            </Badge>
             <Badge tone="pink">{story.genre}</Badge>
           </div>
           <h1 className="mb-4.5 text-[24px] font-extrabold tracking-tight sm:text-[34px]">{story.title}</h1>
-          <div className="flex flex-wrap gap-6 sm:gap-10">
+          <div className="mb-4.5 flex flex-wrap gap-6 sm:gap-10">
             {metrics.map((m) => (
               <div key={m.label}>
                 <div className="mb-0.5 text-[22px] font-extrabold">{m.value}</div>
@@ -69,6 +80,10 @@ export default async function ManagePage({
               </div>
             ))}
           </div>
+          {story.status === "pending_review" && !isStaff && (
+            <p className="mb-3 text-[13px] text-muted-2">{t.manage.pendingReviewNotice}</p>
+          )}
+          <StoryModerationActions storyId={story.id} storySlug={slug} status={story.status} isStaff={!!isStaff} />
         </div>
       </div>
 
@@ -102,6 +117,7 @@ export default async function ManagePage({
                 storyId={story.id}
                 storySlug={slug}
                 isLast={i === chapters.length - 1}
+                isStaff={!!isStaff}
               />
             ))
           ) : (

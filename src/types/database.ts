@@ -3,11 +3,11 @@
 
 export type UserRole = "reader" | "author" | "moderator" | "admin";
 export type UserStatus = "active" | "blocked";
-export type StoryStatus = "draft" | "published" | "unlisted";
+export type StoryStatus = "draft" | "published" | "unlisted" | "pending_review";
 export type StoryVisibility = "public" | "unlisted" | "draft";
 export type AgeRating = "0+" | "12+" | "16+" | "18+";
 export type ContentLanguage = "ru" | "uz";
-export type ChapterStatus = "draft" | "published";
+export type ChapterStatus = "draft" | "published" | "pending_review";
 export type TagCategory = "genre" | "relationship" | "warning" | "style" | "age_rating";
 export type CollectionOwnerType = "user" | "author" | "moderator";
 export type RequestStatus = "open" | "in_progress" | "fulfilled";

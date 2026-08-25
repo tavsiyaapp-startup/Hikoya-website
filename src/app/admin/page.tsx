@@ -97,7 +97,10 @@ export default async function AdminDashboardPage() {
                   <div key={s.id} className="flex items-center gap-3.5 border-b border-border-soft pb-3 last:border-0">
                     <span className="text-[14px] font-bold">{s.title}</span>
                     <span className="text-[13.5px] text-muted-2">{author?.display_name}</span>
-                    <Badge tone={s.status === "published" ? "success" : "neutral"} className="ml-auto">
+                    <Badge
+                      tone={s.status === "published" ? "success" : s.status === "pending_review" ? "warning" : "neutral"}
+                      className="ml-auto"
+                    >
                       {s.status}
                     </Badge>
                   </div>

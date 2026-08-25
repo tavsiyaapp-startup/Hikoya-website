@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { slugify, withRandomSuffix } from "@/lib/slug";
 import { ROUTES } from "@/lib/constants";
-import type { AgeRating, ContentLanguage, StoryStatus, StoryVisibility } from "@/types/database";
+import type { AgeRating, ChapterStatus, ContentLanguage, StoryStatus, StoryVisibility } from "@/types/database";
 
 export interface CreateStoryInput {
   title: string;
@@ -25,6 +25,15 @@ function wordCount(text: string) {
   return text.trim().split(/\s+/).filter(Boolean).length;
 }
 
+async function requiresReview(supabase: Awaited<ReturnType<typeof createClient>>) {
+  const { data } = await supabase
+    .from("platform_settings")
+    .select("new_story_requires_review")
+    .eq("id", 1)
+    .single();
+  return data?.new_story_requires_review ?? false;
+}
+
 export async function createStory(input: CreateStoryInput) {
   const supabase = await createClient();
   const {
@@ -32,7 +41,8 @@ export async function createStory(input: CreateStoryInput) {
   } = await supabase.auth.getUser();
   if (!user) redirect(ROUTES.onboarding);
 
-  const status: StoryStatus = input.visibility === "draft" ? "draft" : "published";
+  const status: StoryStatus =
+    input.visibility === "draft" ? "draft" : (await requiresReview(supabase)) ? "pending_review" : "published";
   const slug = withRandomSuffix(slugify(input.title));
 
   const { data: story, error } = await supabase
@@ -197,6 +207,7 @@ export async function addChapter(storyId: string, storySlug: string, formData: F
     .maybeSingle();
 
   const nextIndex = (last?.order_index ?? 0) + 1;
+  const status: ChapterStatus = (await requiresReview(supabase)) ? "pending_review" : "published";
 
   await supabase.from("chapters").insert({
     story_id: storyId,
@@ -204,11 +215,31 @@ export async function addChapter(storyId: string, storySlug: string, formData: F
     title,
     content,
     word_count: wordCount(content),
-    status: "published",
+    status,
     is_free: false,
-    published_at: new Date().toISOString(),
+    published_at: status === "published" ? new Date().toISOString() : null,
   });
 
   revalidatePath(ROUTES.manage(storySlug));
   revalidatePath(ROUTES.story(storySlug));
+}
+
+export async function submitStoryForReview(storyId: string, storySlug: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect(ROUTES.onboarding);
+
+  const status: StoryStatus = (await requiresReview(supabase)) ? "pending_review" : "published";
+
+  await supabase
+    .from("stories")
+    .update({ status, published_at: status === "published" ? new Date().toISOString() : null })
+    .eq("id", storyId)
+    .eq("status", "draft");
+
+  revalidatePath(ROUTES.manage(storySlug));
+  revalidatePath(ROUTES.story(storySlug));
+  revalidatePath(ROUTES.home);
 }

@@ -1,10 +1,12 @@
 import { getServerLocale } from "@/lib/i18n/locale-server";
 import { getDictionary } from "@/lib/i18n";
+import { getCurrentUser } from "@/lib/current-user";
 import { searchUsersAdmin } from "@/lib/queries/admin";
 import { AdminHeader } from "../AdminHeader";
 import { Badge } from "@/components/ui/Chip";
 import { Input } from "@/components/ui/Input";
 import { UserStatusButton } from "./UserStatusButton";
+import { UserRoleSelect } from "./UserRoleSelect";
 
 export default async function AdminUsersPage({
   searchParams,
@@ -14,7 +16,8 @@ export default async function AdminUsersPage({
   const { q } = await searchParams;
   const locale = await getServerLocale();
   const t = getDictionary(locale);
-  const users = await searchUsersAdmin(q);
+  const [users, viewer] = await Promise.all([searchUsersAdmin(q), getCurrentUser()]);
+  const viewerIsAdmin = viewer?.profile?.role === "admin";
 
   return (
     <div>
@@ -42,7 +45,9 @@ export default async function AdminUsersPage({
                     <div className="text-[14px] font-bold">{u.display_name}</div>
                     <div className="text-[12.5px] text-muted-2">@{u.username}</div>
                   </div>
-                  <span className="w-27.5 text-[13.5px] text-ink-soft">{u.role}</span>
+                  <span className="w-27.5">
+                    <UserRoleSelect userId={u.id} role={u.role} disabled={!viewerIsAdmin} />
+                  </span>
                   <span className="w-22.5 text-[13.5px] text-ink-soft">—</span>
                   <span className="w-32.5 text-[13.5px] text-muted-2">
                     {new Date(u.created_at).toLocaleDateString(locale)}

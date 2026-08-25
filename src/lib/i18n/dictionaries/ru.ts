@@ -33,6 +33,7 @@ const ru = {
     draft: "Черновик",
     published: "Опубликована",
     unlisted: "Не в списках",
+    pendingReview: "На проверке",
   },
   nav: {
     home: "Главная",
@@ -185,6 +186,10 @@ const ru = {
     editChapter: "Редактировать",
     delete: "Удалить",
     confirmDeleteChapter: "Удалить главу? Это действие нельзя отменить.",
+    submitForReview: "Отправить на проверку",
+    approve: "Одобрить",
+    reject: "Отклонить",
+    pendingReviewNotice: "Ожидает проверки модератором и пока не видна читателям.",
   },
   profile: {
     editProfile: "Редактировать профиль",
@@ -300,6 +305,13 @@ const ru = {
     block: "Заблокировать",
     unblock: "Разблокировать",
     emptyGeneric: "Пока пусто.",
+    roleReader: "Читатель",
+    roleAuthor: "Автор",
+    roleModerator: "Модератор",
+    roleAdmin: "Админ",
+    loginTitle: "Вход в панель управления",
+    loginPasswordPlaceholder: "Пароль",
+    loginError: "Неверный email или пароль.",
   },
   auth: {
     googleError: "Не удалось связаться с сервером входа. Попробуйте ещё раз позже.",

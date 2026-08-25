@@ -26,7 +26,7 @@ export function Badge({
   className,
   ...props
 }: React.HTMLAttributes<HTMLSpanElement> & {
-  tone?: "neutral" | "primary" | "success" | "danger" | "pink";
+  tone?: "neutral" | "primary" | "success" | "danger" | "pink" | "warning";
 }) {
   const toneClasses: Record<string, string> = {
     neutral: "bg-[#F4F2FA] text-[#5B5479]",
@@ -34,6 +34,7 @@ export function Badge({
     success: "bg-success-bg text-success",
     danger: "bg-danger-bg text-danger",
     pink: "bg-pink-bg text-pink",
+    warning: "bg-amber-100 text-amber-800",
   };
   return (
     <span

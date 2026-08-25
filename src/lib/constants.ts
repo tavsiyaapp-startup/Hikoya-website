@@ -6,6 +6,7 @@ export const ROUTES = {
   create: "/create",
   library: "/library",
   admin: "/admin",
+  adminLogin: "/admin-login",
   onboarding: "/onboarding",
   author: (username: string) => `/author/${username}`,
   story: (slug: string) => `/story/${slug}`,

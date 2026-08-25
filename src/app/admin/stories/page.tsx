@@ -23,7 +23,7 @@ export default async function AdminStoriesPage({
       <div className="px-4 pb-15 pt-7 sm:px-8.5">
         <div className="rounded-[22px] border border-border bg-card p-4.5 sm:p-6.5">
           <div className="mb-5 flex gap-2 overflow-x-auto">
-            {[undefined, "published", "draft", "unlisted"].map((s) => (
+            {[undefined, "pending_review", "published", "draft", "unlisted"].map((s) => (
               <Link key={s ?? "all"} href={s ? `?status=${s}` : "?"} className="shrink-0">
                 <Chip active={status === s || (!status && !s)}>{s ?? t.common.all}</Chip>
               </Link>
@@ -45,7 +45,7 @@ export default async function AdminStoriesPage({
                 return (
                   <Link
                     key={s.id}
-                    href={ROUTES.story(s.slug)}
+                    href={ROUTES.manage(s.slug)}
                     className="flex items-center gap-4 border-b border-border-soft py-3.5 last:border-0 hover:bg-surface"
                   >
                     <span className="flex-[1.6] truncate text-[14.5px] font-bold">{s.title}</span>
@@ -53,7 +53,13 @@ export default async function AdminStoriesPage({
                     <span className="w-25 text-[13.5px] text-ink-soft">{chapterCounts[s.id] ?? 0}</span>
                     <span className="w-27.5 text-[13.5px] text-ink-soft">{s.view_count}</span>
                     <span className="w-32.5">
-                      <Badge tone={s.status === "published" ? "success" : "neutral"}>{s.status}</Badge>
+                      <Badge
+                        tone={
+                          s.status === "published" ? "success" : s.status === "pending_review" ? "warning" : "neutral"
+                        }
+                      >
+                        {s.status}
+                      </Badge>
                     </span>
                   </Link>
                 );

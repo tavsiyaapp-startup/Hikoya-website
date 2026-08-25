@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { updateChapter, deleteChapter } from "@/lib/actions/stories";
+import { approveChapter, rejectChapter } from "@/lib/actions/admin";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 import { Badge } from "@/components/ui/Chip";
 import { Input } from "@/components/ui/Input";
@@ -14,11 +15,13 @@ export function ChapterRow({
   storyId,
   storySlug,
   isLast,
+  isStaff,
 }: {
   chapter: Chapter;
   storyId: string;
   storySlug: string;
   isLast: boolean;
+  isStaff: boolean;
 }) {
   const { t } = useLocale();
   const [editing, setEditing] = useState(false);
@@ -67,9 +70,37 @@ export function ChapterRow({
         </div>
       </div>
       <div className="w-16 shrink-0 text-[14px] font-bold sm:w-24">{chapter.view_count}</div>
-      <Badge tone={chapter.status === "published" ? "success" : "neutral"}>
-        {chapter.status === "published" ? t.common.published : t.common.draft}
+      <Badge
+        tone={
+          chapter.status === "published" ? "success" : chapter.status === "pending_review" ? "warning" : "neutral"
+        }
+      >
+        {chapter.status === "published"
+          ? t.common.published
+          : chapter.status === "pending_review"
+            ? t.common.pendingReview
+            : t.common.draft}
       </Badge>
+      {isStaff && chapter.status === "pending_review" && (
+        <>
+          <button
+            type="button"
+            disabled={pending}
+            onClick={() => startTransition(() => approveChapter(chapter.id, storyId, storySlug))}
+            className="cursor-pointer text-[12.5px] font-bold text-success disabled:opacity-50"
+          >
+            {t.manage.approve}
+          </button>
+          <button
+            type="button"
+            disabled={pending}
+            onClick={() => startTransition(() => rejectChapter(chapter.id, storyId, storySlug))}
+            className="cursor-pointer text-[12.5px] font-bold text-danger disabled:opacity-50"
+          >
+            {t.manage.reject}
+          </button>
+        </>
+      )}
       <button
         type="button"
         onClick={() => setEditing(true)}

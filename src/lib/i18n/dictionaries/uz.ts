@@ -35,6 +35,7 @@ const uz: typeof ru = {
     draft: "Qoralama",
     published: "Chop etilgan",
     unlisted: "Roʻyxatda emas",
+    pendingReview: "Koʻrib chiqilmoqda",
   },
   nav: {
     home: "Asosiy",
@@ -187,6 +188,10 @@ const uz: typeof ru = {
     editChapter: "Tahrirlash",
     delete: "Oʻchirish",
     confirmDeleteChapter: "Bobni oʻchirasizmi? Bu amalni bekor qilib boʻlmaydi.",
+    submitForReview: "Koʻrib chiqishga yuborish",
+    approve: "Tasdiqlash",
+    reject: "Rad etish",
+    pendingReviewNotice: "Moderator tekshiruvini kutmoqda, oʻquvchilarga hali koʻrinmaydi.",
   },
   profile: {
     editProfile: "Profilni tahrirlash",
@@ -302,6 +307,13 @@ const uz: typeof ru = {
     block: "Bloklash",
     unblock: "Blokdan chiqarish",
     emptyGeneric: "Hozircha boʻsh.",
+    roleReader: "Oʻquvchi",
+    roleAuthor: "Muallif",
+    roleModerator: "Moderator",
+    roleAdmin: "Admin",
+    loginTitle: "Boshqaruv paneliga kirish",
+    loginPasswordPlaceholder: "Parol",
+    loginError: "Email yoki parol notoʻgʻri.",
   },
   auth: {
     googleError: "Kirish serveriga ulanib boʻlmadi. Birozdan keyin qayta urinib koʻring.",

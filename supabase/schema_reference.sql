@@ -22,11 +22,11 @@ create extension if not exists "pgcrypto";
 
 create type user_role as enum ('reader', 'author', 'moderator', 'admin');
 create type user_status as enum ('active', 'blocked');
-create type story_status as enum ('draft', 'published', 'unlisted');
+create type story_status as enum ('draft', 'published', 'unlisted', 'pending_review');
 create type story_visibility as enum ('public', 'unlisted', 'draft');
 create type age_rating as enum ('0+', '12+', '16+', '18+');
 create type content_language as enum ('ru', 'uz');
-create type chapter_status as enum ('draft', 'published');
+create type chapter_status as enum ('draft', 'published', 'pending_review');
 create type tag_category as enum ('genre', 'relationship', 'warning', 'style', 'age_rating');
 create type collection_owner_type as enum ('user', 'author', 'moderator');
 create type request_status as enum ('open', 'in_progress', 'fulfilled');
@@ -256,7 +256,7 @@ create table platform_settings (
   guest_free_chapters integer not null default 1,   -- сколько первых глав видно гостям (1-4)
   enabled_locales content_language[] not null default '{ru,uz}',
   comments_require_approval boolean not null default false,
-  new_story_requires_review boolean not null default false,
+  new_story_requires_review boolean not null default true,   -- см. changelog 0010
   check (id = 1)
 );
 
@@ -615,3 +615,13 @@ on conflict (code) do nothing;
 --   комментарии и закладки молча никогда не сохранялись. Нашли через прямую
 --   проверку insert в базе (0 комментариев при том что пользователь пробовал
 --   несколько раз). Исправлено вложенным if вместо составного условия.
+-- [2026-08-25] Модерация публикации (миграция 0010). Добавлено значение
+--   'pending_review' в story_status и chapter_status. Раньше createStory/
+--   addChapter ставили статус 'published' сразу же — новые истории и главы
+--   были видны всем без всякой проверки. Теперь при включённом
+--   platform_settings.new_story_requires_review (включён по умолчанию этой
+--   же миграцией) новые истории/главы получают статус 'pending_review' и
+--   становятся видны читателям только после того, как admin/moderator
+--   нажмут "Одобрить" в панели управления историей (RLS уже фильтровал
+--   публичное чтение по status = 'published', так что отдельных RLS-правок
+--   не потребовалось — только новое значение enum + логика в actions).

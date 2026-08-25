@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase/client";
 import { createStory } from "@/lib/actions/stories";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
+import { RichTextEditor } from "@/components/ui/RichTextEditor";
 import { Chip } from "@/components/ui/Chip";
 import type { AgeRating, ContentLanguage, StoryVisibility } from "@/types/database";
 
@@ -202,12 +203,10 @@ export function CreateWizard({ userId }: { userId: string }) {
                 placeholder={t.create.chapterTitlePlaceholder}
                 className="mb-5"
               />
-              <Textarea
+              <RichTextEditor
                 value={chapterText}
-                onChange={(e) => setChapterText(e.target.value)}
+                onChange={setChapterText}
                 placeholder={t.create.chapterTextPlaceholder}
-                rows={16}
-                className="text-[16px] leading-relaxed"
               />
               <div className="mt-4.5 flex items-center gap-3 rounded-2xl border border-primary-100 bg-primary-50 px-4.5 py-3.5 text-[13.5px] text-ink-soft">
                 {t.create.autosaveHint}

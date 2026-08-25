@@ -8,6 +8,7 @@ import { getStoryBySlug, getChaptersForStory, getTagsForStory } from "@/lib/quer
 import { getRequestsForAuthor } from "@/lib/queries/requests";
 import { ROUTES } from "@/lib/constants";
 import { Badge, Chip } from "@/components/ui/Chip";
+import { Button } from "@/components/ui/Button";
 import { AddChapterForm } from "@/components/manage/AddChapterForm";
 import { ChapterRow } from "@/components/manage/ChapterRow";
 import { EditStoryForm } from "@/components/manage/EditStoryForm";
@@ -106,7 +107,10 @@ export default async function ManagePage({
           </Link>
         ))}
         {tab === "chapters" && (
-          <div className="ml-auto">
+          <div className="ml-auto flex flex-wrap gap-2.5">
+            <Link href={`${ROUTES.manage(slug)}/import`}>
+              <Button variant="secondary">{t.manage.importDocument}</Button>
+            </Link>
             <AddChapterForm storyId={story.id} storySlug={slug} />
           </div>
         )}

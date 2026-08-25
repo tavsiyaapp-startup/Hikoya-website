@@ -210,6 +210,22 @@ export function MenuIcon(props: IconProps) {
   );
 }
 
+export function AlignLeftIcon(props: IconProps) {
+  return (
+    <svg {...base(16)} {...props}>
+      <path d="M4 6h16M4 12h10M4 18h14" />
+    </svg>
+  );
+}
+
+export function AlignCenterIcon(props: IconProps) {
+  return (
+    <svg {...base(16)} {...props}>
+      <path d="M4 6h16M7 12h10M5 18h14" />
+    </svg>
+  );
+}
+
 export function CloseIcon(props: IconProps) {
   return (
     <svg {...base(20)} {...props}>

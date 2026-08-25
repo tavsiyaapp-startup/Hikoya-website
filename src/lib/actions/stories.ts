@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath, updateTag } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { slugify, withRandomSuffix } from "@/lib/slug";
+import { sanitizeHtml } from "@/lib/sanitize";
 import { ROUTES } from "@/lib/constants";
 import type { AgeRating, ChapterStatus, ContentLanguage, StoryStatus, StoryVisibility } from "@/types/database";
 
@@ -23,6 +24,13 @@ export interface CreateStoryInput {
 
 function wordCount(text: string) {
   return text.trim().split(/\s+/).filter(Boolean).length;
+}
+
+// Chapter content is HTML from RichTextEditor now, not plain text — strip
+// tags before counting words, otherwise every tag gets counted as a "word".
+// A no-op for legacy plain-text content (nothing to strip).
+function stripHtml(html: string) {
+  return html.replace(/<[^>]+>/g, " ");
 }
 
 async function requiresReview(supabase: Awaited<ReturnType<typeof createClient>>) {
@@ -68,12 +76,13 @@ export async function createStory(input: CreateStoryInput) {
     throw new Error(error?.message ?? "Failed to create story");
   }
 
+  const chapterContent = sanitizeHtml(input.chapterText);
   await supabase.from("chapters").insert({
     story_id: story.id,
     order_index: 1,
     title: input.chapterTitle,
-    content: input.chapterText,
-    word_count: wordCount(input.chapterText),
+    content: chapterContent,
+    word_count: wordCount(stripHtml(chapterContent)),
     status,
     is_free: true,
     published_at: status === "published" ? new Date().toISOString() : null,
@@ -158,15 +167,16 @@ export async function updateChapter(
   if (!user) redirect(ROUTES.onboarding);
 
   const title = String(formData.get("title") ?? "").trim();
-  const content = String(formData.get("content") ?? "").trim();
-  if (!title || !content) return;
+  const rawContent = String(formData.get("content") ?? "").trim();
+  if (!title || !rawContent) return;
+  const content = sanitizeHtml(rawContent);
 
   await supabase
     .from("chapters")
     .update({
       title,
       content,
-      word_count: wordCount(content),
+      word_count: wordCount(stripHtml(content)),
       updated_at: new Date().toISOString(),
     })
     .eq("id", chapterId)
@@ -199,8 +209,9 @@ export async function addChapter(storyId: string, storySlug: string, formData: F
   if (!user) redirect(ROUTES.onboarding);
 
   const title = String(formData.get("title") ?? "").trim();
-  const content = String(formData.get("content") ?? "").trim();
-  if (!title || !content) return;
+  const rawContent = String(formData.get("content") ?? "").trim();
+  if (!title || !rawContent) return;
+  const content = sanitizeHtml(rawContent);
 
   const { data: last } = await supabase
     .from("chapters")
@@ -218,7 +229,7 @@ export async function addChapter(storyId: string, storySlug: string, formData: F
     order_index: nextIndex,
     title,
     content,
-    word_count: wordCount(content),
+    word_count: wordCount(stripHtml(content)),
     status,
     is_free: false,
     published_at: status === "published" ? new Date().toISOString() : null,

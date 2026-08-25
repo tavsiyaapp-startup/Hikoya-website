@@ -5,7 +5,7 @@ import { updateChapter, deleteChapter, submitChapterForReview } from "@/lib/acti
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 import { Badge } from "@/components/ui/Chip";
 import { Input } from "@/components/ui/Input";
-import { Textarea } from "@/components/ui/Textarea";
+import { RichTextEditor } from "@/components/ui/RichTextEditor";
 import { Button } from "@/components/ui/Button";
 import type { Chapter } from "@/types/database";
 
@@ -45,7 +45,7 @@ export function ChapterRow({
         className={`flex flex-col gap-2.5 px-5.5 py-4 ${border}`}
       >
         <Input name="title" defaultValue={chapter.title} required />
-        <Textarea name="content" defaultValue={chapter.content} rows={8} required />
+        <RichTextEditor name="content" defaultValue={chapter.content} />
         <div className="flex gap-2">
           <Button type="submit" size="sm" disabled={pending}>
             {pending ? t.common.loading : t.common.save}

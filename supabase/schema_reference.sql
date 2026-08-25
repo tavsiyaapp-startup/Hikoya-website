@@ -595,6 +595,22 @@ create policy "users delete their own avatar" on storage.objects for delete usin
   bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text
 );
 
+-- добавлено в 0014: изображения, встроенные в .docx при импорте
+-- (src/lib/actions/import-docx.ts), заливаются сюда, <img src> переписывается
+-- на итоговый public URL.
+insert into storage.buckets (id, name, public) values ('chapter-images', 'chapter-images', true)
+on conflict (id) do nothing;
+
+create policy "chapter images are publicly readable" on storage.objects for select using (
+  bucket_id = 'chapter-images'
+);
+create policy "users upload their own chapter images" on storage.objects for insert with check (
+  bucket_id = 'chapter-images' and (storage.foldername(name))[1] = auth.uid()::text
+);
+create policy "users delete their own chapter images" on storage.objects for delete using (
+  bucket_id = 'chapter-images' and (storage.foldername(name))[1] = auth.uid()::text
+);
+
 -- =============================================================================
 -- НАЧАЛЬНЫЕ ДАННЫЕ (seed)
 -- =============================================================================
@@ -685,3 +701,9 @@ on conflict (code) do nothing;
 --   и postComment принимает parentId. bump_story_counters() (0013)
 --   заодно научился обновлять comments.like_count при лайке/анлайке
 --   комментария — раньше это условие тоже было пустым no-op'ом.
+-- [2026-08-25] Бакет chapter-images (миграция 0014). Textarea для текста
+--   главы заменена на rich-text редактор (TipTap) — content теперь HTML,
+--   а не голый текст. Добавлен импорт .docx (mammoth): вложенные в
+--   документ картинки заливаются в этот бакет, <img src> переписывается на
+--   итоговый public URL. chapters.content/rejection_reason не менялись —
+--   HTML это по-прежнему просто text, ничего в схеме таблиц не потребовалось.

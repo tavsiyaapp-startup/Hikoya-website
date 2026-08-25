@@ -10,6 +10,7 @@ import {
   getGuestFreeChapterCount,
 } from "@/lib/queries/stories";
 import { getChapterComments, getLikedCommentIds } from "@/lib/queries/social";
+import { sanitizeHtml } from "@/lib/sanitize";
 import { ROUTES } from "@/lib/constants";
 import { ChevronLeftIcon, LockIcon } from "@/components/ui/icons";
 import { Avatar } from "@/components/ui/Avatar";
@@ -51,7 +52,8 @@ export default async function ReaderPage({
   const nextChapter = idx >= 0 && idx < allChapters.length - 1 ? allChapters[idx + 1] : null;
 
   const readMinutes = Math.max(1, Math.round(ch.word_count / 200));
-  const paragraphs = ch.content.split(/\n+/).filter(Boolean);
+  const isRichContent = /<[a-z][\s\S]*>/i.test(ch.content);
+  const paragraphs = isRichContent ? [] : ch.content.split(/\n+/).filter(Boolean);
 
   return (
     <div className="flex flex-col gap-6 lg:flex-row lg:justify-center lg:gap-9">
@@ -86,13 +88,20 @@ export default async function ReaderPage({
         </div>
 
         {isUnlocked ? (
-          <div className="text-[17px] leading-8 text-ink-soft">
-            {paragraphs.map((p, i) => (
-              <p key={i} className="mb-4.5">
-                {p}
-              </p>
-            ))}
-          </div>
+          isRichContent ? (
+            <div
+              className="rich-content text-[17px] leading-8 text-ink-soft"
+              dangerouslySetInnerHTML={{ __html: sanitizeHtml(ch.content) }}
+            />
+          ) : (
+            <div className="text-[17px] leading-8 text-ink-soft">
+              {paragraphs.map((p, i) => (
+                <p key={i} className="mb-4.5">
+                  {p}
+                </p>
+              ))}
+            </div>
+          )
         ) : (
           <div className="rounded-3xl bg-linear-to-br from-ink-dark to-primary-950 px-5 py-6 text-white sm:px-9 sm:py-8.5">
             <div className="mb-3.5 flex items-center gap-3">

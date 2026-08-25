@@ -4,7 +4,7 @@ import { useRef, useState, useTransition } from "react";
 import { addChapter } from "@/lib/actions/stories";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 import { Input } from "@/components/ui/Input";
-import { Textarea } from "@/components/ui/Textarea";
+import { RichTextEditor } from "@/components/ui/RichTextEditor";
 import { Button } from "@/components/ui/Button";
 
 export function AddChapterForm({ storyId, storySlug }: { storyId: string; storySlug: string }) {
@@ -34,7 +34,7 @@ export function AddChapterForm({ storyId, storySlug }: { storyId: string; storyS
       className="mb-6 rounded-2xl border border-border bg-card p-5.5"
     >
       <Input name="title" placeholder={t.create.chapterTitlePlaceholder} className="mb-3.5" required />
-      <Textarea name="content" placeholder={t.create.chapterTextPlaceholder} rows={8} required />
+      <RichTextEditor name="content" placeholder={t.create.chapterTextPlaceholder} />
       <div className="mt-3.5 flex gap-2.5">
         <Button type="submit" disabled={pending}>
           {pending ? t.common.loading : t.common.save}

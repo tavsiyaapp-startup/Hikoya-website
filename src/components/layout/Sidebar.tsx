@@ -10,7 +10,6 @@ import { ROUTES } from "@/lib/constants";
 import { Button } from "@/components/ui/Button";
 import {
   BoardIcon,
-  BellIcon,
   CloseIcon,
   CollectionsIcon,
   HomeIcon,
@@ -23,44 +22,24 @@ import {
 } from "@/components/ui/icons";
 import type { CurrentUser } from "@/lib/current-user";
 
-export function Sidebar({ user, unreadCount = 0 }: { user: CurrentUser | null; unreadCount?: number }) {
+export function Sidebar({ user }: { user: CurrentUser | null }) {
   const { t } = useLocale();
   const pathname = usePathname();
   const { open, setOpen } = useMobileNav();
   const [expanded, setExpanded] = useState(true);
 
   const items = [
-    { href: ROUTES.home, icon: HomeIcon, label: t.nav.home, locked: false, dot: false },
-    { href: ROUTES.search, icon: SearchIcon, label: t.nav.search, locked: false, dot: false },
-    { href: ROUTES.collections, icon: CollectionsIcon, label: t.nav.collections, locked: false, dot: false },
-    { href: ROUTES.board, icon: BoardIcon, label: t.nav.board, locked: false, dot: false },
-    {
-      href: user ? ROUTES.create : ROUTES.onboarding,
-      icon: PlusIcon,
-      label: t.nav.create,
-      locked: !user,
-      dot: false,
-    },
-    {
-      href: user ? `${ROUTES.author(user.profile?.username ?? "")}?tab=notifications` : ROUTES.onboarding,
-      icon: BellIcon,
-      label: t.nav.notifications,
-      locked: !user,
-      dot: unreadCount > 0,
-    },
-    {
-      href: user ? ROUTES.library : ROUTES.onboarding,
-      icon: LibraryIcon,
-      label: t.nav.library,
-      locked: !user,
-      dot: false,
-    },
+    { href: ROUTES.home, icon: HomeIcon, label: t.nav.home, locked: false },
+    { href: ROUTES.search, icon: SearchIcon, label: t.nav.search, locked: false },
+    { href: ROUTES.collections, icon: CollectionsIcon, label: t.nav.collections, locked: false },
+    { href: ROUTES.board, icon: BoardIcon, label: t.nav.board, locked: false },
+    { href: user ? ROUTES.create : ROUTES.onboarding, icon: PlusIcon, label: t.nav.create, locked: !user },
+    { href: user ? ROUTES.library : ROUTES.onboarding, icon: LibraryIcon, label: t.nav.library, locked: !user },
     {
       href: user ? ROUTES.author(user.profile?.username ?? "") : ROUTES.onboarding,
       icon: UserIcon,
       label: t.nav.profile,
       locked: !user,
-      dot: false,
     },
   ];
 
@@ -108,9 +87,8 @@ export function Sidebar({ user, unreadCount = 0 }: { user: CurrentUser | null; u
                   active ? "bg-primary-50 text-primary-900" : "text-ink-soft hover:bg-surface"
                 )}
               >
-                <span className="relative flex h-[22px] w-[22px] shrink-0 items-center justify-center">
+                <span className="flex h-[22px] w-[22px] shrink-0 items-center justify-center">
                   <item.icon />
-                  {item.dot && <span className="absolute right-0 top-0 h-2 w-2 rounded-full bg-danger" />}
                 </span>
                 {expanded && <span className="overflow-hidden whitespace-nowrap">{item.label}</span>}
                 {item.locked && expanded && (

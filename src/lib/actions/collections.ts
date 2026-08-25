@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { ROUTES } from "@/lib/constants";
@@ -27,6 +27,7 @@ export async function createCollection(formData: FormData) {
     is_private: isPrivate,
   });
 
+  updateTag("collections");
   revalidatePath(ROUTES.collections);
   revalidatePath(ROUTES.library);
 }

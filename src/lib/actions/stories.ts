@@ -1,7 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { slugify, withRandomSuffix } from "@/lib/slug";
 import { ROUTES } from "@/lib/constants";
@@ -93,6 +93,7 @@ export async function createStory(input: CreateStoryInput) {
 
   await supabase.from("profiles").update({ role: "author" }).eq("id", user.id).eq("role", "reader");
 
+  updateTag("stories");
   revalidatePath(ROUTES.home);
   redirect(ROUTES.manage(story.slug));
 }
@@ -138,6 +139,7 @@ export async function updateStory(
     }
   }
 
+  updateTag("stories");
   revalidatePath(ROUTES.manage(storySlug));
   revalidatePath(ROUTES.story(storySlug));
   revalidatePath(ROUTES.home);
@@ -170,6 +172,7 @@ export async function updateChapter(
     .eq("id", chapterId)
     .eq("story_id", storyId);
 
+  updateTag("stories");
   revalidatePath(ROUTES.manage(storySlug));
   revalidatePath(ROUTES.story(storySlug));
 }
@@ -183,6 +186,7 @@ export async function deleteChapter(chapterId: string, storyId: string, storySlu
 
   await supabase.from("chapters").delete().eq("id", chapterId).eq("story_id", storyId);
 
+  updateTag("stories");
   revalidatePath(ROUTES.manage(storySlug));
   revalidatePath(ROUTES.story(storySlug));
 }
@@ -220,6 +224,7 @@ export async function addChapter(storyId: string, storySlug: string, formData: F
     published_at: status === "published" ? new Date().toISOString() : null,
   });
 
+  updateTag("stories");
   revalidatePath(ROUTES.manage(storySlug));
   revalidatePath(ROUTES.story(storySlug));
 }
@@ -239,6 +244,7 @@ export async function submitStoryForReview(storyId: string, storySlug: string) {
     .eq("id", storyId)
     .eq("status", "draft");
 
+  updateTag("stories");
   revalidatePath(ROUTES.manage(storySlug));
   revalidatePath(ROUTES.story(storySlug));
   revalidatePath(ROUTES.home);

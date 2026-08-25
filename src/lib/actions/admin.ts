@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -42,6 +42,7 @@ export async function approveStory(storyId: string, storySlug: string) {
     .from("stories")
     .update({ status: "published", published_at: new Date().toISOString() })
     .eq("id", storyId);
+  updateTag("stories");
   revalidatePath(ROUTES.manage(storySlug));
   revalidatePath(ROUTES.story(storySlug));
   revalidatePath(`${ROUTES.admin}/stories`);
@@ -53,6 +54,7 @@ export async function rejectStory(storyId: string, storySlug: string) {
   await requireStaff();
   const admin = createAdminClient();
   await admin.from("stories").update({ status: "draft" }).eq("id", storyId);
+  updateTag("stories");
   revalidatePath(ROUTES.manage(storySlug));
   revalidatePath(ROUTES.story(storySlug));
   revalidatePath(`${ROUTES.admin}/stories`);
@@ -67,6 +69,7 @@ export async function approveChapter(chapterId: string, storyId: string, storySl
     .update({ status: "published", published_at: new Date().toISOString() })
     .eq("id", chapterId)
     .eq("story_id", storyId);
+  updateTag("stories");
   revalidatePath(ROUTES.manage(storySlug));
   revalidatePath(ROUTES.story(storySlug));
 }
@@ -75,6 +78,7 @@ export async function rejectChapter(chapterId: string, storyId: string, storySlu
   await requireStaff();
   const admin = createAdminClient();
   await admin.from("chapters").update({ status: "draft" }).eq("id", chapterId).eq("story_id", storyId);
+  updateTag("stories");
   revalidatePath(ROUTES.manage(storySlug));
   revalidatePath(ROUTES.story(storySlug));
 }
@@ -109,6 +113,7 @@ export async function updateStoryStatusAdmin(storyId: string, status: "draft" | 
   await requireStaff();
   const admin = createAdminClient();
   await admin.from("stories").update({ status }).eq("id", storyId);
+  updateTag("stories");
   revalidatePath(`${ROUTES.admin}/stories`);
 }
 
@@ -129,5 +134,6 @@ export async function updatePlatformSettings(formData: FormData) {
     })
     .eq("id", 1);
 
+  updateTag("settings");
   revalidatePath(`${ROUTES.admin}/settings`);
 }

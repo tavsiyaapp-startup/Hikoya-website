@@ -167,6 +167,14 @@ export function ChevronRightIcon(props: IconProps) {
   );
 }
 
+export function ChevronDownIcon(props: IconProps) {
+  return (
+    <svg {...base(16)} {...props}>
+      <path d="M6 10l6 6 6-6" />
+    </svg>
+  );
+}
+
 export function VerifiedIcon(props: IconProps) {
   return (
     <svg width={14} height={14} viewBox="0 0 24 24" {...props}>

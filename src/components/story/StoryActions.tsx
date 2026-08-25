@@ -6,7 +6,7 @@ import Link from "next/link";
 import { toggleStoryLike, toggleStoryBookmark, toggleFollowAuthor } from "@/lib/actions/social";
 import { toggleStoryInCollection } from "@/lib/actions/collections";
 import { setReadingStatus } from "@/lib/actions/reading";
-import { HeartIcon, BookmarkIcon, CollectionsIcon } from "@/components/ui/icons";
+import { HeartIcon, BookmarkIcon, CollectionsIcon, ChevronDownIcon } from "@/components/ui/icons";
 import { ROUTES } from "@/lib/constants";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 import type { ReadingStatus } from "@/types/database";
@@ -190,24 +190,65 @@ export function ReadingStatusSelect({
   path: string;
 }) {
   const { t } = useLocale();
-  const [status, setStatus] = useState<ReadingStatus | "">(initialStatus ?? "");
+  const [status, setStatus] = useState<ReadingStatus | null>(initialStatus);
+  const [open, setOpen] = useState(false);
   const [, startTransition] = useTransition();
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function onClickOutside(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", onClickOutside);
+    return () => document.removeEventListener("mousedown", onClickOutside);
+  }, []);
+
+  const options: { value: ReadingStatus | null; label: string }[] = [
+    { value: null, label: t.story.readingStatusNone },
+    { value: "want_to_read", label: t.story.readingStatusWantToRead },
+    { value: "read", label: t.story.readingStatusRead },
+    { value: "dropped", label: t.story.readingStatusDropped },
+  ];
+  const current = options.find((o) => o.value === status) ?? options[0];
+
+  function choose(value: ReadingStatus | null) {
+    setStatus(value);
+    setOpen(false);
+    startTransition(() => setReadingStatus(storyId, value, path));
+  }
 
   return (
-    <select
-      value={status}
-      onChange={(e) => {
-        const value = e.target.value as ReadingStatus | "";
-        setStatus(value);
-        startTransition(() => setReadingStatus(storyId, value || null, path));
-      }}
-      className="mb-4.5 h-11 w-full cursor-pointer rounded-xl border border-border bg-white px-3.5 text-[13.5px] font-bold text-ink-soft outline-none"
-    >
-      <option value="">{t.story.readingStatusNone}</option>
-      <option value="want_to_read">{t.story.readingStatusWantToRead}</option>
-      <option value="read">{t.story.readingStatusRead}</option>
-      <option value="dropped">{t.story.readingStatusDropped}</option>
-    </select>
+    <div ref={ref} className="relative mb-4.5">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className={clsx(
+          "flex h-11 w-full cursor-pointer items-center justify-between rounded-xl border px-3.5 text-[13.5px] font-bold transition",
+          status ? "border-primary-300 bg-primary-50 text-primary-900" : "border-border bg-white text-ink-soft"
+        )}
+      >
+        <span>{current.label}</span>
+        <ChevronDownIcon className={clsx("transition-transform", open && "rotate-180")} />
+      </button>
+      {open && (
+        <div className="absolute left-0 right-0 top-full z-20 mt-2 overflow-hidden rounded-2xl border border-border bg-white p-1.5 shadow-[0_14px_30px_rgba(60,40,120,0.14)]">
+          {options.map((o) => (
+            <button
+              key={o.label}
+              type="button"
+              onClick={() => choose(o.value)}
+              className={clsx(
+                "flex w-full cursor-pointer items-center justify-between rounded-xl px-3 py-2.5 text-left text-[13.5px] hover:bg-surface",
+                status === o.value ? "font-bold text-primary-900" : "text-ink-soft"
+              )}
+            >
+              <span>{o.label}</span>
+              {status === o.value && <span className="text-primary-600">✓</span>}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 

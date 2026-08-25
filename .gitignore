@@ -40,6 +40,9 @@ yarn-error.log*
 # supabase CLI local cache
 /supabase/.temp/
 
+# admin credentials (local reference only, never commit)
+admin-credentials.txt
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

@@ -28,8 +28,7 @@ export default async function StoryPage({ params }: { params: Promise<{ slug: st
     getFollowerCount(story.author.id),
   ]);
 
-  const isStaff = user?.profile && ["admin", "moderator"].includes(user.profile.role);
-  const canManage = user?.id === story.author.id || isStaff;
+  const canManage = user?.id === story.author.id;
   const path = ROUTES.story(slug);
   const firstChapter = chapters[0];
   const metrics = [

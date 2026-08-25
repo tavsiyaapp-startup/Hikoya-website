@@ -133,6 +133,7 @@ const uz: typeof ru = {
     storyProgress: "Hikoya progressi",
     guestProgressHint: "mehmon uchun progress saqlanmaydi",
     commentPlaceholder: "Izohingiz…",
+    commentSubmit: "Yuborish",
   },
   create: {
     step1: "Hikoya tafsilotlari",
@@ -222,6 +223,16 @@ const uz: typeof ru = {
     createCollection: "Tanlanma yaratish",
     notStartedReading: "Siz hali birorta ham hikoya oʻqishni boshlamagansiz.",
     noBookmarksYet: "Xatcho'plar hozircha yoʻq.",
+  },
+  notifications: {
+    empty: "Hozircha bildirishnomalar yoʻq.",
+    newComment: "bobga izoh qoldirdi",
+    commentReply: "izohingizga javob berdi",
+    commentLike: "izohingizni yoqtirdi",
+    storyApproved: "Hikoyangiz tasdiqlandi va chop etildi:",
+    storyRejected: "Hikoyangiz rad etildi:",
+    chapterApproved: "Bob tasdiqlandi va chop etildi:",
+    chapterRejected: "Bob rad etildi:",
   },
   board: {
     title: "Soʻrovlar doskasi",

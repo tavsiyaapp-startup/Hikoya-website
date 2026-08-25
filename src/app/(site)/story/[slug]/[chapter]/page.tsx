@@ -9,13 +9,14 @@ import {
   getChapter,
   getGuestFreeChapterCount,
 } from "@/lib/queries/stories";
-import { getChapterComments } from "@/lib/queries/social";
+import { getChapterComments, getLikedCommentIds } from "@/lib/queries/social";
 import { ROUTES } from "@/lib/constants";
 import { ChevronLeftIcon, LockIcon } from "@/components/ui/icons";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { ChapterReadingRecorder } from "@/components/story/ChapterReadingRecorder";
 import { CommentForm } from "@/components/story/CommentForm";
+import { CommentItem } from "@/components/story/CommentItem";
 
 export default async function ReaderPage({
   params,
@@ -42,6 +43,8 @@ export default async function ReaderPage({
 
   const isUnlocked = Boolean(user) || ch.is_free || ch.order_index <= freeLimit;
   const comments = isUnlocked ? await getChapterComments(ch.id) : [];
+  const allCommentIds = comments.flatMap((c) => [c.id, ...c.replies.map((r) => r.id)]);
+  const likedCommentIds = isUnlocked ? await getLikedCommentIds(user?.id, allCommentIds) : new Set<string>();
 
   const idx = allChapters.findIndex((c) => c.id === ch.id);
   const prevChapter = idx > 0 ? allChapters[idx - 1] : null;
@@ -123,11 +126,13 @@ export default async function ReaderPage({
           <div className="mt-11">
             <div className="mb-5 flex items-center gap-3.5">
               <h2 className="text-[22px] font-extrabold">{t.reader.commentsTitle}</h2>
-              <span className="text-[14px] text-muted-2">{comments.length}</span>
+              <span className="text-[14px] text-muted-2">{allCommentIds.length}</span>
             </div>
 
             {user ? (
-              <CommentForm chapterId={ch.id} path={ROUTES.chapter(slug, orderIndex)} />
+              <div className="mb-5">
+                <CommentForm chapterId={ch.id} path={ROUTES.chapter(slug, orderIndex)} />
+              </div>
             ) : (
               <div className="mb-5 flex flex-wrap items-center gap-3 rounded-2xl border border-dashed border-primary-300 bg-card px-5 py-4">
                 <LockIcon className="text-muted-2" />
@@ -139,23 +144,18 @@ export default async function ReaderPage({
             )}
 
             <div className="flex flex-col gap-3.5">
-              {comments.map((c) => {
-                const author = c.user as unknown as { display_name: string } | null;
-                return (
-                  <div key={c.id} className="flex gap-3.5 rounded-2xl border border-border bg-card p-4.5">
-                    <Avatar name={author?.display_name ?? "?"} size={38} />
-                    <div className="min-w-0 flex-1">
-                      <div className="mb-1.5 flex items-center gap-2.5">
-                        <span className="text-[14px] font-bold">{author?.display_name}</span>
-                        <span className="text-[12.5px] text-muted-3">
-                          {new Date(c.created_at).toLocaleDateString(locale)}
-                        </span>
-                      </div>
-                      <p className="text-[14.5px] leading-relaxed text-ink-soft">{c.text}</p>
-                    </div>
-                  </div>
-                );
-              })}
+              {comments.map((c) => (
+                <CommentItem
+                  key={c.id}
+                  comment={c}
+                  replies={c.replies}
+                  chapterId={ch.id}
+                  path={ROUTES.chapter(slug, orderIndex)}
+                  locale={locale}
+                  likedByMe={likedCommentIds.has(c.id)}
+                  likedReplyIds={likedCommentIds}
+                />
+              ))}
             </div>
           </div>
         )}

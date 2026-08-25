@@ -4,6 +4,7 @@ import { revalidatePath, updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createNotification } from "@/lib/actions/create-notification";
 import { ROUTES } from "@/lib/constants";
 
 async function requireStaff() {
@@ -38,10 +39,15 @@ export async function updateUserRole(userId: string, role: "reader" | "author" |
 export async function approveStory(storyId: string, storySlug: string) {
   await requireStaff();
   const admin = createAdminClient();
-  await admin
+  const { data: story } = await admin
     .from("stories")
     .update({ status: "published", published_at: new Date().toISOString(), rejection_reason: null })
-    .eq("id", storyId);
+    .eq("id", storyId)
+    .select("author_id")
+    .single();
+  if (story) {
+    await createNotification({ userId: story.author_id, type: "story_approved", storyId });
+  }
   updateTag("stories");
   revalidatePath(ROUTES.manage(storySlug));
   revalidatePath(ROUTES.story(storySlug));
@@ -54,7 +60,15 @@ export async function approveStory(storyId: string, storySlug: string) {
 export async function rejectStory(storyId: string, storySlug: string, reason: string) {
   await requireStaff();
   const admin = createAdminClient();
-  await admin.from("stories").update({ status: "draft", rejection_reason: reason }).eq("id", storyId);
+  const { data: story } = await admin
+    .from("stories")
+    .update({ status: "draft", rejection_reason: reason })
+    .eq("id", storyId)
+    .select("author_id")
+    .single();
+  if (story) {
+    await createNotification({ userId: story.author_id, type: "story_rejected", storyId, message: reason });
+  }
   updateTag("stories");
   revalidatePath(ROUTES.manage(storySlug));
   revalidatePath(ROUTES.story(storySlug));
@@ -71,6 +85,10 @@ export async function approveChapter(chapterId: string, storyId: string, storySl
     .update({ status: "published", published_at: new Date().toISOString(), rejection_reason: null })
     .eq("id", chapterId)
     .eq("story_id", storyId);
+  const { data: story } = await admin.from("stories").select("author_id").eq("id", storyId).single();
+  if (story) {
+    await createNotification({ userId: story.author_id, type: "chapter_approved", storyId, chapterId });
+  }
   updateTag("stories");
   revalidatePath(ROUTES.manage(storySlug));
   revalidatePath(ROUTES.story(storySlug));
@@ -86,6 +104,16 @@ export async function rejectChapter(chapterId: string, storyId: string, storySlu
     .update({ status: "draft", rejection_reason: reason })
     .eq("id", chapterId)
     .eq("story_id", storyId);
+  const { data: story } = await admin.from("stories").select("author_id").eq("id", storyId).single();
+  if (story) {
+    await createNotification({
+      userId: story.author_id,
+      type: "chapter_rejected",
+      storyId,
+      chapterId,
+      message: reason,
+    });
+  }
   updateTag("stories");
   revalidatePath(ROUTES.manage(storySlug));
   revalidatePath(ROUTES.story(storySlug));

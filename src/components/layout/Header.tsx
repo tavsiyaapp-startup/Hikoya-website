@@ -13,7 +13,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { BellIcon, MenuIcon, SearchIcon } from "@/components/ui/icons";
 import type { CurrentUser } from "@/lib/current-user";
 
-export function Header({ user }: { user: CurrentUser | null }) {
+export function Header({ user, unreadCount = 0 }: { user: CurrentUser | null; unreadCount?: number }) {
   const { locale, setLocale, t } = useLocale();
   const { setOpen } = useMobileNav();
   const router = useRouter();
@@ -81,11 +81,14 @@ export function Header({ user }: { user: CurrentUser | null }) {
           href={user ? "/library?tab=notifications" : ROUTES.onboarding}
           title={user ? t.nav.notifications : t.common.guestLockedTitle}
           className={clsx(
-            "flex h-10 w-10 shrink-0 items-center justify-center rounded-[13px] border border-border bg-white text-ink-soft transition sm:h-11 sm:w-11",
+            "relative flex h-10 w-10 shrink-0 items-center justify-center rounded-[13px] border border-border bg-white text-ink-soft transition sm:h-11 sm:w-11",
             !user && "cursor-not-allowed opacity-50"
           )}
         >
           <BellIcon />
+          {unreadCount > 0 && (
+            <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-danger sm:right-2.5 sm:top-2.5" />
+          )}
         </Link>
 
         {user ? (

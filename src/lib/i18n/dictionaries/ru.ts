@@ -131,6 +131,7 @@ const ru = {
     storyProgress: "Прогресс истории",
     guestProgressHint: "прогресс не сохраняется для гостя",
     commentPlaceholder: "Ваш комментарий…",
+    commentSubmit: "Отправить",
   },
   create: {
     step1: "Детали истории",
@@ -220,6 +221,16 @@ const ru = {
     createCollection: "Создать подборку",
     notStartedReading: "Вы ещё не начали читать ни одной истории.",
     noBookmarksYet: "Закладок пока нет.",
+  },
+  notifications: {
+    empty: "Уведомлений пока нет.",
+    newComment: "прокомментировал(а) главу",
+    commentReply: "ответил(а) на ваш комментарий",
+    commentLike: "оценил(а) ваш комментарий",
+    storyApproved: "Ваша история одобрена и опубликована:",
+    storyRejected: "Ваша история отклонена:",
+    chapterApproved: "Глава одобрена и опубликована:",
+    chapterRejected: "Глава отклонена:",
   },
   board: {
     title: "Доска заявок",

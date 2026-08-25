@@ -153,6 +153,30 @@ create table reading_progress (
   primary key (user_id, story_id)
 );
 
+-- добавлено в 0012: уведомления. user_id — получатель, actor_id — кто
+-- вызвал событие (null для системных/модераторских событий, хотя сейчас
+-- всегда заполнен — approve/reject тоже пишут actor_id=null намеренно,
+-- чтобы не светить личность конкретного модератора автору).
+create type notification_type as enum (
+  'new_comment', 'comment_reply', 'comment_like',
+  'story_approved', 'story_rejected', 'chapter_approved', 'chapter_rejected'
+);
+
+create table notifications (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references profiles (id) on delete cascade,
+  actor_id uuid references profiles (id) on delete set null,
+  type notification_type not null,
+  story_id uuid references stories (id) on delete cascade,
+  chapter_id uuid references chapters (id) on delete cascade,
+  comment_id uuid references comments (id) on delete cascade,
+  message text,
+  is_read boolean not null default false,
+  created_at timestamptz not null default now()
+);
+
+create index notifications_user_id_idx on notifications (user_id, created_at desc);
+
 -- ── теги ───────────────────────────────────────────────────────────────────
 
 create table tags (
@@ -275,12 +299,17 @@ insert into platform_settings (id) values (1);
 -- вынести new.target_type в общее условие верхнего уровня, Postgres пытается
 -- резолвить это поле у NEW и для bookmarks/comments, где такой колонки нет,
 -- и роняет insert с "record \"new\" has no field \"target_type\"".
+-- добавлено в 0013: likes.target_type = 'comment' (лайки комментариев)
+-- теперь тоже обрабатывается — раньше молча не делал ничего с
+-- comments.like_count.
 create or replace function bump_story_counters() returns trigger as $$
 begin
   if tg_op = 'INSERT' then
     if tg_table_name = 'likes' then
       if new.target_type = 'story' then
         update stories set like_count = like_count + 1 where id = new.target_id;
+      elsif new.target_type = 'comment' then
+        update comments set like_count = like_count + 1 where id = new.target_id;
       end if;
     elsif tg_table_name = 'bookmarks' then
       update stories set bookmark_count = bookmark_count + 1 where id = new.story_id;
@@ -293,6 +322,8 @@ begin
     if tg_table_name = 'likes' then
       if old.target_type = 'story' then
         update stories set like_count = greatest(like_count - 1, 0) where id = old.target_id;
+      elsif old.target_type = 'comment' then
+        update comments set like_count = greatest(like_count - 1, 0) where id = old.target_id;
       end if;
     elsif tg_table_name = 'bookmarks' then
       update stories set bookmark_count = greatest(bookmark_count - 1, 0) where id = old.story_id;
@@ -441,6 +472,16 @@ create policy "users manage their own bookmarks" on bookmarks for all
 
 alter table reading_progress enable row level security;
 create policy "users manage their own reading progress" on reading_progress for all
+  using (user_id = auth.uid()) with check (user_id = auth.uid());
+
+-- notifications — читает/помечает прочитанным только получатель. Намеренно
+-- нет insert-политики для обычного клиента: уведомление всегда пишется от
+-- имени ДРУГОГО пользователя (user_id получателя != auth.uid() автора
+-- события), так что insert идёт только через service-role клиент из
+-- src/lib/actions/create-notification.ts.
+alter table notifications enable row level security;
+create policy "users read their own notifications" on notifications for select using (user_id = auth.uid());
+create policy "users update their own notifications" on notifications for update
   using (user_id = auth.uid()) with check (user_id = auth.uid());
 
 -- follows — публично читаемо (списки подписчиков/подписок)
@@ -635,3 +676,12 @@ on conflict (code) do nothing;
 --   причину — она пишется сюда и показывается автору на /manage, статус
 --   при этом откатывается в 'draft', откуда автор может исправить и
 --   отправить на повторную проверку.
+-- [2026-08-25] Уведомления + ветки комментариев (миграции 0012, 0013).
+--   Новая таблица notifications: новый комментарий под главой, ответ на
+--   комментарий, лайк комментария, одобрение/отказ истории или главы —
+--   каждое пишет строку получателю. comments.parent_id и
+--   likes.target_type = 'comment' существовали в схеме с самого начала,
+--   но ни один action их не использовал — теперь есть toggleCommentLike
+--   и postComment принимает parentId. bump_story_counters() (0013)
+--   заодно научился обновлять comments.like_count при лайке/анлайке
+--   комментария — раньше это условие тоже было пустым no-op'ом.

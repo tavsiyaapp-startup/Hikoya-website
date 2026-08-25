@@ -5,11 +5,14 @@ import { getServerLocale } from "@/lib/i18n/locale-server";
 import { getDictionary } from "@/lib/i18n";
 import { getCurrentUser } from "@/lib/current-user";
 import { getContinueReading, getBookmarkedStories, getMyCollections } from "@/lib/queries/stories";
+import { getNotifications } from "@/lib/queries/notifications";
+import { markAllNotificationsRead } from "@/lib/actions/notifications";
 import { ROUTES } from "@/lib/constants";
 import { StoryCard } from "@/components/story/StoryCard";
+import { NotificationList } from "@/components/notifications/NotificationList";
 import { Chip } from "@/components/ui/Chip";
 
-const TABS = ["reading", "bookmarks", "collections"] as const;
+const TABS = ["reading", "bookmarks", "collections", "notifications"] as const;
 type Tab = (typeof TABS)[number];
 
 export default async function LibraryPage({
@@ -25,11 +28,13 @@ export default async function LibraryPage({
   const user = await getCurrentUser();
   if (!user) redirect(`${ROUTES.onboarding}?next=${encodeURIComponent(ROUTES.library)}`);
 
-  const [reading, bookmarks, collections] = await Promise.all([
+  const [reading, bookmarks, collections, notifications] = await Promise.all([
     tab === "reading" ? getContinueReading(user.id, 20) : Promise.resolve([]),
     tab === "bookmarks" ? getBookmarkedStories(user.id) : Promise.resolve([]),
     tab === "collections" ? getMyCollections(user.id) : Promise.resolve([]),
+    tab === "notifications" ? getNotifications(user.id) : Promise.resolve([]),
   ]);
+  if (tab === "notifications") await markAllNotificationsRead(user.id);
 
   return (
     <div>
@@ -40,6 +45,7 @@ export default async function LibraryPage({
             ["reading", t.library.tabReading],
             ["bookmarks", t.library.tabBookmarks],
             ["collections", t.library.tabCollections],
+            ["notifications", t.nav.notifications],
           ] as const
         ).map(([key, label]) => (
           <Link key={key} href={`?tab=${key}`}>
@@ -47,6 +53,8 @@ export default async function LibraryPage({
           </Link>
         ))}
       </div>
+
+      {tab === "notifications" && <NotificationList notifications={notifications} locale={locale} />}
 
       {tab === "reading" &&
         (reading.length > 0 ? (

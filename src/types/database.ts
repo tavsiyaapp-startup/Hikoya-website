@@ -15,6 +15,14 @@ export type RequestResponseStatus = "proposed" | "accepted" | "declined";
 export type ReportTargetType = "story" | "chapter" | "comment";
 export type ReportStatus = "open" | "reviewed" | "resolved";
 export type LikeTargetType = "story" | "chapter" | "comment";
+export type NotificationType =
+  | "new_comment"
+  | "comment_reply"
+  | "comment_like"
+  | "story_approved"
+  | "story_rejected"
+  | "chapter_approved"
+  | "chapter_rejected";
 
 export interface Profile {
   id: string; // references auth.users.id
@@ -187,6 +195,19 @@ export interface Report {
   target_id: string;
   reason: string;
   status: ReportStatus;
+  created_at: string;
+}
+
+export interface Notification {
+  id: string;
+  user_id: string;
+  actor_id: string | null;
+  type: NotificationType;
+  story_id: string | null;
+  chapter_id: string | null;
+  comment_id: string | null;
+  message: string | null;
+  is_read: boolean;
   created_at: string;
 }
 

@@ -7,14 +7,17 @@ import { getProfileByUsername, getAuthorStoryCount, getAuthorAchievements } from
 import { getAuthorStories } from "@/lib/queries/stories";
 import { getFollowerCount, isFollowingAuthor } from "@/lib/queries/social";
 import { getRequestsForAuthor } from "@/lib/queries/requests";
+import { getNotifications } from "@/lib/queries/notifications";
+import { markAllNotificationsRead } from "@/lib/actions/notifications";
 import { ROUTES } from "@/lib/constants";
 import { Avatar } from "@/components/ui/Avatar";
 import { Chip } from "@/components/ui/Chip";
 import { StoryCard } from "@/components/story/StoryCard";
 import { FollowButton } from "@/components/story/StoryActions";
 import { EditProfileForm } from "@/components/profile/EditProfileForm";
+import { NotificationList } from "@/components/notifications/NotificationList";
 
-const TABS = ["stories", "requests"] as const;
+const TABS = ["stories", "requests", "notifications"] as const;
 type Tab = (typeof TABS)[number];
 
 export default async function AuthorPage({
@@ -36,14 +39,16 @@ export default async function AuthorPage({
   if (!profile) notFound();
 
   const isOwner = user?.id === profile.id;
-  const [storyCount, followerCount, following, stories, requests, achievements] = await Promise.all([
+  const [storyCount, followerCount, following, stories, requests, achievements, notifications] = await Promise.all([
     getAuthorStoryCount(profile.id),
     getFollowerCount(profile.id),
     isFollowingAuthor(user?.id, profile.id),
     tab === "stories" ? getAuthorStories(profile.id, isOwner) : Promise.resolve([]),
     tab === "requests" ? getRequestsForAuthor(profile.id) : Promise.resolve([]),
     getAuthorAchievements(profile.id),
+    isOwner && tab === "notifications" ? getNotifications(profile.id) : Promise.resolve([]),
   ]);
+  if (isOwner && tab === "notifications") await markAllNotificationsRead(profile.id);
 
   const stats = [
     { label: t.author.stories, value: storyCount },
@@ -110,6 +115,7 @@ export default async function AuthorPage({
           [
             ["stories", t.author.tabStories],
             ["requests", t.author.tabRequests],
+            ...(isOwner ? [["notifications", t.nav.notifications] as const] : []),
           ] as const
         ).map(([key, label]) => (
           <Link key={key} href={`?tab=${key}`}>
@@ -117,6 +123,8 @@ export default async function AuthorPage({
           </Link>
         ))}
       </div>
+
+      {tab === "notifications" && isOwner && <NotificationList notifications={notifications} locale={locale} />}
 
       {tab === "stories" &&
         (stories.length > 0 ? (

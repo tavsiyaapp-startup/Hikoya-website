@@ -1,24 +1,10 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 
-export async function getRequestsForAuthor(authorId: string) {
-  try {
-    const supabase = await createClient();
-    const { data } = await supabase
-      .from("requests")
-      .select("*, from_user:profiles!requests_from_user_id_fkey(display_name)")
-      .eq("target_author_id", authorId)
-      .order("created_at", { ascending: false });
-    return data ?? [];
-  } catch {
-    return [];
-  }
-}
-
-// Requests a user submitted themselves (from_user_id) — distinct from
-// getRequestsForAuthor, which is requests OTHERS sent this author asking
-// them to write something. This is what the profile's own "Мои заявки"
-// tab needs so the requester can find and close their own requests.
+// Requests a user submitted themselves (from_user_id) — the board is a
+// shared/general pool (no per-author private targeting), so this is the
+// only "which requests are mine" query. Powers the profile's "Мои заявки"
+// tab so the requester can find and close their own requests.
 export async function getRequestsBySubmitter(userId: string) {
   try {
     const supabase = await createClient();

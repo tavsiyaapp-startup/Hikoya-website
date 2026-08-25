@@ -6,7 +6,7 @@ import { getCurrentUser } from "@/lib/current-user";
 import { getProfileByUsername, getAuthorStoryCount, getAuthorAchievements } from "@/lib/queries/profiles";
 import { getAuthorStories } from "@/lib/queries/stories";
 import { getFollowerCount, isFollowingAuthor } from "@/lib/queries/social";
-import { getRequestsForAuthor, getRequestsBySubmitter } from "@/lib/queries/requests";
+import { getRequestsBySubmitter } from "@/lib/queries/requests";
 import { requestStatusTone, requestStatusLabel } from "@/lib/requestStatus";
 import { getNotifications } from "@/lib/queries/notifications";
 import { markAllNotificationsRead } from "@/lib/actions/notifications";
@@ -19,7 +19,7 @@ import { EditProfileForm } from "@/components/profile/EditProfileForm";
 import { NotificationList } from "@/components/notifications/NotificationList";
 import { CloseRequestButton } from "@/components/board/CloseRequestButton";
 
-const TABS = ["stories", "requests", "myRequests", "notifications"] as const;
+const TABS = ["stories", "myRequests", "notifications"] as const;
 type Tab = (typeof TABS)[number];
 
 export default async function AuthorPage({
@@ -41,13 +41,12 @@ export default async function AuthorPage({
   if (!profile) notFound();
 
   const isOwner = user?.id === profile.id;
-  const [storyCount, followerCount, following, stories, requests, myRequests, achievements, notifications] =
+  const [storyCount, followerCount, following, stories, myRequests, achievements, notifications] =
     await Promise.all([
       getAuthorStoryCount(profile.id),
       getFollowerCount(profile.id),
       isFollowingAuthor(user?.id, profile.id),
       tab === "stories" ? getAuthorStories(profile.id, isOwner) : Promise.resolve([]),
-      tab === "requests" ? getRequestsForAuthor(profile.id) : Promise.resolve([]),
       isOwner && tab === "myRequests" ? getRequestsBySubmitter(profile.id) : Promise.resolve([]),
       getAuthorAchievements(profile.id),
       isOwner && tab === "notifications" ? getNotifications(profile.id) : Promise.resolve([]),
@@ -118,7 +117,6 @@ export default async function AuthorPage({
         {(
           [
             ["stories", t.author.tabStories],
-            ["requests", t.author.tabRequests],
             ...(isOwner ? [["myRequests", t.author.tabMyRequests] as const] : []),
             ...(isOwner ? [["notifications", t.nav.notifications] as const] : []),
           ] as const
@@ -140,25 +138,6 @@ export default async function AuthorPage({
           </div>
         ) : (
           <EmptyState text={t.author.noStoriesYet} />
-        ))}
-
-      {tab === "requests" &&
-        (requests.length > 0 ? (
-          <div className="flex max-w-225 flex-col gap-3.5">
-            {requests.map((r) => {
-              const from = r.from_user as unknown as { display_name: string } | null;
-              return (
-                <div key={r.id} className="rounded-[18px] border border-border bg-card px-5.5 py-5">
-                  <div className="mb-2.5 flex items-center gap-2.5">
-                    <span className="text-[14px] font-bold">{from?.display_name}</span>
-                  </div>
-                  <p className="text-[14.5px] leading-relaxed text-ink-soft">{r.text}</p>
-                </div>
-              );
-            })}
-          </div>
-        ) : (
-          <EmptyState text={t.board.noRequestsYet} />
         ))}
 
       {tab === "myRequests" && isOwner &&

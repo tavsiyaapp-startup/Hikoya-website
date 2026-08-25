@@ -14,15 +14,9 @@ export async function createRequest(formData: FormData) {
 
   const title = String(formData.get("title") ?? "").trim();
   const text = String(formData.get("text") ?? "").trim();
-  const targetAuthorId = String(formData.get("targetAuthorId") ?? "") || null;
   if (!title || !text) return;
 
-  await supabase.from("requests").insert({
-    from_user_id: user.id,
-    target_author_id: targetAuthorId,
-    title,
-    text,
-  });
+  await supabase.from("requests").insert({ from_user_id: user.id, title, text });
 
   revalidatePath(ROUTES.board);
 }

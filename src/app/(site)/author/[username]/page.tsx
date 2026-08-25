@@ -6,18 +6,20 @@ import { getCurrentUser } from "@/lib/current-user";
 import { getProfileByUsername, getAuthorStoryCount, getAuthorAchievements } from "@/lib/queries/profiles";
 import { getAuthorStories } from "@/lib/queries/stories";
 import { getFollowerCount, isFollowingAuthor } from "@/lib/queries/social";
-import { getRequestsForAuthor } from "@/lib/queries/requests";
+import { getRequestsForAuthor, getRequestsBySubmitter } from "@/lib/queries/requests";
+import { requestStatusTone, requestStatusLabel } from "@/lib/requestStatus";
 import { getNotifications } from "@/lib/queries/notifications";
 import { markAllNotificationsRead } from "@/lib/actions/notifications";
 import { ROUTES } from "@/lib/constants";
 import { Avatar } from "@/components/ui/Avatar";
-import { Chip } from "@/components/ui/Chip";
+import { Badge, Chip } from "@/components/ui/Chip";
 import { StoryCard } from "@/components/story/StoryCard";
 import { FollowButton } from "@/components/story/StoryActions";
 import { EditProfileForm } from "@/components/profile/EditProfileForm";
 import { NotificationList } from "@/components/notifications/NotificationList";
+import { CloseRequestButton } from "@/components/board/CloseRequestButton";
 
-const TABS = ["stories", "requests", "notifications"] as const;
+const TABS = ["stories", "requests", "myRequests", "notifications"] as const;
 type Tab = (typeof TABS)[number];
 
 export default async function AuthorPage({
@@ -39,15 +41,17 @@ export default async function AuthorPage({
   if (!profile) notFound();
 
   const isOwner = user?.id === profile.id;
-  const [storyCount, followerCount, following, stories, requests, achievements, notifications] = await Promise.all([
-    getAuthorStoryCount(profile.id),
-    getFollowerCount(profile.id),
-    isFollowingAuthor(user?.id, profile.id),
-    tab === "stories" ? getAuthorStories(profile.id, isOwner) : Promise.resolve([]),
-    tab === "requests" ? getRequestsForAuthor(profile.id) : Promise.resolve([]),
-    getAuthorAchievements(profile.id),
-    isOwner && tab === "notifications" ? getNotifications(profile.id) : Promise.resolve([]),
-  ]);
+  const [storyCount, followerCount, following, stories, requests, myRequests, achievements, notifications] =
+    await Promise.all([
+      getAuthorStoryCount(profile.id),
+      getFollowerCount(profile.id),
+      isFollowingAuthor(user?.id, profile.id),
+      tab === "stories" ? getAuthorStories(profile.id, isOwner) : Promise.resolve([]),
+      tab === "requests" ? getRequestsForAuthor(profile.id) : Promise.resolve([]),
+      isOwner && tab === "myRequests" ? getRequestsBySubmitter(profile.id) : Promise.resolve([]),
+      getAuthorAchievements(profile.id),
+      isOwner && tab === "notifications" ? getNotifications(profile.id) : Promise.resolve([]),
+    ]);
   if (isOwner && tab === "notifications") await markAllNotificationsRead(profile.id);
 
   const stats = [
@@ -115,6 +119,7 @@ export default async function AuthorPage({
           [
             ["stories", t.author.tabStories],
             ["requests", t.author.tabRequests],
+            ...(isOwner ? [["myRequests", t.author.tabMyRequests] as const] : []),
             ...(isOwner ? [["notifications", t.nav.notifications] as const] : []),
           ] as const
         ).map(([key, label]) => (
@@ -148,6 +153,35 @@ export default async function AuthorPage({
                     <span className="text-[14px] font-bold">{from?.display_name}</span>
                   </div>
                   <p className="text-[14.5px] leading-relaxed text-ink-soft">{r.text}</p>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <EmptyState text={t.board.noRequestsYet} />
+        ))}
+
+      {tab === "myRequests" && isOwner &&
+        (myRequests.length > 0 ? (
+          <div className="flex max-w-225 flex-col gap-3.5">
+            {myRequests.map((r) => {
+              const responseCount = (r.responses as unknown as unknown[] | null)?.length ?? 0;
+              return (
+                <div key={r.id} className="rounded-[18px] border border-border bg-card px-5.5 py-5">
+                  <div className="mb-2.5 flex items-center gap-2.5">
+                    <Badge tone={requestStatusTone(r.status)}>{requestStatusLabel(t, r.status)}</Badge>
+                    <span className="text-[12.5px] text-muted-2">
+                      {responseCount} {t.board.responsesCountSuffix}
+                    </span>
+                    {r.status !== "closed" && <CloseRequestButton requestId={r.id} />}
+                  </div>
+                  <Link
+                    href={`${ROUTES.board}?selected=${r.id}`}
+                    className="mb-1.5 block text-[15px] font-extrabold leading-snug hover:text-primary-800"
+                  >
+                    {r.title}
+                  </Link>
+                  <p className="line-clamp-2 text-[14.5px] leading-relaxed text-ink-soft">{r.text}</p>
                 </div>
               );
             })}

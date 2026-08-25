@@ -221,6 +221,7 @@ const ru = {
     tabStories: "Истории",
     tabCollections: "Подборки",
     tabRequests: "Заявки",
+    tabMyRequests: "Мои заявки",
     noStoriesYet: "Здесь пока нет опубликованных историй.",
   },
   library: {

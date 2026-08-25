@@ -1,7 +1,7 @@
 import { getServerLocale } from "@/lib/i18n/locale-server";
 import { getDictionary } from "@/lib/i18n";
 import { getAllRequestsAdmin } from "@/lib/queries/admin";
-import { requestStatusTone } from "@/lib/requestStatus";
+import { requestStatusTone, requestStatusLabel } from "@/lib/requestStatus";
 import { AdminHeader } from "../AdminHeader";
 import { Badge } from "@/components/ui/Chip";
 import { RequestActions } from "./RequestActions";
@@ -10,13 +10,6 @@ export default async function AdminRequestsPage() {
   const locale = await getServerLocale();
   const t = getDictionary(locale);
   const requests = await getAllRequestsAdmin();
-
-  const STATUS_LABEL: Record<string, string> = {
-    open: t.board.statusOpen,
-    in_progress: t.board.statusInProgress,
-    fulfilled: t.board.statusFulfilled,
-    closed: t.board.statusClosed,
-  };
 
   return (
     <div>
@@ -44,7 +37,7 @@ export default async function AdminRequestsPage() {
                         {new Date(r.created_at).toLocaleDateString(locale)}
                       </span>
                       <span className="w-25">
-                        <Badge tone={requestStatusTone(r.status)}>{STATUS_LABEL[r.status]}</Badge>
+                        <Badge tone={requestStatusTone(r.status)}>{requestStatusLabel(t, r.status)}</Badge>
                       </span>
                       <span className="w-42.5">
                         <RequestActions requestId={r.id} status={r.status} />

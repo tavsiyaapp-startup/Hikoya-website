@@ -4,7 +4,7 @@ import { getDictionary } from "@/lib/i18n";
 import { getCurrentUser } from "@/lib/current-user";
 import { getBoardRequests, getRequestById, getRequestResponses } from "@/lib/queries/requests";
 import { getAuthorStories } from "@/lib/queries/stories";
-import { requestStatusTone } from "@/lib/requestStatus";
+import { requestStatusTone, requestStatusLabel } from "@/lib/requestStatus";
 import { ROUTES } from "@/lib/constants";
 import { Avatar } from "@/components/ui/Avatar";
 import { Badge, Chip } from "@/components/ui/Chip";
@@ -23,13 +23,6 @@ export default async function BoardPage({
   const locale = await getServerLocale();
   const t = getDictionary(locale);
   const user = await getCurrentUser();
-
-  const STATUS_LABEL: Record<string, string> = {
-    open: t.board.statusOpen,
-    in_progress: t.board.statusInProgress,
-    fulfilled: t.board.statusFulfilled,
-    closed: t.board.statusClosed,
-  };
 
   const [requests, selectedRequest] = await Promise.all([
     getBoardRequests(status),
@@ -53,9 +46,9 @@ export default async function BoardPage({
       <div className="mb-6 flex gap-2.5 overflow-x-auto">
         {[
           [undefined, t.common.all],
-          ["open", STATUS_LABEL.open],
-          ["in_progress", STATUS_LABEL.in_progress],
-          ["closed", STATUS_LABEL.closed],
+          ["open", requestStatusLabel(t, "open")],
+          ["in_progress", requestStatusLabel(t, "in_progress")],
+          ["closed", requestStatusLabel(t, "closed")],
         ].map(([value, label]) => (
           <Link key={label} href={value ? `?status=${value}` : "?"} className="shrink-0">
             <Chip active={status === value || (!status && !value)}>{label}</Chip>
@@ -94,7 +87,7 @@ export default async function BoardPage({
                       </div>
                     </div>
                     <Badge tone={requestStatusTone(r.status)} className="ml-auto">
-                      {STATUS_LABEL[r.status]}
+                      {requestStatusLabel(t, r.status)}
                     </Badge>
                   </div>
                   <h3 className="mb-2 text-[17px] font-extrabold leading-snug">{r.title}</h3>
@@ -118,7 +111,7 @@ export default async function BoardPage({
                   {t.board.requestLabel}
                 </span>
                 <Badge tone={requestStatusTone(selectedRequest.status)}>
-                  {STATUS_LABEL[selectedRequest.status]}
+                  {requestStatusLabel(t, selectedRequest.status)}
                 </Badge>
                 {user?.id === selectedRequest.from_user_id && selectedRequest.status !== "closed" && (
                   <CloseRequestButton requestId={selectedRequest.id} />

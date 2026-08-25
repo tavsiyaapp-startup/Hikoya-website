@@ -223,6 +223,7 @@ const uz: typeof ru = {
     tabStories: "Hikoyalar",
     tabCollections: "Tanlanmalar",
     tabRequests: "Soʻrovlar",
+    tabMyRequests: "Mening soʻrovlarim",
     noStoriesYet: "Bu yerda hozircha chop etilgan hikoyalar yoʻq.",
   },
   library: {

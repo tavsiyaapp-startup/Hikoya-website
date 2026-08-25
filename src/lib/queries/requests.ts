@@ -15,6 +15,24 @@ export async function getRequestsForAuthor(authorId: string) {
   }
 }
 
+// Requests a user submitted themselves (from_user_id) — distinct from
+// getRequestsForAuthor, which is requests OTHERS sent this author asking
+// them to write something. This is what the profile's own "Мои заявки"
+// tab needs so the requester can find and close their own requests.
+export async function getRequestsBySubmitter(userId: string) {
+  try {
+    const supabase = await createClient();
+    const { data } = await supabase
+      .from("requests")
+      .select("*, responses:request_responses(id)")
+      .eq("from_user_id", userId)
+      .order("created_at", { ascending: false });
+    return data ?? [];
+  } catch {
+    return [];
+  }
+}
+
 export async function getBoardRequests(status?: string) {
   try {
     const supabase = await createClient();

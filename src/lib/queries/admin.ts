@@ -58,15 +58,59 @@ export async function getRecentUsersAdmin(limit = 6) {
   }
 }
 
-export async function getRecentReportsAdmin(limit = 6) {
+export type AdminActivityItem =
+  | { type: "story_published"; id: string; actorName: string; targetTitle: string; timestamp: string }
+  | { type: "new_comment"; id: string; actorName: string; targetTitle: string; timestamp: string }
+  | { type: "new_user"; id: string; actorName: string; timestamp: string }
+  | { type: "new_report"; id: string; targetType: "story" | "chapter" | "comment"; reason: string; timestamp: string };
+
+// No dedicated audit-log table — this merges the four event types the
+// dashboard cares about (newly published story, new comment, new
+// registration, new report) from their own tables, sorted by timestamp.
+export async function getRecentActivity(limit = 8): Promise<AdminActivityItem[]> {
   try {
     const admin = createAdminClient();
-    const { data } = await admin
-      .from("reports")
-      .select("*, reporter:profiles!reports_reporter_id_fkey(display_name)")
-      .order("created_at", { ascending: false })
-      .limit(limit);
-    return data ?? [];
+    const [storiesRes, commentsRes, usersRes, reportsRes] = await Promise.all([
+      admin
+        .from("stories")
+        .select("id, title, published_at, author:profiles!stories_author_id_fkey(display_name)")
+        .not("published_at", "is", null)
+        .order("published_at", { ascending: false })
+        .limit(limit),
+      admin
+        .from("comments")
+        .select("id, created_at, user:profiles!comments_user_id_fkey(display_name), chapter:chapters(story:stories(title))")
+        .order("created_at", { ascending: false })
+        .limit(limit),
+      admin.from("profiles").select("id, display_name, created_at").order("created_at", { ascending: false }).limit(limit),
+      admin.from("reports").select("id, created_at, target_type, reason").order("created_at", { ascending: false }).limit(limit),
+    ]);
+
+    const items: AdminActivityItem[] = [];
+
+    for (const s of storiesRes.data ?? []) {
+      const author = s.author as unknown as { display_name: string } | null;
+      if (!author || !s.published_at) continue;
+      items.push({ type: "story_published", id: s.id, actorName: author.display_name, targetTitle: s.title, timestamp: s.published_at });
+    }
+
+    for (const c of commentsRes.data ?? []) {
+      const user = c.user as unknown as { display_name: string } | null;
+      const story = (c.chapter as unknown as { story: { title: string } | null } | null)?.story;
+      if (!user || !story) continue;
+      items.push({ type: "new_comment", id: c.id, actorName: user.display_name, targetTitle: story.title, timestamp: c.created_at });
+    }
+
+    for (const u of usersRes.data ?? []) {
+      items.push({ type: "new_user", id: u.id, actorName: u.display_name, timestamp: u.created_at });
+    }
+
+    for (const r of reportsRes.data ?? []) {
+      items.push({ type: "new_report", id: r.id, targetType: r.target_type, reason: r.reason, timestamp: r.created_at });
+    }
+
+    items.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    return items.slice(0, limit);
   } catch {
     return [];
   }

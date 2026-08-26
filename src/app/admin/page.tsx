@@ -5,28 +5,32 @@ import {
   getAdminStats,
   getRecentStoriesAdmin,
   getRecentUsersAdmin,
-  getRecentReportsAdmin,
+  getRecentActivity,
+  type AdminActivityItem,
 } from "@/lib/queries/admin";
 import { ROUTES } from "@/lib/constants";
+import { formatRelativeTime } from "@/lib/format";
 import { Badge } from "@/components/ui/Chip";
+import { LibraryIcon, UserIcon, EyeIcon, MessageIcon, ShieldIcon } from "@/components/ui/icons";
 import { AdminHeader } from "./AdminHeader";
+import type { Dictionary } from "@/lib/i18n";
 
 export default async function AdminDashboardPage() {
   const locale = await getServerLocale();
   const t = getDictionary(locale);
 
-  const [stats, stories, users, reports] = await Promise.all([
+  const [stats, stories, users, activity] = await Promise.all([
     getAdminStats(),
     getRecentStoriesAdmin(5),
     getRecentUsersAdmin(5),
-    getRecentReportsAdmin(5),
+    getRecentActivity(8),
   ]);
 
   const cards = [
-    { label: t.admin.stories, value: stats.storyCount },
-    { label: t.admin.users, value: stats.userCount },
-    { label: t.common.views, value: stats.totalViews },
-    { label: t.common.comments, value: stats.commentCount },
+    { label: t.admin.stories, value: stats.storyCount, icon: LibraryIcon, bg: "bg-primary-100", fg: "text-primary-700" },
+    { label: t.admin.users, value: stats.userCount, icon: UserIcon, bg: "bg-blue-100", fg: "text-blue-700" },
+    { label: t.common.views, value: stats.totalViews, icon: EyeIcon, bg: "bg-emerald-100", fg: "text-emerald-700" },
+    { label: t.common.comments, value: stats.commentCount, icon: MessageIcon, bg: "bg-amber-100", fg: "text-amber-700" },
   ];
 
   return (
@@ -36,13 +40,42 @@ export default async function AdminDashboardPage() {
         <div className="mb-6 grid grid-cols-2 gap-5 lg:grid-cols-4">
           {cards.map((c) => (
             <div key={c.label} className="rounded-[20px] border border-border bg-card px-6 py-5.5">
-              <div className="mb-3.5 text-[14px] text-muted-2">{c.label}</div>
+              <div className="mb-3.5 flex items-center gap-2.5">
+                <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-[11px] ${c.bg} ${c.fg}`}>
+                  <c.icon width={18} height={18} />
+                </span>
+                <span className="text-[14px] text-muted-2">{c.label}</span>
+              </div>
               <div className="text-[32px] font-extrabold tracking-tight">{c.value}</div>
             </div>
           ))}
         </div>
 
         <div className="mb-5 grid grid-cols-1 gap-5 lg:grid-cols-2">
+          <div className="rounded-[20px] border border-border bg-card px-6.5 py-6">
+            <h3 className="mb-4.5 text-[17px] font-extrabold">{t.admin.recentActivity}</h3>
+            <div className="flex flex-col gap-3">
+              {activity.length > 0 ? (
+                activity.map((item) => (
+                  <div
+                    key={`${item.type}-${item.id}`}
+                    className="flex items-start gap-3 border-b border-border-soft pb-3 last:border-0"
+                  >
+                    <ActivityIcon type={item.type} />
+                    <p className="min-w-0 flex-1 text-[13.5px] leading-snug text-ink-soft">
+                      {activityText(item, t)}
+                    </p>
+                    <span className="shrink-0 text-[12px] text-muted-3">
+                      {formatRelativeTime(item.timestamp, locale)}
+                    </span>
+                  </div>
+                ))
+              ) : (
+                <EmptyLine text={t.admin.noActivityYet} />
+              )}
+            </div>
+          </div>
+
           <div className="rounded-[20px] border border-border bg-card px-6.5 py-6">
             <h3 className="mb-4.5 text-[17px] font-extrabold">{t.admin.allUsers}</h3>
             <div className="flex flex-col gap-3">
@@ -62,27 +95,6 @@ export default async function AdminDashboardPage() {
             </div>
             <Link href={`${ROUTES.admin}/users`} className="mt-4 inline-block text-[13.5px] font-bold">
               {t.admin.allUsers} →
-            </Link>
-          </div>
-
-          <div className="rounded-[20px] border border-border bg-card px-6.5 py-6">
-            <h3 className="mb-4.5 text-[17px] font-extrabold">{t.admin.allReports}</h3>
-            <div className="flex flex-col gap-3">
-              {reports.length > 0 ? (
-                reports.map((r) => (
-                  <div key={r.id} className="border-b border-border-soft pb-3 last:border-0">
-                    <div className="mb-1 flex items-center gap-2">
-                      <Badge tone="danger">{r.target_type}</Badge>
-                      <span className="text-[12.5px] text-muted-2">{r.reason}</span>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <EmptyLine text={t.admin.emptyGeneric} />
-              )}
-            </div>
-            <Link href={`${ROUTES.admin}/reports`} className="mt-4 inline-block text-[13.5px] font-bold">
-              {t.admin.allReports} →
             </Link>
           </div>
         </div>
@@ -117,6 +129,72 @@ export default async function AdminDashboardPage() {
       </div>
     </div>
   );
+}
+
+function ActivityIcon({ type }: { type: AdminActivityItem["type"] }) {
+  const base = "flex h-9 w-9 shrink-0 items-center justify-center rounded-[11px]";
+  if (type === "story_published") {
+    return (
+      <span className={`${base} bg-primary-100 text-primary-700`}>
+        <LibraryIcon width={16} height={16} />
+      </span>
+    );
+  }
+  if (type === "new_comment") {
+    return (
+      <span className={`${base} bg-amber-100 text-amber-700`}>
+        <MessageIcon width={16} height={16} />
+      </span>
+    );
+  }
+  if (type === "new_user") {
+    return (
+      <span className={`${base} bg-blue-100 text-blue-700`}>
+        <UserIcon width={16} height={16} />
+      </span>
+    );
+  }
+  return (
+    <span className={`${base} bg-danger-bg text-danger`}>
+      <ShieldIcon width={16} height={16} />
+    </span>
+  );
+}
+
+function activityText(item: AdminActivityItem, t: Dictionary) {
+  switch (item.type) {
+    case "story_published":
+      return (
+        <>
+          {item.actorName} {t.admin.activityPublishedStory} «{item.targetTitle}»
+        </>
+      );
+    case "new_comment":
+      return (
+        <>
+          {item.actorName} {t.admin.activityNewComment} «{item.targetTitle}»
+        </>
+      );
+    case "new_user":
+      return (
+        <>
+          {item.actorName} {t.admin.activityNewUser}
+        </>
+      );
+    case "new_report": {
+      const targetLabel =
+        item.targetType === "story"
+          ? t.admin.activityTargetStory
+          : item.targetType === "chapter"
+            ? t.admin.activityTargetChapter
+            : t.admin.activityTargetComment;
+      return (
+        <>
+          {t.admin.activityNewReportPrefix} {targetLabel}: «{item.reason}»
+        </>
+      );
+    }
+  }
 }
 
 function EmptyLine({ text }: { text: string }) {

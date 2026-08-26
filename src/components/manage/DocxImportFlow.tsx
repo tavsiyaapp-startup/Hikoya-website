@@ -88,7 +88,10 @@ export function DocxImportFlow({
           the author's marker placements — only visibility toggles. */}
       {docHtml !== null && (
         <div className={step === "mark" ? "" : "hidden"}>
-          <div className="mb-4 flex flex-wrap items-center gap-3">
+          {/* Sticky, not just top-of-page — a manuscript can run long, and
+              scrolling all the way back up to mark every chapter break was
+              slow enough that authors were misplacing markers. */}
+          <div className="sticky top-16 z-10 mb-4 flex flex-wrap items-center gap-3 rounded-2xl border border-border bg-card p-3 shadow-[0_8px_20px_rgba(60,40,120,0.1)] sm:top-20">
             <Button variant="secondary" onClick={() => editorRef.current?.insertChapterMarker()}>
               {t.manage.markChapterStart}
             </Button>

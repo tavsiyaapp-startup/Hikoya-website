@@ -46,19 +46,6 @@ extra env vars needed beyond the Supabase ones above — the app calls
 **Email** — enabled by default in Supabase Auth (magic link, no password).
 Nothing to configure.
 
-**Telegram** — Supabase has no built-in Telegram provider, so this app
-bridges it itself (`src/app/auth/telegram/route.ts` + the Telegram Login
-Widget in `src/components/auth/AuthButtons.tsx`):
-1. Create a bot with [@BotFather](https://t.me/BotFather) (`/newbot`).
-2. Run `/setdomain` in BotFather and point it at this app's domain
-   (`localhost` won't work for the widget — use a tunnel like ngrok for
-   local testing, or test this piece after deploying).
-3. Set `TELEGRAM_BOT_TOKEN` (from BotFather) and
-   `NEXT_PUBLIC_TELEGRAM_BOT_USERNAME` (without the `@`) in `.env.local`.
-
-Until Telegram is configured, its button just shows "Telegram скоро" —
-nothing breaks.
-
 ## 3. Run it
 
 ```bash
@@ -77,7 +64,7 @@ src/app/(site)/        Reader + author-facing pages (Home, Search, Story,
 src/app/admin/          Staff-only panel (Dashboard, Users, Stories,
                         Reports, Settings) — separate layout, gated by role
 src/app/onboarding/      3-step signup/personalization wizard
-src/app/auth/            OAuth callback, Telegram bridge, sign-out
+src/app/auth/            OAuth callback, sign-out
 src/lib/supabase/        Browser/server/admin Supabase clients
 src/lib/queries/         Read-only data access, one file per domain
 src/lib/actions/         Server Actions (mutations)

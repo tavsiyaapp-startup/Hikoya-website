@@ -38,7 +38,7 @@ create type reading_status as enum ('want_to_read', 'read', 'dropped');
 
 -- ── profiles ───────────────────────────────────────────────────────────────
 -- 1:1 с auth.users. Создаётся автоматически триггером handle_new_user()
--- при регистрации (Google/Email/Telegram) — см. ниже.
+-- при регистрации (Google/Email) — см. ниже.
 
 create table profiles (
   id uuid primary key references auth.users (id) on delete cascade,
@@ -50,27 +50,10 @@ create table profiles (
   status user_status not null default 'active',
   locale_pref content_language not null default 'ru',
   interests text[] not null default '{}',
-  telegram_id bigint unique,        -- добавлено в 0006: для входа через Telegram
+  telegram_id bigint unique,        -- добавлено в 0006: историческая привязка Telegram-аккаунтов, вход через Telegram убран в 0020
   onboarded_at timestamptz,         -- добавлено в 0006: отметка "прошёл онбординг"
   created_at timestamptz not null default now()
 );
-
--- добавлено в 0018: очередь входа через Telegram-бота (deep-link + вебхук,
--- см. changelog внизу файла). Ни один клиент не читает/пишет эту таблицу
--- напрямую — только service-role из auth/telegram-* роутов, поэтому RLS
--- включена без единой политики (полный запрет всем, кроме service-role).
-create table telegram_login_tokens (
-  token text primary key,
-  status text not null default 'pending' check (status in ('pending', 'confirmed', 'expired')),
-  telegram_id bigint,
-  telegram_first_name text,
-  telegram_last_name text,
-  telegram_username text,
-  telegram_photo_url text,
-  created_at timestamptz not null default now()
-);
-
-alter table telegram_login_tokens enable row level security;
 
 -- ── stories & chapters ─────────────────────────────────────────────────────
 
@@ -801,3 +784,12 @@ on conflict (code) do nothing;
 --   странице истории миграции не потребовал — collections/collection_items
 --   существовали с самого начала, просто не было UI, вызывающего insert/
 --   delete в collection_items с клиента.
+-- [2026-08-26] Удалена таблица telegram_login_tokens (миграция 0020). Вход/
+--   регистрация через Telegram убраны целиком (кнопка на /onboarding,
+--   auth/telegram-login, auth/telegram-login/[token], auth/telegram-webhook,
+--   src/lib/telegram.ts) — на странице входа вместо кнопки теперь заметка
+--   для тех, кто раньше регистрировался через Telegram: зарегистрироваться
+--   заново через Google или email. profiles.telegram_id намеренно оставлен
+--   (историческая привязка существующих аккаунтов, ни на что в приложении
+--   больше не влияет), а очередь одноразовых токенов входа удалена — она
+--   была нужна только вебхуку бота.

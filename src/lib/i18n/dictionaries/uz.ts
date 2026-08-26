@@ -398,10 +398,8 @@ const uz: typeof ru = {
     emailError: "Kirish havolasini yuborib boʻlmadi. Manzilni tekshirib, qayta urinib koʻring.",
     emailSentTo: "Kirish havolasi yuborildi:",
     checkInbox: "Pochtangizni tekshiring.",
-    telegramError: "Telegram orqali kirib boʻlmadi.",
-    telegramSoon: "Telegram tez orada",
-    telegramWaiting: "Telegramda tasdiqlashni kutmoqdamiz…",
-    telegramOpenAgain: "Telegramni yana ochish",
+    telegramRemovedNotice:
+      "Telegram orqali kirish endi qoʻllab-quvvatlanmaydi. Agar Telegram orqali roʻyxatdan oʻtgan boʻlsangiz, Google yoki email orqali qaytadan roʻyxatdan oʻting.",
   },
   meta: {
     title: "Hikoya — rus va oʻzbek tilidagi hikoyalar",

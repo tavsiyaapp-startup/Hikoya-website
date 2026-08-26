@@ -396,10 +396,8 @@ const ru = {
     emailError: "Не удалось отправить ссылку для входа. Проверьте адрес и попробуйте снова.",
     emailSentTo: "Ссылка для входа отправлена на",
     checkInbox: "Проверьте почту.",
-    telegramError: "Не удалось войти через Telegram.",
-    telegramSoon: "Telegram скоро",
-    telegramWaiting: "Ждём подтверждения в Telegram…",
-    telegramOpenAgain: "Открыть Telegram ещё раз",
+    telegramRemovedNotice:
+      "Вход через Telegram больше не поддерживается. Если вы регистрировались через Telegram, зарегистрируйтесь заново через Google или email.",
   },
   meta: {
     title: "Hikoya — истории на русском и узбекском",

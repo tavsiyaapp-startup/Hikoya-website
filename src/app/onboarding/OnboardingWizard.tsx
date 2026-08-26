@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { clsx } from "clsx";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 import type { Locale } from "@/lib/i18n";
-import { GoogleButton, EmailForm, TelegramButton } from "@/components/auth/AuthButtons";
+import { GoogleButton, EmailForm } from "@/components/auth/AuthButtons";
 import { completeOnboarding } from "./actions";
 
 const TOTAL_STEPS = 3;
@@ -79,13 +79,13 @@ export function OnboardingWizard({ initialStep, next }: { initialStep: 1 | 2; ne
               <div className="h-px flex-1 bg-border-soft" />
             </div>
 
-            <div className="mb-6.5 grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div className="mb-3 flex flex-col gap-3">
               <GoogleButton next={next} />
-              <TelegramButton next={next} />
-              <div className="col-span-1">
-                <EmailForm next={next} />
-              </div>
+              <EmailForm next={next} />
             </div>
+            <p className="mb-6.5 text-[12.5px] leading-relaxed text-muted-2">
+              {t.auth.telegramRemovedNotice}
+            </p>
           </div>
         )}
 

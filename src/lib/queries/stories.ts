@@ -376,14 +376,15 @@ export async function getAuthorStories(authorId: string, includeDrafts: boolean)
 }
 
 export const getPublicCollections = unstable_cache(
-  async (ownerType?: string): Promise<CollectionCardData[]> => {
+  async (ownerType?: string | string[]): Promise<CollectionCardData[]> => {
     try {
       const supabase = createPublicClient();
       let query = supabase
         .from("collections")
         .select("*, owner:profiles!collections_owner_id_fkey(display_name)")
         .eq("is_private", false);
-      if (ownerType) query = query.eq("owner_type", ownerType);
+      if (Array.isArray(ownerType)) query = query.in("owner_type", ownerType);
+      else if (ownerType) query = query.eq("owner_type", ownerType);
       const { data } = await query
         .order("is_featured", { ascending: false })
         .order("created_at", { ascending: false });
@@ -395,6 +396,37 @@ export const getPublicCollections = unstable_cache(
   ["public-collections"],
   { revalidate: CACHE_SECONDS, tags: ["collections"] }
 );
+
+export async function getSavedCollections(userId: string): Promise<CollectionCardData[]> {
+  try {
+    const supabase = await createClient();
+    const { data } = await supabase
+      .from("saved_collections")
+      .select("collection:collections(*, owner:profiles!collections_owner_id_fkey(display_name))")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false });
+    const collections = ((data ?? []).map((row) => row.collection).filter(Boolean) as unknown) as Collection[];
+    return attachCollectionCovers(supabase, collections);
+  } catch {
+    return [];
+  }
+}
+
+export async function isCollectionSaved(userId: string | undefined, collectionId: string): Promise<boolean> {
+  if (!userId) return false;
+  try {
+    const supabase = await createClient();
+    const { data } = await supabase
+      .from("saved_collections")
+      .select("collection_id")
+      .eq("user_id", userId)
+      .eq("collection_id", collectionId)
+      .maybeSingle();
+    return Boolean(data);
+  } catch {
+    return false;
+  }
+}
 
 export async function getCollectionWithStories(id: string) {
   try {

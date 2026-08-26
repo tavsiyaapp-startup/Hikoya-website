@@ -38,6 +38,54 @@ async function isAuthor(userId: string) {
   return data?.role === "author";
 }
 
+export async function updateCollection(collectionId: string, formData: FormData) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect(ROUTES.onboarding);
+
+  const title = String(formData.get("title") ?? "").trim();
+  const description = String(formData.get("description") ?? "").trim();
+  const isPrivate = formData.get("isPrivate") === "on";
+  if (!title) return;
+
+  await supabase
+    .from("collections")
+    .update({ title, description: description || null, is_private: isPrivate })
+    .eq("id", collectionId)
+    .eq("owner_id", user.id);
+
+  updateTag("collections");
+  revalidatePath(ROUTES.collection(collectionId));
+  revalidatePath(ROUTES.collections);
+  revalidatePath(ROUTES.library);
+}
+
+export async function toggleSavedCollection(collectionId: string, path: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect(ROUTES.onboarding);
+
+  const { data: existing } = await supabase
+    .from("saved_collections")
+    .select("collection_id")
+    .eq("user_id", user.id)
+    .eq("collection_id", collectionId)
+    .maybeSingle();
+
+  if (existing) {
+    await supabase.from("saved_collections").delete().eq("user_id", user.id).eq("collection_id", collectionId);
+  } else {
+    await supabase.from("saved_collections").insert({ user_id: user.id, collection_id: collectionId });
+  }
+
+  revalidatePath(path);
+  revalidatePath(ROUTES.collections);
+}
+
 // RLS on collection_items already restricts writes to the collection's own
 // owner, so a foreign collectionId just silently affects 0 rows here.
 export async function toggleStoryInCollection(collectionId: string, storyId: string, path: string) {

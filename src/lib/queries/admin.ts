@@ -209,6 +209,53 @@ export async function getAllRequestsAdmin(statusFilter?: string) {
   }
 }
 
+export async function getAllCollectionsAdmin() {
+  try {
+    const admin = createAdminClient();
+    const { data } = await admin
+      .from("collections")
+      .select("*, owner:profiles!collections_owner_id_fkey(display_name)")
+      .order("created_at", { ascending: false })
+      .limit(100);
+    return data ?? [];
+  } catch {
+    return [];
+  }
+}
+
+export async function getCollectionByIdAdmin(id: string) {
+  try {
+    const admin = createAdminClient();
+    const { data } = await admin.from("collections").select("*").eq("id", id).single();
+    return data;
+  } catch {
+    return null;
+  }
+}
+
+export async function getCollectionItemIds(collectionId: string): Promise<string[]> {
+  try {
+    const admin = createAdminClient();
+    const { data } = await admin.from("collection_items").select("story_id").eq("collection_id", collectionId);
+    return (data ?? []).map((r) => r.story_id);
+  } catch {
+    return [];
+  }
+}
+
+export async function getAllStoriesForAdminPicker() {
+  try {
+    const admin = createAdminClient();
+    const { data } = await admin
+      .from("stories")
+      .select("id, title, author:profiles!stories_author_id_fkey(display_name)")
+      .order("title", { ascending: true });
+    return data ?? [];
+  } catch {
+    return [];
+  }
+}
+
 export async function getPlatformSettingsAdmin() {
   try {
     const admin = createAdminClient();

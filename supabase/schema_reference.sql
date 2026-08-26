@@ -230,6 +230,15 @@ create table collection_items (
   primary key (collection_id, story_id)
 );
 
+-- добавлено в 0017: читатель сохраняет чужую (или редакционную) подборку
+-- себе — отдельно от владения ею. Та же форма, что bookmarks/reading_statuses.
+create table saved_collections (
+  user_id uuid not null references profiles (id) on delete cascade,
+  collection_id uuid not null references collections (id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (user_id, collection_id)
+);
+
 -- ── достижения авторов ──────────────────────────────────────────────────────
 
 create table achievements (
@@ -549,6 +558,10 @@ create policy "collection owners manage items" on collection_items for all using
   or is_staff()
 );
 
+alter table saved_collections enable row level security;
+create policy "users manage their own saved collections" on saved_collections for all
+  using (user_id = auth.uid()) with check (user_id = auth.uid());
+
 -- achievements
 alter table achievements enable row level security;
 create policy "achievements are publicly readable" on achievements for select using (true);
@@ -735,6 +748,15 @@ on conflict (code) do nothing;
 --   просто что заявку больше не принимают (её мог отменить сам автор без
 --   единого отклика). RLS не менялась — политики уже написаны через
 --   is_staff()/from_user_id, а не перечисление статусов.
+-- [2026-08-26] Таблица saved_collections (миграция 0017). Читатель может
+--   сохранить себе чужую (или редакционную) подборку — отдельная вкладка
+--   «Сохранённые подборки» на /collections, не путать с владением. Заодно
+--   в /collections появились вкладки «Мои подборки» (только свои,
+--   редактируемые) и «Подборки пользователей» (авторские + читательские
+--   объединены — раньше были двумя отдельными вкладками по owner_type).
+--   Админ-панель получила /admin/collections: создание/редактирование
+--   подборки со списком чекбоксов по всем историям сайта — таблицы
+--   collections/collection_items не менялись, только новый UI поверх них.
 -- [2026-08-25] Таблица reading_statuses (миграция 0016). Читатель теперь
 --   может вручную поставить истории статус «хочу прочитать» / «прочитано» /
 --   «брошено» — отдельная сущность от reading_progress (та считает процент

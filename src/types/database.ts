@@ -157,6 +157,12 @@ export interface CollectionItem {
   position: number;
 }
 
+export interface SavedCollection {
+  user_id: string;
+  collection_id: string;
+  created_at: string;
+}
+
 export interface Achievement {
   id: string;
   code: string;

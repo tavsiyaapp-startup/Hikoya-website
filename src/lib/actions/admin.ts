@@ -16,6 +16,7 @@ async function requireStaff() {
 
   const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single();
   if (!profile || !["admin", "moderator"].includes(profile.role)) redirect(ROUTES.home);
+  return user;
 }
 
 async function requireAdmin() {
@@ -190,4 +191,78 @@ export async function updatePlatformSettings(formData: FormData) {
 
   updateTag("settings");
   revalidatePath(`${ROUTES.admin}/settings`);
+}
+
+function collectionInputFromForm(formData: FormData) {
+  const title = String(formData.get("title") ?? "").trim();
+  const description = String(formData.get("description") ?? "").trim();
+  const isFeatured = formData.get("isFeatured") === "on";
+  const storyIds = formData.getAll("storyIds").map(String);
+  return { title, description, isFeatured, storyIds };
+}
+
+export async function createCollectionAdmin(formData: FormData) {
+  const user = await requireStaff();
+  const admin = createAdminClient();
+  const { title, description, isFeatured, storyIds } = collectionInputFromForm(formData);
+  if (!title) return;
+
+  const { data: collection, error } = await admin
+    .from("collections")
+    .insert({
+      owner_id: user.id,
+      owner_type: "moderator",
+      title,
+      description: description || null,
+      is_featured: isFeatured,
+    })
+    .select("id")
+    .single();
+  if (error || !collection) return;
+
+  if (storyIds.length > 0) {
+    await admin
+      .from("collection_items")
+      .insert(storyIds.map((storyId, i) => ({ collection_id: collection.id, story_id: storyId, position: i })));
+  }
+
+  updateTag("collections");
+  revalidatePath(`${ROUTES.admin}/collections`);
+  revalidatePath(ROUTES.collections);
+  revalidatePath(ROUTES.home);
+  redirect(`${ROUTES.admin}/collections`);
+}
+
+export async function updateCollectionAdmin(collectionId: string, formData: FormData) {
+  await requireStaff();
+  const admin = createAdminClient();
+  const { title, description, isFeatured, storyIds } = collectionInputFromForm(formData);
+  if (!title) return;
+
+  await admin
+    .from("collections")
+    .update({ title, description: description || null, is_featured: isFeatured })
+    .eq("id", collectionId);
+
+  await admin.from("collection_items").delete().eq("collection_id", collectionId);
+  if (storyIds.length > 0) {
+    await admin
+      .from("collection_items")
+      .insert(storyIds.map((storyId, i) => ({ collection_id: collectionId, story_id: storyId, position: i })));
+  }
+
+  updateTag("collections");
+  revalidatePath(`${ROUTES.admin}/collections`);
+  revalidatePath(ROUTES.collection(collectionId));
+  revalidatePath(ROUTES.collections);
+  redirect(`${ROUTES.admin}/collections`);
+}
+
+export async function deleteCollectionAdmin(collectionId: string) {
+  await requireStaff();
+  const admin = createAdminClient();
+  await admin.from("collections").delete().eq("id", collectionId);
+  updateTag("collections");
+  revalidatePath(`${ROUTES.admin}/collections`);
+  revalidatePath(ROUTES.collections);
 }

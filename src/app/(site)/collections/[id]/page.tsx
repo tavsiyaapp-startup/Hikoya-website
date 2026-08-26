@@ -1,9 +1,13 @@
 import { notFound } from "next/navigation";
 import { getServerLocale } from "@/lib/i18n/locale-server";
 import { getDictionary } from "@/lib/i18n";
-import { getCollectionWithStories } from "@/lib/queries/stories";
+import { getCurrentUser } from "@/lib/current-user";
+import { getCollectionWithStories, isCollectionSaved } from "@/lib/queries/stories";
 import { StoryCard } from "@/components/story/StoryCard";
 import { Badge } from "@/components/ui/Chip";
+import { EditCollectionForm } from "@/components/collections/EditCollectionForm";
+import { SaveCollectionButton } from "@/components/collections/SaveCollectionButton";
+import { ROUTES } from "@/lib/constants";
 
 export default async function CollectionDetailPage({
   params,
@@ -13,21 +17,35 @@ export default async function CollectionDetailPage({
   const { id } = await params;
   const locale = await getServerLocale();
   const t = getDictionary(locale);
+  const user = await getCurrentUser();
 
   const result = await getCollectionWithStories(id);
   if (!result) notFound();
   const { collection, stories } = result;
+  const isOwner = user?.id === collection.owner_id;
+  const saved = !isOwner ? await isCollectionSaved(user?.id, id) : false;
 
   return (
     <div>
       <div className="mb-2 flex items-center gap-2">
         {collection.owner_type === "moderator" && <Badge tone="pink">{t.collections.editorial}</Badge>}
         {collection.is_private && <Badge tone="neutral">{t.collections.private}</Badge>}
+        {!isOwner && (
+          <div className="ml-auto">
+            <SaveCollectionButton
+              collectionId={id}
+              isAuthenticated={Boolean(user)}
+              initialSaved={saved}
+              path={ROUTES.collection(id)}
+            />
+          </div>
+        )}
       </div>
       <h1 className="mb-2 text-[26px] font-extrabold tracking-tight sm:text-[32px]">{collection.title}</h1>
       {collection.description && (
-        <p className="mb-7 max-w-155 text-[15px] leading-relaxed text-muted">{collection.description}</p>
+        <p className="mb-4 max-w-155 text-[15px] leading-relaxed text-muted">{collection.description}</p>
       )}
+      {isOwner && <EditCollectionForm collection={collection} />}
 
       {stories.length > 0 ? (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-5.5 lg:grid-cols-4">

@@ -52,6 +52,7 @@ create table profiles (
   interests text[] not null default '{}',
   telegram_id bigint unique,        -- добавлено в 0006: историческая привязка Telegram-аккаунтов, вход через Telegram убран в 0020
   onboarded_at timestamptz,         -- добавлено в 0006: отметка "прошёл онбординг"
+  is_verified boolean not null default false,   -- добавлено в 0021: галочка "Верифицирован", ставит staff вручную
   created_at timestamptz not null default now()
 );
 
@@ -683,7 +684,8 @@ insert into achievements (code, title_ru, title_uz, description_ru, description_
   ('five_stories', '5 историй', '5 ta hikoya', 'Опубликуйте пять историй', 'Beshta hikoya chop eting', 'story_count', 5),
   ('rising_author', 'Растущий автор', 'Oʻsayotgan muallif', '100 подписчиков', '100 ta obunachi', 'follower_count', 100),
   ('reader_favorite', 'Любимец читателей', 'Oʻquvchilar sevimlisi', '1000 суммарных лайков', 'Jami 1000 ta layk', 'total_likes', 1000),
-  ('consistent_author', 'Стабильный автор', 'Barqaror muallif', 'Публикации 4 недели подряд', 'Ketma-ket 4 hafta chop etish', 'publish_streak_weeks', 4)
+  ('consistent_author', 'Стабильный автор', 'Barqaror muallif', 'Публикации 4 недели подряд', 'Ketma-ket 4 hafta chop etish', 'publish_streak_weeks', 4),
+  ('author_of_month', 'Автор месяца', 'Oyning muallifi', 'Отмечен редакцией как автор месяца', 'Tahririyat tomonidan oyning muallifi deb belgilangan', 'story_count', 0)
 on conflict (code) do nothing;
 
 -- =============================================================================
@@ -793,3 +795,12 @@ on conflict (code) do nothing;
 --   (историческая привязка существующих аккаунтов, ни на что в приложении
 --   больше не влияет), а очередь одноразовых токенов входа удалена — она
 --   была нужна только вебхуку бота.
+-- [2026-08-26] profiles.is_verified + achievement 'author_of_month'
+--   (миграция 0021). Публичный профиль автора получил галочку
+--   "Верифицирован" рядом с именем и бейджи (достижения) — оба ставятся
+--   вручную из /admin/users, поэтому 'author_of_month' заведён с тем же
+--   metric/threshold-заглушками, что и остальные пять достижений: ни одно
+--   из них никогда не присуждалось автоматически никаким кодом — то есть
+--   "вручную staff'ом" уже было фактическим поведением всей системы
+--   достижений, просто без UI для этого. UI для назначения появился в этой
+--   же миграции только на стороне приложения (не в схеме).

@@ -7,6 +7,7 @@ import { updateProfile } from "@/lib/actions/profile";
 import { ROUTES } from "@/lib/constants";
 import { Avatar } from "@/components/ui/Avatar";
 import { Input } from "@/components/ui/Input";
+import { Textarea } from "@/components/ui/Textarea";
 import { Button } from "@/components/ui/Button";
 import { SignOutButton } from "@/components/profile/SignOutButton";
 
@@ -20,12 +21,14 @@ export function EditProfileForm({
   displayName,
   avatarUrl,
   email,
+  bio,
 }: {
   userId: string;
   username: string;
   displayName: string;
   avatarUrl: string | null;
   email: string | null;
+  bio: string | null;
 }) {
   const { t } = useLocale();
   const [open, setOpen] = useState(false);
@@ -137,6 +140,11 @@ export function EditProfileForm({
       <div>
         <label className="mb-1.5 block text-[13px] font-bold">{t.profile.displayNameLabel}</label>
         <Input name="displayName" defaultValue={displayName} required />
+      </div>
+
+      <div>
+        <label className="mb-1.5 block text-[13px] font-bold">{t.profile.bioLabel}</label>
+        <Textarea name="bio" defaultValue={bio ?? ""} placeholder={t.profile.bioPlaceholder} rows={3} />
       </div>
 
       <div>

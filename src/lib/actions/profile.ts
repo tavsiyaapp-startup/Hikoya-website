@@ -13,6 +13,7 @@ export async function updateProfile(username: string, formData: FormData) {
   if (!user) redirect(ROUTES.onboarding);
 
   const displayName = String(formData.get("displayName") ?? "").trim();
+  const bio = String(formData.get("bio") ?? "").trim();
   const avatarUrl = formData.get("avatarUrl");
   if (!displayName) return;
 
@@ -20,6 +21,7 @@ export async function updateProfile(username: string, formData: FormData) {
     .from("profiles")
     .update({
       display_name: displayName,
+      bio: bio || null,
       ...(typeof avatarUrl === "string" && avatarUrl ? { avatar_url: avatarUrl } : {}),
     })
     .eq("id", user.id);

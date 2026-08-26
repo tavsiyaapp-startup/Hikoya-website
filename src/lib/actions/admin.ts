@@ -133,6 +133,35 @@ export async function toggleUserStatus(userId: string, currentStatus: string) {
   revalidatePath(ROUTES.admin);
 }
 
+export async function toggleUserVerified(userId: string, verified: boolean) {
+  await requireStaff();
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("profiles")
+    .update({ is_verified: verified })
+    .eq("id", userId)
+    .select("username")
+    .single();
+  revalidatePath(`${ROUTES.admin}/users`);
+  if (data?.username) revalidatePath(ROUTES.author(data.username));
+}
+
+// Replace-all, same pattern as updateCollectionAdmin's collection_items —
+// simplest correct way to sync a set from a checkbox list with no ordering.
+export async function updateUserAchievements(userId: string, achievementIds: string[]) {
+  await requireStaff();
+  const admin = createAdminClient();
+  await admin.from("user_achievements").delete().eq("user_id", userId);
+  if (achievementIds.length > 0) {
+    await admin
+      .from("user_achievements")
+      .insert(achievementIds.map((achievementId) => ({ user_id: userId, achievement_id: achievementId })));
+  }
+  const { data } = await admin.from("profiles").select("username").eq("id", userId).single();
+  revalidatePath(`${ROUTES.admin}/users`);
+  if (data?.username) revalidatePath(ROUTES.author(data.username));
+}
+
 export async function resolveReport(reportId: string, status: "reviewed" | "resolved") {
   await requireStaff();
   const admin = createAdminClient();

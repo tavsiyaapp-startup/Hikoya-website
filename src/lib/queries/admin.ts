@@ -84,6 +84,37 @@ export async function searchUsersAdmin(query?: string) {
   }
 }
 
+export async function getAllAchievements() {
+  try {
+    const admin = createAdminClient();
+    const { data } = await admin.from("achievements").select("*").order("title_ru");
+    return data ?? [];
+  } catch {
+    return [];
+  }
+}
+
+// One query for the whole /admin/users list rather than one per row.
+export async function getUserAchievementsMap(userIds: string[]): Promise<Map<string, string[]>> {
+  const map = new Map<string, string[]>();
+  if (userIds.length === 0) return map;
+  try {
+    const admin = createAdminClient();
+    const { data } = await admin
+      .from("user_achievements")
+      .select("user_id, achievement_id")
+      .in("user_id", userIds);
+    for (const row of data ?? []) {
+      const list = map.get(row.user_id) ?? [];
+      list.push(row.achievement_id);
+      map.set(row.user_id, list);
+    }
+    return map;
+  } catch {
+    return map;
+  }
+}
+
 export async function getAllStoriesAdmin(statusFilter?: string) {
   try {
     const admin = createAdminClient();

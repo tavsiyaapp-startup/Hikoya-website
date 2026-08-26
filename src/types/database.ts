@@ -38,6 +38,7 @@ export interface Profile {
   interests: string[];
   telegram_id: number | null;
   onboarded_at: string | null;
+  is_verified: boolean;
   created_at: string;
 }
 

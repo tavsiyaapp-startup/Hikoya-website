@@ -90,7 +90,7 @@ export type CollectionCardData = Collection & {
 // Cover art for a collection card is a collage of its first 3 stories'
 // covers — there's no separate uploaded image, this is derived from
 // collection_items so it always reflects what's actually inside.
-async function attachCollectionCovers(
+export async function attachCollectionCovers(
   supabase: SupabaseClient,
   collections: Collection[]
 ): Promise<CollectionCardData[]> {
@@ -139,6 +139,41 @@ export const getFeaturedCollections = unstable_cache(
   ["featured-collections"],
   { revalidate: CACHE_SECONDS, tags: ["collections"] }
 );
+
+// Collections that include at least one of this author's published stories —
+// "recommended" in the sense of "readers of this author might like these",
+// not a staff curation (that's the author_of_month-style achievement badges
+// instead, assigned from /admin/users).
+export async function getCollectionsFeaturingAuthor(authorId: string, limit = 6): Promise<CollectionCardData[]> {
+  try {
+    const supabase = await createClient();
+    const { data: authorStories } = await supabase
+      .from("stories")
+      .select("id")
+      .eq("author_id", authorId)
+      .eq("status", "published");
+    const storyIds = (authorStories ?? []).map((s) => s.id);
+    if (storyIds.length === 0) return [];
+
+    const { data: items } = await supabase
+      .from("collection_items")
+      .select("collection_id")
+      .in("story_id", storyIds);
+    const collectionIds = [...new Set((items ?? []).map((i) => i.collection_id))];
+    if (collectionIds.length === 0) return [];
+
+    const { data: collections } = await supabase
+      .from("collections")
+      .select("*, owner:profiles!collections_owner_id_fkey(display_name)")
+      .in("id", collectionIds)
+      .eq("is_private", false)
+      .order("created_at", { ascending: false })
+      .limit(limit);
+    return attachCollectionCovers(supabase, (collections as Collection[]) ?? []);
+  } catch {
+    return [];
+  }
+}
 
 export const getRecentPublishedChapters = unstable_cache(
   async (limit = 3) => {

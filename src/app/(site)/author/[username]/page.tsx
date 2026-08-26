@@ -132,7 +132,7 @@ export default async function AuthorPage({
         </div>
       )}
 
-      <div className="mb-5.5 flex gap-2.5">
+      <div className="mb-5.5 flex gap-2.5 overflow-x-auto">
         {(
           [
             ["stories", t.author.tabStories],
@@ -141,8 +141,10 @@ export default async function AuthorPage({
             ...(isOwner ? [["notifications", t.nav.notifications] as const] : []),
           ] as const
         ).map(([key, label]) => (
-          <Link key={key} href={`?tab=${key}`}>
-            <Chip active={tab === key}>{label}</Chip>
+          <Link key={key} href={`?tab=${key}`} className="inline-flex shrink-0">
+            <Chip active={tab === key} className="whitespace-nowrap">
+              {label}
+            </Chip>
           </Link>
         ))}
       </div>

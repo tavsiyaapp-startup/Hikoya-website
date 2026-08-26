@@ -156,14 +156,14 @@ export default async function StoryPage({
           <p className="text-[16px] leading-relaxed text-ink-soft">{story.description}</p>
         </div>
 
-        <div className="mb-4 flex items-center gap-2.5">
-          <Link href={`?tab=chapters`} scroll={false}>
-            <Chip active={tab === "chapters"}>
+        <div className="mb-4 flex items-center gap-2.5 overflow-x-auto">
+          <Link href={`?tab=chapters`} scroll={false} className="inline-flex shrink-0">
+            <Chip active={tab === "chapters"} className="whitespace-nowrap">
               {t.story.chapters} <span className="ml-1 opacity-70">{chapters.length}</span>
             </Chip>
           </Link>
-          <Link href={`?tab=comments`} scroll={false}>
-            <Chip active={tab === "comments"}>
+          <Link href={`?tab=comments`} scroll={false} className="inline-flex shrink-0">
+            <Chip active={tab === "comments"} className="whitespace-nowrap">
               {t.common.comments} <span className="ml-1 opacity-70">{story.comment_count}</span>
             </Chip>
           </Link>

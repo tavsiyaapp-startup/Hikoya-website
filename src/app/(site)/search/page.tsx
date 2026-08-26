@@ -96,6 +96,8 @@ export default async function SearchPage({
           ))}
         </FilterGroup>
 
+        <div className="my-1 h-px bg-border-soft" />
+
         <FilterGroup label={t.search.genre} wrap>
           {t.genres.map((g) => (
             <Link key={g} href={buildHref(sp, { genre: filters.genre === g ? undefined : g })}>
@@ -103,6 +105,8 @@ export default async function SearchPage({
             </Link>
           ))}
         </FilterGroup>
+
+        <div className="my-1 h-px bg-border-soft" />
 
         <FilterGroup label={t.search.status}>
           {[
@@ -114,6 +118,8 @@ export default async function SearchPage({
             </Link>
           ))}
         </FilterGroup>
+
+        <div className="my-1 h-px bg-border-soft" />
 
         <FilterGroup label={t.search.ageRating}>
           {t.ageRatings.map((age) => (
@@ -132,6 +138,8 @@ export default async function SearchPage({
             </Link>
           ))}
         </FilterGroup>
+
+        <div className="my-1 h-px bg-border-soft" />
 
         <FilterGroup label={t.search.style} wrap last>
           {STYLES.map(([s, sUz]) => (

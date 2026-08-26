@@ -389,6 +389,8 @@ const uz: typeof ru = {
     checkInbox: "Pochtangizni tekshiring.",
     telegramError: "Telegram orqali kirib boʻlmadi.",
     telegramSoon: "Telegram tez orada",
+    telegramWaiting: "Telegramda tasdiqlashni kutmoqdamiz…",
+    telegramOpenAgain: "Telegramni yana ochish",
   },
   meta: {
     title: "Hikoya — rus va oʻzbek tilidagi hikoyalar",

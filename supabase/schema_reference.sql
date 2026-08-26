@@ -55,6 +55,23 @@ create table profiles (
   created_at timestamptz not null default now()
 );
 
+-- добавлено в 0018: очередь входа через Telegram-бота (deep-link + вебхук,
+-- см. changelog внизу файла). Ни один клиент не читает/пишет эту таблицу
+-- напрямую — только service-role из auth/telegram-* роутов, поэтому RLS
+-- включена без единой политики (полный запрет всем, кроме service-role).
+create table telegram_login_tokens (
+  token text primary key,
+  status text not null default 'pending' check (status in ('pending', 'confirmed', 'expired')),
+  telegram_id bigint,
+  telegram_first_name text,
+  telegram_last_name text,
+  telegram_username text,
+  telegram_photo_url text,
+  created_at timestamptz not null default now()
+);
+
+alter table telegram_login_tokens enable row level security;
+
 -- ── stories & chapters ─────────────────────────────────────────────────────
 
 create table stories (
@@ -757,6 +774,19 @@ on conflict (code) do nothing;
 --   Админ-панель получила /admin/collections: создание/редактирование
 --   подборки со списком чекбоксов по всем историям сайта — таблицы
 --   collections/collection_items не менялись, только новый UI поверх них.
+-- [2026-08-26] Таблица telegram_login_tokens (миграция 0018). Старый вход
+--   через Telegram Login Widget (HMAC-подписанный payload с виджета,
+--   src/lib/telegram.ts verifyTelegramAuth) заменён на вход через
+--   Telegram-бота: сайт создаёт токен, открывает t.me/<bot>?start=<token>,
+--   пользователь жмёт Start в самом Telegram, вебхук бота
+--   (auth/telegram-webhook) помечает токен подтверждённым и отвечает
+--   приветственным сообщением — то, чего у виджета не было в принципе, он
+--   никогда не открывал чат с ботом. Сайт поллит статус токена
+--   (auth/telegram-login/[token]) и завершает вход тем же mint-magiclink
+--   мостом, что был у виджета. Требует TELEGRAM_WEBHOOK_SECRET (проверка
+--   заголовка X-Telegram-Bot-Api-Secret-Token от Telegram) и once-off
+--   вызов Bot API setWebhook на реальный домен — вебхук физически не
+--   может быть проверен с localhost.
 -- [2026-08-25] Таблица reading_statuses (миграция 0016). Читатель теперь
 --   может вручную поставить истории статус «хочу прочитать» / «прочитано» /
 --   «брошено» — отдельная сущность от reading_progress (та считает процент

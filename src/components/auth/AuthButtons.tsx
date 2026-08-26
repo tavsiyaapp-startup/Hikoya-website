@@ -5,7 +5,6 @@ import { createClient } from "@/lib/supabase/client";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import type { TelegramAuthData } from "@/lib/telegram";
 
 function siteUrl() {
   return process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
@@ -97,55 +96,61 @@ export function EmailForm({ next = "/" }: { next?: string }) {
   );
 }
 
-declare global {
-  interface Window {
-    onHikoyaTelegramAuth?: (user: TelegramAuthData) => void;
-  }
-}
+type TelegramState = "idle" | "waiting" | "error";
 
+// Deep-link flow instead of the Telegram Login Widget: the widget needs its
+// domain whitelisted with @BotFather and never actually opens a chat with
+// the bot, so there was no way to send the user a welcome message. This
+// opens t.me/<bot>?start=<token>, the bot's webhook confirms the token once
+// the user presses Start there (and replies with the welcome message), and
+// this component polls until that happens.
 export function TelegramButton({ next = "/" }: { next?: string }) {
   const { t } = useLocale();
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [state, setState] = useState<TelegramState>("idle");
+  const [deepLink, setDeepLink] = useState<string | null>(null);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME;
 
   useEffect(() => {
-    if (!botUsername || !containerRef.current) return;
-
-    window.onHikoyaTelegramAuth = async (user) => {
-      try {
-        const res = await fetch("/auth/telegram", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(user),
-        });
-        const body = await res.json();
-        if (!res.ok || !body.redirect) {
-          setError(t.auth.telegramError);
-          return;
-        }
-        const url = new URL(body.redirect);
-        url.searchParams.set("next", next);
-        window.location.href = url.toString();
-      } catch {
-        setError(t.auth.telegramError);
-      }
-    };
-
-    const script = document.createElement("script");
-    script.src = "https://telegram.org/js/telegram-widget.js?22";
-    script.async = true;
-    script.setAttribute("data-telegram-login", botUsername);
-    script.setAttribute("data-size", "large");
-    script.setAttribute("data-radius", "14");
-    script.setAttribute("data-onauth", "onHikoyaTelegramAuth(user)");
-    script.setAttribute("data-request-access", "write");
-    containerRef.current.appendChild(script);
-
     return () => {
-      window.onHikoyaTelegramAuth = undefined;
+      if (pollRef.current) clearInterval(pollRef.current);
     };
-  }, [botUsername, next, t]);
+  }, []);
+
+  async function handleClick() {
+    setState("waiting");
+    try {
+      const res = await fetch("/auth/telegram-login", { method: "POST" });
+      const body = await res.json();
+      if (!res.ok || !body.token || !body.deepLink) {
+        setState("error");
+        return;
+      }
+      setDeepLink(body.deepLink);
+      window.open(body.deepLink, "_blank");
+
+      pollRef.current = setInterval(async () => {
+        try {
+          const pollRes = await fetch(`/auth/telegram-login/${body.token}`);
+          const pollBody = await pollRes.json();
+          if (pollBody.status === "confirmed" && pollBody.redirect) {
+            if (pollRef.current) clearInterval(pollRef.current);
+            const url = new URL(pollBody.redirect, window.location.origin);
+            url.searchParams.set("next", next);
+            window.location.href = url.toString();
+          } else if (pollBody.status === "expired" || pollBody.status === "error") {
+            if (pollRef.current) clearInterval(pollRef.current);
+            setState("error");
+          }
+        } catch {
+          if (pollRef.current) clearInterval(pollRef.current);
+          setState("error");
+        }
+      }, 2000);
+    } catch {
+      setState("error");
+    }
+  }
 
   if (!botUsername) {
     return (
@@ -155,10 +160,31 @@ export function TelegramButton({ next = "/" }: { next?: string }) {
     );
   }
 
+  if (state === "waiting") {
+    return (
+      <div className="flex h-[50px] flex-col items-center justify-center gap-0.5 rounded-[14px] border border-primary-200 bg-primary-50 px-2 text-center">
+        <span className="text-[12px] font-bold text-primary-900">{t.auth.telegramWaiting}</span>
+        {deepLink && (
+          <a href={deepLink} target="_blank" rel="noreferrer" className="text-[11px] font-semibold text-primary-700 underline">
+            {t.auth.telegramOpenAgain}
+          </a>
+        )}
+      </div>
+    );
+  }
+
   return (
-    <>
-      <div ref={containerRef} className="flex h-[50px] items-center justify-center" />
-      {error && <p className="mt-2 text-[12.5px] text-danger">{error}</p>}
-    </>
+    <div>
+      <Button
+        type="button"
+        variant="ghost"
+        size="lg"
+        className="w-full justify-center"
+        onClick={handleClick}
+      >
+        Telegram
+      </Button>
+      {state === "error" && <p className="mt-2 text-[12.5px] text-danger">{t.auth.telegramError}</p>}
+    </div>
   );
 }

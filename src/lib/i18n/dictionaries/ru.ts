@@ -387,6 +387,8 @@ const ru = {
     checkInbox: "Проверьте почту.",
     telegramError: "Не удалось войти через Telegram.",
     telegramSoon: "Telegram скоро",
+    telegramWaiting: "Ждём подтверждения в Telegram…",
+    telegramOpenAgain: "Открыть Telegram ещё раз",
   },
   meta: {
     title: "Hikoya — истории на русском и узбекском",

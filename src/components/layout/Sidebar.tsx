@@ -31,10 +31,10 @@ export function Sidebar({ user }: { user: CurrentUser | null }) {
   const items = [
     { href: ROUTES.home, icon: HomeIcon, label: t.nav.home, locked: false },
     { href: ROUTES.search, icon: SearchIcon, label: t.nav.search, locked: false },
+    { href: user ? ROUTES.library : ROUTES.onboarding, icon: LibraryIcon, label: t.nav.library, locked: !user },
     { href: ROUTES.collections, icon: CollectionsIcon, label: t.nav.collections, locked: false },
     { href: ROUTES.board, icon: BoardIcon, label: t.nav.board, locked: false },
     { href: user ? ROUTES.create : ROUTES.onboarding, icon: PlusIcon, label: t.nav.create, locked: !user },
-    { href: user ? ROUTES.library : ROUTES.onboarding, icon: LibraryIcon, label: t.nav.library, locked: !user },
     {
       href: user ? ROUTES.author(user.profile?.username ?? "") : ROUTES.onboarding,
       icon: UserIcon,

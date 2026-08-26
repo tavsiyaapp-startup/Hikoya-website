@@ -10,12 +10,14 @@ import {
   getMyCollections,
   getStoriesByReadingStatus,
 } from "@/lib/queries/stories";
+import { getFollowedAuthorsWithStories } from "@/lib/queries/social";
 import { ROUTES } from "@/lib/constants";
 import { StoryCard } from "@/components/story/StoryCard";
 import { CollectionCard } from "@/components/collections/CollectionCard";
+import { Avatar } from "@/components/ui/Avatar";
 import { Chip } from "@/components/ui/Chip";
 
-const TABS = ["reading", "wantToRead", "read", "dropped", "bookmarks", "collections"] as const;
+const TABS = ["reading", "wantToRead", "read", "dropped", "bookmarks", "following", "collections"] as const;
 type Tab = (typeof TABS)[number];
 
 export default async function LibraryPage({
@@ -31,12 +33,13 @@ export default async function LibraryPage({
   const user = await getCurrentUser();
   if (!user) redirect(`${ROUTES.onboarding}?next=${encodeURIComponent(ROUTES.library)}`);
 
-  const [reading, wantToRead, read, dropped, bookmarks, collections] = await Promise.all([
+  const [reading, wantToRead, read, dropped, bookmarks, following, collections] = await Promise.all([
     tab === "reading" ? getContinueReading(user.id, 20) : Promise.resolve([]),
     tab === "wantToRead" ? getStoriesByReadingStatus(user.id, "want_to_read") : Promise.resolve([]),
     tab === "read" ? getStoriesByReadingStatus(user.id, "read") : Promise.resolve([]),
     tab === "dropped" ? getStoriesByReadingStatus(user.id, "dropped") : Promise.resolve([]),
     tab === "bookmarks" ? getBookmarkedStories(user.id) : Promise.resolve([]),
+    tab === "following" ? getFollowedAuthorsWithStories(user.id) : Promise.resolve([]),
     tab === "collections" ? getMyCollections(user.id) : Promise.resolve([]),
   ]);
 
@@ -62,6 +65,7 @@ export default async function LibraryPage({
             ["read", t.library.tabRead],
             ["dropped", t.library.tabDropped],
             ["bookmarks", t.library.tabBookmarks],
+            ["following", t.library.tabFollowing],
             ["collections", t.library.tabCollections],
           ] as const
         ).map(([key, label]) => (
@@ -121,6 +125,34 @@ export default async function LibraryPage({
           </div>
         ) : (
           <EmptyState text={gridTab.empty} />
+        ))}
+
+      {tab === "following" &&
+        (following.length > 0 ? (
+          <div className="flex flex-col gap-9">
+            {following.map((group) => (
+              <div key={group.author.id}>
+                <Link
+                  href={ROUTES.author(group.author.username)}
+                  className="mb-3.5 flex items-center gap-2.5"
+                >
+                  <Avatar name={group.author.display_name} src={group.author.avatar_url} size={36} />
+                  <h2 className="text-[17px] font-extrabold">{group.author.display_name}</h2>
+                </Link>
+                {group.stories.length > 0 ? (
+                  <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-5.5 lg:grid-cols-4">
+                    {group.stories.map((story) => (
+                      <StoryCard key={story.id} story={story} />
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-[13.5px] text-muted-2">{t.library.authorNoStoriesYet}</p>
+                )}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <EmptyState text={t.library.noFollowingYet} />
         ))}
 
       {tab === "collections" && (

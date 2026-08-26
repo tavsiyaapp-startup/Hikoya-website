@@ -245,6 +245,7 @@ const uz: typeof ru = {
     tabDropped: "Tashlab qoʻyilgan",
     tabCollections: "Tanlanmalar",
     tabBookmarks: "Xatcho'plar",
+    tabFollowing: "Obuna boʻlgan mualliflarim",
     percentRead: "oʻqilgan",
     createCollection: "Tanlanma yaratish",
     notStartedReading: "Siz hali birorta ham hikoya oʻqishni boshlamagansiz.",
@@ -252,6 +253,8 @@ const uz: typeof ru = {
     noWantToReadYet: "«Oʻqimoqchiman» roʻyxati hozircha boʻsh.",
     noReadYet: "Bu yerda oʻqilgan deb belgilangan hikoyalar chiqadi.",
     noDroppedYet: "Tashlab qoʻyilgan hikoyalar hozircha yoʻq.",
+    noFollowingYet: "Siz hali hech kimga obuna boʻlmagansiz.",
+    authorNoStoriesYet: "Hozircha chop etilgan hikoyalar yoʻq.",
   },
   notifications: {
     empty: "Hozircha bildirishnomalar yoʻq.",

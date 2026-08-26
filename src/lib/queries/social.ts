@@ -1,5 +1,6 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
+import type { StoryCard } from "@/lib/queries/stories";
 
 export async function getUserStoryState(userId: string | undefined, storyId: string) {
   if (!userId) return { liked: false, bookmarked: false, readingStatus: null as string | null };
@@ -48,6 +49,53 @@ export async function getFollowerCount(authorId: string) {
     return count ?? 0;
   } catch {
     return 0;
+  }
+}
+
+export type FollowedAuthorGroup = {
+  author: { id: string; username: string; display_name: string; avatar_url: string | null };
+  stories: StoryCard[];
+};
+
+// Powers /library's "Мои подписанные писатели" tab — every author the user
+// follows, each with their currently public/published stories underneath.
+// Authors with nothing published yet still show up (empty stories array) so
+// "who am I following" stays accurate even before they've posted anything.
+export async function getFollowedAuthorsWithStories(userId: string): Promise<FollowedAuthorGroup[]> {
+  try {
+    const supabase = await createClient();
+    const { data: follows } = await supabase
+      .from("follows")
+      .select("author:profiles!follows_author_id_fkey(id, username, display_name, avatar_url)")
+      .eq("follower_id", userId)
+      .order("created_at", { ascending: false });
+
+    const authors = (follows ?? [])
+      .map((f) => f.author as unknown as FollowedAuthorGroup["author"] | null)
+      .filter((a): a is FollowedAuthorGroup["author"] => Boolean(a));
+    if (authors.length === 0) return [];
+
+    const { data: stories } = await supabase
+      .from("stories")
+      .select("*, author:profiles!stories_author_id_fkey(username, display_name)")
+      .in(
+        "author_id",
+        authors.map((a) => a.id)
+      )
+      .eq("status", "published")
+      .eq("visibility", "public")
+      .order("published_at", { ascending: false });
+
+    const storiesByAuthor = new Map<string, StoryCard[]>();
+    for (const story of (stories ?? []) as StoryCard[]) {
+      const arr = storiesByAuthor.get(story.author_id) ?? [];
+      arr.push(story);
+      storiesByAuthor.set(story.author_id, arr);
+    }
+
+    return authors.map((author) => ({ author, stories: storiesByAuthor.get(author.id) ?? [] }));
+  } catch {
+    return [];
   }
 }
 

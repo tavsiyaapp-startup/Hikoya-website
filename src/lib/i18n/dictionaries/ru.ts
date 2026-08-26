@@ -243,6 +243,7 @@ const ru = {
     tabDropped: "Брошено",
     tabCollections: "Подборки",
     tabBookmarks: "Закладки",
+    tabFollowing: "Мои подписанные писатели",
     percentRead: "прочитано",
     createCollection: "Создать подборку",
     notStartedReading: "Вы ещё не начали читать ни одной истории.",
@@ -250,6 +251,8 @@ const ru = {
     noWantToReadYet: "Список «Хочу прочитать» пока пуст.",
     noReadYet: "Здесь появятся истории, отмеченные как прочитанные.",
     noDroppedYet: "Брошенных историй пока нет.",
+    noFollowingYet: "Вы пока ни на кого не подписаны.",
+    authorNoStoriesYet: "Пока нет опубликованных историй.",
   },
   notifications: {
     empty: "Уведомлений пока нет.",

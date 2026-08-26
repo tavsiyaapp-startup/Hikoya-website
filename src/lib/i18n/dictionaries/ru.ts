@@ -224,6 +224,8 @@ const ru = {
     usernameHint: "Нельзя изменить — присвоено при регистрации",
     displayNameLabel: "Отображаемое имя",
     avatarError: "Не удалось загрузить фото. Попробуйте ещё раз.",
+    signOut: "Выйти из аккаунта",
+    confirmSignOut: "Вы уверены, что хотите выйти из аккаунта?",
   },
   author: {
     subscribers: "подписчиков",
@@ -320,6 +322,7 @@ const ru = {
     roleAuthorTitle: "Я автор",
     roleAuthorDesc: "Публикуйте главы и находите своих читателей.",
     continueVia: "Продолжить через",
+    haveAccount: "Уже есть аккаунт?",
     interestsTitle: "Выберите свои интересы",
     interestsBody: "Мы подберём истории, которые вам понравятся. Можно изменить позже.",
     langTitle: "Язык контента",
@@ -398,6 +401,9 @@ const ru = {
     checkInbox: "Проверьте почту.",
     telegramRemovedNotice:
       "Вход через Telegram больше не поддерживается. Если вы регистрировались через Telegram, зарегистрируйтесь заново через Google или email.",
+    loginPageTitle: "С возвращением",
+    loginPageBody: "Войдите через Google или email — если у вас уже есть аккаунт, регистрация не нужна.",
+    noAccount: "Нет аккаунта?",
   },
   meta: {
     title: "Hikoya — истории на русском и узбекском",

@@ -226,6 +226,8 @@ const uz: typeof ru = {
     usernameHint: "Oʻzgartirib boʻlmaydi — roʻyxatdan oʻtishda berilgan",
     displayNameLabel: "Koʻrsatiladigan ism",
     avatarError: "Rasmni yuklab boʻlmadi. Qaytadan urinib koʻring.",
+    signOut: "Akkountdan chiqish",
+    confirmSignOut: "Akkountdan chiqishni xohlaysizmi?",
   },
   author: {
     subscribers: "obunachi",
@@ -322,6 +324,7 @@ const uz: typeof ru = {
     roleAuthorTitle: "Men mualifman",
     roleAuthorDesc: "Boblar chop eting va oʻz oʻquvchilaringizni toping.",
     continueVia: "Davom eting",
+    haveAccount: "Akkountingiz bormi?",
     interestsTitle: "Qiziqishlaringizni tanlang",
     interestsBody: "Sizga yoqadigan hikoyalarni tanlab beramiz. Keyinroq oʻzgartirish mumkin.",
     langTitle: "Kontent tili",
@@ -400,6 +403,9 @@ const uz: typeof ru = {
     checkInbox: "Pochtangizni tekshiring.",
     telegramRemovedNotice:
       "Telegram orqali kirish endi qoʻllab-quvvatlanmaydi. Agar Telegram orqali roʻyxatdan oʻtgan boʻlsangiz, Google yoki email orqali qaytadan roʻyxatdan oʻting.",
+    loginPageTitle: "Xush kelibsiz",
+    loginPageBody: "Google yoki email orqali kiring — agar akkauntingiz allaqachon bo'lsa, roʻyxatdan oʻtish shart emas.",
+    noAccount: "Akkountingiz yoʻqmi?",
   },
   meta: {
     title: "Hikoya — rus va oʻzbek tilidagi hikoyalar",

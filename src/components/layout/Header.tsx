@@ -97,7 +97,7 @@ export function Header({ user, unreadCount = 0 }: { user: CurrentUser | null; un
           </Link>
         ) : (
           <>
-            <Link href={ROUTES.onboarding} className="hidden sm:block">
+            <Link href={ROUTES.login} className="hidden sm:block">
               <Button variant="secondary" size="sm" className="sm:h-[46px] sm:px-5 sm:text-[14.5px]">
                 {t.common.login}
               </Button>

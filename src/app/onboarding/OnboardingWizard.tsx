@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { clsx } from "clsx";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 import type { Locale } from "@/lib/i18n";
+import { ROUTES } from "@/lib/constants";
 import { GoogleButton, EmailForm } from "@/components/auth/AuthButtons";
 import { completeOnboarding } from "./actions";
 
@@ -79,12 +81,19 @@ export function OnboardingWizard({ initialStep, next }: { initialStep: 1 | 2; ne
               <div className="h-px flex-1 bg-border-soft" />
             </div>
 
-            <div className="mb-3 flex flex-col gap-3">
+            <div className="mb-6.5 flex flex-col gap-3">
               <GoogleButton next={next} />
               <EmailForm next={next} />
             </div>
-            <p className="mb-6.5 text-[12.5px] leading-relaxed text-muted-2">
-              {t.auth.telegramRemovedNotice}
+
+            <p className="text-center text-[13px] text-muted-2">
+              {t.onboarding.haveAccount}{" "}
+              <Link
+                href={`${ROUTES.login}?next=${encodeURIComponent(next)}`}
+                className="font-bold text-primary-800 hover:underline"
+              >
+                {t.common.login}
+              </Link>
             </p>
           </div>
         )}

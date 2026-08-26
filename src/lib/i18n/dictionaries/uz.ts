@@ -258,6 +258,7 @@ const uz: typeof ru = {
   },
   notifications: {
     empty: "Hozircha bildirishnomalar yoʻq.",
+    markRead: "Oʻqildi",
     newComment: "bobga izoh qoldirdi",
     commentReply: "izohingizga javob berdi",
     commentLike: "izohingizni yoqtirdi",

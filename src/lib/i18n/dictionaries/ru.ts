@@ -256,6 +256,7 @@ const ru = {
   },
   notifications: {
     empty: "Уведомлений пока нет.",
+    markRead: "Прочитано",
     newComment: "прокомментировал(а) главу",
     commentReply: "ответил(а) на ваш комментарий",
     commentLike: "оценил(а) ваш комментарий",

@@ -16,7 +16,6 @@ import { StoryCard } from "@/components/story/StoryCard";
 import { FollowButton } from "@/components/story/StoryActions";
 import { EditProfileForm } from "@/components/profile/EditProfileForm";
 import { NotificationList } from "@/components/notifications/NotificationList";
-import { NotificationsReadMarker } from "@/components/notifications/NotificationsReadMarker";
 import { CloseRequestButton } from "@/components/board/CloseRequestButton";
 
 const TABS = ["stories", "myRequests", "notifications"] as const;
@@ -127,10 +126,7 @@ export default async function AuthorPage({
       </div>
 
       {tab === "notifications" && isOwner && (
-        <>
-          <NotificationsReadMarker userId={profile.id} />
-          <NotificationList notifications={notifications} locale={locale} />
-        </>
+        <NotificationList notifications={notifications} locale={locale} />
       )}
 
       {tab === "stories" &&

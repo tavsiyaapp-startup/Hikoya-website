@@ -229,7 +229,6 @@ export interface SearchFilters {
   genre?: string;
   status?: string;
   age?: string;
-  relationship?: string;
   style?: string;
   warnings?: string[];
   sort?: "popular" | "newest" | "views";
@@ -267,12 +266,8 @@ export const searchStories = unstable_cache(
       if (filters.status) query = query.eq("status", filters.status);
       if (filters.age) query = query.eq("age_rating", filters.age);
 
-      for (const [category, label] of [
-        ["relationship", filters.relationship],
-        ["style", filters.style],
-      ] as const) {
-        if (!label) continue;
-        const ids = await storyIdsForTag(supabase, category, label);
+      if (filters.style) {
+        const ids = await storyIdsForTag(supabase, "style", filters.style);
         query = query.in("id", ids && ids.length > 0 ? ids : ["00000000-0000-0000-0000-000000000000"]);
       }
 

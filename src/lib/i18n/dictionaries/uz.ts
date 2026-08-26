@@ -86,7 +86,6 @@ const uz: typeof ru = {
     genre: "Janr",
     status: "Holat",
     ageRating: "Yosh toifasi",
-    relationship: "Munosabat turi",
     warnings: "Ogohlantirishlar",
     style: "Uslub",
     period: "Davr",

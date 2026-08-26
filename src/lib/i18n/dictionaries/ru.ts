@@ -84,7 +84,6 @@ const ru = {
     genre: "Жанр",
     status: "Статус",
     ageRating: "Возрастная категория",
-    relationship: "Тип отношений",
     warnings: "Предупреждения",
     style: "Стилистика",
     period: "Период",

@@ -11,12 +11,6 @@ type Query = { [key: string]: string | string[] | undefined };
 
 // Value sent in the URL / matched against tags.label_ru in the DB is always
 // the Russian label (tuple[0]) — only the on-screen text switches with locale.
-const RELATIONSHIPS: [string, string][] = [
-  ["Разнополые отношения", "Turli jinsdagilar munosabati"],
-  ["Однополые отношения", "Bir jinsdagilar munosabati"],
-  ["Множественные пары", "Bir nechta juftlik"],
-  ["Без романтической линии", "Romantik chiziqsiz"],
-];
 const WARNINGS: [string, string][] = [
   ["Нецензурная лексика", "Soʻkinish soʻzlari"],
   ["Насилие", "Zoʻravonlik"],
@@ -33,7 +27,7 @@ const STYLES: [string, string][] = [
 
 function localizedLabel(value: string | undefined, locale: "ru" | "uz"): string | undefined {
   if (!value || locale === "ru") return value;
-  const pair = [...RELATIONSHIPS, ...WARNINGS, ...STYLES].find(([ru]) => ru === value);
+  const pair = [...WARNINGS, ...STYLES].find(([ru]) => ru === value);
   return pair ? pair[1] : value;
 }
 
@@ -71,7 +65,6 @@ export default async function SearchPage({
     genre: one(sp.genre),
     status: one(sp.status),
     age: one(sp.age),
-    relationship: one(sp.rel),
     style: one(sp.style),
     warnings: many(sp.warn),
     sort: (one(sp.sort) as SearchFilters["sort"]) ?? "popular",
@@ -79,7 +72,7 @@ export default async function SearchPage({
 
   const results = await searchStories(filters);
   const hasActive = Boolean(
-    filters.language || filters.genre || filters.status || filters.age || filters.relationship || filters.style || filters.warnings?.length
+    filters.language || filters.genre || filters.status || filters.age || filters.style || filters.warnings?.length
   );
 
   return (
@@ -131,14 +124,6 @@ export default async function SearchPage({
         </FilterGroup>
 
         <div className="my-1 h-px bg-border-soft" />
-
-        <FilterGroup label={t.search.relationship} wrap>
-          {RELATIONSHIPS.map(([r, rUz]) => (
-            <Link key={r} href={buildHref(sp, { rel: filters.relationship === r ? undefined : r })}>
-              <Chip active={filters.relationship === r}>{locale === "uz" ? rUz : r}</Chip>
-            </Link>
-          ))}
-        </FilterGroup>
 
         <FilterGroup label={t.search.warnings} wrap>
           {WARNINGS.map(([w, wUz]) => (
@@ -199,7 +184,6 @@ export default async function SearchPage({
                 ["genre", filters.genre],
                 ["status", filters.status],
                 ["age", filters.age],
-                ["rel", filters.relationship],
                 ["style", filters.style],
               ] as Array<[string, string | undefined]>
             )
@@ -210,7 +194,7 @@ export default async function SearchPage({
                   href={buildHref(sp, { [key]: undefined })}
                   className="flex items-center gap-1.5 rounded-[10px] border border-primary-300 bg-primary-50 px-3 py-1.5 text-[12.5px] font-semibold text-primary-900"
                 >
-                  <span>{key === "rel" || key === "style" ? localizedLabel(value, locale) : value}</span>
+                  <span>{key === "style" ? localizedLabel(value, locale) : value}</span>
                   <span className="text-[14px] leading-none">×</span>
                 </Link>
               ))}

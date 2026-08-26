@@ -144,16 +144,31 @@ export type StoryCommentRow = CommentRow & {
   chapter: { order_index: number; title: string } | null;
 };
 
-export async function getStoryComments(storyId: string, limit = 200): Promise<StoryCommentRow[]> {
+export type StoryCommentThread = StoryCommentRow & { replies: StoryCommentRow[] };
+
+export async function getStoryComments(storyId: string, limit = 300): Promise<StoryCommentThread[]> {
   try {
     const supabase = await createClient();
     const { data } = await supabase
       .from("comments")
       .select("*, user:profiles(display_name), chapter:chapters!inner(order_index, title, story_id)")
       .eq("chapter.story_id", storyId)
-      .order("created_at", { ascending: false })
+      .order("created_at", { ascending: true })
       .limit(limit);
-    return (data as StoryCommentRow[]) ?? [];
+    const all = (data as StoryCommentRow[]) ?? [];
+
+    const repliesByParent = new Map<string, StoryCommentRow[]>();
+    for (const c of all) {
+      if (!c.parent_id) continue;
+      const arr = repliesByParent.get(c.parent_id) ?? [];
+      arr.push(c);
+      repliesByParent.set(c.parent_id, arr);
+    }
+
+    return all
+      .filter((c) => !c.parent_id)
+      .sort((a, b) => +new Date(b.created_at) - +new Date(a.created_at))
+      .map((c) => ({ ...c, replies: repliesByParent.get(c.id) ?? [] }));
   } catch {
     return [];
   }

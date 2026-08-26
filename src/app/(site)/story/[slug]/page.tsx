@@ -6,6 +6,8 @@ import { getDictionary } from "@/lib/i18n";
 import { getCurrentUser } from "@/lib/current-user";
 import { getStoryBySlug, getChaptersForStory, getMyCollectionsWithStory } from "@/lib/queries/stories";
 import { getUserStoryState, isFollowingAuthor, getFollowerCount, getStoryComments } from "@/lib/queries/social";
+import type { StoryCommentRow } from "@/lib/queries/social";
+import type { Dictionary } from "@/lib/i18n";
 import { getLinkedRequestForStory } from "@/lib/queries/requests";
 import { ROUTES } from "@/lib/constants";
 import { RELATIONSHIP_TYPES } from "@/lib/relationshipTypes";
@@ -193,30 +195,19 @@ export default async function StoryPage({
         )}
 
         {tab === "comments" && (
-          <div className="flex flex-col gap-2.5">
+          <div className="flex flex-col gap-3.5">
             {storyComments.length > 0 ? (
               storyComments.map((c) => (
-                <Link
-                  key={c.id}
-                  href={c.chapter ? `${ROUTES.chapter(slug, c.chapter.order_index)}#comment-${c.id}` : "#"}
-                  className="flex gap-3.5 rounded-2xl border border-border bg-card p-4.5 hover:border-primary-300"
-                >
-                  <Avatar name={c.user?.display_name ?? "?"} size={38} />
-                  <div className="min-w-0 flex-1">
-                    <div className="mb-1.5 flex flex-wrap items-center gap-2.5">
-                      <span className="text-[14px] font-bold">{c.user?.display_name}</span>
-                      <span className="text-[12.5px] text-muted-3">
-                        {new Date(c.created_at).toLocaleDateString(locale)}
-                      </span>
-                      {c.chapter && (
-                        <Badge tone="neutral">
-                          {t.story.chapterBadge} {c.chapter.order_index}
-                        </Badge>
-                      )}
+                <div key={c.id} className="flex flex-col gap-2.5">
+                  <StoryCommentCard comment={c} slug={slug} locale={locale} t={t} />
+                  {c.replies.length > 0 && (
+                    <div className="ml-10.5 flex flex-col gap-2.5">
+                      {c.replies.map((r) => (
+                        <StoryCommentCard key={r.id} comment={r} slug={slug} locale={locale} t={t} isReply />
+                      ))}
                     </div>
-                    <p className="text-[14.5px] leading-relaxed text-ink-soft">{c.text}</p>
-                  </div>
-                </Link>
+                  )}
+                </div>
               ))
             ) : (
               <div className="rounded-[20px] border border-border bg-card px-6 py-10 text-center text-[14px] text-muted-2">
@@ -245,4 +236,41 @@ export default async function StoryPage({
 function clsxRow(index: number, total: number) {
   const border = index < total - 1 ? "border-b border-border-soft" : "";
   return `flex items-center gap-3.5 px-5.5 py-4 hover:bg-surface ${border}`;
+}
+
+function StoryCommentCard({
+  comment,
+  slug,
+  locale,
+  t,
+  isReply,
+}: {
+  comment: StoryCommentRow;
+  slug: string;
+  locale: "ru" | "uz";
+  t: Dictionary;
+  isReply?: boolean;
+}) {
+  return (
+    <Link
+      href={comment.chapter ? `${ROUTES.chapter(slug, comment.chapter.order_index)}#comment-${comment.id}` : "#"}
+      className={`flex gap-3.5 rounded-2xl border border-border p-4.5 hover:border-primary-300 ${isReply ? "bg-surface" : "bg-card"}`}
+    >
+      <Avatar name={comment.user?.display_name ?? "?"} size={isReply ? 32 : 38} />
+      <div className="min-w-0 flex-1">
+        <div className="mb-1.5 flex flex-wrap items-center gap-2.5">
+          <span className="text-[14px] font-bold">{comment.user?.display_name}</span>
+          <span className="text-[12.5px] text-muted-3">
+            {new Date(comment.created_at).toLocaleDateString(locale)}
+          </span>
+          {!isReply && comment.chapter && (
+            <Badge tone="neutral">
+              {t.story.chapterBadge} {comment.chapter.order_index}
+            </Badge>
+          )}
+        </div>
+        <p className="text-[14.5px] leading-relaxed text-ink-soft">{comment.text}</p>
+      </div>
+    </Link>
+  );
 }

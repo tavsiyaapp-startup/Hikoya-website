@@ -128,7 +128,10 @@ export async function createStory(input: CreateStoryInput) {
 
   updateTag("stories");
   revalidatePath(ROUTES.home);
-  redirect(ROUTES.manage(story.slug));
+  // Doesn't redirect itself — CreateWizard may still need to attach more
+  // chapters (docx import produces several) via addChapter before sending
+  // the browser to the new story's manage page.
+  return { id: story.id as string, slug: story.slug as string };
 }
 
 export interface UpdateStoryInput {

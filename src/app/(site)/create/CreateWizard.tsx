@@ -1,20 +1,25 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { clsx } from "clsx";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 import { createClient } from "@/lib/supabase/client";
-import { createStory } from "@/lib/actions/stories";
+import { createStory, addChapter } from "@/lib/actions/stories";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { RichTextEditor } from "@/components/ui/RichTextEditor";
 import { Chip } from "@/components/ui/Chip";
 import { TagPicker } from "@/components/story/TagPicker";
+import { DocxImportFlow } from "@/components/manage/DocxImportFlow";
+import { ROUTES } from "@/lib/constants";
+import type { SplitChapter } from "@/lib/editor/splitChapters";
 import type { AgeRating, ContentLanguage, StoryVisibility } from "@/types/database";
 
 export function CreateWizard({ userId, existingTags }: { userId: string; existingTags: string[] }) {
   const { t } = useLocale();
+  const router = useRouter();
   const [step, setStep] = useState(1);
 
   const [coverUrl, setCoverUrl] = useState<string | null>(null);
@@ -28,8 +33,10 @@ export function CreateWizard({ userId, existingTags }: { userId: string; existin
   const [language, setLanguage] = useState<ContentLanguage>("ru");
   const [ageRating, setAgeRating] = useState<AgeRating>("0+");
 
+  const [chapterMode, setChapterMode] = useState<"manual" | "import">("manual");
   const [chapterTitle, setChapterTitle] = useState("");
   const [chapterText, setChapterText] = useState("");
+  const [importedChapters, setImportedChapters] = useState<SplitChapter[]>([]);
 
   const [visibility, setVisibility] = useState<StoryVisibility>("public");
   const [announce, setAnnounce] = useState("");
@@ -56,11 +63,19 @@ export function CreateWizard({ userId, existingTags }: { userId: string; existin
   }
 
   const step1Valid = title.trim().length > 0 && description.trim().length > 0;
-  const step2Valid = chapterTitle.trim().length > 0 && chapterText.trim().length > 0;
+  const step2Valid =
+    chapterMode === "manual"
+      ? chapterTitle.trim().length > 0 && chapterText.trim().length > 0
+      : importedChapters.length > 0 && importedChapters.every((c) => c.title.trim().length > 0);
 
   function handlePublish() {
-    startTransition(() => {
-      createStory({
+    startTransition(async () => {
+      const firstChapter =
+        chapterMode === "manual"
+          ? { title: chapterTitle, text: chapterText }
+          : { title: importedChapters[0].title, text: importedChapters[0].html };
+
+      const story = await createStory({
         title,
         description,
         coverUrl,
@@ -68,11 +83,27 @@ export function CreateWizard({ userId, existingTags }: { userId: string; existin
         tags,
         language,
         ageRating,
-        chapterTitle,
-        chapterText,
+        chapterTitle: firstChapter.title,
+        chapterText: firstChapter.text,
         visibility,
         announce: announce || null,
       });
+      if (!story) return;
+
+      if (chapterMode === "import") {
+        // Sequential on purpose — addChapter derives order_index from a
+        // fresh max(order_index)+1 query each call, so parallel inserts
+        // would race and violate the unique(story_id, order_index) constraint.
+        for (const chapter of importedChapters.slice(1)) {
+          const formData = new FormData();
+          formData.set("title", chapter.title.trim());
+          formData.set("content", chapter.html);
+          await addChapter(story.id, story.slug, formData);
+        }
+      }
+
+      router.push(ROUTES.manage(story.slug));
+      router.refresh();
     });
   }
 
@@ -199,22 +230,63 @@ export function CreateWizard({ userId, existingTags }: { userId: string; existin
 
           {step === 2 && (
             <div className="rounded-3xl border border-border bg-card p-5 sm:p-7.5">
-              <h2 className="mb-5.5 text-[22px] font-extrabold">{t.create.step2}</h2>
-              <label className="mb-2 block text-[14px] font-bold">{t.create.chapterTitleLabel} *</label>
-              <Input
-                value={chapterTitle}
-                onChange={(e) => setChapterTitle(e.target.value)}
-                placeholder={t.create.chapterTitlePlaceholder}
-                className="mb-5"
-              />
-              <RichTextEditor
-                value={chapterText}
-                onChange={setChapterText}
-                placeholder={t.create.chapterTextPlaceholder}
-              />
-              <div className="mt-4.5 flex items-center gap-3 rounded-2xl border border-primary-100 bg-primary-50 px-4.5 py-3.5 text-[13.5px] text-ink-soft">
-                {t.create.autosaveHint}
+              <h2 className="mb-4 text-[22px] font-extrabold">{t.create.step2}</h2>
+
+              <div className="mb-5.5 flex gap-2.5">
+                <Chip active={chapterMode === "manual"} onClick={() => setChapterMode("manual")}>
+                  {t.create.chapterModeManual}
+                </Chip>
+                <Chip active={chapterMode === "import"} onClick={() => setChapterMode("import")}>
+                  {t.create.chapterModeImport}
+                </Chip>
               </div>
+
+              {chapterMode === "manual" ? (
+                <>
+                  <label className="mb-2 block text-[14px] font-bold">{t.create.chapterTitleLabel} *</label>
+                  <Input
+                    value={chapterTitle}
+                    onChange={(e) => setChapterTitle(e.target.value)}
+                    placeholder={t.create.chapterTitlePlaceholder}
+                    className="mb-5"
+                  />
+                  <RichTextEditor
+                    value={chapterText}
+                    onChange={setChapterText}
+                    placeholder={t.create.chapterTextPlaceholder}
+                  />
+                  <div className="mt-4.5 flex items-center gap-3 rounded-2xl border border-primary-100 bg-primary-50 px-4.5 py-3.5 text-[13.5px] text-ink-soft">
+                    {t.create.autosaveHint}
+                  </div>
+                </>
+              ) : importedChapters.length > 0 ? (
+                <div>
+                  <div className="mb-3.5 flex flex-wrap items-center justify-between gap-2.5">
+                    <span className="text-[14px] font-bold text-primary-900">
+                      ✓ {t.create.chapterModeImportedN.replace("{n}", String(importedChapters.length))}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setImportedChapters([])}
+                      className="cursor-pointer text-[13px] font-bold text-primary-800"
+                    >
+                      {t.create.chapterModeImportRedo}
+                    </button>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    {importedChapters.map((c, i) => (
+                      <div key={c.id} className="rounded-xl border border-border bg-surface px-3.5 py-2.5 text-[13.5px] text-ink-soft">
+                        {i + 1}. {c.title || t.manage.untitledChapter}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <DocxImportFlow
+                  onConfirm={setImportedChapters}
+                  confirmLabel={(count) => t.create.chapterModeImportConfirm.replace("{n}", String(count))}
+                />
+              )}
             </div>
           )}
 

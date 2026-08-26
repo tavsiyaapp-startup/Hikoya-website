@@ -14,6 +14,7 @@ const uz: typeof ru = {
     cancel: "Bekor qilish",
     back: "Orqaga",
     next: "Keyingi",
+    close: "Yopish",
     loading: "Yuklanmoqda…",
     error: "Nimadir xato ketdi",
     guestLockedTitle: "Roʻyxatdan oʻtgandan keyin ochiladi",

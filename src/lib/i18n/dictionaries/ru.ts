@@ -12,6 +12,7 @@ const ru = {
     cancel: "Отмена",
     back: "Назад",
     next: "Далее",
+    close: "Закрыть",
     loading: "Загрузка…",
     error: "Что-то пошло не так",
     guestLockedTitle: "Доступно после регистрации",

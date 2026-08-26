@@ -7,6 +7,7 @@ import { useLocale } from "@/lib/i18n/LocaleProvider";
 import type { Locale } from "@/lib/i18n";
 import { ROUTES } from "@/lib/constants";
 import { GoogleButton, EmailForm } from "@/components/auth/AuthButtons";
+import { CloseIcon } from "@/components/ui/icons";
 import { completeOnboarding } from "./actions";
 
 const TOTAL_STEPS = 3;
@@ -42,6 +43,13 @@ export function OnboardingWizard({ initialStep, next }: { initialStep: 1 | 2; ne
           <span className="text-[13px] font-bold text-muted-2">
             {step} / {TOTAL_STEPS}
           </span>
+          <Link
+            href={ROUTES.home}
+            aria-label={t.common.close}
+            className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-[11px] text-ink-soft transition hover:bg-surface"
+          >
+            <CloseIcon />
+          </Link>
         </div>
 
         {step === 1 && (

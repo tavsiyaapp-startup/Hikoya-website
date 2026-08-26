@@ -11,9 +11,9 @@ import type { HeroSlide } from "@/types/database";
 
 const AUTO_ADVANCE_MS = 7000;
 
-export function HeroCarousel({ slides, children }: { slides: HeroSlide[]; children: React.ReactNode }) {
+export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
   const { locale } = useLocale();
-  const total = 1 + slides.length;
+  const total = slides.length;
   const [index, setIndex] = useState(0);
 
   useEffect(() => {
@@ -26,13 +26,14 @@ export function HeroCarousel({ slides, children }: { slides: HeroSlide[]; childr
     setIndex(((next % total) + total) % total);
   }
 
+  if (total === 0) return null;
+
   return (
     <section className="relative mb-9.5 overflow-hidden rounded-[26px]">
       <div className="flex transition-transform duration-500 ease-out" style={{ transform: `translateX(-${index * 100}%)` }}>
-        <div className="w-full shrink-0">{children}</div>
         {slides.map((slide) => (
           <div key={slide.id} className="w-full shrink-0">
-            <GenericSlide slide={slide} locale={locale} />
+            <Slide slide={slide} locale={locale} />
           </div>
         ))}
       </div>
@@ -75,27 +76,50 @@ export function HeroCarousel({ slides, children }: { slides: HeroSlide[]; childr
   );
 }
 
-function GenericSlide({ slide, locale }: { slide: HeroSlide; locale: "ru" | "uz" }) {
+// Every slide shares this exact layout so the carousel never changes size
+// between slides — only the fixed h-[...] values below vary by breakpoint.
+// Title/body are optional: with neither set, the image fills the whole
+// banner instead of sharing it with a text panel.
+function Slide({ slide, locale }: { slide: HeroSlide; locale: "ru" | "uz" }) {
   const title = locale === "uz" ? slide.title_uz : slide.title_ru;
   const body = locale === "uz" ? slide.body_uz : slide.body_ru;
   const ctaLabel = locale === "uz" ? slide.cta_label_uz : slide.cta_label_ru;
+  const hasText = Boolean(title || body);
 
   return (
-    <div className="flex flex-col border border-primary-100 bg-linear-to-br from-primary-50 via-[#F6ECFB] to-pink-bg sm:flex-row">
-      <div className="flex-1 p-6 sm:p-11">
-        <h1 className="mb-3 max-w-[480px] text-[28px] font-extrabold leading-tight tracking-tight text-balance sm:text-[40px]">
-          {title}
-        </h1>
-        <p className="mb-6.5 max-w-[430px] text-[14.5px] leading-relaxed text-ink-soft sm:text-[15.5px]">{body}</p>
-        {ctaLabel && slide.cta_url && (
-          <Link href={slide.cta_url}>
-            <Button size="lg">{ctaLabel}</Button>
-          </Link>
+    <div className="flex h-[460px] flex-col border border-primary-100 bg-linear-to-br from-primary-50 via-[#F6ECFB] to-pink-bg sm:h-90 sm:flex-row">
+      {hasText && (
+        <div className="flex flex-1 flex-col justify-center p-6 sm:p-11">
+          {title && (
+            <h1 className="mb-3 line-clamp-2 max-w-[480px] text-[28px] font-extrabold leading-tight tracking-tight text-balance sm:text-[40px]">
+              {title}
+            </h1>
+          )}
+          {body && (
+            <p className="mb-6.5 line-clamp-3 max-w-[430px] text-[14.5px] leading-relaxed text-ink-soft sm:text-[15.5px]">
+              {body}
+            </p>
+          )}
+          {ctaLabel && slide.cta_url && (
+            <Link href={slide.cta_url}>
+              <Button size="lg">{ctaLabel}</Button>
+            </Link>
+          )}
+        </div>
+      )}
+      <div
+        className={clsx(
+          "relative w-full",
+          hasText ? "h-48 sm:h-full sm:w-[46%]" : "h-full w-full"
         )}
-      </div>
-      <div className="relative h-48 w-full sm:h-auto sm:min-h-75 sm:w-[46%]">
-        <Image src={slide.image_url} alt="" fill className="object-cover object-right" />
-        <div className="absolute inset-0 bg-linear-to-r from-primary-50 to-transparent sm:block hidden" />
+      >
+        <Image
+          src={slide.image_url}
+          alt=""
+          fill
+          className={clsx("object-cover", hasText ? "object-right" : "object-center")}
+        />
+        {hasText && <div className="absolute inset-0 bg-linear-to-r from-primary-50 to-transparent sm:block hidden" />}
       </div>
     </div>
   );

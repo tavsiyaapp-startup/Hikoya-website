@@ -79,41 +79,7 @@ export default async function HomePage({
         )}
       </div>
 
-      <HeroCarousel slides={heroSlides}>
-        <div className="flex flex-col border border-primary-100 bg-linear-to-br from-primary-50 via-[#F6ECFB] to-pink-bg sm:flex-row">
-          <div className="flex-1 p-6 sm:p-11">
-            <div className="mb-4.5 inline-flex items-center gap-1.5 rounded-full bg-white/75 px-3.5 py-1.5 text-[12px] font-bold text-primary-800">
-              <SparkleIcon className="text-primary-700" />
-              <span>{t.home.heroKicker}</span>
-            </div>
-            <h1 className="mb-3 max-w-[480px] text-[28px] font-extrabold leading-tight tracking-tight text-balance sm:text-[40px]">
-              {t.home.heroTitle}
-            </h1>
-            <p className="mb-6.5 max-w-[430px] text-[14.5px] leading-relaxed text-ink-soft sm:text-[15.5px]">
-              {t.home.heroBody}
-            </p>
-            <div className="flex flex-wrap gap-3">
-              <Link href={user ? ROUTES.create : ROUTES.onboarding}>
-                <Button size="lg">{t.home.heroCta}</Button>
-              </Link>
-              <Link href={ROUTES.search}>
-                <Button size="lg" variant="secondary" className="bg-white/70">
-                  {t.home.heroCta2}
-                </Button>
-              </Link>
-            </div>
-          </div>
-          <div className="relative h-48 w-full sm:h-auto sm:min-h-75 sm:w-[46%]">
-            <Image
-              src="/images/banner-write.jpg"
-              alt=""
-              fill
-              className="object-cover object-right"
-            />
-            <div className="absolute inset-0 bg-linear-to-r from-primary-50 to-transparent sm:block hidden" />
-          </div>
-        </div>
-      </HeroCarousel>
+      <HeroCarousel slides={heroSlides} />
 
       {/* "Топ" section — commented out for now, re-enable later (see also the
           commented-out topTier/getTopStories bits above).

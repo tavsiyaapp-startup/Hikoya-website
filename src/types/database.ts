@@ -191,10 +191,10 @@ export interface FeaturedStory {
 
 export interface HeroSlide {
   id: string;
-  title_ru: string;
-  title_uz: string;
-  body_ru: string;
-  body_uz: string;
+  title_ru: string | null;
+  title_uz: string | null;
+  body_ru: string | null;
+  body_uz: string | null;
   image_url: string;
   cta_label_ru: string | null;
   cta_label_uz: string | null;

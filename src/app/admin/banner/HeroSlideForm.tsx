@@ -2,16 +2,17 @@
 
 import { useState, useTransition } from "react";
 import Image from "next/image";
-import { createHeroSlide } from "@/lib/actions/admin";
+import { createHeroSlide, updateHeroSlide } from "@/lib/actions/admin";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 import { createClient } from "@/lib/supabase/client";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { Button } from "@/components/ui/Button";
+import type { HeroSlide } from "@/types/database";
 
-export function HeroSlideForm() {
+export function HeroSlideForm({ slide, onDone }: { slide?: HeroSlide; onDone?: () => void }) {
   const { t } = useLocale();
-  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [imageUrl, setImageUrl] = useState<string | null>(slide?.image_url ?? null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -42,10 +43,15 @@ export function HeroSlideForm() {
       return;
     }
     startTransition(async () => {
-      await createHeroSlide(formData);
-      setImageUrl(null);
-      setError(null);
-      setFormKey((k) => k + 1);
+      if (slide) {
+        await updateHeroSlide(slide.id, formData);
+        onDone?.();
+      } else {
+        await createHeroSlide(formData);
+        setImageUrl(null);
+        setError(null);
+        setFormKey((k) => k + 1);
+      }
     });
   }
 
@@ -69,23 +75,31 @@ export function HeroSlideForm() {
 
       <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
         <div>
-          <label className="mb-1.5 block text-[13px] font-bold">{t.admin.bannerTitleRu}</label>
-          <Input name="titleRu" required />
+          <label className="mb-1.5 block text-[13px] font-bold">
+            {t.admin.bannerTitleRu} <span className="font-medium text-muted-2">{t.admin.bannerOptional}</span>
+          </label>
+          <Input name="titleRu" defaultValue={slide?.title_ru ?? ""} />
         </div>
         <div>
-          <label className="mb-1.5 block text-[13px] font-bold">{t.admin.bannerTitleUz}</label>
-          <Input name="titleUz" required />
+          <label className="mb-1.5 block text-[13px] font-bold">
+            {t.admin.bannerTitleUz} <span className="font-medium text-muted-2">{t.admin.bannerOptional}</span>
+          </label>
+          <Input name="titleUz" defaultValue={slide?.title_uz ?? ""} />
         </div>
       </div>
 
       <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
         <div>
-          <label className="mb-1.5 block text-[13px] font-bold">{t.admin.bannerBodyRu}</label>
-          <Textarea name="bodyRu" rows={2} required />
+          <label className="mb-1.5 block text-[13px] font-bold">
+            {t.admin.bannerBodyRu} <span className="font-medium text-muted-2">{t.admin.bannerOptional}</span>
+          </label>
+          <Textarea name="bodyRu" rows={2} defaultValue={slide?.body_ru ?? ""} />
         </div>
         <div>
-          <label className="mb-1.5 block text-[13px] font-bold">{t.admin.bannerBodyUz}</label>
-          <Textarea name="bodyUz" rows={2} required />
+          <label className="mb-1.5 block text-[13px] font-bold">
+            {t.admin.bannerBodyUz} <span className="font-medium text-muted-2">{t.admin.bannerOptional}</span>
+          </label>
+          <Textarea name="bodyUz" rows={2} defaultValue={slide?.body_uz ?? ""} />
         </div>
       </div>
 
@@ -94,26 +108,37 @@ export function HeroSlideForm() {
           <label className="mb-1.5 block text-[13px] font-bold">
             {t.admin.bannerCtaLabelRu} <span className="font-medium text-muted-2">{t.admin.bannerOptional}</span>
           </label>
-          <Input name="ctaLabelRu" />
+          <Input name="ctaLabelRu" defaultValue={slide?.cta_label_ru ?? ""} />
         </div>
         <div>
           <label className="mb-1.5 block text-[13px] font-bold">
             {t.admin.bannerCtaLabelUz} <span className="font-medium text-muted-2">{t.admin.bannerOptional}</span>
           </label>
-          <Input name="ctaLabelUz" />
+          <Input name="ctaLabelUz" defaultValue={slide?.cta_label_uz ?? ""} />
         </div>
         <div>
           <label className="mb-1.5 block text-[13px] font-bold">
             {t.admin.bannerCtaUrl} <span className="font-medium text-muted-2">{t.admin.bannerOptional}</span>
           </label>
-          <Input name="ctaUrl" placeholder="/search" />
+          <Input name="ctaUrl" placeholder="/search" defaultValue={slide?.cta_url ?? ""} />
         </div>
       </div>
 
       <input type="hidden" name="imageUrl" value={imageUrl ?? ""} />
-      <Button type="submit" disabled={pending} className="self-start">
-        {pending ? t.common.loading : t.admin.bannerAddSlide}
-      </Button>
+      <div className="flex gap-2.5">
+        <Button type="submit" disabled={pending} className="self-start">
+          {pending ? t.common.loading : slide ? t.common.save : t.admin.bannerAddSlide}
+        </Button>
+        {slide && (
+          <button
+            type="button"
+            onClick={onDone}
+            className="h-11 cursor-pointer self-start rounded-xl px-4 text-[14px] font-bold text-muted-2 hover:text-ink"
+          >
+            {t.common.cancel}
+          </button>
+        )}
+      </div>
     </form>
   );
 }

@@ -22,7 +22,9 @@ export default async function AdminBannerPage() {
         <div className="rounded-[22px] border border-border bg-card p-4.5 sm:p-6.5">
           <h3 className="mb-3 text-[15px] font-extrabold">{t.admin.bannerCurrentSlides}</h3>
           {slides.length > 0 ? (
-            slides.map((slide) => <HeroSlideListItem key={slide.id} slide={slide} />)
+            slides.map((slide) => (
+              <HeroSlideListItem key={slide.id} slide={slide} canDelete={slides.length > 1} />
+            ))
           ) : (
             <div className="py-6 text-center text-[13.5px] text-muted">{t.admin.bannerNoSlidesYet}</div>
           )}

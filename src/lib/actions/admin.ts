@@ -163,10 +163,7 @@ export async function toggleFeaturedStory(storyId: string, tier: "day" | "week" 
   revalidatePath(ROUTES.search);
 }
 
-export async function createHeroSlide(formData: FormData) {
-  await requireStaff();
-  const admin = createAdminClient();
-
+function readHeroSlideFields(formData: FormData) {
   const titleRu = String(formData.get("titleRu") ?? "").trim();
   const titleUz = String(formData.get("titleUz") ?? "").trim();
   const bodyRu = String(formData.get("bodyRu") ?? "").trim();
@@ -175,18 +172,38 @@ export async function createHeroSlide(formData: FormData) {
   const ctaLabelRu = String(formData.get("ctaLabelRu") ?? "").trim();
   const ctaLabelUz = String(formData.get("ctaLabelUz") ?? "").trim();
   const ctaUrl = String(formData.get("ctaUrl") ?? "").trim();
-  if (!titleRu || !titleUz || !bodyRu || !bodyUz || !imageUrl) return;
-
-  await admin.from("hero_slides").insert({
-    title_ru: titleRu,
-    title_uz: titleUz,
-    body_ru: bodyRu,
-    body_uz: bodyUz,
+  return {
+    title_ru: titleRu || null,
+    title_uz: titleUz || null,
+    body_ru: bodyRu || null,
+    body_uz: bodyUz || null,
     image_url: imageUrl,
     cta_label_ru: ctaLabelRu || null,
     cta_label_uz: ctaLabelUz || null,
     cta_url: ctaUrl || null,
-  });
+  };
+}
+
+export async function createHeroSlide(formData: FormData) {
+  await requireStaff();
+  const admin = createAdminClient();
+  const fields = readHeroSlideFields(formData);
+  if (!fields.image_url) return;
+
+  await admin.from("hero_slides").insert(fields);
+
+  updateTag("hero-slides");
+  revalidatePath(`${ROUTES.admin}/banner`);
+  revalidatePath(ROUTES.home);
+}
+
+export async function updateHeroSlide(slideId: string, formData: FormData) {
+  await requireStaff();
+  const admin = createAdminClient();
+  const fields = readHeroSlideFields(formData);
+  if (!fields.image_url) return;
+
+  await admin.from("hero_slides").update(fields).eq("id", slideId);
 
   updateTag("hero-slides");
   revalidatePath(`${ROUTES.admin}/banner`);
@@ -196,6 +213,8 @@ export async function createHeroSlide(formData: FormData) {
 export async function deleteHeroSlide(slideId: string) {
   await requireStaff();
   const admin = createAdminClient();
+  const { count } = await admin.from("hero_slides").select("*", { count: "exact", head: true });
+  if ((count ?? 0) <= 1) return;
   await admin.from("hero_slides").delete().eq("id", slideId);
   updateTag("hero-slides");
   revalidatePath(`${ROUTES.admin}/banner`);

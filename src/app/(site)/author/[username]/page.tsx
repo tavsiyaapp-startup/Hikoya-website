@@ -9,7 +9,6 @@ import { getFollowerCount, isFollowingAuthor } from "@/lib/queries/social";
 import { getRequestsBySubmitter } from "@/lib/queries/requests";
 import { requestStatusTone, requestStatusLabel } from "@/lib/requestStatus";
 import { getNotifications } from "@/lib/queries/notifications";
-import { markAllNotificationsRead } from "@/lib/actions/notifications";
 import { ROUTES } from "@/lib/constants";
 import { Avatar } from "@/components/ui/Avatar";
 import { Badge, Chip } from "@/components/ui/Chip";
@@ -17,6 +16,7 @@ import { StoryCard } from "@/components/story/StoryCard";
 import { FollowButton } from "@/components/story/StoryActions";
 import { EditProfileForm } from "@/components/profile/EditProfileForm";
 import { NotificationList } from "@/components/notifications/NotificationList";
+import { NotificationsReadMarker } from "@/components/notifications/NotificationsReadMarker";
 import { CloseRequestButton } from "@/components/board/CloseRequestButton";
 
 const TABS = ["stories", "myRequests", "notifications"] as const;
@@ -51,7 +51,6 @@ export default async function AuthorPage({
       getAuthorAchievements(profile.id),
       isOwner && tab === "notifications" ? getNotifications(profile.id) : Promise.resolve([]),
     ]);
-  if (isOwner && tab === "notifications") await markAllNotificationsRead(profile.id);
 
   const stats = [
     { label: t.author.stories, value: storyCount },
@@ -127,7 +126,12 @@ export default async function AuthorPage({
         ))}
       </div>
 
-      {tab === "notifications" && isOwner && <NotificationList notifications={notifications} locale={locale} />}
+      {tab === "notifications" && isOwner && (
+        <>
+          <NotificationsReadMarker userId={profile.id} />
+          <NotificationList notifications={notifications} locale={locale} />
+        </>
+      )}
 
       {tab === "stories" &&
         (stories.length > 0 ? (

@@ -191,7 +191,8 @@ create index reading_statuses_user_status_idx on reading_statuses (user_id, stat
 -- чтобы не светить личность конкретного модератора автору).
 create type notification_type as enum (
   'new_comment', 'comment_reply', 'comment_like',
-  'story_approved', 'story_rejected', 'chapter_approved', 'chapter_rejected'
+  'story_approved', 'story_rejected', 'chapter_approved', 'chapter_rejected',
+  'story_like'   -- добавлено в 0019: лайк истории раньше не уведомлял автора
 );
 
 create table notifications (
@@ -765,6 +766,12 @@ on conflict (code) do nothing;
 --   просто что заявку больше не принимают (её мог отменить сам автор без
 --   единого отклика). RLS не менялась — политики уже написаны через
 --   is_staff()/from_user_id, а не перечисление статусов.
+-- [2026-08-26] Значение 'story_like' в notification_type (миграция 0019).
+--   Лайк истории никогда не создавал уведомление автору — только лайк
+--   комментария и новый комментарий/ответ это делали. toggleStoryLike
+--   (src/lib/actions/social.ts) теперь уведомляет автора истории на
+--   insert-ветке (не на снятии лайка), тем же путём через
+--   src/lib/actions/create-notification.ts, что и остальные уведомления.
 -- [2026-08-26] Таблица saved_collections (миграция 0017). Читатель может
 --   сохранить себе чужую (или редакционную) подборку — отдельная вкладка
 --   «Сохранённые подборки» на /collections, не путать с владением. Заодно

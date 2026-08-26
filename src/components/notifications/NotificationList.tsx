@@ -13,7 +13,7 @@ function notificationHref(n: NotificationWithContext): string {
 }
 
 function NotificationIcon({ type }: { type: NotificationWithContext["type"] }) {
-  if (type === "comment_like") return <HeartIcon filled className="text-primary-600" />;
+  if (type === "comment_like" || type === "story_like") return <HeartIcon filled className="text-primary-600" />;
   if (type === "new_comment" || type === "comment_reply") return <MessageIcon className="text-primary-600" />;
   return <ShieldIcon className="text-primary-600" width={16} height={16} />;
 }
@@ -69,6 +69,12 @@ export async function NotificationList({
                 {n.type === "comment_like" && (
                   <>
                     <b className="text-ink">{actorName}</b> {t.notifications.commentLike}
+                  </>
+                )}
+                {n.type === "story_like" && (
+                  <>
+                    <b className="text-ink">{actorName}</b> {t.notifications.storyLike}{" "}
+                    {storyTitle && <>«{storyTitle}»</>}
                   </>
                 )}
                 {n.type === "story_approved" && (

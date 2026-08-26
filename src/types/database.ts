@@ -23,7 +23,8 @@ export type NotificationType =
   | "story_approved"
   | "story_rejected"
   | "chapter_approved"
-  | "chapter_rejected";
+  | "chapter_rejected"
+  | "story_like";
 
 export interface Profile {
   id: string; // references auth.users.id

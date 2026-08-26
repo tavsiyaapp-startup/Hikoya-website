@@ -252,6 +252,7 @@ const uz: typeof ru = {
     newComment: "bobga izoh qoldirdi",
     commentReply: "izohingizga javob berdi",
     commentLike: "izohingizni yoqtirdi",
+    storyLike: "hikoyangizni yoqtirdi",
     storyApproved: "Hikoyangiz tasdiqlandi va chop etildi:",
     storyRejected: "Hikoyangiz rad etildi:",
     chapterApproved: "Bob tasdiqlandi va chop etildi:",

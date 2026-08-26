@@ -24,10 +24,27 @@ export async function toggleStoryLike(storyId: string, path: string) {
     .eq("target_id", storyId)
     .maybeSingle();
 
-  const { error } = existing
-    ? await supabase.from("likes").delete().eq("id", existing.id)
-    : await supabase.from("likes").insert({ user_id: user.id, target_type: "story", target_id: storyId });
-  if (error) console.error("toggleStoryLike failed:", error);
+  if (existing) {
+    const { error } = await supabase.from("likes").delete().eq("id", existing.id);
+    if (error) console.error("toggleStoryLike failed:", error);
+    revalidatePath(path);
+    return;
+  }
+
+  const { error } = await supabase
+    .from("likes")
+    .insert({ user_id: user.id, target_type: "story", target_id: storyId });
+  if (error) {
+    console.error("toggleStoryLike failed:", error);
+    revalidatePath(path);
+    return;
+  }
+
+  const { data: story } = await supabase.from("stories").select("author_id").eq("id", storyId).single();
+  if (story && story.author_id !== user.id) {
+    await createNotification({ userId: story.author_id, actorId: user.id, type: "story_like", storyId });
+  }
+
   revalidatePath(path);
 }
 

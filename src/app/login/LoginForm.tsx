@@ -1,12 +1,14 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 import { ROUTES } from "@/lib/constants";
-import { GoogleButton, EmailForm } from "@/components/auth/AuthButtons";
+import { GoogleButton, EmailForm, PasswordLoginForm } from "@/components/auth/AuthButtons";
 
 export function LoginForm({ next }: { next: string }) {
   const { t } = useLocale();
+  const [byPassword, setByPassword] = useState(false);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-bg px-3 py-6 sm:px-5">
@@ -22,10 +24,20 @@ export function LoginForm({ next }: { next: string }) {
             {t.auth.loginPageBody}
           </p>
 
-          <div className="mb-5 flex flex-col gap-3">
+          <div className="mb-3 flex flex-col gap-3">
             <GoogleButton next={next} />
-            <EmailForm next={next} />
+            {byPassword ? <PasswordLoginForm next={next} /> : <EmailForm next={next} />}
           </div>
+
+          <p className="mb-5 text-center text-[12.5px]">
+            <button
+              type="button"
+              onClick={() => setByPassword((v) => !v)}
+              className="cursor-pointer font-bold text-primary-800 hover:underline"
+            >
+              {byPassword ? t.auth.magicLinkToggle : t.auth.passwordLoginToggle}
+            </button>
+          </p>
 
           <p className="mb-5 text-center text-[12.5px] leading-relaxed text-muted-2">
             {t.auth.telegramRemovedNotice}

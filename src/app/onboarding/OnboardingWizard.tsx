@@ -8,14 +8,27 @@ import type { Locale } from "@/lib/i18n";
 import { ROUTES } from "@/lib/constants";
 import { GoogleButton, EmailForm } from "@/components/auth/AuthButtons";
 import { CloseIcon } from "@/components/ui/icons";
+import { Input } from "@/components/ui/Input";
 import { completeOnboarding } from "./actions";
 
-const TOTAL_STEPS = 3;
+const TOTAL_STEPS = 4;
+const MIN_PASSWORD_LENGTH = 6;
 
-export function OnboardingWizard({ initialStep, next }: { initialStep: 1 | 2; next: string }) {
+export function OnboardingWizard({
+  initialStep,
+  next,
+  initialDisplayName,
+}: {
+  initialStep: 1 | 2;
+  next: string;
+  initialDisplayName: string;
+}) {
   const { t, locale } = useLocale();
-  const [step, setStep] = useState<1 | 2 | 3>(initialStep);
+  const [step, setStep] = useState<1 | 2 | 3 | 4>(initialStep);
   const [role, setRole] = useState<"reader" | "author">("reader");
+  const [displayName, setDisplayName] = useState(initialDisplayName);
+  const [password, setPassword] = useState("");
+  const [passwordError, setPasswordError] = useState(false);
   const [interests, setInterests] = useState<string[]>([]);
   const [chosenLocale, setChosenLocale] = useState<Locale>(locale);
 
@@ -27,6 +40,14 @@ export function OnboardingWizard({ initialStep, next }: { initialStep: 1 | 2; ne
     setInterests((prev) =>
       prev.includes(genre) ? prev.filter((g) => g !== genre) : [...prev, genre]
     );
+  }
+
+  function handleContinueFromName() {
+    if (password && password.length < MIN_PASSWORD_LENGTH) {
+      setPasswordError(true);
+      return;
+    }
+    setStep(3);
   }
 
   return (
@@ -109,6 +130,55 @@ export function OnboardingWizard({ initialStep, next }: { initialStep: 1 | 2; ne
         {step === 2 && (
           <div className="px-5 pb-8 pt-6 sm:px-11.5 sm:pb-11.5 sm:pt-10">
             <h2 className="mb-2 text-[22px] font-extrabold tracking-tight sm:text-[30px]">
+              {t.onboarding.nameTitle}
+            </h2>
+            <p className="mb-6.5 text-[15px] leading-relaxed text-muted">{t.onboarding.nameBody}</p>
+
+            <div className="mb-5">
+              <label className="mb-1.5 block text-[13px] font-bold">{t.onboarding.nameLabel}</label>
+              <Input value={displayName} onChange={(e) => setDisplayName(e.target.value)} required />
+            </div>
+
+            <div className="mb-2">
+              <label className="mb-1.5 block text-[13px] font-bold">{t.onboarding.passwordLabel}</label>
+              <Input
+                type="password"
+                value={password}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  setPasswordError(false);
+                }}
+                placeholder="••••••••"
+              />
+              <p className="mt-1.5 text-[12px] text-muted-2">{t.onboarding.passwordHint}</p>
+              {passwordError && (
+                <p className="mt-1.5 text-[12px] text-danger">{t.onboarding.passwordTooShort}</p>
+              )}
+            </div>
+
+            <div className="mt-6.5 flex gap-3">
+              <button
+                type="button"
+                onClick={() => setStep(1)}
+                className="h-13 cursor-pointer rounded-[14px] border border-border bg-white px-5.5 text-[15px] font-semibold text-ink-soft"
+              >
+                {t.common.back}
+              </button>
+              <button
+                type="button"
+                onClick={handleContinueFromName}
+                disabled={!displayName.trim()}
+                className="h-13 flex-1 cursor-pointer rounded-[14px] border-none bg-linear-to-br from-primary-800 to-primary-600 text-[16px] font-bold text-white shadow-[0_10px_24px_rgba(109,40,217,0.3)] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {t.onboarding.continueCta}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {step === 3 && (
+          <div className="px-5 pb-8 pt-6 sm:px-11.5 sm:pb-11.5 sm:pt-10">
+            <h2 className="mb-2 text-[22px] font-extrabold tracking-tight sm:text-[30px]">
               {t.onboarding.interestsTitle}
             </h2>
             <p className="mb-6.5 text-[15px] leading-relaxed text-muted">{t.onboarding.interestsBody}</p>
@@ -143,14 +213,14 @@ export function OnboardingWizard({ initialStep, next }: { initialStep: 1 | 2; ne
             <div className="flex gap-3">
               <button
                 type="button"
-                onClick={() => setStep(1)}
+                onClick={() => setStep(2)}
                 className="h-13 cursor-pointer rounded-[14px] border border-border bg-white px-5.5 text-[15px] font-semibold text-ink-soft"
               >
                 {t.common.back}
               </button>
               <button
                 type="button"
-                onClick={() => setStep(3)}
+                onClick={() => setStep(4)}
                 className="h-13 flex-1 cursor-pointer rounded-[14px] border-none bg-linear-to-br from-primary-800 to-primary-600 text-[16px] font-bold text-white shadow-[0_10px_24px_rgba(109,40,217,0.3)]"
               >
                 {t.onboarding.continueCta}
@@ -159,10 +229,12 @@ export function OnboardingWizard({ initialStep, next }: { initialStep: 1 | 2; ne
           </div>
         )}
 
-        {step === 3 && (
+        {step === 4 && (
           <form action={completeOnboarding} className="px-5 pb-8 pt-6 sm:px-11.5 sm:pb-11.5 sm:pt-10">
             <input type="hidden" name="next" value={next} />
             <input type="hidden" name="locale" value={chosenLocale} />
+            <input type="hidden" name="displayName" value={displayName} />
+            <input type="hidden" name="password" value={password} />
             {interests.map((g) => (
               <input key={g} type="hidden" name="interests" value={g} />
             ))}
@@ -191,7 +263,7 @@ export function OnboardingWizard({ initialStep, next }: { initialStep: 1 | 2; ne
             <div className="flex gap-3">
               <button
                 type="button"
-                onClick={() => setStep(2)}
+                onClick={() => setStep(3)}
                 className="h-13 cursor-pointer rounded-[14px] border border-border bg-white px-5.5 text-[15px] font-semibold text-ink-soft"
               >
                 {t.common.back}

@@ -14,5 +14,11 @@ export default async function OnboardingPage({
     redirect(next);
   }
 
-  return <OnboardingWizard initialStep={user ? 2 : 1} next={next} />;
+  return (
+    <OnboardingWizard
+      initialStep={user ? 2 : 1}
+      next={next}
+      initialDisplayName={user?.profile?.display_name ?? ""}
+    />
+  );
 }

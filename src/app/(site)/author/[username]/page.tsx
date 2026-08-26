@@ -108,6 +108,7 @@ export default async function AuthorPage({
             username={profile.username}
             displayName={profile.display_name}
             avatarUrl={profile.avatar_url}
+            email={user?.email ?? null}
           />
           <SignOutButton />
         </div>

@@ -140,6 +140,25 @@ export async function getChapterComments(chapterId: string): Promise<CommentWith
   }
 }
 
+export type StoryCommentRow = CommentRow & {
+  chapter: { order_index: number; title: string } | null;
+};
+
+export async function getStoryComments(storyId: string, limit = 200): Promise<StoryCommentRow[]> {
+  try {
+    const supabase = await createClient();
+    const { data } = await supabase
+      .from("comments")
+      .select("*, user:profiles(display_name), chapter:chapters!inner(order_index, title, story_id)")
+      .eq("chapter.story_id", storyId)
+      .order("created_at", { ascending: false })
+      .limit(limit);
+    return (data as StoryCommentRow[]) ?? [];
+  } catch {
+    return [];
+  }
+}
+
 export async function getLikedCommentIds(userId: string | undefined, commentIds: string[]): Promise<Set<string>> {
   if (!userId || commentIds.length === 0) return new Set();
   try {

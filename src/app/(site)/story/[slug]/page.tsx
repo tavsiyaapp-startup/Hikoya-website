@@ -5,12 +5,12 @@ import { getServerLocale } from "@/lib/i18n/locale-server";
 import { getDictionary } from "@/lib/i18n";
 import { getCurrentUser } from "@/lib/current-user";
 import { getStoryBySlug, getChaptersForStory, getMyCollectionsWithStory } from "@/lib/queries/stories";
-import { getUserStoryState, isFollowingAuthor, getFollowerCount } from "@/lib/queries/social";
+import { getUserStoryState, isFollowingAuthor, getFollowerCount, getStoryComments } from "@/lib/queries/social";
 import { getLinkedRequestForStory } from "@/lib/queries/requests";
 import { ROUTES } from "@/lib/constants";
 import { RELATIONSHIP_TYPES } from "@/lib/relationshipTypes";
 import { Avatar } from "@/components/ui/Avatar";
-import { Badge } from "@/components/ui/Chip";
+import { Badge, Chip } from "@/components/ui/Chip";
 import { Button } from "@/components/ui/Button";
 import { LikeBookmarkRow, FollowButton, ReadingStatusSelect } from "@/components/story/StoryActions";
 import type { ReadingStatus } from "@/types/database";
@@ -20,8 +20,19 @@ function relationshipLabel(value: string, locale: "ru" | "uz"): string {
   return RELATIONSHIP_TYPES.find(([ru]) => ru === value)?.[1] ?? value;
 }
 
-export default async function StoryPage({ params }: { params: Promise<{ slug: string }> }) {
+const TABS = ["chapters", "comments"] as const;
+type Tab = (typeof TABS)[number];
+
+export default async function StoryPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ slug: string }>;
+  searchParams: Promise<{ tab?: string }>;
+}) {
   const { slug } = await params;
+  const { tab: rawTab } = await searchParams;
+  const tab: Tab = TABS.includes(rawTab as Tab) ? (rawTab as Tab) : "chapters";
   const locale = await getServerLocale();
   const t = getDictionary(locale);
   const user = await getCurrentUser();
@@ -29,13 +40,14 @@ export default async function StoryPage({ params }: { params: Promise<{ slug: st
   const story = await getStoryBySlug(slug);
   if (!story) notFound();
 
-  const [chapters, social, following, followerCount, linkedRequestId, myCollections] = await Promise.all([
+  const [chapters, social, following, followerCount, linkedRequestId, myCollections, storyComments] = await Promise.all([
     getChaptersForStory(story.id),
     getUserStoryState(user?.id, story.id),
     isFollowingAuthor(user?.id, story.author.id),
     getFollowerCount(story.author.id),
     getLinkedRequestForStory(story.id),
     user ? getMyCollectionsWithStory(user.id, story.id) : Promise.resolve([]),
+    tab === "comments" ? getStoryComments(story.id) : Promise.resolve([]),
   ]);
 
   const canManage = user?.id === story.author.id;
@@ -142,33 +154,77 @@ export default async function StoryPage({ params }: { params: Promise<{ slug: st
           <p className="text-[16px] leading-relaxed text-ink-soft">{story.description}</p>
         </div>
 
-        <div className="mb-4 flex items-center gap-3.5">
-          <h2 className="text-2xl font-extrabold tracking-tight">{t.story.chapters}</h2>
-          <span className="text-[13.5px] text-muted-2">{chapters.length}</span>
+        <div className="mb-4 flex items-center gap-2.5">
+          <Link href={`?tab=chapters`} scroll={false}>
+            <Chip active={tab === "chapters"}>
+              {t.story.chapters} <span className="ml-1 opacity-70">{chapters.length}</span>
+            </Chip>
+          </Link>
+          <Link href={`?tab=comments`} scroll={false}>
+            <Chip active={tab === "comments"}>
+              {t.common.comments} <span className="ml-1 opacity-70">{story.comment_count}</span>
+            </Chip>
+          </Link>
         </div>
 
-        <div className="overflow-hidden rounded-[20px] border border-border bg-card">
-          {chapters.length > 0 ? (
-            chapters.map((ch, i) => (
-              <Link
-                key={ch.id}
-                href={ROUTES.chapter(slug, ch.order_index)}
-                className={clsxRow(i, chapters.length)}
-              >
-                <span className="w-8 shrink-0 text-[14px] font-bold text-muted-3">{ch.order_index}</span>
-                <div className="min-w-0 flex-1">
-                  <span className="text-[15px] font-semibold">{ch.title}</span>
-                  <div className="mt-1 text-[12.5px] text-muted-3">{ch.word_count} {t.reader.wordsLabel}</div>
-                </div>
-                {ch.is_free && <Badge tone="primary">{t.common.read}</Badge>}
-              </Link>
-            ))
-          ) : (
-            <div className="px-6 py-10 text-center text-[14px] text-muted-2">
-              {t.story.noChaptersBody}
-            </div>
-          )}
-        </div>
+        {tab === "chapters" && (
+          <div className="overflow-hidden rounded-[20px] border border-border bg-card">
+            {chapters.length > 0 ? (
+              chapters.map((ch, i) => (
+                <Link
+                  key={ch.id}
+                  href={ROUTES.chapter(slug, ch.order_index)}
+                  className={clsxRow(i, chapters.length)}
+                >
+                  <span className="w-8 shrink-0 text-[14px] font-bold text-muted-3">{ch.order_index}</span>
+                  <div className="min-w-0 flex-1">
+                    <span className="text-[15px] font-semibold">{ch.title}</span>
+                    <div className="mt-1 text-[12.5px] text-muted-3">{ch.word_count} {t.reader.wordsLabel}</div>
+                  </div>
+                  {ch.is_free && <Badge tone="primary">{t.common.read}</Badge>}
+                </Link>
+              ))
+            ) : (
+              <div className="px-6 py-10 text-center text-[14px] text-muted-2">
+                {t.story.noChaptersBody}
+              </div>
+            )}
+          </div>
+        )}
+
+        {tab === "comments" && (
+          <div className="flex flex-col gap-2.5">
+            {storyComments.length > 0 ? (
+              storyComments.map((c) => (
+                <Link
+                  key={c.id}
+                  href={c.chapter ? `${ROUTES.chapter(slug, c.chapter.order_index)}#comment-${c.id}` : "#"}
+                  className="flex gap-3.5 rounded-2xl border border-border bg-card p-4.5 hover:border-primary-300"
+                >
+                  <Avatar name={c.user?.display_name ?? "?"} size={38} />
+                  <div className="min-w-0 flex-1">
+                    <div className="mb-1.5 flex flex-wrap items-center gap-2.5">
+                      <span className="text-[14px] font-bold">{c.user?.display_name}</span>
+                      <span className="text-[12.5px] text-muted-3">
+                        {new Date(c.created_at).toLocaleDateString(locale)}
+                      </span>
+                      {c.chapter && (
+                        <Badge tone="neutral">
+                          {t.story.chapterBadge} {c.chapter.order_index}
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="text-[14.5px] leading-relaxed text-ink-soft">{c.text}</p>
+                  </div>
+                </Link>
+              ))
+            ) : (
+              <div className="rounded-[20px] border border-border bg-card px-6 py-10 text-center text-[14px] text-muted-2">
+                {t.story.noCommentsYet}
+              </div>
+            )}
+          </div>
+        )}
 
         {!user && (
           <div className="mt-7 flex flex-col items-start gap-4 rounded-[22px] border border-primary-100 bg-linear-to-br from-primary-50 to-pink-bg px-5 py-5 sm:flex-row sm:items-center sm:gap-5 sm:px-7 sm:py-6">

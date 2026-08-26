@@ -123,6 +123,8 @@ const uz: typeof ru = {
     manageCta: "Hikoyani boshqarish",
     noChaptersYet: "Hozircha chop etilgan boblar yoʻq",
     noChaptersBody: "Muallif hali birorta ham bob chop etmagan.",
+    chapterBadge: "Bob",
+    noCommentsYet: "Hozircha izohlar yoʻq.",
     requestBadge: "Soʻrov boʻyicha",
     addToCollection: "Tanlanmaga qoʻshish",
     noCollectionsYet: "Hozircha tanlanmalar yoʻq",

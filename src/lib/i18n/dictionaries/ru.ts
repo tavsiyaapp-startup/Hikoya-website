@@ -121,6 +121,8 @@ const ru = {
     manageCta: "Управлять историей",
     noChaptersYet: "Пока нет опубликованных глав",
     noChaptersBody: "Автор ещё не опубликовал ни одной главы.",
+    chapterBadge: "Глава",
+    noCommentsYet: "Комментариев пока нет.",
     requestBadge: "По заявке",
     addToCollection: "Добавить в подборку",
     noCollectionsYet: "Подборок пока нет",

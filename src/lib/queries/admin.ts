@@ -1,6 +1,6 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
-import type { Chapter, Story } from "@/types/database";
+import type { Chapter, Story, StoryTopTier } from "@/types/database";
 
 // Admin panel reads always use the service-role client — staff need to see
 // everything regardless of RLS (draft stories, all users, all reports).
@@ -152,6 +152,40 @@ export async function getUserAchievementsMap(userIds: string[]): Promise<Map<str
       const list = map.get(row.user_id) ?? [];
       list.push(row.achievement_id);
       map.set(row.user_id, list);
+    }
+    return map;
+  } catch {
+    return map;
+  }
+}
+
+export async function searchStoriesForFeaturedAdmin(query?: string) {
+  try {
+    const admin = createAdminClient();
+    let q = admin
+      .from("stories")
+      .select("id, title, author:profiles!stories_author_id_fkey(display_name)")
+      .eq("status", "published")
+      .order("title", { ascending: true });
+    if (query) q = q.ilike("title", `%${query}%`);
+    const { data } = await q.limit(100);
+    return data ?? [];
+  } catch {
+    return [];
+  }
+}
+
+// One query for the whole /admin/featured list rather than one per row.
+export async function getFeaturedTiersMap(storyIds: string[]): Promise<Map<string, Set<StoryTopTier>>> {
+  const map = new Map<string, Set<StoryTopTier>>();
+  if (storyIds.length === 0) return map;
+  try {
+    const admin = createAdminClient();
+    const { data } = await admin.from("featured_stories").select("story_id, tier").in("story_id", storyIds);
+    for (const row of data ?? []) {
+      const set = map.get(row.story_id) ?? new Set<StoryTopTier>();
+      set.add(row.tier);
+      map.set(row.story_id, set);
     }
     return map;
   } catch {

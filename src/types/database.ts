@@ -16,6 +16,7 @@ export type ReportTargetType = "story" | "chapter" | "comment";
 export type ReportStatus = "open" | "reviewed" | "resolved";
 export type LikeTargetType = "story" | "chapter" | "comment";
 export type ReadingStatus = "want_to_read" | "read" | "dropped";
+export type StoryTopTier = "day" | "week" | "month";
 export type NotificationType =
   | "new_comment"
   | "comment_reply"
@@ -180,6 +181,12 @@ export interface UserAchievement {
   user_id: string;
   achievement_id: string;
   earned_at: string;
+}
+
+export interface FeaturedStory {
+  story_id: string;
+  tier: StoryTopTier;
+  featured_at: string;
 }
 
 export interface Request {

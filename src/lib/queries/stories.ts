@@ -3,7 +3,7 @@ import { unstable_cache } from "next/cache";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { createPublicClient } from "@/lib/supabase/public";
-import type { Story, Chapter, Collection, Profile } from "@/types/database";
+import type { Story, Chapter, Collection, Profile, StoryTopTier } from "@/types/database";
 
 // Every query here tolerates an unreachable Supabase project (placeholder
 // .env.local before a real project is wired up) by returning an empty
@@ -138,6 +138,38 @@ export const getFeaturedCollections = unstable_cache(
   },
   ["featured-collections"],
   { revalidate: CACHE_SECONDS, tags: ["collections"] }
+);
+
+// Staff-pinned stories for the homepage's Топ дня/недели/месяца section
+// (featured_stories, /admin/featured) — ordered "first pinned, shown
+// first", not by recency.
+export const getTopStories = unstable_cache(
+  async (tier: StoryTopTier, limit = 8): Promise<StoryCard[]> => {
+    try {
+      const supabase = createPublicClient();
+      const { data: pins } = await supabase
+        .from("featured_stories")
+        .select("story_id")
+        .eq("tier", tier)
+        .order("featured_at", { ascending: true })
+        .limit(limit);
+      const ids = (pins ?? []).map((p) => p.story_id as string);
+      if (ids.length === 0) return [];
+
+      const { data: stories } = await supabase
+        .from("stories")
+        .select("*, author:profiles!stories_author_id_fkey(username, display_name)")
+        .in("id", ids)
+        .eq("status", "published")
+        .eq("visibility", "public");
+      const byId = new Map((stories ?? []).map((s) => [s.id as string, s]));
+      return ids.map((id) => byId.get(id)).filter(Boolean) as StoryCard[];
+    } catch {
+      return [];
+    }
+  },
+  ["top-stories"],
+  { revalidate: CACHE_SECONDS, tags: ["stories"] }
 );
 
 // Collections that include at least one of this author's published stories —
@@ -318,7 +350,30 @@ export const searchStories = unstable_cache(
       else query = query.order("like_count", { ascending: false });
 
       const { data } = await query.limit(40);
-      return (data as StoryCard[]) ?? [];
+      const results = (data as StoryCard[]) ?? [];
+      if (results.length === 0) return results;
+
+      // Staff-pinned stories (any tier — featured_stories, /admin/featured)
+      // that appear in the results move to the front, earliest-pinned first;
+      // everything else keeps its existing relative order (stable sort).
+      const { data: pins } = await supabase.from("featured_stories").select("story_id, featured_at");
+      if (!pins || pins.length === 0) return results;
+      const ranks = new Map<string, number>();
+      for (const pin of pins) {
+        const ts = new Date(pin.featured_at).getTime();
+        const existing = ranks.get(pin.story_id);
+        if (existing === undefined || ts < existing) ranks.set(pin.story_id, ts);
+      }
+      if (!results.some((s) => ranks.has(s.id))) return results;
+
+      return [...results].sort((a, b) => {
+        const ra = ranks.get(a.id);
+        const rb = ranks.get(b.id);
+        if (ra !== undefined && rb !== undefined) return ra - rb;
+        if (ra !== undefined) return -1;
+        if (rb !== undefined) return 1;
+        return 0;
+      });
     } catch {
       return [];
     }

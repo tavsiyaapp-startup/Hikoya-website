@@ -11,35 +11,42 @@ import {
   getFeaturedCollections,
   getRecentPublishedChapters,
   getContinueReading,
+  getTopStories,
 } from "@/lib/queries/stories";
 import { StoryCard } from "@/components/story/StoryCard";
 import { CollectionCard } from "@/components/collections/CollectionCard";
 import { Button } from "@/components/ui/Button";
 import { Badge, Chip } from "@/components/ui/Chip";
 import { SparkleIcon, LockIcon } from "@/components/ui/icons";
+import type { StoryTopTier } from "@/types/database";
 
 const TABS = ["forYou", "popular", "new", "following"] as const;
 type Tab = (typeof TABS)[number];
+const TOP_TIERS: StoryTopTier[] = ["day", "week", "month"];
 
 export default async function HomePage({
   searchParams,
 }: {
-  searchParams: Promise<{ tab?: string; genre?: string }>;
+  searchParams: Promise<{ tab?: string; genre?: string; topTier?: string }>;
 }) {
-  const { tab: rawTab, genre: rawGenre } = await searchParams;
+  const { tab: rawTab, genre: rawGenre, topTier: rawTopTier } = await searchParams;
   const tab: Tab = TABS.includes(rawTab as Tab) ? (rawTab as Tab) : "forYou";
+  const topTier: StoryTopTier = TOP_TIERS.includes(rawTopTier as StoryTopTier)
+    ? (rawTopTier as StoryTopTier)
+    : "day";
 
   const locale = await getServerLocale();
   const t = getDictionary(locale);
   const user = await getCurrentUser();
   const genre = rawGenre ?? t.genres[0];
 
-  const [feed, weekly, collections, genreStories, continueReading] = await Promise.all([
+  const [feed, weekly, collections, genreStories, continueReading, topStories] = await Promise.all([
     tab === "new" ? getNewestStories(8) : getPopularStories(8),
     getRecentPublishedChapters(3),
     getFeaturedCollections(3),
     getStoriesByGenre(genre, 4),
     user ? getContinueReading(user.id, 3) : Promise.resolve([]),
+    getTopStories(topTier, 8),
   ]);
 
   return (
@@ -100,6 +107,30 @@ export default async function HomePage({
           <div className="absolute inset-0 bg-linear-to-r from-primary-50 to-transparent sm:block hidden" />
         </div>
       </section>
+
+      <div className="mb-4.5 flex items-center gap-3.5">
+        <h2 className="text-2xl font-extrabold tracking-tight">{t.home.topTitle}</h2>
+        <div className="ml-auto flex gap-1.5">
+          {TOP_TIERS.map((tier) => (
+            <Link
+              key={tier}
+              href={`?tab=${tab}&genre=${encodeURIComponent(genre)}&topTier=${tier}`}
+              scroll={false}
+            >
+              <Chip active={topTier === tier}>{t.home.topTiers[tier]}</Chip>
+            </Link>
+          ))}
+        </div>
+      </div>
+      {topStories.length > 0 ? (
+        <div className="mb-11 grid grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-5.5 lg:grid-cols-4">
+          {topStories.map((story) => (
+            <StoryCard key={story.id} story={story} />
+          ))}
+        </div>
+      ) : (
+        <EmptyRow className="mb-11" />
+      )}
 
       {user && continueReading.length > 0 && (
         <>

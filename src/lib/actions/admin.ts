@@ -146,6 +146,23 @@ export async function toggleUserVerified(userId: string, verified: boolean) {
   if (data?.username) revalidatePath(ROUTES.author(data.username));
 }
 
+// The toggle UI always reflects the current DB state, so "turn on" only
+// ever fires when no row exists yet (plain insert, no upsert needed) and
+// "turn off" only when one does.
+export async function toggleFeaturedStory(storyId: string, tier: "day" | "week" | "month", featured: boolean) {
+  await requireStaff();
+  const admin = createAdminClient();
+  if (featured) {
+    await admin.from("featured_stories").insert({ story_id: storyId, tier });
+  } else {
+    await admin.from("featured_stories").delete().eq("story_id", storyId).eq("tier", tier);
+  }
+  updateTag("stories");
+  revalidatePath(`${ROUTES.admin}/featured`);
+  revalidatePath(ROUTES.home);
+  revalidatePath(ROUTES.search);
+}
+
 // Replace-all, same pattern as updateCollectionAdmin's collection_items —
 // simplest correct way to sync a set from a checkbox list with no ordering.
 export async function updateUserAchievements(userId: string, achievementIds: string[]) {

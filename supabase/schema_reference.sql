@@ -35,6 +35,7 @@ create type report_target_type as enum ('story', 'chapter', 'comment');
 create type report_status as enum ('open', 'reviewed', 'resolved');
 create type like_target_type as enum ('story', 'chapter', 'comment');
 create type reading_status as enum ('want_to_read', 'read', 'dropped');
+create type story_top_tier as enum ('day', 'week', 'month');
 
 -- ── profiles ───────────────────────────────────────────────────────────────
 -- 1:1 с auth.users. Создаётся автоматически триггером handle_new_user()
@@ -240,6 +241,21 @@ create table saved_collections (
   created_at timestamptz not null default now(),
   primary key (user_id, collection_id)
 );
+
+-- добавлено в 0022: staff-подборка "топ" историй для главной страницы
+-- (Топ дня/недели/месяца) — история может быть закреплена в нескольких
+-- уровнях сразу, каждый переключается независимо из /admin/featured.
+-- featured_at — момент включения тумблера, сортировка внутри уровня и при
+-- поднятии закреплённых историй в начало поиска идёт по нему (кто раньше
+-- закреплён — тот выше).
+create table featured_stories (
+  story_id uuid not null references stories (id) on delete cascade,
+  tier story_top_tier not null,
+  featured_at timestamptz not null default now(),
+  primary key (story_id, tier)
+);
+
+create index featured_stories_tier_idx on featured_stories (tier, featured_at);
 
 -- ── достижения авторов ──────────────────────────────────────────────────────
 
@@ -564,6 +580,11 @@ alter table saved_collections enable row level security;
 create policy "users manage their own saved collections" on saved_collections for all
   using (user_id = auth.uid()) with check (user_id = auth.uid());
 
+-- featured_stories
+alter table featured_stories enable row level security;
+create policy "featured_stories are publicly readable" on featured_stories for select using (true);
+create policy "staff manage featured_stories" on featured_stories for all using (is_staff()) with check (is_staff());
+
 -- achievements
 alter table achievements enable row level security;
 create policy "achievements are publicly readable" on achievements for select using (true);
@@ -804,3 +825,10 @@ on conflict (code) do nothing;
 --   "вручную staff'ом" уже было фактическим поведением всей системы
 --   достижений, просто без UI для этого. UI для назначения появился в этой
 --   же миграции только на стороне приложения (не в схеме).
+-- [2026-08-26] Таблица featured_stories (миграция 0022). Staff вручную
+--   закрепляет истории в трёх независимых уровнях — Топ дня/недели/месяца
+--   (/admin/featured, новый пункт меню) — история может быть закреплена
+--   сразу в нескольких. Закреплённые истории показываются отдельным блоком
+--   на главной (с переключателем между тремя уровнями) и поднимаются в
+--   начало результатов поиска, если попадают в выдачу — в обоих случаях
+--   сортировка по featured_at (кто раньше закреплён, тот выше/первее).

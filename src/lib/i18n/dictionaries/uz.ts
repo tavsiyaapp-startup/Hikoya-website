@@ -157,6 +157,8 @@ const uz: typeof ru = {
     tagsLabel: "Teglar",
     tagsHint: "(bir nechtasini tanlash mumkin)",
     addTag: "+ Qoʻshish",
+    tagSearchPlaceholder: "Teg kiriting yoki tanlang",
+    addNewTag: "+ «{tag}» qoʻshish",
     languageLabel: "Hikoya tili",
     ageRatingLabel: "Yosh reytingi",
     ageRatingHint: "Hikoyangiz qaysi auditoriyaga mosligini belgilang",

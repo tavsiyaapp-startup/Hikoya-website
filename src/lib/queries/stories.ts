@@ -439,6 +439,28 @@ export async function getCollectionWithStories(id: string) {
   }
 }
 
+// Existing tag labels for the "type or pick" tag adder on create/edit-story
+// forms — genre/age_rating are handled by their own dedicated selectors, and
+// relationship-type isn't surfaced as a filter anywhere anymore, so this only
+// offers warning/style tags plus whatever authors have already typed in.
+export const getAllTags = unstable_cache(
+  async (): Promise<string[]> => {
+    try {
+      const supabase = createPublicClient();
+      const { data } = await supabase
+        .from("tags")
+        .select("label_ru")
+        .in("category", ["warning", "style"])
+        .order("label_ru", { ascending: true });
+      return Array.from(new Set((data ?? []).map((t) => t.label_ru)));
+    } catch {
+      return [];
+    }
+  },
+  ["all-tags"],
+  { revalidate: CACHE_SECONDS, tags: ["tags"] }
+);
+
 export async function getTagsForStory(storyId: string): Promise<string[]> {
   try {
     const supabase = await createClient();

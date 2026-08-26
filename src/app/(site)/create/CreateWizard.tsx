@@ -10,9 +10,10 @@ import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { RichTextEditor } from "@/components/ui/RichTextEditor";
 import { Chip } from "@/components/ui/Chip";
+import { TagPicker } from "@/components/story/TagPicker";
 import type { AgeRating, ContentLanguage, StoryVisibility } from "@/types/database";
 
-export function CreateWizard({ userId }: { userId: string }) {
+export function CreateWizard({ userId, existingTags }: { userId: string; existingTags: string[] }) {
   const { t } = useLocale();
   const [step, setStep] = useState(1);
 
@@ -160,7 +161,10 @@ export function CreateWizard({ userId }: { userId: string }) {
                       <span className="text-[15px] leading-none">×</span>
                     </button>
                   ))}
-                  <TagAdder onAdd={(tag) => setTags((prev) => (prev.includes(tag) ? prev : [...prev, tag]))} />
+                  <TagPicker
+                    existingTags={existingTags}
+                    onAdd={(tag) => setTags((prev) => (prev.includes(tag) ? prev : [...prev, tag]))}
+                  />
                 </div>
 
                 <label className="mb-2 block text-[14px] font-bold">{t.create.languageLabel} *</label>
@@ -308,40 +312,3 @@ export function CreateWizard({ userId }: { userId: string }) {
   );
 }
 
-function TagAdder({ onAdd }: { onAdd: (tag: string) => void }) {
-  const { t } = useLocale();
-  const [open, setOpen] = useState(false);
-  const [value, setValue] = useState("");
-
-  if (!open) {
-    return (
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="h-9 rounded-[10px] border border-dashed border-primary-300 bg-white px-3.5 text-[13px] font-semibold text-primary-800"
-      >
-        {t.create.addTag}
-      </button>
-    );
-  }
-
-  return (
-    <form
-      onSubmit={(e) => {
-        e.preventDefault();
-        if (value.trim()) onAdd(value.trim());
-        setValue("");
-        setOpen(false);
-      }}
-      className="flex items-center gap-1.5"
-    >
-      <input
-        autoFocus
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
-        onBlur={() => setOpen(false)}
-        className="h-9 rounded-[10px] border border-border px-2.5 text-[13px] outline-none"
-      />
-    </form>
-  );
-}

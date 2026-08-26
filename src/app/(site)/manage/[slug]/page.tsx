@@ -4,7 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { getServerLocale } from "@/lib/i18n/locale-server";
 import { getDictionary } from "@/lib/i18n";
 import { getCurrentUser } from "@/lib/current-user";
-import { getStoryBySlug, getChaptersForStory, getTagsForStory } from "@/lib/queries/stories";
+import { getStoryBySlug, getChaptersForStory, getTagsForStory, getAllTags } from "@/lib/queries/stories";
 import { getLinkedRequestForStory } from "@/lib/queries/requests";
 import { ROUTES } from "@/lib/constants";
 import { Badge, Chip } from "@/components/ui/Chip";
@@ -37,9 +37,10 @@ export default async function ManagePage({
   if (!story) notFound();
   if (story.author.id !== user.id) redirect(ROUTES.home);
 
-  const [chapters, tags, linkedRequestId] = await Promise.all([
+  const [chapters, tags, existingTags, linkedRequestId] = await Promise.all([
     getChaptersForStory(story.id, true),
     tab === "edit" ? getTagsForStory(story.id) : Promise.resolve([]),
+    tab === "edit" ? getAllTags() : Promise.resolve([]),
     getLinkedRequestForStory(story.id),
   ]);
 
@@ -149,6 +150,7 @@ export default async function ManagePage({
           initialGenre={story.genre}
           initialDescription={story.description}
           initialTags={tags}
+          existingTags={existingTags}
         />
       )}
     </div>

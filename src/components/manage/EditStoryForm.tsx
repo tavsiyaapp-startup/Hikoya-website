@@ -8,6 +8,7 @@ import { updateStory } from "@/lib/actions/stories";
 import { Textarea } from "@/components/ui/Textarea";
 import { Chip } from "@/components/ui/Chip";
 import { Button } from "@/components/ui/Button";
+import { TagPicker } from "@/components/story/TagPicker";
 
 export function EditStoryForm({
   storyId,
@@ -17,6 +18,7 @@ export function EditStoryForm({
   initialGenre,
   initialDescription,
   initialTags,
+  existingTags,
 }: {
   storyId: string;
   storySlug: string;
@@ -25,6 +27,7 @@ export function EditStoryForm({
   initialGenre: string;
   initialDescription: string;
   initialTags: string[];
+  existingTags: string[];
 }) {
   const { t } = useLocale();
   const [coverUrl, setCoverUrl] = useState<string | null>(initialCoverUrl);
@@ -33,7 +36,6 @@ export function EditStoryForm({
   const [genre, setGenre] = useState(initialGenre);
   const [description, setDescription] = useState(initialDescription);
   const [tags, setTags] = useState<string[]>(initialTags);
-  const [tagInput, setTagInput] = useState("");
   const [pending, startTransition] = useTransition();
 
   async function handleCoverChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -112,21 +114,10 @@ export function EditStoryForm({
             <span className="text-[15px] leading-none">×</span>
           </button>
         ))}
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            const value = tagInput.trim();
-            if (value && !tags.includes(value)) setTags((prev) => [...prev, value]);
-            setTagInput("");
-          }}
-        >
-          <input
-            value={tagInput}
-            onChange={(e) => setTagInput(e.target.value)}
-            placeholder={t.create.addTag}
-            className="h-9 rounded-[10px] border border-border px-2.5 text-[13px] outline-none"
-          />
-        </form>
+        <TagPicker
+          existingTags={existingTags}
+          onAdd={(tag) => setTags((prev) => (prev.includes(tag) ? prev : [...prev, tag]))}
+        />
       </div>
 
       <Button onClick={handleSave} disabled={pending}>

@@ -155,6 +155,8 @@ const ru = {
     tagsLabel: "Теги",
     tagsHint: "(можно выбрать несколько)",
     addTag: "+ Добавить",
+    tagSearchPlaceholder: "Введите или выберите тег",
+    addNewTag: "+ Добавить «{tag}»",
     languageLabel: "Язык истории",
     ageRatingLabel: "Возрастной рейтинг",
     ageRatingHint: "Укажите, для какой аудитории подходит ваша история",

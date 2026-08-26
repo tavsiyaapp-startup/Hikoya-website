@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath, updateTag } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { slugify, withRandomSuffix } from "@/lib/slug";
 import { sanitizeHtml } from "@/lib/sanitize";
 import { ROUTES } from "@/lib/constants";
@@ -40,6 +41,36 @@ async function requiresReview(supabase: Awaited<ReturnType<typeof createClient>>
     .eq("id", 1)
     .single();
   return data?.new_story_requires_review ?? false;
+}
+
+// `tags` write access is staff-only via RLS (spam prevention on a shared,
+// site-wide table) — the admin client is what lets an author's freshly
+// typed tag actually get created, gated only by them owning the story
+// they're tagging (checked by the caller's own story_tags RLS policy).
+// New tags default to the 'style' category since this field isn't
+// category-specific from the author's point of view.
+async function resolveTagIds(labels: string[]): Promise<string[]> {
+  if (labels.length === 0) return [];
+  const admin = createAdminClient();
+
+  const { data: existing } = await admin.from("tags").select("id, label_ru").in("label_ru", labels);
+  const foundLabels = new Set((existing ?? []).map((t) => t.label_ru));
+  const ids = (existing ?? []).map((t) => t.id as string);
+
+  const missing = labels.filter((label) => !foundLabels.has(label));
+  if (missing.length > 0) {
+    const { data: created } = await admin
+      .from("tags")
+      .upsert(
+        missing.map((label) => ({ category: "style", label_ru: label, label_uz: label })),
+        { onConflict: "category,label_ru" }
+      )
+      .select("id");
+    ids.push(...(created ?? []).map((t) => t.id as string));
+    updateTag("tags");
+  }
+
+  return ids;
 }
 
 export async function createStory(input: CreateStoryInput) {
@@ -88,16 +119,9 @@ export async function createStory(input: CreateStoryInput) {
     published_at: status === "published" ? new Date().toISOString() : null,
   });
 
-  if (input.tags.length > 0) {
-    const { data: tagRows } = await supabase
-      .from("tags")
-      .select("id, label_ru")
-      .in("label_ru", input.tags);
-    if (tagRows && tagRows.length > 0) {
-      await supabase
-        .from("story_tags")
-        .insert(tagRows.map((tag) => ({ story_id: story.id, tag_id: tag.id })));
-    }
+  const tagIds = await resolveTagIds(input.tags);
+  if (tagIds.length > 0) {
+    await supabase.from("story_tags").insert(tagIds.map((tagId) => ({ story_id: story.id, tag_id: tagId })));
   }
 
   await supabase.from("profiles").update({ role: "author" }).eq("id", user.id).eq("role", "reader");
@@ -136,16 +160,9 @@ export async function updateStory(
     .eq("id", storyId);
 
   await supabase.from("story_tags").delete().eq("story_id", storyId);
-  if (input.tags.length > 0) {
-    const { data: tagRows } = await supabase
-      .from("tags")
-      .select("id, label_ru")
-      .in("label_ru", input.tags);
-    if (tagRows && tagRows.length > 0) {
-      await supabase
-        .from("story_tags")
-        .insert(tagRows.map((tag) => ({ story_id: storyId, tag_id: tag.id })));
-    }
+  const tagIds = await resolveTagIds(input.tags);
+  if (tagIds.length > 0) {
+    await supabase.from("story_tags").insert(tagIds.map((tagId) => ({ story_id: storyId, tag_id: tagId })));
   }
 
   updateTag("stories");

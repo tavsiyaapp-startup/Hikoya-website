@@ -12,7 +12,8 @@ import { getLinkedRequestForStory } from "@/lib/queries/requests";
 import { ROUTES } from "@/lib/constants";
 import { RELATIONSHIP_TYPES } from "@/lib/relationshipTypes";
 import { Avatar } from "@/components/ui/Avatar";
-import { Badge, Chip } from "@/components/ui/Chip";
+import { Badge } from "@/components/ui/Chip";
+import { LinkChip } from "@/components/ui/LinkChip";
 import { Button } from "@/components/ui/Button";
 import { LikeBookmarkRow, FollowButton, ReadingStatusSelect } from "@/components/story/StoryActions";
 import type { ReadingStatus } from "@/types/database";
@@ -157,16 +158,12 @@ export default async function StoryPage({
         </div>
 
         <div className="mb-4 flex items-center gap-2.5 overflow-x-auto">
-          <Link href={`?tab=chapters`} scroll={false} className="inline-flex shrink-0">
-            <Chip active={tab === "chapters"} className="whitespace-nowrap">
-              {t.story.chapters} <span className="ml-1 opacity-70">{chapters.length}</span>
-            </Chip>
-          </Link>
-          <Link href={`?tab=comments`} scroll={false} className="inline-flex shrink-0">
-            <Chip active={tab === "comments"} className="whitespace-nowrap">
-              {t.common.comments} <span className="ml-1 opacity-70">{story.comment_count}</span>
-            </Chip>
-          </Link>
+          <LinkChip href={`?tab=chapters`} scroll={false} active={tab === "chapters"} shrink>
+            {t.story.chapters} <span className="ml-1 opacity-70">{chapters.length}</span>
+          </LinkChip>
+          <LinkChip href={`?tab=comments`} scroll={false} active={tab === "comments"} shrink>
+            {t.common.comments} <span className="ml-1 opacity-70">{story.comment_count}</span>
+          </LinkChip>
         </div>
 
         {tab === "chapters" && (

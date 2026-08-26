@@ -12,7 +12,8 @@ import { getNotifications } from "@/lib/queries/notifications";
 import { ROUTES } from "@/lib/constants";
 import { formatCompactCount } from "@/lib/format";
 import { Avatar } from "@/components/ui/Avatar";
-import { Badge, Chip } from "@/components/ui/Chip";
+import { Badge } from "@/components/ui/Chip";
+import { LinkChip } from "@/components/ui/LinkChip";
 import { StoryCard } from "@/components/story/StoryCard";
 import { FollowButton } from "@/components/story/StoryActions";
 import { EditProfileForm } from "@/components/profile/EditProfileForm";
@@ -141,11 +142,9 @@ export default async function AuthorPage({
             ...(isOwner ? [["notifications", t.nav.notifications] as const] : []),
           ] as const
         ).map(([key, label]) => (
-          <Link key={key} href={`?tab=${key}`} className="inline-flex shrink-0">
-            <Chip active={tab === key} className="whitespace-nowrap">
-              {label}
-            </Chip>
-          </Link>
+          <LinkChip key={key} href={`?tab=${key}`} active={tab === key} shrink>
+            {label}
+          </LinkChip>
         ))}
       </div>
 

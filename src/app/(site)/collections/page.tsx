@@ -4,7 +4,7 @@ import { getDictionary } from "@/lib/i18n";
 import { getCurrentUser } from "@/lib/current-user";
 import { getPublicCollections, getMyCollections, getSavedCollections } from "@/lib/queries/stories";
 import { ROUTES } from "@/lib/constants";
-import { Chip } from "@/components/ui/Chip";
+import { LinkChip } from "@/components/ui/LinkChip";
 import { CollectionCard } from "@/components/collections/CollectionCard";
 import { createCollection } from "@/lib/actions/collections";
 import { Input } from "@/components/ui/Input";
@@ -53,9 +53,9 @@ export default async function CollectionsPage({
             ["saved", t.collections.tabSaved],
           ] as const
         ).map(([key, label]) => (
-          <Link key={key} href={`?tab=${key}`} className="shrink-0">
-            <Chip active={tab === key}>{label}</Chip>
-          </Link>
+          <LinkChip key={key} href={`?tab=${key}`} active={tab === key} shrink>
+            {label}
+          </LinkChip>
         ))}
         {user && (
           <Link href="?create=1" className="ml-auto shrink-0">

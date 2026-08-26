@@ -7,7 +7,8 @@ import { getAuthorStories } from "@/lib/queries/stories";
 import { requestStatusTone, requestStatusLabel } from "@/lib/requestStatus";
 import { ROUTES } from "@/lib/constants";
 import { Avatar } from "@/components/ui/Avatar";
-import { Badge, Chip } from "@/components/ui/Chip";
+import { Badge } from "@/components/ui/Chip";
+import { LinkChip } from "@/components/ui/LinkChip";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
@@ -50,9 +51,9 @@ export default async function BoardPage({
           ["in_progress", requestStatusLabel(t, "in_progress")],
           ["closed", requestStatusLabel(t, "closed")],
         ].map(([value, label]) => (
-          <Link key={label} href={value ? `?status=${value}` : "?"} className="shrink-0">
-            <Chip active={status === value || (!status && !value)}>{label}</Chip>
-          </Link>
+          <LinkChip key={label} href={value ? `?status=${value}` : "?"} active={status === value || (!status && !value)} shrink>
+            {label}
+          </LinkChip>
         ))}
       </div>
 

@@ -3,6 +3,7 @@ import { getServerLocale } from "@/lib/i18n/locale-server";
 import { getDictionary } from "@/lib/i18n";
 import { searchStories, type SearchFilters } from "@/lib/queries/stories";
 import { Chip } from "@/components/ui/Chip";
+import { LinkChip } from "@/components/ui/LinkChip";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { SearchIcon } from "@/components/ui/icons";
@@ -98,9 +99,9 @@ export default async function SearchPage({
 
         <FilterGroup label={t.search.language}>
           {["ru", "uz"].map((code) => (
-            <Link key={code} href={buildHref(sp, { lang: filters.language === code ? undefined : code })}>
-              <Chip active={filters.language === code}>{t.languages[code as "ru" | "uz"]}</Chip>
-            </Link>
+            <LinkChip key={code} href={buildHref(sp, { lang: filters.language === code ? undefined : code })} active={filters.language === code}>
+              {t.languages[code as "ru" | "uz"]}
+            </LinkChip>
           ))}
         </FilterGroup>
 
@@ -108,9 +109,9 @@ export default async function SearchPage({
 
         <FilterGroup label={t.search.genre} wrap>
           {t.genres.map((g) => (
-            <Link key={g} href={buildHref(sp, { genre: filters.genre === g ? undefined : g })}>
-              <Chip active={filters.genre === g}>{g}</Chip>
-            </Link>
+            <LinkChip key={g} href={buildHref(sp, { genre: filters.genre === g ? undefined : g })} active={filters.genre === g}>
+              {g}
+            </LinkChip>
           ))}
         </FilterGroup>
 
@@ -118,9 +119,9 @@ export default async function SearchPage({
 
         <FilterGroup label={t.search.relationship} wrap>
           {RELATIONSHIP_TYPES.map(([r, rUz]) => (
-            <Link key={r} href={buildHref(sp, { rel: filters.relationship === r ? undefined : r })}>
-              <Chip active={filters.relationship === r}>{locale === "uz" ? rUz : r}</Chip>
-            </Link>
+            <LinkChip key={r} href={buildHref(sp, { rel: filters.relationship === r ? undefined : r })} active={filters.relationship === r}>
+              {locale === "uz" ? rUz : r}
+            </LinkChip>
           ))}
         </FilterGroup>
 
@@ -131,9 +132,9 @@ export default async function SearchPage({
             ["published", t.common.ongoing],
             ["unlisted", t.common.finished],
           ].map(([value, label]) => (
-            <Link key={value} href={buildHref(sp, { status: filters.status === value ? undefined : value })}>
-              <Chip active={filters.status === value}>{label}</Chip>
-            </Link>
+            <LinkChip key={value} href={buildHref(sp, { status: filters.status === value ? undefined : value })} active={filters.status === value}>
+              {label}
+            </LinkChip>
           ))}
         </FilterGroup>
 
@@ -141,9 +142,9 @@ export default async function SearchPage({
 
         <FilterGroup label={t.search.ageRating}>
           {t.ageRatings.map((age) => (
-            <Link key={age} href={buildHref(sp, { age: filters.age === age ? undefined : age })}>
-              <Chip active={filters.age === age}>{age}</Chip>
-            </Link>
+            <LinkChip key={age} href={buildHref(sp, { age: filters.age === age ? undefined : age })} active={filters.age === age}>
+              {age}
+            </LinkChip>
           ))}
         </FilterGroup>
 
@@ -151,9 +152,9 @@ export default async function SearchPage({
 
         <FilterGroup label={t.search.warnings} wrap>
           {WARNINGS.map(([w, wUz]) => (
-            <Link key={w} href={buildHref(sp, { warn: toggleInArray(filters.warnings ?? [], w) })}>
-              <Chip active={filters.warnings?.includes(w)}>{locale === "uz" ? wUz : w}</Chip>
-            </Link>
+            <LinkChip key={w} href={buildHref(sp, { warn: toggleInArray(filters.warnings ?? [], w) })} active={filters.warnings?.includes(w)}>
+              {locale === "uz" ? wUz : w}
+            </LinkChip>
           ))}
         </FilterGroup>
 
@@ -161,9 +162,9 @@ export default async function SearchPage({
 
         <FilterGroup label={t.search.style} wrap last>
           {STYLES.map(([s, sUz]) => (
-            <Link key={s} href={buildHref(sp, { style: filters.style === s ? undefined : s })}>
-              <Chip active={filters.style === s}>{locale === "uz" ? sUz : s}</Chip>
-            </Link>
+            <LinkChip key={s} href={buildHref(sp, { style: filters.style === s ? undefined : s })} active={filters.style === s}>
+              {locale === "uz" ? sUz : s}
+            </LinkChip>
           ))}
         </FilterGroup>
       </details>
@@ -192,11 +193,9 @@ export default async function SearchPage({
           </form>
           <div className="flex flex-wrap gap-1.5">
             {(["popular", "newest", "views"] as const).map((s) => (
-              <Link key={s} href={buildHref(sp, { sort: s })}>
-                <Chip active={filters.sort === s}>
-                  {s === "popular" ? t.search.sortPopular : s === "newest" ? t.search.sortNewest : t.search.sortViews}
-                </Chip>
-              </Link>
+              <LinkChip key={s} href={buildHref(sp, { sort: s })} active={filters.sort === s}>
+                {s === "popular" ? t.search.sortPopular : s === "newest" ? t.search.sortNewest : t.search.sortViews}
+              </LinkChip>
             ))}
           </div>
         </div>

@@ -18,7 +18,8 @@ import { StoryCard } from "@/components/story/StoryCard";
 import { CollectionCard } from "@/components/collections/CollectionCard";
 import { HeroCarousel } from "@/components/home/HeroCarousel";
 import { Button } from "@/components/ui/Button";
-import { Badge, Chip } from "@/components/ui/Chip";
+import { Badge } from "@/components/ui/Chip";
+import { LinkChip } from "@/components/ui/LinkChip";
 import { SparkleIcon, LockIcon } from "@/components/ui/icons";
 // import type { StoryTopTier } from "@/types/database";
 
@@ -60,16 +61,10 @@ export default async function HomePage({
         {TABS.map((key) => {
           const locked = !user && (key === "forYou" || key === "following");
           return (
-            <Link
-              key={key}
-              href={locked ? ROUTES.onboarding : `?tab=${key}`}
-              className="inline-flex shrink-0"
-            >
-              <Chip active={tab === key}>
-                <span>{t.home.tabs[key]}</span>
-                {locked && <LockIcon />}
-              </Chip>
-            </Link>
+            <LinkChip key={key} href={locked ? ROUTES.onboarding : `?tab=${key}`} active={tab === key} shrink>
+              <span>{t.home.tabs[key]}</span>
+              {locked && <LockIcon />}
+            </LinkChip>
           );
         })}
         {!user && (
@@ -229,9 +224,9 @@ export default async function HomePage({
         </div>
         <div className="mb-6 flex flex-wrap gap-2">
           {t.genres.map((g) => (
-            <Link key={g} href={`?tab=${tab}&genre=${encodeURIComponent(g)}`} scroll={false}>
-              <Chip active={g === genre}>{g}</Chip>
-            </Link>
+            <LinkChip key={g} href={`?tab=${tab}&genre=${encodeURIComponent(g)}`} scroll={false} active={g === genre}>
+              {g}
+            </LinkChip>
           ))}
         </div>
         {genreStories.length > 0 ? (

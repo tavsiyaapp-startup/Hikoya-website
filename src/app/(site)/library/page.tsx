@@ -13,7 +13,7 @@ import { getFollowedAuthorsWithStories } from "@/lib/queries/social";
 import { ROUTES } from "@/lib/constants";
 import { StoryCard } from "@/components/story/StoryCard";
 import { Avatar } from "@/components/ui/Avatar";
-import { Chip } from "@/components/ui/Chip";
+import { LinkChip } from "@/components/ui/LinkChip";
 
 const TABS = ["reading", "wantToRead", "read", "dropped", "bookmarks", "following"] as const;
 type Tab = (typeof TABS)[number];
@@ -65,9 +65,9 @@ export default async function LibraryPage({
             ["following", t.library.tabFollowing],
           ] as const
         ).map(([key, label]) => (
-          <Link key={key} href={`?tab=${key}`}>
-            <Chip active={tab === key}>{label}</Chip>
-          </Link>
+          <LinkChip key={key} href={`?tab=${key}`} active={tab === key} shrink>
+            {label}
+          </LinkChip>
         ))}
       </div>
 

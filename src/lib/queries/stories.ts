@@ -3,7 +3,7 @@ import { unstable_cache } from "next/cache";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { createPublicClient } from "@/lib/supabase/public";
-import type { Story, Chapter, Collection, Profile, StoryTopTier } from "@/types/database";
+import type { Story, Chapter, Collection, Profile, StoryTopTier, HeroSlide } from "@/types/database";
 
 // Every query here tolerates an unreachable Supabase project (placeholder
 // .env.local before a real project is wired up) by returning an empty
@@ -138,6 +138,22 @@ export const getFeaturedCollections = unstable_cache(
   },
   ["featured-collections"],
   { revalidate: CACHE_SECONDS, tags: ["collections"] }
+);
+
+// Extra hero-banner carousel slides staff added from /admin/banner — slide 1
+// itself is hand-built JSX on the homepage, not stored here.
+export const getHeroSlides = unstable_cache(
+  async (): Promise<HeroSlide[]> => {
+    try {
+      const supabase = createPublicClient();
+      const { data } = await supabase.from("hero_slides").select("*").order("created_at", { ascending: true });
+      return (data as HeroSlide[]) ?? [];
+    } catch {
+      return [];
+    }
+  },
+  ["hero-slides"],
+  { revalidate: CACHE_SECONDS, tags: ["hero-slides"] }
 );
 
 // Staff-pinned stories for the homepage's Топ дня/недели/месяца section

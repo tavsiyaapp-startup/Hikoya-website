@@ -1,6 +1,6 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
-import type { Chapter, Story, StoryTopTier } from "@/types/database";
+import type { Chapter, Story, StoryTopTier, HeroSlide } from "@/types/database";
 
 // Admin panel reads always use the service-role client — staff need to see
 // everything regardless of RLS (draft stories, all users, all reports).
@@ -156,6 +156,16 @@ export async function getUserAchievementsMap(userIds: string[]): Promise<Map<str
     return map;
   } catch {
     return map;
+  }
+}
+
+export async function getAllHeroSlidesAdmin(): Promise<HeroSlide[]> {
+  try {
+    const admin = createAdminClient();
+    const { data } = await admin.from("hero_slides").select("*").order("created_at", { ascending: true });
+    return (data as HeroSlide[]) ?? [];
+  } catch {
+    return [];
   }
 }
 

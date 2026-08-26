@@ -163,6 +163,45 @@ export async function toggleFeaturedStory(storyId: string, tier: "day" | "week" 
   revalidatePath(ROUTES.search);
 }
 
+export async function createHeroSlide(formData: FormData) {
+  await requireStaff();
+  const admin = createAdminClient();
+
+  const titleRu = String(formData.get("titleRu") ?? "").trim();
+  const titleUz = String(formData.get("titleUz") ?? "").trim();
+  const bodyRu = String(formData.get("bodyRu") ?? "").trim();
+  const bodyUz = String(formData.get("bodyUz") ?? "").trim();
+  const imageUrl = String(formData.get("imageUrl") ?? "").trim();
+  const ctaLabelRu = String(formData.get("ctaLabelRu") ?? "").trim();
+  const ctaLabelUz = String(formData.get("ctaLabelUz") ?? "").trim();
+  const ctaUrl = String(formData.get("ctaUrl") ?? "").trim();
+  if (!titleRu || !titleUz || !bodyRu || !bodyUz || !imageUrl) return;
+
+  await admin.from("hero_slides").insert({
+    title_ru: titleRu,
+    title_uz: titleUz,
+    body_ru: bodyRu,
+    body_uz: bodyUz,
+    image_url: imageUrl,
+    cta_label_ru: ctaLabelRu || null,
+    cta_label_uz: ctaLabelUz || null,
+    cta_url: ctaUrl || null,
+  });
+
+  updateTag("hero-slides");
+  revalidatePath(`${ROUTES.admin}/banner`);
+  revalidatePath(ROUTES.home);
+}
+
+export async function deleteHeroSlide(slideId: string) {
+  await requireStaff();
+  const admin = createAdminClient();
+  await admin.from("hero_slides").delete().eq("id", slideId);
+  updateTag("hero-slides");
+  revalidatePath(`${ROUTES.admin}/banner`);
+  revalidatePath(ROUTES.home);
+}
+
 // Replace-all, same pattern as updateCollectionAdmin's collection_items —
 // simplest correct way to sync a set from a checkbox list with no ordering.
 export async function updateUserAchievements(userId: string, achievementIds: string[]) {

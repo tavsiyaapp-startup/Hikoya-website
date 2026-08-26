@@ -251,3 +251,13 @@ export function EyeOffIcon(props: IconProps) {
     </svg>
   );
 }
+
+export function ImageIcon(props: IconProps) {
+  return (
+    <svg {...base()} {...props}>
+      <rect x="3" y="4" width="18" height="16" rx="2.5" />
+      <circle cx="8.5" cy="10" r="1.6" />
+      <path d="M3 16.5 8.5 12l3.5 3 4-4 5 5" />
+    </svg>
+  );
+}

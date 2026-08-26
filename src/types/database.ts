@@ -189,6 +189,19 @@ export interface FeaturedStory {
   featured_at: string;
 }
 
+export interface HeroSlide {
+  id: string;
+  title_ru: string;
+  title_uz: string;
+  body_ru: string;
+  body_uz: string;
+  image_url: string;
+  cta_label_ru: string | null;
+  cta_label_uz: string | null;
+  cta_url: string | null;
+  created_at: string;
+}
+
 export interface Request {
   id: string;
   target_author_id: string | null;

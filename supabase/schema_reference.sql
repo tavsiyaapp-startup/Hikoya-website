@@ -317,6 +317,25 @@ create table reports (
   created_at timestamptz not null default now()
 );
 
+-- ── карусель баннера на главной ───────────────────────────────────────────
+-- добавлено в 0023: первый слайд — статичный, зашитый в JSX главной
+-- страницы (переведённый через словари ru/uz), эта таблица только для
+-- дополнительных слайдов, которые staff добавляет/удаляет из /admin/banner.
+-- Показываются после первого, в порядке добавления (created_at).
+
+create table hero_slides (
+  id uuid primary key default gen_random_uuid(),
+  title_ru text not null,
+  title_uz text not null,
+  body_ru text not null,
+  body_uz text not null,
+  image_url text not null,
+  cta_label_ru text,
+  cta_label_uz text,
+  cta_url text,
+  created_at timestamptz not null default now()
+);
+
 -- ── настройки платформы (одна строка на весь проект) ────────────────────────
 
 create table platform_settings (
@@ -619,6 +638,11 @@ alter table platform_settings enable row level security;
 create policy "platform settings are publicly readable" on platform_settings for select using (true);
 create policy "staff update platform settings" on platform_settings for update using (is_staff());
 
+-- hero_slides
+alter table hero_slides enable row level security;
+create policy "hero_slides are publicly readable" on hero_slides for select using (true);
+create policy "staff manage hero_slides" on hero_slides for all using (is_staff()) with check (is_staff());
+
 -- =============================================================================
 -- STORAGE (файловое хранилище)
 -- =============================================================================
@@ -664,6 +688,22 @@ create policy "users upload their own chapter images" on storage.objects for ins
 );
 create policy "users delete their own chapter images" on storage.objects for delete using (
   bucket_id = 'chapter-images' and (storage.foldername(name))[1] = auth.uid()::text
+);
+
+-- добавлено в 0023: изображения для дополнительных слайдов карусели баннера
+-- (hero_slides, /admin/banner) — сайтовый ресурс, а не пользовательский,
+-- поэтому RLS на is_staff(), а не на владение по пути "{id}/{файл}".
+insert into storage.buckets (id, name, public) values ('hero-slides', 'hero-slides', true)
+on conflict (id) do nothing;
+
+create policy "hero slide images are publicly readable" on storage.objects for select using (
+  bucket_id = 'hero-slides'
+);
+create policy "staff upload hero slide images" on storage.objects for insert with check (
+  bucket_id = 'hero-slides' and is_staff()
+);
+create policy "staff delete hero slide images" on storage.objects for delete using (
+  bucket_id = 'hero-slides' and is_staff()
 );
 
 -- =============================================================================
@@ -832,3 +872,10 @@ on conflict (code) do nothing;
 --   на главной (с переключателем между тремя уровнями) и поднимаются в
 --   начало результатов поиска, если попадают в выдачу — в обоих случаях
 --   сортировка по featured_at (кто раньше закреплён, тот выше/первее).
+-- [2026-08-26] Таблица hero_slides + бакет hero-slides (миграция 0023).
+--   Баннер на главной стал каруселью — первый слайд остался зашитым в JSX
+--   (переведён через словари ru/uz, как и раньше), а эта таблица только для
+--   дополнительных слайдов: staff добавляет/удаляет их из /admin/banner
+--   (только create/delete, без редактирования — так и попросили), картинка
+--   заливается в новый бакет hero-slides. Показываются после первого
+--   слайда в порядке добавления (created_at).

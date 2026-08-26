@@ -264,6 +264,7 @@ export interface SearchFilters {
   genre?: string;
   status?: string;
   age?: string;
+  relationship?: string;
   style?: string;
   warnings?: string[];
   sort?: "popular" | "newest" | "views";
@@ -300,6 +301,7 @@ export const searchStories = unstable_cache(
       if (filters.genre) query = query.eq("genre", filters.genre);
       if (filters.status) query = query.eq("status", filters.status);
       if (filters.age) query = query.eq("age_rating", filters.age);
+      if (filters.relationship) query = query.eq("relationship_type", filters.relationship);
 
       if (filters.style) {
         const ids = await storyIdsForTag(supabase, "style", filters.style);
@@ -475,9 +477,9 @@ export async function getCollectionWithStories(id: string) {
 }
 
 // Existing tag labels for the "type or pick" tag adder on create/edit-story
-// forms — genre/age_rating are handled by their own dedicated selectors, and
-// relationship-type isn't surfaced as a filter anywhere anymore, so this only
-// offers warning/style tags plus whatever authors have already typed in.
+// forms — genre/age_rating/relationship-type are handled by their own
+// dedicated single-select pickers, so this only offers warning/style tags
+// plus whatever authors have already typed in.
 export const getAllTags = unstable_cache(
   async (): Promise<string[]> => {
     try {

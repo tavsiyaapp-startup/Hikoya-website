@@ -14,11 +14,12 @@ import { Chip } from "@/components/ui/Chip";
 import { TagPicker } from "@/components/story/TagPicker";
 import { DocxImportFlow } from "@/components/manage/DocxImportFlow";
 import { ROUTES } from "@/lib/constants";
+import { RELATIONSHIP_TYPES } from "@/lib/relationshipTypes";
 import type { SplitChapter } from "@/lib/editor/splitChapters";
 import type { AgeRating, ContentLanguage, StoryVisibility } from "@/types/database";
 
 export function CreateWizard({ userId, existingTags }: { userId: string; existingTags: string[] }) {
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   const router = useRouter();
   const [step, setStep] = useState(1);
 
@@ -29,6 +30,7 @@ export function CreateWizard({ userId, existingTags }: { userId: string; existin
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [genre, setGenre] = useState(t.genres[0]);
+  const [relationshipType, setRelationshipType] = useState<string | null>(null);
   const [tags, setTags] = useState<string[]>([]);
   const [language, setLanguage] = useState<ContentLanguage>("ru");
   const [ageRating, setAgeRating] = useState<AgeRating>("0+");
@@ -80,6 +82,7 @@ export function CreateWizard({ userId, existingTags }: { userId: string; existin
         description,
         coverUrl,
         genre,
+        relationshipType,
         tags,
         language,
         ageRating,
@@ -173,6 +176,22 @@ export function CreateWizard({ userId, existingTags }: { userId: string; existin
                   {t.genres.map((g) => (
                     <Chip key={g} active={genre === g} onClick={() => setGenre(g)}>
                       {g}
+                    </Chip>
+                  ))}
+                </div>
+
+                <label className="mb-2 block text-[14px] font-bold">
+                  {t.create.relationshipLabel}{" "}
+                  <span className="font-medium text-muted-2">{t.create.relationshipHint}</span>
+                </label>
+                <div className="mb-5 flex flex-wrap gap-2">
+                  {RELATIONSHIP_TYPES.map(([r, rUz]) => (
+                    <Chip
+                      key={r}
+                      active={relationshipType === r}
+                      onClick={() => setRelationshipType((prev) => (prev === r ? null : r))}
+                    >
+                      {locale === "uz" ? rUz : r}
                     </Chip>
                   ))}
                 </div>

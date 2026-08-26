@@ -14,6 +14,7 @@ export interface CreateStoryInput {
   description: string;
   coverUrl: string | null;
   genre: string;
+  relationshipType: string | null;
   tags: string[];
   language: ContentLanguage;
   ageRating: AgeRating;
@@ -93,6 +94,7 @@ export async function createStory(input: CreateStoryInput) {
       description: input.description,
       cover_url: input.coverUrl,
       genre: input.genre,
+      relationship_type: input.relationshipType,
       language: input.language,
       age_rating: input.ageRating,
       status,
@@ -138,6 +140,7 @@ export interface UpdateStoryInput {
   description: string;
   coverUrl: string | null;
   genre: string;
+  relationshipType: string | null;
   tags: string[];
 }
 
@@ -158,6 +161,7 @@ export async function updateStory(
       description: input.description,
       cover_url: input.coverUrl,
       genre: input.genre,
+      relationship_type: input.relationshipType,
       updated_at: new Date().toISOString(),
     })
     .eq("id", storyId);

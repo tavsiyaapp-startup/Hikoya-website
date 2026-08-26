@@ -148,6 +148,7 @@ export default async function ManagePage({
           authorId={story.author.id}
           initialCoverUrl={story.cover_url}
           initialGenre={story.genre}
+          initialRelationshipType={story.relationship_type}
           initialDescription={story.description}
           initialTags={tags}
           existingTags={existingTags}

@@ -8,11 +8,17 @@ import { getStoryBySlug, getChaptersForStory, getMyCollectionsWithStory } from "
 import { getUserStoryState, isFollowingAuthor, getFollowerCount } from "@/lib/queries/social";
 import { getLinkedRequestForStory } from "@/lib/queries/requests";
 import { ROUTES } from "@/lib/constants";
+import { RELATIONSHIP_TYPES } from "@/lib/relationshipTypes";
 import { Avatar } from "@/components/ui/Avatar";
 import { Badge } from "@/components/ui/Chip";
 import { Button } from "@/components/ui/Button";
 import { LikeBookmarkRow, FollowButton, ReadingStatusSelect } from "@/components/story/StoryActions";
 import type { ReadingStatus } from "@/types/database";
+
+function relationshipLabel(value: string, locale: "ru" | "uz"): string {
+  if (locale === "ru") return value;
+  return RELATIONSHIP_TYPES.find(([ru]) => ru === value)?.[1] ?? value;
+}
 
 export default async function StoryPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -100,6 +106,9 @@ export default async function StoryPage({ params }: { params: Promise<{ slug: st
       <div className="min-w-0 flex-1">
         <div className="mb-3.5 flex flex-wrap items-center gap-2">
           <Badge tone="pink">{story.genre}</Badge>
+          {story.relationship_type && (
+            <Badge tone="primary">{relationshipLabel(story.relationship_type, locale)}</Badge>
+          )}
           <Badge tone={story.age_rating === "18+" ? "danger" : "neutral"}>{story.age_rating}</Badge>
           <Badge tone="success">{story.status === "published" ? t.common.ongoing : t.common.finished}</Badge>
           <Badge tone="neutral">{t.languages[story.language]}</Badge>

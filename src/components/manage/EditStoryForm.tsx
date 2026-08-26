@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/Textarea";
 import { Chip } from "@/components/ui/Chip";
 import { Button } from "@/components/ui/Button";
 import { TagPicker } from "@/components/story/TagPicker";
+import { RELATIONSHIP_TYPES } from "@/lib/relationshipTypes";
 
 export function EditStoryForm({
   storyId,
@@ -16,6 +17,7 @@ export function EditStoryForm({
   authorId,
   initialCoverUrl,
   initialGenre,
+  initialRelationshipType,
   initialDescription,
   initialTags,
   existingTags,
@@ -25,15 +27,17 @@ export function EditStoryForm({
   authorId: string;
   initialCoverUrl: string | null;
   initialGenre: string;
+  initialRelationshipType: string | null;
   initialDescription: string;
   initialTags: string[];
   existingTags: string[];
 }) {
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   const [coverUrl, setCoverUrl] = useState<string | null>(initialCoverUrl);
   const [coverUploading, setCoverUploading] = useState(false);
   const [coverError, setCoverError] = useState<string | null>(null);
   const [genre, setGenre] = useState(initialGenre);
+  const [relationshipType, setRelationshipType] = useState<string | null>(initialRelationshipType);
   const [description, setDescription] = useState(initialDescription);
   const [tags, setTags] = useState<string[]>(initialTags);
   const [pending, startTransition] = useTransition();
@@ -59,7 +63,7 @@ export function EditStoryForm({
 
   function handleSave() {
     startTransition(() => {
-      updateStory(storyId, storySlug, { description, coverUrl, genre, tags });
+      updateStory(storyId, storySlug, { description, coverUrl, genre, relationshipType, tags });
     });
   }
 
@@ -95,6 +99,21 @@ export function EditStoryForm({
         {t.genres.map((g) => (
           <Chip key={g} active={genre === g} onClick={() => setGenre(g)}>
             {g}
+          </Chip>
+        ))}
+      </div>
+
+      <label className="mb-2 block text-[14px] font-bold">
+        {t.create.relationshipLabel} <span className="font-medium text-muted-2">{t.create.relationshipHint}</span>
+      </label>
+      <div className="mb-5 flex flex-wrap gap-2">
+        {RELATIONSHIP_TYPES.map(([r, rUz]) => (
+          <Chip
+            key={r}
+            active={relationshipType === r}
+            onClick={() => setRelationshipType((prev) => (prev === r ? null : r))}
+          >
+            {locale === "uz" ? rUz : r}
           </Chip>
         ))}
       </div>

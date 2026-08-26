@@ -6,6 +6,7 @@ import { Chip } from "@/components/ui/Chip";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { SearchIcon } from "@/components/ui/icons";
+import { RELATIONSHIP_TYPES } from "@/lib/relationshipTypes";
 
 type Query = { [key: string]: string | string[] | undefined };
 
@@ -27,7 +28,7 @@ const STYLES: [string, string][] = [
 
 function localizedLabel(value: string | undefined, locale: "ru" | "uz"): string | undefined {
   if (!value || locale === "ru") return value;
-  const pair = [...WARNINGS, ...STYLES].find(([ru]) => ru === value);
+  const pair = [...RELATIONSHIP_TYPES, ...WARNINGS, ...STYLES].find(([ru]) => ru === value);
   return pair ? pair[1] : value;
 }
 
@@ -65,6 +66,7 @@ export default async function SearchPage({
     genre: one(sp.genre),
     status: one(sp.status),
     age: one(sp.age),
+    relationship: one(sp.rel),
     style: one(sp.style),
     warnings: many(sp.warn),
     sort: (one(sp.sort) as SearchFilters["sort"]) ?? "popular",
@@ -72,7 +74,13 @@ export default async function SearchPage({
 
   const results = await searchStories(filters);
   const hasActive = Boolean(
-    filters.language || filters.genre || filters.status || filters.age || filters.style || filters.warnings?.length
+    filters.language ||
+      filters.genre ||
+      filters.status ||
+      filters.age ||
+      filters.relationship ||
+      filters.style ||
+      filters.warnings?.length
   );
 
   return (
@@ -102,6 +110,16 @@ export default async function SearchPage({
           {t.genres.map((g) => (
             <Link key={g} href={buildHref(sp, { genre: filters.genre === g ? undefined : g })}>
               <Chip active={filters.genre === g}>{g}</Chip>
+            </Link>
+          ))}
+        </FilterGroup>
+
+        <div className="my-1 h-px bg-border-soft" />
+
+        <FilterGroup label={t.search.relationship} wrap>
+          {RELATIONSHIP_TYPES.map(([r, rUz]) => (
+            <Link key={r} href={buildHref(sp, { rel: filters.relationship === r ? undefined : r })}>
+              <Chip active={filters.relationship === r}>{locale === "uz" ? rUz : r}</Chip>
             </Link>
           ))}
         </FilterGroup>
@@ -192,6 +210,7 @@ export default async function SearchPage({
                 ["genre", filters.genre],
                 ["status", filters.status],
                 ["age", filters.age],
+                ["rel", filters.relationship],
                 ["style", filters.style],
               ] as Array<[string, string | undefined]>
             )
@@ -202,7 +221,7 @@ export default async function SearchPage({
                   href={buildHref(sp, { [key]: undefined })}
                   className="flex items-center gap-1.5 rounded-[10px] border border-primary-300 bg-primary-50 px-3 py-1.5 text-[12.5px] font-semibold text-primary-900"
                 >
-                  <span>{key === "style" ? localizedLabel(value, locale) : value}</span>
+                  <span>{key === "style" || key === "rel" ? localizedLabel(value, locale) : value}</span>
                   <span className="text-[14px] leading-none">×</span>
                 </Link>
               ))}

@@ -5,6 +5,7 @@ import { postComment } from "@/lib/actions/social";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 import { Button } from "@/components/ui/Button";
 import { Textarea } from "@/components/ui/Textarea";
+import { EmojiPickerButton } from "@/components/story/EmojiPickerButton";
 
 export function CommentForm({
   chapterId,
@@ -23,6 +24,7 @@ export function CommentForm({
   const [text, setText] = useState("");
   const [pending, startTransition] = useTransition();
   const formRef = useRef<HTMLFormElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -34,9 +36,26 @@ export function CommentForm({
     });
   }
 
+  function insertEmoji(emoji: string) {
+    const el = textareaRef.current;
+    if (!el) {
+      setText((prev) => prev + emoji);
+      return;
+    }
+    const start = el.selectionStart ?? text.length;
+    const end = el.selectionEnd ?? text.length;
+    setText(text.slice(0, start) + emoji + text.slice(end));
+    requestAnimationFrame(() => {
+      el.focus();
+      const pos = start + emoji.length;
+      el.setSelectionRange(pos, pos);
+    });
+  }
+
   return (
     <form ref={formRef} onSubmit={handleSubmit} className="flex items-start gap-3">
       <Textarea
+        ref={textareaRef}
         value={text}
         onChange={(e) => setText(e.target.value)}
         placeholder={t.reader.commentPlaceholder}
@@ -44,6 +63,7 @@ export function CommentForm({
         autoFocus={autoFocus}
         className="flex-1"
       />
+      <EmojiPickerButton onSelect={insertEmoji} />
       <Button type="submit" disabled={pending || !text.trim()} className="mt-0.5 shrink-0">
         {parentId ? t.manage.reply : t.reader.commentSubmit}
       </Button>

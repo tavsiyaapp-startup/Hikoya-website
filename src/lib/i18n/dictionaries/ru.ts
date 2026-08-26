@@ -280,7 +280,6 @@ const ru = {
     tabWantToRead: "Хочу прочитать",
     tabRead: "Прочитано",
     tabDropped: "Брошено",
-    tabCollections: "Подборки",
     tabBookmarks: "Закладки",
     tabFollowing: "Мои подписанные писатели",
     percentRead: "прочитано",

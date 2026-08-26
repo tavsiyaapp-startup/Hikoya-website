@@ -7,17 +7,15 @@ import { getCurrentUser } from "@/lib/current-user";
 import {
   getContinueReading,
   getBookmarkedStories,
-  getMyCollections,
   getStoriesByReadingStatus,
 } from "@/lib/queries/stories";
 import { getFollowedAuthorsWithStories } from "@/lib/queries/social";
 import { ROUTES } from "@/lib/constants";
 import { StoryCard } from "@/components/story/StoryCard";
-import { CollectionCard } from "@/components/collections/CollectionCard";
 import { Avatar } from "@/components/ui/Avatar";
 import { Chip } from "@/components/ui/Chip";
 
-const TABS = ["reading", "wantToRead", "read", "dropped", "bookmarks", "following", "collections"] as const;
+const TABS = ["reading", "wantToRead", "read", "dropped", "bookmarks", "following"] as const;
 type Tab = (typeof TABS)[number];
 
 export default async function LibraryPage({
@@ -33,14 +31,13 @@ export default async function LibraryPage({
   const user = await getCurrentUser();
   if (!user) redirect(`${ROUTES.onboarding}?next=${encodeURIComponent(ROUTES.library)}`);
 
-  const [reading, wantToRead, read, dropped, bookmarks, following, collections] = await Promise.all([
+  const [reading, wantToRead, read, dropped, bookmarks, following] = await Promise.all([
     tab === "reading" ? getContinueReading(user.id, 20) : Promise.resolve([]),
     tab === "wantToRead" ? getStoriesByReadingStatus(user.id, "want_to_read") : Promise.resolve([]),
     tab === "read" ? getStoriesByReadingStatus(user.id, "read") : Promise.resolve([]),
     tab === "dropped" ? getStoriesByReadingStatus(user.id, "dropped") : Promise.resolve([]),
     tab === "bookmarks" ? getBookmarkedStories(user.id) : Promise.resolve([]),
     tab === "following" ? getFollowedAuthorsWithStories(user.id) : Promise.resolve([]),
-    tab === "collections" ? getMyCollections(user.id) : Promise.resolve([]),
   ]);
 
   const gridTab =
@@ -66,7 +63,6 @@ export default async function LibraryPage({
             ["dropped", t.library.tabDropped],
             ["bookmarks", t.library.tabBookmarks],
             ["following", t.library.tabFollowing],
-            ["collections", t.library.tabCollections],
           ] as const
         ).map(([key, label]) => (
           <Link key={key} href={`?tab=${key}`}>
@@ -154,23 +150,6 @@ export default async function LibraryPage({
         ) : (
           <EmptyState text={t.library.noFollowingYet} />
         ))}
-
-      {tab === "collections" && (
-        <div className="grid grid-cols-1 gap-4.5 xs:grid-cols-2 sm:grid-cols-3 sm:gap-5.5">
-          {collections.map((col) => (
-            <CollectionCard key={col.id} collection={col} />
-          ))}
-          <Link
-            href={`${ROUTES.collections}?create=1`}
-            className="flex min-h-60 flex-col items-center justify-center gap-2.5 rounded-[22px] border-2 border-dashed border-primary-300 bg-surface"
-          >
-            <span className="flex h-11.5 w-11.5 items-center justify-center rounded-full bg-primary-100 text-[22px] text-primary-700">
-              +
-            </span>
-            <span className="text-[15px] font-bold text-primary-800">{t.library.createCollection}</span>
-          </Link>
-        </div>
-      )}
     </div>
   );
 }

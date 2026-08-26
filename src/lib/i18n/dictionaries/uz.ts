@@ -282,7 +282,6 @@ const uz: typeof ru = {
     tabWantToRead: "Oʻqimoqchiman",
     tabRead: "Oʻqilgan",
     tabDropped: "Tashlab qoʻyilgan",
-    tabCollections: "Tanlanmalar",
     tabBookmarks: "Xatcho'plar",
     tabFollowing: "Obuna boʻlgan mualliflarim",
     percentRead: "oʻqilgan",

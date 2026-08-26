@@ -11,6 +11,7 @@ export const ROUTES = {
   adminChapter: (storyId: string, chapterId: string) => `/admin/stories/${storyId}/chapters/${chapterId}`,
   onboarding: "/onboarding",
   login: "/login",
+  resetPassword: "/auth/reset-password",
   author: (username: string) => `/author/${username}`,
   story: (slug: string) => `/story/${slug}`,
   chapter: (slug: string, chapterNum: number | string) => `/story/${slug}/${chapterNum}`,

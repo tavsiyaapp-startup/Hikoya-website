@@ -4,11 +4,15 @@ import { useState, useTransition } from "react";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 import { createClient } from "@/lib/supabase/client";
 import { updateProfile } from "@/lib/actions/profile";
+import { ROUTES } from "@/lib/constants";
 import { Avatar } from "@/components/ui/Avatar";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
+import { SignOutButton } from "@/components/profile/SignOutButton";
 
-const MIN_PASSWORD_LENGTH = 6;
+function siteUrl() {
+  return process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
+}
 
 export function EditProfileForm({
   userId,
@@ -29,9 +33,11 @@ export function EditProfileForm({
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [newEmail, setNewEmail] = useState(email ?? "");
-  const [newPassword, setNewPassword] = useState("");
   const [accountMessages, setAccountMessages] = useState<string[]>([]);
   const [accountErrors, setAccountErrors] = useState<string[]>([]);
+  const [resetPending, setResetPending] = useState(false);
+  const [resetMessage, setResetMessage] = useState<string | null>(null);
+  const [resetError, setResetError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -56,35 +62,41 @@ export function EditProfileForm({
   }
 
   function handleSubmit(formData: FormData) {
-    if (newPassword && newPassword.length < MIN_PASSWORD_LENGTH) {
-      setAccountErrors([t.profile.passwordTooShort]);
-      return;
-    }
-
     startTransition(async () => {
       await updateProfile(username, formData);
 
       const messages: string[] = [];
       const errors: string[] = [];
-      const supabase = createClient();
 
       if (newEmail && newEmail !== email) {
+        const supabase = createClient();
         const { error } = await supabase.auth.updateUser({ email: newEmail });
         if (error) errors.push(t.profile.emailChangeError);
         else messages.push(t.profile.emailChangeSent);
       }
 
-      if (newPassword) {
-        const { error } = await supabase.auth.updateUser({ password: newPassword });
-        if (error) errors.push(t.profile.passwordChangeError);
-        else messages.push(t.profile.passwordChanged);
-      }
-
       setAccountMessages(messages);
       setAccountErrors(errors);
-      setNewPassword("");
       if (messages.length === 0 && errors.length === 0) setOpen(false);
     });
+  }
+
+  // Doesn't take a new password directly — sends a confirmation link to the
+  // account's current email first ("is this really you?"). The password is
+  // only ever actually set on /auth/reset-password, after that link is
+  // clicked, so a hijacked open session alone can't silently take over login.
+  async function handleChangePasswordClick() {
+    if (!email) return;
+    setResetPending(true);
+    setResetMessage(null);
+    setResetError(null);
+    const supabase = createClient();
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${siteUrl()}${ROUTES.resetPassword}`,
+    });
+    setResetPending(false);
+    if (error) setResetError(t.profile.passwordResetError);
+    else setResetMessage(t.profile.passwordResetSent);
   }
 
   if (!open) {
@@ -103,11 +115,9 @@ export function EditProfileForm({
   }
 
   return (
-    <form
-      action={handleSubmit}
-      className="mt-4 flex flex-col gap-4 rounded-2xl border border-border bg-card p-5"
-    >
-      <input type="hidden" name="avatarUrl" value={preview ?? ""} />
+    <div className="mt-4 flex flex-col gap-4 rounded-2xl border border-border bg-card p-5">
+      <form action={handleSubmit} className="flex flex-col gap-4">
+        <input type="hidden" name="avatarUrl" value={preview ?? ""} />
 
       <div className="flex items-center gap-4">
         <Avatar name={displayName} src={preview} size={72} />
@@ -133,17 +143,6 @@ export function EditProfileForm({
         <label className="mb-1.5 block text-[13px] font-bold">{t.profile.emailLabel}</label>
         <Input type="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} />
         <p className="mt-1 text-[12px] text-muted-2">{t.profile.emailHint}</p>
-      </div>
-
-      <div>
-        <label className="mb-1.5 block text-[13px] font-bold">{t.profile.passwordLabel}</label>
-        <Input
-          type="password"
-          value={newPassword}
-          onChange={(e) => setNewPassword(e.target.value)}
-          placeholder="••••••••"
-        />
-        <p className="mt-1 text-[12px] text-muted-2">{t.profile.passwordHint}</p>
       </div>
 
       {accountMessages.map((msg) => (
@@ -173,6 +172,21 @@ export function EditProfileForm({
           {t.common.cancel}
         </Button>
       </div>
-    </form>
+      </form>
+
+      <div className="border-t border-border-soft pt-4">
+        <div className="mb-1 text-[13px] font-bold">{t.profile.changePassword}</div>
+        <p className="mb-3 text-[12px] text-muted-2">{t.profile.changePasswordHint}</p>
+        <Button type="button" variant="secondary" size="sm" onClick={handleChangePasswordClick} disabled={resetPending}>
+          {resetPending ? t.common.loading : t.profile.changePassword}
+        </Button>
+        {resetMessage && <p className="mt-2 text-[12px] text-primary-800">{resetMessage}</p>}
+        {resetError && <p className="mt-2 text-[12px] text-danger">{resetError}</p>}
+      </div>
+
+      <div className="border-t border-border-soft pt-4">
+        <SignOutButton />
+      </div>
+    </div>
   );
 }

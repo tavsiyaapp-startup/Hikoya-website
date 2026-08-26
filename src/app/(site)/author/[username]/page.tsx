@@ -15,7 +15,6 @@ import { Badge, Chip } from "@/components/ui/Chip";
 import { StoryCard } from "@/components/story/StoryCard";
 import { FollowButton } from "@/components/story/StoryActions";
 import { EditProfileForm } from "@/components/profile/EditProfileForm";
-import { SignOutButton } from "@/components/profile/SignOutButton";
 import { NotificationList } from "@/components/notifications/NotificationList";
 import { CloseRequestButton } from "@/components/board/CloseRequestButton";
 
@@ -102,7 +101,7 @@ export default async function AuthorPage({
       </div>
 
       {isOwner && (
-        <div className="mb-6 flex flex-wrap items-start gap-2.5">
+        <div className="mb-6">
           <EditProfileForm
             userId={profile.id}
             username={profile.username}
@@ -110,7 +109,6 @@ export default async function AuthorPage({
             avatarUrl={profile.avatar_url}
             email={user?.email ?? null}
           />
-          <SignOutButton />
         </div>
       )}
 

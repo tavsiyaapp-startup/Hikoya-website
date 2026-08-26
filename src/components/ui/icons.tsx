@@ -241,3 +241,13 @@ export function CloseIcon(props: IconProps) {
     </svg>
   );
 }
+
+export function EyeOffIcon(props: IconProps) {
+  return (
+    <svg {...base(16)} {...props}>
+      <path d="M3 3l18 18" />
+      <path d="M10.6 5.2A10.4 10.4 0 0 1 12 5c6.5 0 10 7 10 7a15.6 15.6 0 0 1-3.4 4.4M6.4 6.4A15.6 15.6 0 0 0 2 12s3.5 7 10 7a10.4 10.4 0 0 0 4.2-.87" />
+      <path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" />
+    </svg>
+  );
+}

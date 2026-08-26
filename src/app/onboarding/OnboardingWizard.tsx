@@ -9,6 +9,7 @@ import { ROUTES } from "@/lib/constants";
 import { GoogleButton, EmailForm } from "@/components/auth/AuthButtons";
 import { CloseIcon } from "@/components/ui/icons";
 import { Input } from "@/components/ui/Input";
+import { PasswordInput } from "@/components/ui/PasswordInput";
 import { completeOnboarding } from "./actions";
 
 const TOTAL_STEPS = 4;
@@ -141,8 +142,7 @@ export function OnboardingWizard({
 
             <div className="mb-2">
               <label className="mb-1.5 block text-[13px] font-bold">{t.onboarding.passwordLabel}</label>
-              <Input
-                type="password"
+              <PasswordInput
                 value={password}
                 onChange={(e) => {
                   setPassword(e.target.value);

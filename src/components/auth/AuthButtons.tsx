@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { PasswordInput } from "@/components/ui/PasswordInput";
 
 function siteUrl() {
   return process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
@@ -133,8 +134,7 @@ export function PasswordLoginForm({ next = "/" }: { next?: string }) {
         value={email}
         onChange={(e) => setEmail(e.target.value)}
       />
-      <Input
-        type="password"
+      <PasswordInput
         required
         placeholder={t.auth.passwordPlaceholder}
         value={password}

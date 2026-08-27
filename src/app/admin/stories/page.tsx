@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { getServerLocale } from "@/lib/i18n/locale-server";
 import { getDictionary } from "@/lib/i18n";
-import { getAllStoriesAdmin, getStoryChapterCounts } from "@/lib/queries/admin";
+import { getAllStoriesAdmin, getStoryChapterCounts, getPendingChapterCounts } from "@/lib/queries/admin";
 import { AdminHeader } from "../AdminHeader";
 import { Badge, Chip } from "@/components/ui/Chip";
 import { ROUTES } from "@/lib/constants";
@@ -15,7 +15,11 @@ export default async function AdminStoriesPage({
   const locale = await getServerLocale();
   const t = getDictionary(locale);
   const stories = await getAllStoriesAdmin(status);
-  const chapterCounts = await getStoryChapterCounts(stories.map((s) => s.id));
+  const storyIds = stories.map((s) => s.id);
+  const [chapterCounts, pendingChapterCounts] = await Promise.all([
+    getStoryChapterCounts(storyIds),
+    getPendingChapterCounts(storyIds),
+  ]);
 
   return (
     <div>
@@ -52,7 +56,7 @@ export default async function AdminStoriesPage({
                     <span className="flex-1 text-[13.5px] text-ink-soft">{author?.display_name}</span>
                     <span className="w-25 text-[13.5px] text-ink-soft">{chapterCounts[s.id] ?? 0}</span>
                     <span className="w-27.5 text-[13.5px] text-ink-soft">{s.view_count}</span>
-                    <span className="w-32.5">
+                    <span className="flex w-32.5 flex-wrap items-center gap-1.5">
                       <Badge
                         tone={
                           s.status === "published" ? "success" : s.status === "pending_review" ? "warning" : "neutral"
@@ -60,6 +64,11 @@ export default async function AdminStoriesPage({
                       >
                         {s.status}
                       </Badge>
+                      {pendingChapterCounts[s.id] > 0 && (
+                        <Badge tone="warning">
+                          {t.admin.pendingChaptersN.replace("{n}", String(pendingChapterCounts[s.id]))}
+                        </Badge>
+                      )}
                     </span>
                   </Link>
                 );

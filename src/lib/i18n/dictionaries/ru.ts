@@ -449,6 +449,7 @@ const ru = {
     colChapters: "Главы",
     colViews: "Просмотры",
     colStatus: "Статус",
+    pendingChaptersN: "{n} глав(ы) на проверке",
     colUser: "Пользователь",
     colRole: "Роль",
     colStories: "Истории",

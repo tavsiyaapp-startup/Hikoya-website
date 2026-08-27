@@ -451,6 +451,7 @@ const uz: typeof ru = {
     colChapters: "Boblar",
     colViews: "Koʻrishlar",
     colStatus: "Holat",
+    pendingChaptersN: "{n} bob tekshiruvda",
     colUser: "Foydalanuvchi",
     colRole: "Rol",
     colStories: "Hikoyalar",

@@ -203,13 +203,40 @@ export async function getFeaturedTiersMap(storyIds: string[]): Promise<Map<strin
   }
 }
 
+const storySelect = "*, author:profiles!stories_author_id_fkey(display_name)";
+
 export async function getAllStoriesAdmin(statusFilter?: string) {
   try {
     const admin = createAdminClient();
-    let q = admin
-      .from("stories")
-      .select("*, author:profiles!stories_author_id_fkey(display_name)")
-      .order("created_at", { ascending: false });
+
+    // A story keeps its own status once published — adding chapters to it
+    // afterward never touches stories.status, only the new chapters' own
+    // (pending_review by default). Filtering this tab by stories.status
+    // alone would silently hide every "add chapters to an already-approved
+    // story" submission from the pending queue, so it also pulls in any
+    // story that merely *has* a pending chapter, whatever the story's own
+    // status is.
+    if (statusFilter === "pending_review") {
+      const [{ data: pendingStories }, { data: pendingChapterRows }] = await Promise.all([
+        admin.from("stories").select(storySelect).eq("status", "pending_review"),
+        admin.from("chapters").select("story_id").eq("status", "pending_review"),
+      ]);
+
+      const already = new Set((pendingStories ?? []).map((s) => s.id));
+      const extraIds = [...new Set((pendingChapterRows ?? []).map((c) => c.story_id))].filter(
+        (id) => !already.has(id)
+      );
+
+      const extraStories = extraIds.length
+        ? ((await admin.from("stories").select(storySelect).in("id", extraIds)).data ?? [])
+        : [];
+
+      return [...(pendingStories ?? []), ...extraStories]
+        .sort((a, b) => +new Date(b.created_at) - +new Date(a.created_at))
+        .slice(0, 100);
+    }
+
+    let q = admin.from("stories").select(storySelect).order("created_at", { ascending: false });
     if (statusFilter) q = q.eq("status", statusFilter);
     const { data } = await q.limit(100);
     return data ?? [];
@@ -223,6 +250,26 @@ export async function getStoryChapterCounts(storyIds: string[]) {
   try {
     const admin = createAdminClient();
     const { data } = await admin.from("chapters").select("story_id").in("story_id", storyIds);
+    const counts: Record<string, number> = {};
+    for (const row of data ?? []) counts[row.story_id] = (counts[row.story_id] ?? 0) + 1;
+    return counts;
+  } catch {
+    return {};
+  }
+}
+
+// Surfaces stories whose OWN status is e.g. "published" but that have
+// chapters awaiting moderation — see getAllStoriesAdmin's pending_review
+// case above for why this can't be inferred from stories.status alone.
+export async function getPendingChapterCounts(storyIds: string[]) {
+  if (storyIds.length === 0) return {} as Record<string, number>;
+  try {
+    const admin = createAdminClient();
+    const { data } = await admin
+      .from("chapters")
+      .select("story_id")
+      .eq("status", "pending_review")
+      .in("story_id", storyIds);
     const counts: Record<string, number> = {};
     for (const row of data ?? []) counts[row.story_id] = (counts[row.story_id] ?? 0) + 1;
     return counts;

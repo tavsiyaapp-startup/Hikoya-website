@@ -94,36 +94,6 @@ html, body {
   background: var(--color-bg);
 }
 
-/* Dark-mode-only tiled starfield texture, sitting behind the page (the
-   .site-shell wrapper drops its own opaque bg-bg to let it show through in
-   the gaps around cards). Fixed + oversized inset avoids a blurred-out
-   transparent fringe at the viewport edge; real content sits on its own
-   opaque bg-card/bg-surface, so it stays unaffected regardless of how
-   bright/blurred this layer is tuned.
-
-   body itself also needs to give up its own opaque background here — a
-   negative z-index child still paints *behind* its non-positioned parent's
-   own box background (per the CSS stacking-context painting order), so
-   body's flat background: var(--color-bg) above would otherwise sit right
-   on top of this pattern and hide it completely. html keeps the flat color
-   as the base canvas underneath everything. */
-[data-theme="dark"] body {
-  background: transparent;
-}
-
-[data-theme="dark"] body::before {
-  content: "";
-  position: fixed;
-  inset: -60px;
-  z-index: -1;
-  pointer-events: none;
-  background-image: url("/images/background.jpg");
-  background-repeat: repeat;
-  background-size: 380px auto;
-  filter: blur(8px);
-  opacity: 0.45;
-}
-
 body {
   font-family: var(--font-sans);
   color: var(--color-ink);

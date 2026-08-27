@@ -261,3 +261,22 @@ export function ImageIcon(props: IconProps) {
     </svg>
   );
 }
+
+export function SendIcon(props: IconProps) {
+  return (
+    <svg {...base()} {...props}>
+      <path d="M22 2 11 13" />
+      <path d="M22 2 15 22l-4-9-9-4 20-7Z" />
+    </svg>
+  );
+}
+
+export function InstagramIcon(props: IconProps) {
+  return (
+    <svg {...base()} {...props}>
+      <rect x="3" y="3" width="18" height="18" rx="5.5" />
+      <circle cx="12" cy="12" r="4" />
+      <circle cx="17.2" cy="6.8" r="0.5" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}

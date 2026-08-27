@@ -511,6 +511,21 @@ const uz: typeof ru = {
     description:
       "Hikoyalarni oʻqish va chop etish platformasi. Birinchi boblar roʻyxatdan oʻtmasdan ochiq.",
   },
+  footer: {
+    tagline: "Rus va oʻzbek tilidagi hikoyalarni oʻqish va chop etish platformasi.",
+    aboutTitle: "Sayt haqida",
+    mission: "Sayt missiyasi",
+    rules: "Foydalanish qoidalari",
+    news: "Sayt yangiliklari",
+    contactTitle: "Aloqa",
+    telegramSupport: "Telegram orqali yordam",
+    instagram: "Instagram",
+    instagramSoon: "Tez orada",
+  },
+  staticPages: {
+    placeholder: "Bu sahifaning matni tez orada qoʻshiladi.",
+    newsEmpty: "Hozircha yangiliklar yoʻq — keyinroq qayta kiring.",
+  },
   genres: [
     "Romantika",
     "Fentezi",

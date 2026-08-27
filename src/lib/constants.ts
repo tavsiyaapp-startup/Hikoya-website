@@ -17,6 +17,9 @@ export const ROUTES = {
   chapter: (slug: string, chapterNum: number | string) => `/story/${slug}/${chapterNum}`,
   manage: (slug: string) => `/manage/${slug}`,
   collection: (id: string) => `/collections/${id}`,
+  rules: "/rules",
+  mission: "/mission",
+  news: "/news",
 } as const;
 
 export const GUEST_READ_COOKIE = "hikoya_guest_reads";

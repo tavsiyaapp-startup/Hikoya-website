@@ -509,6 +509,21 @@ const ru = {
     description:
       "Платформа для чтения и публикации историй. Первые главы открыты без регистрации.",
   },
+  footer: {
+    tagline: "Платформа для чтения и публикации историй на русском и узбекском.",
+    aboutTitle: "О сайте",
+    mission: "Миссия сайта",
+    rules: "Правила пользования",
+    news: "Новости сайта",
+    contactTitle: "Связь",
+    telegramSupport: "Поддержка в Telegram",
+    instagram: "Instagram",
+    instagramSoon: "Скоро",
+  },
+  staticPages: {
+    placeholder: "Текст этой страницы скоро появится.",
+    newsEmpty: "Пока новостей нет — загляните позже.",
+  },
   genres: [
     "Романтика",
     "Фэнтези",

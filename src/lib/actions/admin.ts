@@ -312,7 +312,9 @@ export async function updatePlatformSettings(formData: FormData) {
   revalidatePath(`${ROUTES.admin}/settings`);
 }
 
-export async function createModerator(formData: FormData): Promise<{ error: string } | { ok: true }> {
+export async function createModerator(
+  formData: FormData
+): Promise<{ error: "missing_fields" | "password_too_short" | "email_exists" | "unknown" } | { ok: true }> {
   await requireAdmin();
 
   const email = String(formData.get("email") ?? "").trim();
@@ -329,7 +331,14 @@ export async function createModerator(formData: FormData): Promise<{ error: stri
     email_confirm: true,
     user_metadata: { full_name: displayName },
   });
-  if (error || !data.user) return { error: error?.message ?? "unknown" };
+  if (error || !data.user) {
+    // Doesn't touch the existing account — Supabase just refuses the
+    // duplicate email outright. Point the admin at the right tool instead
+    // (promote the existing account's role on /admin/users) rather than a
+    // generic failure message.
+    if (error?.code === "email_exists") return { error: "email_exists" };
+    return { error: "unknown" };
+  }
 
   // on_auth_user_created stubs a profiles row (role defaults to 'reader')
   // for every new auth.users insert, including this admin-created one —

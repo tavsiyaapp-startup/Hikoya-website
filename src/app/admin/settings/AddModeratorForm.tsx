@@ -32,7 +32,10 @@ export function AddModeratorForm() {
     startTransition(async () => {
       const result = await createModerator(formData);
       if ("error" in result) {
-        setError(t.admin.moderatorErrorGeneric);
+        if (result.error === "email_exists") setError(t.admin.moderatorErrorEmailExists);
+        else if (result.error === "password_too_short") setError(t.admin.moderatorErrorShortPassword);
+        else if (result.error === "missing_fields") setError(t.admin.moderatorErrorMissingFields);
+        else setError(t.admin.moderatorErrorGeneric);
         return;
       }
       setSuccess(true);

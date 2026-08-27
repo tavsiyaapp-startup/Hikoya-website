@@ -351,6 +351,44 @@ create table platform_settings (
 
 insert into platform_settings (id) values (1);
 
+-- ── telegram-бот поддержки (миграция 0025) ──────────────────────────────────
+-- Ничего здесь не привязано к аккаунту Hikoya — это сырые telegram user id,
+-- бот доступен любому, кто напишет ему в личку. Читает/пишет сюда только
+-- вебхук (src/app/api/telegram/support/route.ts) через service-role клиент —
+-- ни браузер, ни admin-панель эти таблицы не видят, staff работает целиком
+-- из группового чата в самом Telegram.
+
+create table telegram_support_pending_messages (
+  id uuid primary key default gen_random_uuid(),
+  telegram_user_id bigint not null,
+  chat_id bigint not null,
+  message_id bigint not null,
+  created_at timestamptz not null default now()
+);
+create index telegram_support_pending_messages_user_idx on telegram_support_pending_messages (telegram_user_id);
+
+create table telegram_support_sessions (
+  telegram_user_id bigint primary key,
+  awaiting_phone boolean not null default false,
+  updated_at timestamptz not null default now()
+);
+
+create table telegram_support_tickets (
+  id uuid primary key default gen_random_uuid(),
+  ticket_number integer generated always as identity,   -- атомарная нумерация от Postgres вместо счётчика в памяти
+  telegram_user_id bigint not null,
+  telegram_username text,
+  telegram_full_name text,
+  phone text not null,
+  created_at timestamptz not null default now()
+);
+create unique index telegram_support_tickets_number_idx on telegram_support_tickets (ticket_number);
+create index telegram_support_tickets_user_idx on telegram_support_tickets (telegram_user_id);
+
+alter table telegram_support_pending_messages enable row level security;
+alter table telegram_support_sessions enable row level security;
+alter table telegram_support_tickets enable row level security;
+
 -- =============================================================================
 -- ФУНКЦИИ И ТРИГГЕРЫ
 -- =============================================================================
@@ -891,3 +929,15 @@ on conflict (code) do nothing;
 --   body пустые, картинка растягивается на всю карусель без текстовой
 --   панели. Размер баннера теперь фиксирован по брейкпоинту (не зависит от
 --   длины текста конкретного слайда), чтобы все слайды были одного размера.
+-- [2026-08-27] Таблицы telegram_support_* (миграция 0025). Бот поддержки
+--   на webhook (не long-polling — на Vercel нет постоянно работающего
+--   процесса), смоделирован по образцу отдельного aiogram-бота пользователя
+--   (D:\proekti\SN\sninvestuzbot): пользователь пишет боту в личку текст/
+--   фото/видео, жмёт "отправить", даёт номер телефона — всё улетает в
+--   групповой чат staff отдельным тикетом с номером; staff отвечает
+--   командой /reply <n> <текст> в этом чате, бот пересылает ответ
+--   пользователю в личку. У референс-бота это были словари в памяти
+--   Python-процесса (в т.ч. itertools.count() для номера тикета) — здесь
+--   это не работает (serverless, инстанс не переживает между вызовами),
+--   поэтому состояние переехало в три таблицы, а нумерация тикетов — в
+--   identity-колонку Postgres (атомарность бесплатно, вместо счётчика).

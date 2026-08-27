@@ -1,19 +1,12 @@
 import Link from "next/link";
 import { getServerLocale } from "@/lib/i18n/locale-server";
 import { getDictionary } from "@/lib/i18n";
-import {
-  getAdminStats,
-  getRecentStoriesAdmin,
-  getRecentUsersAdmin,
-  getRecentActivity,
-  type AdminActivityItem,
-} from "@/lib/queries/admin";
+import { getAdminStats, getRecentStoriesAdmin, getRecentUsersAdmin, getRecentActivity } from "@/lib/queries/admin";
 import { ROUTES } from "@/lib/constants";
-import { formatRelativeTime } from "@/lib/format";
 import { Badge } from "@/components/ui/Chip";
 import { LibraryIcon, UserIcon, EyeIcon, MessageIcon } from "@/components/ui/icons";
 import { AdminHeader } from "./AdminHeader";
-import type { Dictionary } from "@/lib/i18n";
+import { ActivityRow } from "./ActivityFeed";
 
 export default async function AdminDashboardPage() {
   const locale = await getServerLocale();
@@ -74,24 +67,14 @@ export default async function AdminDashboardPage() {
             <h3 className="mb-4.5 text-[17px] font-extrabold">{t.admin.recentActivity}</h3>
             <div className="flex flex-col gap-3">
               {activity.length > 0 ? (
-                activity.map((item) => (
-                  <div
-                    key={`${item.type}-${item.id}`}
-                    className="flex items-start gap-3 border-b border-border-soft pb-3 last:border-0"
-                  >
-                    <ActivityIcon type={item.type} />
-                    <p className="min-w-0 flex-1 text-[13.5px] leading-snug text-ink-soft">
-                      {activityText(item, t)}
-                    </p>
-                    <span className="shrink-0 text-[12px] text-muted-3">
-                      {formatRelativeTime(item.timestamp, locale)}
-                    </span>
-                  </div>
-                ))
+                activity.map((item) => <ActivityRow key={`${item.type}-${item.id}`} item={item} locale={locale} t={t} />)
               ) : (
                 <EmptyLine text={t.admin.noActivityYet} />
               )}
             </div>
+            <Link href={`${ROUTES.admin}/activity`} className="mt-4 inline-block text-[13.5px] font-bold">
+              {t.admin.allActivity} →
+            </Link>
           </div>
 
           <div className="rounded-[20px] border border-border bg-card px-6.5 py-6">
@@ -147,52 +130,6 @@ export default async function AdminDashboardPage() {
       </div>
     </div>
   );
-}
-
-function ActivityIcon({ type }: { type: AdminActivityItem["type"] }) {
-  const base = "flex h-9 w-9 shrink-0 items-center justify-center rounded-[11px]";
-  if (type === "story_published") {
-    return (
-      <span className={`${base} bg-primary-100 text-primary-700`}>
-        <LibraryIcon width={16} height={16} />
-      </span>
-    );
-  }
-  if (type === "new_comment") {
-    return (
-      <span className={`${base} bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300`}>
-        <MessageIcon width={16} height={16} />
-      </span>
-    );
-  }
-  return (
-    <span className={`${base} bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300`}>
-      <UserIcon width={16} height={16} />
-    </span>
-  );
-}
-
-function activityText(item: AdminActivityItem, t: Dictionary) {
-  switch (item.type) {
-    case "story_published":
-      return (
-        <>
-          {item.actorName} {t.admin.activityPublishedStory} «{item.targetTitle}»
-        </>
-      );
-    case "new_comment":
-      return (
-        <>
-          {item.actorName} {t.admin.activityNewComment} «{item.targetTitle}»
-        </>
-      );
-    case "new_user":
-      return (
-        <>
-          {item.actorName} {t.admin.activityNewUser}
-        </>
-      );
-  }
 }
 
 function EmptyLine({ text }: { text: string }) {

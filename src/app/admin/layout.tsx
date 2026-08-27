@@ -5,7 +5,7 @@ import { getCurrentUser } from "@/lib/current-user";
 import { getServerLocale } from "@/lib/i18n/locale-server";
 import { getDictionary } from "@/lib/i18n";
 import { ROUTES } from "@/lib/constants";
-import { ShieldIcon, UserIcon, CollectionsIcon, BoardIcon, HomeIcon, LibraryIcon, SparkleIcon, ImageIcon } from "@/components/ui/icons";
+import { ShieldIcon, UserIcon, CollectionsIcon, BoardIcon, HomeIcon, LibraryIcon, SparkleIcon, ImageIcon, ClockIcon } from "@/components/ui/icons";
 import { AdminNavLink } from "./AdminNavLink";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -19,6 +19,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   const nav = [
     { href: ROUTES.admin, icon: HomeIcon, label: t.admin.dashboard },
+    { href: `${ROUTES.admin}/activity`, icon: ClockIcon, label: t.admin.recentActivity },
     { href: `${ROUTES.admin}/users`, icon: UserIcon, label: t.admin.users },
     { href: `${ROUTES.admin}/stories`, icon: CollectionsIcon, label: t.admin.stories },
     { href: `${ROUTES.admin}/featured`, icon: SparkleIcon, label: t.admin.featured },

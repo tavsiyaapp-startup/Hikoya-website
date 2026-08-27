@@ -64,24 +64,44 @@ export type AdminActivityItem =
   | { type: "new_user"; id: string; actorName: string; timestamp: string };
 
 // No dedicated audit-log table — this merges the three event types the
-// dashboard cares about (newly published story, new comment, new
-// registration) from their own tables, sorted by timestamp.
-export async function getRecentActivity(limit = 8): Promise<AdminActivityItem[]> {
+// dashboard (and the full /admin/activity page) cares about (newly
+// published story, new comment, new registration) from their own tables,
+// sorted by timestamp. `range` filters each source query independently
+// before the merge, so a date range still returns up to `limit` items of
+// each type rather than `limit` total pre-filter.
+export async function getRecentActivity(
+  limit = 8,
+  range?: { from?: string; to?: string }
+): Promise<AdminActivityItem[]> {
   try {
     const admin = createAdminClient();
+
+    let storiesQuery = admin
+      .from("stories")
+      .select("id, title, published_at, author:profiles!stories_author_id_fkey(display_name)")
+      .not("published_at", "is", null)
+      .order("published_at", { ascending: false });
+    let commentsQuery = admin
+      .from("comments")
+      .select("id, created_at, user:profiles!comments_user_id_fkey(display_name), chapter:chapters(story:stories(title))")
+      .order("created_at", { ascending: false });
+    let usersQuery = admin.from("profiles").select("id, display_name, created_at").order("created_at", { ascending: false });
+
+    if (range?.from) {
+      storiesQuery = storiesQuery.gte("published_at", range.from);
+      commentsQuery = commentsQuery.gte("created_at", range.from);
+      usersQuery = usersQuery.gte("created_at", range.from);
+    }
+    if (range?.to) {
+      storiesQuery = storiesQuery.lte("published_at", range.to);
+      commentsQuery = commentsQuery.lte("created_at", range.to);
+      usersQuery = usersQuery.lte("created_at", range.to);
+    }
+
     const [storiesRes, commentsRes, usersRes] = await Promise.all([
-      admin
-        .from("stories")
-        .select("id, title, published_at, author:profiles!stories_author_id_fkey(display_name)")
-        .not("published_at", "is", null)
-        .order("published_at", { ascending: false })
-        .limit(limit),
-      admin
-        .from("comments")
-        .select("id, created_at, user:profiles!comments_user_id_fkey(display_name), chapter:chapters(story:stories(title))")
-        .order("created_at", { ascending: false })
-        .limit(limit),
-      admin.from("profiles").select("id, display_name, created_at").order("created_at", { ascending: false }).limit(limit),
+      storiesQuery.limit(limit),
+      commentsQuery.limit(limit),
+      usersQuery.limit(limit),
     ]);
 
     const items: AdminActivityItem[] = [];

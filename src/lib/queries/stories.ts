@@ -11,6 +11,8 @@ import type { Story, Chapter, Collection, Profile, StoryTopTier, HeroSlide } fro
 
 export type StoryCard = Story & { author: Pick<Profile, "username" | "display_name"> };
 
+export type Paginated<T> = { items: T[]; total: number };
+
 // Functions below wrapped in unstable_cache are the ones that filter to
 // status = 'published' (and visibility/is_private where relevant)
 // unconditionally, with no author/staff branch — their result is byte-for-
@@ -21,19 +23,19 @@ export type StoryCard = Story & { author: Pick<Profile, "username" | "display_na
 const CACHE_SECONDS = 60;
 
 export const getPopularStories = unstable_cache(
-  async (limit = 8): Promise<StoryCard[]> => {
+  async (limit = 8, offset = 0): Promise<Paginated<StoryCard>> => {
     try {
       const supabase = createPublicClient();
-      const { data } = await supabase
+      const { data, count } = await supabase
         .from("stories")
-        .select("*, author:profiles!stories_author_id_fkey(username, display_name)")
+        .select("*, author:profiles!stories_author_id_fkey(username, display_name)", { count: "exact" })
         .eq("status", "published")
         .eq("visibility", "public")
         .order("like_count", { ascending: false })
-        .limit(limit);
-      return (data as StoryCard[]) ?? [];
+        .range(offset, offset + limit - 1);
+      return { items: (data as StoryCard[]) ?? [], total: count ?? 0 };
     } catch {
-      return [];
+      return { items: [], total: 0 };
     }
   },
   ["popular-stories"],
@@ -41,19 +43,19 @@ export const getPopularStories = unstable_cache(
 );
 
 export const getNewestStories = unstable_cache(
-  async (limit = 8): Promise<StoryCard[]> => {
+  async (limit = 8, offset = 0): Promise<Paginated<StoryCard>> => {
     try {
       const supabase = createPublicClient();
-      const { data } = await supabase
+      const { data, count } = await supabase
         .from("stories")
-        .select("*, author:profiles!stories_author_id_fkey(username, display_name)")
+        .select("*, author:profiles!stories_author_id_fkey(username, display_name)", { count: "exact" })
         .eq("status", "published")
         .eq("visibility", "public")
         .order("published_at", { ascending: false })
-        .limit(limit);
-      return (data as StoryCard[]) ?? [];
+        .range(offset, offset + limit - 1);
+      return { items: (data as StoryCard[]) ?? [], total: count ?? 0 };
     } catch {
-      return [];
+      return { items: [], total: 0 };
     }
   },
   ["newest-stories"],
@@ -61,20 +63,20 @@ export const getNewestStories = unstable_cache(
 );
 
 export const getStoriesByGenre = unstable_cache(
-  async (genre: string, limit = 4): Promise<StoryCard[]> => {
+  async (genre: string, limit = 4, offset = 0): Promise<Paginated<StoryCard>> => {
     try {
       const supabase = createPublicClient();
-      const { data } = await supabase
+      const { data, count } = await supabase
         .from("stories")
-        .select("*, author:profiles!stories_author_id_fkey(username, display_name)")
+        .select("*, author:profiles!stories_author_id_fkey(username, display_name)", { count: "exact" })
         .eq("status", "published")
         .eq("visibility", "public")
         .eq("genre", genre)
         .order("like_count", { ascending: false })
-        .limit(limit);
-      return (data as StoryCard[]) ?? [];
+        .range(offset, offset + limit - 1);
+      return { items: (data as StoryCard[]) ?? [], total: count ?? 0 };
     } catch {
-      return [];
+      return { items: [], total: 0 };
     }
   },
   ["stories-by-genre"],
@@ -121,19 +123,20 @@ export async function attachCollectionCovers(
 }
 
 export const getFeaturedCollections = unstable_cache(
-  async (limit = 3): Promise<CollectionCardData[]> => {
+  async (limit = 3, offset = 0): Promise<Paginated<CollectionCardData>> => {
     try {
       const supabase = createPublicClient();
-      const { data } = await supabase
+      const { data, count } = await supabase
         .from("collections")
-        .select("*, owner:profiles!collections_owner_id_fkey(display_name)")
+        .select("*, owner:profiles!collections_owner_id_fkey(display_name)", { count: "exact" })
         .eq("is_featured", true)
         .eq("is_private", false)
         .order("created_at", { ascending: false })
-        .limit(limit);
-      return attachCollectionCovers(supabase, (data as Collection[]) ?? []);
+        .range(offset, offset + limit - 1);
+      const items = await attachCollectionCovers(supabase, (data as Collection[]) ?? []);
+      return { items, total: count ?? 0 };
     } catch {
-      return [];
+      return { items: [], total: 0 };
     }
   },
   ["featured-collections"],
@@ -224,18 +227,18 @@ export async function getCollectionsFeaturingAuthor(authorId: string, limit = 6)
 }
 
 export const getRecentPublishedChapters = unstable_cache(
-  async (limit = 3) => {
+  async (limit = 3, offset = 0) => {
     try {
       const supabase = createPublicClient();
-      const { data } = await supabase
+      const { data, count } = await supabase
         .from("chapters")
-        .select("*, story:stories(id, title, slug, cover_url, status, visibility)")
+        .select("*, story:stories(id, title, slug, cover_url, status, visibility)", { count: "exact" })
         .eq("status", "published")
         .order("published_at", { ascending: false })
-        .limit(limit);
-      return data ?? [];
+        .range(offset, offset + limit - 1);
+      return { items: data ?? [], total: count ?? 0 };
     } catch {
-      return [];
+      return { items: [], total: 0 };
     }
   },
   ["recent-published-chapters"],

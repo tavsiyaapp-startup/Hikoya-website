@@ -105,7 +105,7 @@ export function DocxImportFlow({
 
       {step === "preview" && (
         <div>
-          <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+          <div className="mb-1.5 flex flex-wrap items-center justify-between gap-3">
             <h2 className="text-[18px] font-extrabold">
               {t.manage.previewTitleN.replace("{n}", String(chapters.length))}
             </h2>
@@ -118,6 +118,10 @@ export function DocxImportFlow({
               </Button>
             </div>
           </div>
+
+          {chapters.length > 0 && !allTitled && (
+            <p className="mb-3.5 text-[13px] text-danger">{t.manage.importTitlesRequired}</p>
+          )}
 
           {chapters.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-border-soft bg-surface px-6 py-10 text-center text-[14px] text-muted">
@@ -133,6 +137,7 @@ export function DocxImportFlow({
                       value={c.title}
                       onChange={(e) => updateChapterTitle(c.id, e.target.value)}
                       placeholder={t.manage.untitledChapter}
+                      className={c.title.trim().length === 0 ? "border-danger" : undefined}
                     />
                   </div>
                   <p className="line-clamp-2 pl-6 text-[13.5px] leading-relaxed text-muted-2">

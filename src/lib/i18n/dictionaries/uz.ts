@@ -228,6 +228,7 @@ const uz: typeof ru = {
     undoMarking: "Belgilashga qaytish",
     saveChaptersN: "Boblarni saqlash ({n})",
     noMarkersFound: "Birorta ham belgi qo'yilmagan — butun matn bitta bo'lak bo'lib qoladi. Belgilashga qayting.",
+    importTitlesRequired: "Har bir bob uchun nom kiriting (qizil bilan belgilangan) — aks holda saqlab bo'lmaydi.",
     untitledChapter: "Nomsiz",
     emptyChapterPreview: "(boʻsh)",
   },

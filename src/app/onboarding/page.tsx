@@ -16,7 +16,7 @@ export default async function OnboardingPage({
 
   return (
     <OnboardingWizard
-      initialStep={user ? 2 : 1}
+      initialStep={user ? 3 : 1}
       next={next}
       initialDisplayName={user?.profile?.display_name ?? ""}
     />

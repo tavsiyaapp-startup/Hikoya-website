@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { clsx } from "clsx";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
-import type { Locale } from "@/lib/i18n";
 import { ROUTES } from "@/lib/constants";
 import { GoogleButton, EmailForm } from "@/components/auth/AuthButtons";
 import { CloseIcon } from "@/components/ui/icons";
@@ -20,18 +19,17 @@ export function OnboardingWizard({
   next,
   initialDisplayName,
 }: {
-  initialStep: 1 | 2;
+  initialStep: 1 | 3;
   next: string;
   initialDisplayName: string;
 }) {
-  const { t, locale } = useLocale();
+  const { t, locale, setLocale } = useLocale();
   const [step, setStep] = useState<1 | 2 | 3 | 4>(initialStep);
   const [role, setRole] = useState<"reader" | "author">("reader");
   const [displayName, setDisplayName] = useState(initialDisplayName);
   const [password, setPassword] = useState("");
   const [passwordError, setPasswordError] = useState(false);
   const [interests, setInterests] = useState<string[]>([]);
-  const [chosenLocale, setChosenLocale] = useState<Locale>(locale);
 
   useEffect(() => {
     document.cookie = `hikoya_pending_role=${role}; path=/; max-age=3600; samesite=lax`;
@@ -48,7 +46,7 @@ export function OnboardingWizard({
       setPasswordError(true);
       return;
     }
-    setStep(3);
+    setStep(4);
   }
 
   return (
@@ -76,6 +74,47 @@ export function OnboardingWizard({
 
         {step === 1 && (
           <div className="px-5 pb-8 pt-6 sm:px-11.5 sm:pb-11.5 sm:pt-10">
+            <h2 className="mb-2 text-[22px] font-extrabold tracking-tight sm:text-[30px]">{t.onboarding.langTitle}</h2>
+            <p className="mb-6.5 text-[15px] leading-relaxed text-muted">{t.onboarding.langBody}</p>
+
+            <div className="mb-6.5 grid grid-cols-2 gap-3.5">
+              {(["uz", "ru"] as const).map((code) => (
+                <button
+                  key={code}
+                  type="button"
+                  onClick={() => setLocale(code)}
+                  className={clsx(
+                    "flex flex-col items-start gap-1 rounded-[14px] border p-4 text-left transition",
+                    locale === code
+                      ? "border-primary-500 bg-primary-50"
+                      : "border-border bg-card hover:bg-surface"
+                  )}
+                >
+                  <span className="text-[16px] font-extrabold">{t.languages[code]}</span>
+                </button>
+              ))}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setStep(2)}
+              className="h-13 w-full cursor-pointer rounded-[14px] border-none bg-linear-to-br from-[#6D28D9] to-[#9333EA] text-[16px] font-bold text-white shadow-[0_10px_24px_rgba(109,40,217,0.3)]"
+            >
+              {t.onboarding.continueCta}
+            </button>
+          </div>
+        )}
+
+        {step === 2 && (
+          <div className="px-5 pb-8 pt-6 sm:px-11.5 sm:pb-11.5 sm:pt-10">
+            <button
+              type="button"
+              onClick={() => setStep(1)}
+              className="mb-4 cursor-pointer text-[13px] font-semibold text-muted-2 transition hover:text-ink-soft"
+            >
+              ← {t.common.back}
+            </button>
+
             <h2 className="mb-2 text-[22px] font-extrabold tracking-tight sm:text-[30px]">
               {t.onboarding.welcomeTitle}
             </h2>
@@ -128,7 +167,7 @@ export function OnboardingWizard({
           </div>
         )}
 
-        {step === 2 && (
+        {step === 3 && (
           <div className="px-5 pb-8 pt-6 sm:px-11.5 sm:pb-11.5 sm:pt-10">
             <h2 className="mb-2 text-[22px] font-extrabold tracking-tight sm:text-[30px]">
               {t.onboarding.nameTitle}
@@ -159,7 +198,7 @@ export function OnboardingWizard({
             <div className="mt-6.5 flex gap-3">
               <button
                 type="button"
-                onClick={() => setStep(1)}
+                onClick={() => setStep(2)}
                 className="h-13 cursor-pointer rounded-[14px] border border-border bg-card px-5.5 text-[15px] font-semibold text-ink-soft"
               >
                 {t.common.back}
@@ -176,8 +215,16 @@ export function OnboardingWizard({
           </div>
         )}
 
-        {step === 3 && (
-          <div className="px-5 pb-8 pt-6 sm:px-11.5 sm:pb-11.5 sm:pt-10">
+        {step === 4 && (
+          <form action={completeOnboarding} className="px-5 pb-8 pt-6 sm:px-11.5 sm:pb-11.5 sm:pt-10">
+            <input type="hidden" name="next" value={next} />
+            <input type="hidden" name="locale" value={locale} />
+            <input type="hidden" name="displayName" value={displayName} />
+            <input type="hidden" name="password" value={password} />
+            {interests.map((g) => (
+              <input key={g} type="hidden" name="interests" value={g} />
+            ))}
+
             <h2 className="mb-2 text-[22px] font-extrabold tracking-tight sm:text-[30px]">
               {t.onboarding.interestsTitle}
             </h2>
@@ -208,56 +255,6 @@ export function OnboardingWizard({
                   </button>
                 );
               })}
-            </div>
-
-            <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={() => setStep(2)}
-                className="h-13 cursor-pointer rounded-[14px] border border-border bg-card px-5.5 text-[15px] font-semibold text-ink-soft"
-              >
-                {t.common.back}
-              </button>
-              <button
-                type="button"
-                onClick={() => setStep(4)}
-                className="h-13 flex-1 cursor-pointer rounded-[14px] border-none bg-linear-to-br from-[#6D28D9] to-[#9333EA] text-[16px] font-bold text-white shadow-[0_10px_24px_rgba(109,40,217,0.3)]"
-              >
-                {t.onboarding.continueCta}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {step === 4 && (
-          <form action={completeOnboarding} className="px-5 pb-8 pt-6 sm:px-11.5 sm:pb-11.5 sm:pt-10">
-            <input type="hidden" name="next" value={next} />
-            <input type="hidden" name="locale" value={chosenLocale} />
-            <input type="hidden" name="displayName" value={displayName} />
-            <input type="hidden" name="password" value={password} />
-            {interests.map((g) => (
-              <input key={g} type="hidden" name="interests" value={g} />
-            ))}
-
-            <h2 className="mb-2 text-[22px] font-extrabold tracking-tight sm:text-[30px]">{t.onboarding.langTitle}</h2>
-            <p className="mb-6.5 text-[15px] leading-relaxed text-muted">{t.onboarding.langBody}</p>
-
-            <div className="mb-6.5 grid grid-cols-2 gap-3.5">
-              {(["uz", "ru"] as const).map((code) => (
-                <button
-                  key={code}
-                  type="button"
-                  onClick={() => setChosenLocale(code)}
-                  className={clsx(
-                    "flex flex-col items-start gap-1 rounded-[14px] border p-4 text-left transition",
-                    chosenLocale === code
-                      ? "border-primary-500 bg-primary-50"
-                      : "border-border bg-card hover:bg-surface"
-                  )}
-                >
-                  <span className="text-[16px] font-extrabold">{t.languages[code]}</span>
-                </button>
-              ))}
             </div>
 
             <div className="flex gap-3">

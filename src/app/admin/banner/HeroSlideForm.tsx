@@ -30,8 +30,10 @@ export function HeroSlideForm({ slide, onDone }: { slide?: HeroSlide; onDone?: (
       if (error) throw error;
       const { data } = supabase.storage.from("hero-slides").getPublicUrl(path);
       setImageUrl(data.publicUrl);
-    } catch {
-      setError(t.create.coverError);
+    } catch (err) {
+      console.error("hero slide upload failed:", err);
+      const detail = err instanceof Error ? err.message : String(err);
+      setError(`${t.create.coverError} (${detail})`);
     } finally {
       setUploading(false);
     }

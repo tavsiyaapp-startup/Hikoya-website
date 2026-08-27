@@ -7,6 +7,7 @@ import { getCurrentUser } from "@/lib/current-user";
 import { getStoryBySlug, getChaptersForStory, getTagsForStory, getAllTags } from "@/lib/queries/stories";
 import { getLinkedRequestForStory } from "@/lib/queries/requests";
 import { ROUTES } from "@/lib/constants";
+import { localizeGenre } from "@/lib/genre";
 import { Badge, Chip } from "@/components/ui/Chip";
 import { Button } from "@/components/ui/Button";
 import { AddChapterForm } from "@/components/manage/AddChapterForm";
@@ -71,7 +72,7 @@ export default async function ManagePage({
                   ? t.common.pendingReview
                   : t.common.draft}
             </Badge>
-            <Badge tone="pink">{story.genre}</Badge>
+            <Badge tone="pink">{localizeGenre(story.genre, locale)}</Badge>
             {linkedRequestId && (
               <Link href={`${ROUTES.board}?selected=${linkedRequestId}`}>
                 <Badge tone="primary">{t.story.requestBadge}</Badge>
@@ -151,7 +152,7 @@ export default async function ManagePage({
             storySlug={slug}
             authorId={story.author.id}
             initialCoverUrl={story.cover_url}
-            initialGenre={story.genre}
+            initialGenre={localizeGenre(story.genre, locale)}
             initialRelationshipType={story.relationship_type}
             initialDescription={story.description}
             initialTags={tags}

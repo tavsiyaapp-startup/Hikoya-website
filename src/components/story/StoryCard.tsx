@@ -2,6 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { getServerLocale } from "@/lib/i18n/locale-server";
 import { getDictionary } from "@/lib/i18n";
+import { localizeGenre } from "@/lib/genre";
 import { ROUTES } from "@/lib/constants";
 import { HeartIcon } from "@/components/ui/icons";
 import { Badge } from "@/components/ui/Chip";
@@ -44,7 +45,7 @@ export async function StoryCard({ story }: { story: StoryCardData }) {
           {story.title}
         </h3>
         <div className="mb-2.5 truncate text-[13px] text-muted-2">{story.author?.display_name}</div>
-        <Badge tone="pink">{story.genre}</Badge>
+        <Badge tone="pink">{localizeGenre(story.genre, locale)}</Badge>
       </div>
     </Link>
   );

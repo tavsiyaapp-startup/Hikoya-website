@@ -3,6 +3,7 @@ import { unstable_cache } from "next/cache";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { createPublicClient } from "@/lib/supabase/public";
+import { genreVariants } from "@/lib/genre";
 import type { Story, Chapter, Collection, Profile, StoryTopTier, HeroSlide } from "@/types/database";
 
 // Every query here tolerates an unreachable Supabase project (placeholder
@@ -71,7 +72,7 @@ export const getStoriesByGenre = unstable_cache(
         .select("*, author:profiles!stories_author_id_fkey(username, display_name)", { count: "exact" })
         .eq("status", "published")
         .eq("visibility", "public")
-        .eq("genre", genre)
+        .in("genre", genreVariants(genre))
         .order("like_count", { ascending: false })
         .range(offset, offset + limit - 1);
       return { items: (data as StoryCard[]) ?? [], total: count ?? 0 };
@@ -349,7 +350,7 @@ export const searchStories = unstable_cache(
 
       if (filters.q) query = query.ilike("title", `%${filters.q}%`);
       if (filters.language) query = query.eq("language", filters.language);
-      if (filters.genre) query = query.eq("genre", filters.genre);
+      if (filters.genre) query = query.in("genre", genreVariants(filters.genre));
       if (filters.status) query = query.eq("status", filters.status);
       if (filters.age) query = query.eq("age_rating", filters.age);
       if (filters.relationship) query = query.eq("relationship_type", filters.relationship);

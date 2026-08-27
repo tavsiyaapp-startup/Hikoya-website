@@ -12,6 +12,7 @@ import { getLinkedRequestForStory } from "@/lib/queries/requests";
 import { formatDateTime } from "@/lib/format";
 import { ROUTES } from "@/lib/constants";
 import { RELATIONSHIP_TYPES } from "@/lib/relationshipTypes";
+import { localizeGenre } from "@/lib/genre";
 import { Avatar } from "@/components/ui/Avatar";
 import { Badge } from "@/components/ui/Chip";
 import { LinkChip } from "@/components/ui/LinkChip";
@@ -121,7 +122,7 @@ export default async function StoryPage({
 
       <div className="min-w-0 flex-1">
         <div className="mb-3.5 flex flex-wrap items-center gap-2">
-          <Badge tone="pink">{story.genre}</Badge>
+          <Badge tone="pink">{localizeGenre(story.genre, locale)}</Badge>
           {story.relationship_type && (
             <Badge tone="primary">{relationshipLabel(story.relationship_type, locale)}</Badge>
           )}

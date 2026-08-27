@@ -5,6 +5,7 @@ import { getServerLocale } from "@/lib/i18n/locale-server";
 import { getDictionary } from "@/lib/i18n";
 import { getStoryForModeration, getChaptersForModeration } from "@/lib/queries/admin";
 import { ROUTES } from "@/lib/constants";
+import { localizeGenre } from "@/lib/genre";
 import { Badge } from "@/components/ui/Chip";
 import { ChevronLeftIcon } from "@/components/ui/icons";
 import { StoryModerateActions } from "./StoryModerateActions";
@@ -53,7 +54,7 @@ export default async function AdminStoryModeratePage({ params }: { params: Promi
           <div className="min-w-0 flex-1">
             <div className="mb-3 flex flex-wrap items-center gap-2.5">
               <Badge tone={statusTone(story.status)}>{statusLabel[story.status] ?? story.status}</Badge>
-              <Badge tone="pink">{story.genre}</Badge>
+              <Badge tone="pink">{localizeGenre(story.genre, locale)}</Badge>
             </div>
             <div className="mb-3.5 text-[13.5px] text-muted-2">
               {t.admin.colAuthor}: <span className="font-semibold text-ink-soft">{author?.display_name}</span>{" "}

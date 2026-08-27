@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getServerLocale } from "@/lib/i18n/locale-server";
 import { getDictionary } from "@/lib/i18n";
 import { searchStories, type SearchFilters } from "@/lib/queries/stories";
+import { localizeGenre } from "@/lib/genre";
 import { Chip } from "@/components/ui/Chip";
 import { LinkChip } from "@/components/ui/LinkChip";
 import { Button } from "@/components/ui/Button";
@@ -258,7 +259,7 @@ export default async function SearchPage({
                   </p>
                   <div className="mt-auto flex flex-wrap gap-1.5">
                     <Chip active className="pointer-events-none">
-                      {story.genre}
+                      {localizeGenre(story.genre, locale)}
                     </Chip>
                   </div>
                 </div>

@@ -9,8 +9,8 @@ import { useLocale } from "@/lib/i18n/LocaleProvider";
 import { useMobileNav } from "@/components/layout/MobileNavContext";
 import { ROUTES } from "@/lib/constants";
 import { Button } from "@/components/ui/Button";
-import { Avatar } from "@/components/ui/Avatar";
 import { BellIcon, MenuIcon, SearchIcon } from "@/components/ui/icons";
+import { UserMenu } from "@/components/layout/UserMenu";
 import type { CurrentUser } from "@/lib/current-user";
 
 export function Header({ user, unreadCount = 0 }: { user: CurrentUser | null; unreadCount?: number }) {
@@ -25,7 +25,7 @@ export function Header({ user, unreadCount = 0 }: { user: CurrentUser | null; un
   }
 
   return (
-    <header className="sticky top-0 z-20 flex h-[64px] items-center gap-3 border-b border-border bg-white/92 px-3 backdrop-blur-md sm:h-[76px] sm:gap-5 sm:px-5 lg:gap-7 lg:px-8">
+    <header className="sticky top-0 z-20 flex h-[64px] items-center gap-3 border-b border-border bg-card/92 px-3 backdrop-blur-md sm:h-[76px] sm:gap-5 sm:px-5 lg:gap-7 lg:px-8">
       <button
         type="button"
         onClick={() => setOpen(true)}
@@ -92,9 +92,7 @@ export function Header({ user, unreadCount = 0 }: { user: CurrentUser | null; un
         </Link>
 
         {user ? (
-          <Link href={ROUTES.author(user.profile?.username ?? "")} className="flex shrink-0 items-center gap-2">
-            <Avatar name={user.profile?.display_name ?? "?"} src={user.profile?.avatar_url} size={38} />
-          </Link>
+          <UserMenu user={user} />
         ) : (
           <>
             <Link href={ROUTES.login} className="hidden sm:block">

@@ -44,6 +44,15 @@ export async function recordChapterView(input: {
       },
       { onConflict: "user_id,story_id" }
     );
+
+    // First visit marks this specific chapter as read; later visits to the
+    // same chapter are no-ops (chapter_reads is insert-only, nothing to
+    // update) — separate from reading_progress above, which only tracks the
+    // *latest* chapter per story.
+    await supabase.from("chapter_reads").upsert(
+      { user_id: user.id, chapter_id: input.chapterId, story_id: input.storyId },
+      { onConflict: "user_id,chapter_id", ignoreDuplicates: true }
+    );
   } catch {
     // best-effort
   }

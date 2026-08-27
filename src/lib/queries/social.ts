@@ -3,10 +3,11 @@ import { createClient } from "@/lib/supabase/server";
 import type { StoryCard } from "@/lib/queries/stories";
 
 export async function getUserStoryState(userId: string | undefined, storyId: string) {
-  if (!userId) return { liked: false, bookmarked: false, readingStatus: null as string | null };
+  if (!userId)
+    return { liked: false, bookmarked: false, readingStatus: null as string | null, continueChapterId: null as string | null };
   try {
     const supabase = await createClient();
-    const [{ data: like }, { data: bookmark }, { data: status }] = await Promise.all([
+    const [{ data: like }, { data: bookmark }, { data: status }, { data: progress }] = await Promise.all([
       supabase
         .from("likes")
         .select("id")
@@ -16,10 +17,32 @@ export async function getUserStoryState(userId: string | undefined, storyId: str
         .maybeSingle(),
       supabase.from("bookmarks").select("id").eq("user_id", userId).eq("story_id", storyId).maybeSingle(),
       supabase.from("reading_statuses").select("status").eq("user_id", userId).eq("story_id", storyId).maybeSingle(),
+      supabase.from("reading_progress").select("chapter_id").eq("user_id", userId).eq("story_id", storyId).maybeSingle(),
     ]);
-    return { liked: Boolean(like), bookmarked: Boolean(bookmark), readingStatus: status?.status ?? null };
+    return {
+      liked: Boolean(like),
+      bookmarked: Boolean(bookmark),
+      readingStatus: status?.status ?? null,
+      continueChapterId: progress?.chapter_id ?? null,
+    };
   } catch {
-    return { liked: false, bookmarked: false, readingStatus: null };
+    return { liked: false, bookmarked: false, readingStatus: null, continueChapterId: null };
+  }
+}
+
+// Every chapter of this story the user has opened at least once — drives
+// the "read" mark on each row of the chapters list. Separate from
+// reading_progress (single latest chapter per story, used for the
+// continue-reading button above) since this needs the full set, not just
+// the most recent one.
+export async function getReadChapterIds(userId: string | undefined, storyId: string): Promise<Set<string>> {
+  if (!userId) return new Set();
+  try {
+    const supabase = await createClient();
+    const { data } = await supabase.from("chapter_reads").select("chapter_id").eq("user_id", userId).eq("story_id", storyId);
+    return new Set((data ?? []).map((r) => r.chapter_id as string));
+  } catch {
+    return new Set();
   }
 }
 

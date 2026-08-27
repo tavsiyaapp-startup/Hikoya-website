@@ -109,6 +109,8 @@ const uz: typeof ru = {
   },
   story: {
     read: "Oʻqish",
+    continueReading: "Oʻqishni davom ettirish",
+    chapterRead: "Oʻqilgan",
     subscribe: "Obuna boʻlish",
     authorLabel: "Hikoya muallifi",
     chapters: "Boblar",

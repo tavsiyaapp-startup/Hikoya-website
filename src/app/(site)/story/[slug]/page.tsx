@@ -5,7 +5,13 @@ import { getServerLocale } from "@/lib/i18n/locale-server";
 import { getDictionary } from "@/lib/i18n";
 import { getCurrentUser } from "@/lib/current-user";
 import { getStoryBySlug, getChaptersForStory, getMyCollectionsWithStory } from "@/lib/queries/stories";
-import { getUserStoryState, isFollowingAuthor, getFollowerCount, getStoryComments } from "@/lib/queries/social";
+import {
+  getUserStoryState,
+  isFollowingAuthor,
+  getFollowerCount,
+  getStoryComments,
+  getReadChapterIds,
+} from "@/lib/queries/social";
 import type { StoryCommentRow } from "@/lib/queries/social";
 import type { Dictionary } from "@/lib/i18n";
 import { getLinkedRequestForStory } from "@/lib/queries/requests";
@@ -45,19 +51,25 @@ export default async function StoryPage({
   const story = await getStoryBySlug(slug);
   if (!story) notFound();
 
-  const [chapters, social, following, followerCount, linkedRequestId, myCollections, storyComments] = await Promise.all([
-    getChaptersForStory(story.id),
-    getUserStoryState(user?.id, story.id),
-    isFollowingAuthor(user?.id, story.author.id),
-    getFollowerCount(story.author.id),
-    getLinkedRequestForStory(story.id),
-    user ? getMyCollectionsWithStory(user.id, story.id) : Promise.resolve([]),
-    tab === "comments" ? getStoryComments(story.id) : Promise.resolve([]),
-  ]);
+  const [chapters, social, following, followerCount, linkedRequestId, myCollections, storyComments, readChapterIds] =
+    await Promise.all([
+      getChaptersForStory(story.id),
+      getUserStoryState(user?.id, story.id),
+      isFollowingAuthor(user?.id, story.author.id),
+      getFollowerCount(story.author.id),
+      getLinkedRequestForStory(story.id),
+      user ? getMyCollectionsWithStory(user.id, story.id) : Promise.resolve([]),
+      tab === "comments" ? getStoryComments(story.id) : Promise.resolve([]),
+      getReadChapterIds(user?.id, story.id),
+    ]);
 
   const canManage = user?.id === story.author.id;
   const path = ROUTES.story(slug);
   const firstChapter = chapters[0];
+  const continueChapter = social.continueChapterId
+    ? chapters.find((c) => c.id === social.continueChapterId)
+    : undefined;
+  const readCta = continueChapter ?? firstChapter;
   const metrics = [
     { label: t.common.views, value: story.view_count },
     { label: t.common.like, value: story.like_count },
@@ -72,10 +84,10 @@ export default async function StoryPage({
           {story.cover_url && <Image src={story.cover_url} alt={story.title} fill className="object-cover" />}
         </div>
 
-        {firstChapter ? (
-          <Link href={ROUTES.chapter(slug, firstChapter.order_index)}>
+        {readCta ? (
+          <Link href={ROUTES.chapter(slug, readCta.order_index)}>
             <Button size="lg" className="mb-2.5 w-full justify-center">
-              {t.story.read}
+              {continueChapter ? t.story.continueReading : t.story.read}
             </Button>
           </Link>
         ) : (
@@ -171,22 +183,33 @@ export default async function StoryPage({
         {tab === "chapters" && (
           <div className="overflow-hidden rounded-[20px] border border-border bg-card">
             {chapters.length > 0 ? (
-              chapters.map((ch, i) => (
-                <Link
-                  key={ch.id}
-                  href={ROUTES.chapter(slug, ch.order_index)}
-                  className={clsxRow(i, chapters.length)}
-                >
-                  <span className="w-8 shrink-0 text-[14px] font-bold text-muted-3">{ch.order_index}</span>
-                  <div className="min-w-0 flex-1">
-                    <span className="text-[15px] font-semibold">{ch.title}</span>
-                    <div className="mt-1 text-[12.5px] text-muted-3">
-                      {formatDateTime(ch.published_at ?? ch.created_at, locale)} · {ch.comment_count ?? 0} {t.common.comments}
+              chapters.map((ch, i) => {
+                const isRead = readChapterIds.has(ch.id);
+                return (
+                  <Link
+                    key={ch.id}
+                    href={ROUTES.chapter(slug, ch.order_index)}
+                    className={clsxRow(i, chapters.length)}
+                  >
+                    <span className="w-8 shrink-0 text-[14px] font-bold text-muted-3">{ch.order_index}</span>
+                    <div className="min-w-0 flex-1">
+                      <span className={`text-[15px] font-semibold ${isRead ? "text-muted-2" : ""}`}>{ch.title}</span>
+                      <div className="mt-1 text-[12.5px] text-muted-3">
+                        {formatDateTime(ch.published_at ?? ch.created_at, locale)} · {ch.comment_count ?? 0} {t.common.comments}
+                      </div>
                     </div>
-                  </div>
-                  {ch.is_free && <Badge tone="primary">{t.common.read}</Badge>}
-                </Link>
-              ))
+                    {isRead && (
+                      <span
+                        title={t.story.chapterRead}
+                        className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-success-bg text-[11px] font-bold text-success"
+                      >
+                        ✓
+                      </span>
+                    )}
+                    {ch.is_free && <Badge tone="primary">{t.common.read}</Badge>}
+                  </Link>
+                );
+              })
             ) : (
               <div className="px-6 py-10 text-center text-[14px] text-muted-2">
                 {t.story.noChaptersBody}

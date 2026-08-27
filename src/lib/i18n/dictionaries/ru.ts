@@ -107,6 +107,8 @@ const ru = {
   },
   story: {
     read: "Читать",
+    continueReading: "Продолжить чтение",
+    chapterRead: "Прочитано",
     subscribe: "Подписаться",
     authorLabel: "Автор истории",
     chapters: "Главы",

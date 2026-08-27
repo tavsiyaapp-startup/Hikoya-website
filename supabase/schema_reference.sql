@@ -169,6 +169,21 @@ create table reading_statuses (
 
 create index reading_statuses_user_status_idx on reading_statuses (user_id, status);
 
+-- добавлено в 0031: отдельно от reading_progress выше (которая хранит
+-- только ПОСЛЕДНЮЮ открытую главу истории) — здесь каждая когда-либо
+-- открытая пользователем глава своей строкой, чтобы список глав мог
+-- показать "прочитано" на каждой конкретной. Только insert — первый
+-- заход ставит галочку, повторные заходы ничего не меняют.
+create table chapter_reads (
+  user_id uuid not null references profiles (id) on delete cascade,
+  chapter_id uuid not null references chapters (id) on delete cascade,
+  story_id uuid not null references stories (id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (user_id, chapter_id)
+);
+
+create index chapter_reads_user_story_idx on chapter_reads (user_id, story_id);
+
 -- добавлено в 0012: уведомления. user_id — получатель, actor_id — кто
 -- вызвал событие (null для системных/модераторских событий, хотя сейчас
 -- всегда заполнен — approve/reject тоже пишут actor_id=null намеренно,
@@ -566,6 +581,11 @@ create policy "users manage their own reading progress" on reading_progress for 
 alter table reading_statuses enable row level security;
 create policy "users manage their own reading statuses" on reading_statuses for all
   using (user_id = auth.uid()) with check (user_id = auth.uid());
+
+-- chapter_reads — insert-only (see table comment), no update/delete policy
+alter table chapter_reads enable row level security;
+create policy "users read their own chapter_reads" on chapter_reads for select using (user_id = auth.uid());
+create policy "users insert their own chapter_reads" on chapter_reads for insert with check (user_id = auth.uid());
 
 -- notifications — читает/помечает прочитанным только получатель. Намеренно
 -- нет insert-политики для обычного клиента: уведомление всегда пишется от
@@ -974,3 +994,12 @@ on conflict (code) do nothing;
 --   текущее произведение одним запросом (createCollectionWithStory),
 --   селектор остаётся открытым с новой подборкой уже отмеченной — как
 --   YouTube "Save to playlist" → "Create new playlist".
+-- [2026-08-27] Таблица chapter_reads (миграция 0031) — список глав, чек
+--   на каждой главе в списке главы истории. recordChapterView() (уже
+--   существовавшая, вызывается один раз на клиенте при заходе на главу)
+--   теперь заодно апсертит сюда с ignoreDuplicates: true — первый заход
+--   ставит отметку, повторные заходы молча ничего не делают (insert-only
+--   таблица, апдейтить нечего). Кнопка "Читать" на странице произведения
+--   стала "Продолжить чтение", если у пользователя уже есть
+--   reading_progress по этой истории — ведёт на ту же главу, на которой
+--   остановился, вместо всегда первой главы.

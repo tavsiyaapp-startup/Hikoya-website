@@ -143,6 +143,7 @@ const uz: typeof ru = {
     gateBody:
       "Birinchi bob barcha uchun ochiq. Hikoyani davom ettirish, progressni saqlash, xatcho'p qoʻyish va izoh yozish uchun akkaunt kerak.",
     continueNext: "Keyingi bobni oʻqishni davom ettirish",
+    previousChapter: "Oldingi bob",
     commentsLocked: "Izohlar roʻyxatdan oʻtgandan keyin ochiladi",
     commentsTitle: "Izohlar",
     fontSize: "Matn oʻlchami",

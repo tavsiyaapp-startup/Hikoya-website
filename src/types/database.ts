@@ -83,6 +83,7 @@ export interface Chapter {
   updated_at: string;
   published_at: string | null;
   rejection_reason: string | null;
+  comment_count: number;
 }
 
 export interface Comment {

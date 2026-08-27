@@ -9,6 +9,7 @@ import { getUserStoryState, isFollowingAuthor, getFollowerCount, getStoryComment
 import type { StoryCommentRow } from "@/lib/queries/social";
 import type { Dictionary } from "@/lib/i18n";
 import { getLinkedRequestForStory } from "@/lib/queries/requests";
+import { formatDateTime } from "@/lib/format";
 import { ROUTES } from "@/lib/constants";
 import { RELATIONSHIP_TYPES } from "@/lib/relationshipTypes";
 import { Avatar } from "@/components/ui/Avatar";
@@ -178,7 +179,9 @@ export default async function StoryPage({
                   <span className="w-8 shrink-0 text-[14px] font-bold text-muted-3">{ch.order_index}</span>
                   <div className="min-w-0 flex-1">
                     <span className="text-[15px] font-semibold">{ch.title}</span>
-                    <div className="mt-1 text-[12.5px] text-muted-3">{ch.word_count} {t.reader.wordsLabel}</div>
+                    <div className="mt-1 text-[12.5px] text-muted-3">
+                      {formatDateTime(ch.published_at ?? ch.created_at, locale)} · {ch.comment_count ?? 0} {t.common.comments}
+                    </div>
                   </div>
                   {ch.is_free && <Badge tone="primary">{t.common.read}</Badge>}
                 </Link>

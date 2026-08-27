@@ -102,6 +102,7 @@ create table chapters (
   updated_at timestamptz not null default now(),   -- добавлено в 0008: дата последнего редактирования главы
   published_at timestamptz,
   rejection_reason text,   -- добавлено в 0011: причина отказа модератора для этой главы
+  comment_count integer not null default 0,   -- добавлено в 0028: денормализованный счётчик, см. bump_story_counters()
   unique (story_id, order_index)
 );
 
@@ -396,6 +397,9 @@ alter table telegram_support_tickets enable row level security;
 -- добавлено в 0013: likes.target_type = 'comment' (лайки комментариев)
 -- теперь тоже обрабатывается — раньше молча не делал ничего с
 -- comments.like_count.
+-- добавлено в 0028: параллельно со stories.comment_count теперь бампается
+-- и chapters.comment_count (для отображения числа комментариев у каждой
+-- главы отдельно в списке глав).
 create or replace function bump_story_counters() returns trigger as $$
 begin
   if tg_op = 'INSERT' then
@@ -410,6 +414,7 @@ begin
     elsif tg_table_name = 'comments' then
       update stories set comment_count = comment_count + 1
         where id = (select story_id from chapters where id = new.chapter_id);
+      update chapters set comment_count = comment_count + 1 where id = new.chapter_id;
     end if;
     return new;
   elsif tg_op = 'DELETE' then
@@ -424,6 +429,7 @@ begin
     elsif tg_table_name = 'comments' then
       update stories set comment_count = greatest(comment_count - 1, 0)
         where id = (select story_id from chapters where id = old.chapter_id);
+      update chapters set comment_count = greatest(comment_count - 1, 0) where id = old.chapter_id;
     end if;
     return old;
   end if;
@@ -955,3 +961,10 @@ on conflict (code) do nothing;
 --   типа (story_hidden, новое значение notification_type), чтобы автору
 --   не пришло "ваша история отклонена" про то, что на самом деле уже
 --   опубликованную работу сняли с показа.
+-- [2026-08-27] chapters.comment_count — денормализованный счётчик
+--   комментариев на конкретной главе (миграция 0028), для списка глав на
+--   странице произведения (дата публикации + число комментариев вместо
+--   числа слов). Backfill по существующим comments при добавлении
+--   колонки; bump_story_counters() расширена — при insert/delete в
+--   comments теперь бампает и chapters.comment_count параллельно с уже
+--   существующим stories.comment_count, а не вместо него.

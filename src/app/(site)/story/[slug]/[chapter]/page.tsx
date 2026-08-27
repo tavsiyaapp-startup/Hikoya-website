@@ -122,13 +122,25 @@ export default async function ReaderPage({
           </div>
         )}
 
-        {isUnlocked && nextChapter && (
-          <Link
-            href={ROUTES.chapter(slug, nextChapter.order_index)}
-            className="mt-9 flex w-full items-center justify-center gap-3 rounded-[18px] border border-primary-200 bg-primary-50 py-5 text-[16px] font-bold text-primary-900"
-          >
-            <span>{t.reader.continueNext}</span>
-          </Link>
+        {isUnlocked && (prevChapter || nextChapter) && (
+          <div className="mt-9 flex flex-col gap-3 sm:flex-row">
+            {prevChapter && (
+              <Link
+                href={ROUTES.chapter(slug, prevChapter.order_index)}
+                className="flex w-full items-center justify-center gap-3 rounded-[18px] border border-border bg-card py-5 text-[15px] font-bold text-ink-soft sm:flex-1"
+              >
+                <span>← {t.reader.previousChapter}</span>
+              </Link>
+            )}
+            {nextChapter && (
+              <Link
+                href={ROUTES.chapter(slug, nextChapter.order_index)}
+                className="flex w-full items-center justify-center gap-3 rounded-[18px] border border-primary-200 bg-primary-50 py-5 text-[16px] font-bold text-primary-900 sm:flex-1"
+              >
+                <span>{t.reader.continueNext}</span>
+              </Link>
+            )}
+          </div>
         )}
 
         {isUnlocked && (

@@ -13,6 +13,16 @@ const RELATIVE_UNITS: [number, Intl.RelativeTimeFormatUnit][] = [
   [Infinity, "year"],
 ];
 
+export function formatDateTime(dateStr: string, locale: string): string {
+  return new Intl.DateTimeFormat(locale, {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(dateStr));
+}
+
 export function formatRelativeTime(dateStr: string, locale: string): string {
   const rtf = new Intl.RelativeTimeFormat(locale, { numeric: "auto" });
   let diff = (Date.now() - new Date(dateStr).getTime()) / 1000;

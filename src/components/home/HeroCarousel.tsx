@@ -44,7 +44,7 @@ export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
             type="button"
             onClick={() => go(index - 1)}
             aria-label="Previous slide"
-            className="absolute left-3 top-1/2 z-10 flex h-9 w-9 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full bg-white/85 text-ink-soft shadow-[0_4px_14px_rgba(60,40,120,0.16)] hover:bg-card"
+            className="absolute left-3 top-1/2 z-10 flex h-9 w-9 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full bg-white/85 text-ink-soft shadow-[0_4px_14px_rgba(60,40,120,0.16)] hover:bg-card dark:bg-ink-darker/60 dark:hover:bg-ink-darker/85"
           >
             <ChevronLeftIcon />
           </button>
@@ -52,7 +52,7 @@ export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
             type="button"
             onClick={() => go(index + 1)}
             aria-label="Next slide"
-            className="absolute right-3 top-1/2 z-10 flex h-9 w-9 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full bg-white/85 text-ink-soft shadow-[0_4px_14px_rgba(60,40,120,0.16)] hover:bg-card"
+            className="absolute right-3 top-1/2 z-10 flex h-9 w-9 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full bg-white/85 text-ink-soft shadow-[0_4px_14px_rgba(60,40,120,0.16)] hover:bg-card dark:bg-ink-darker/60 dark:hover:bg-ink-darker/85"
           >
             <ChevronRightIcon />
           </button>
@@ -65,7 +65,7 @@ export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
                 aria-label={`Go to slide ${i + 1}`}
                 className={clsx(
                   "h-2 cursor-pointer rounded-full transition-all",
-                  i === index ? "w-6 bg-[#7C3AED]" : "w-2 bg-white/70 hover:bg-card"
+                  i === index ? "w-6 bg-[#7C3AED]" : "w-2 bg-white/70 hover:bg-card dark:bg-ink-darker/60 dark:hover:bg-ink-darker/85"
                 )}
               />
             ))}

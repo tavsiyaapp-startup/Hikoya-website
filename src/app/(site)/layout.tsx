@@ -10,7 +10,7 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
 
   return (
     <MobileNavProvider>
-      <div className="min-h-screen bg-bg">
+      <div className="min-h-screen bg-bg dark:bg-transparent">
         <Header user={user} unreadCount={unreadCount} />
         <div className="flex items-start">
           <Sidebar user={user} />

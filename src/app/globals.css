@@ -94,6 +94,25 @@ html, body {
   background: var(--color-bg);
 }
 
+/* Dark-mode-only tiled starfield texture, sitting behind the page (the
+   .site-shell wrapper drops its own opaque bg-bg to let it show through in
+   the gaps around cards). Fixed + oversized inset avoids a blurred-out
+   transparent fringe at the viewport edge; low opacity keeps it a subtle
+   texture rather than a competing photo, since real content sits on its own
+   opaque bg-card/bg-surface anyway. */
+[data-theme="dark"] body::before {
+  content: "";
+  position: fixed;
+  inset: -60px;
+  z-index: -1;
+  pointer-events: none;
+  background-image: url("/images/background.jpg");
+  background-repeat: repeat;
+  background-size: 380px auto;
+  filter: blur(18px);
+  opacity: 0.22;
+}
+
 body {
   font-family: var(--font-sans);
   color: var(--color-ink);

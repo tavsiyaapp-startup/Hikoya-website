@@ -8,6 +8,8 @@ import {
   getPopularStories,
   getNewestStories,
   getStoriesByGenre,
+  getFollowingStories,
+  getForYouStories,
   getFeaturedCollections,
   getRecentPublishedChapters,
   getContinueReading,
@@ -78,10 +80,18 @@ export default async function HomePage({
   const collectionsPage = toPage(rawCollectionsPage);
   const genrePage = toPage(rawGenrePage);
 
-  const [feedResult, weeklyResult, collectionsResult, genreResult, continueReading, heroSlides] = await Promise.all([
+  const feedOffset = (feedPage - 1) * PAGE_SIZE_FEED;
+  const feedQuery =
     tab === "new"
-      ? getNewestStories(PAGE_SIZE_FEED, (feedPage - 1) * PAGE_SIZE_FEED)
-      : getPopularStories(PAGE_SIZE_FEED, (feedPage - 1) * PAGE_SIZE_FEED),
+      ? getNewestStories(PAGE_SIZE_FEED, feedOffset)
+      : tab === "following" && user
+        ? getFollowingStories(user.id, PAGE_SIZE_FEED, feedOffset)
+        : tab === "forYou" && user
+          ? getForYouStories(user.id, PAGE_SIZE_FEED, feedOffset)
+          : getPopularStories(PAGE_SIZE_FEED, feedOffset);
+
+  const [feedResult, weeklyResult, collectionsResult, genreResult, continueReading, heroSlides] = await Promise.all([
+    feedQuery,
     getRecentPublishedChapters(PAGE_SIZE_WEEK, (weekPage - 1) * PAGE_SIZE_WEEK),
     getFeaturedCollections(PAGE_SIZE_COLLECTIONS, (collectionsPage - 1) * PAGE_SIZE_COLLECTIONS),
     getStoriesByGenre(genre, PAGE_SIZE_GENRE, (genrePage - 1) * PAGE_SIZE_GENRE),

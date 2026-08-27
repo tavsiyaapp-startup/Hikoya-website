@@ -84,6 +84,76 @@ export const getStoriesByGenre = unstable_cache(
   { revalidate: CACHE_SECONDS, tags: ["stories"] }
 );
 
+// "Подписки" home tab. Not unstable_cache'd like the functions above —
+// this result is different per viewer, so caching it under a shared key
+// would leak one user's feed to another. Uses the session-scoped client
+// (RLS: follows is only readable by the follower themself anyway).
+export async function getFollowingStories(userId: string, limit = 8, offset = 0): Promise<Paginated<StoryCard>> {
+  try {
+    const supabase = await createClient();
+    const { data: followedRows } = await supabase.from("follows").select("author_id").eq("follower_id", userId);
+    const authorIds = (followedRows ?? []).map((f) => f.author_id as string);
+    if (authorIds.length === 0) return { items: [], total: 0 };
+
+    const { data, count } = await supabase
+      .from("stories")
+      .select("*, author:profiles!stories_author_id_fkey(username, display_name)", { count: "exact" })
+      .eq("status", "published")
+      .eq("visibility", "public")
+      .in("author_id", authorIds)
+      .order("published_at", { ascending: false })
+      .range(offset, offset + limit - 1);
+    return { items: (data as StoryCard[]) ?? [], total: count ?? 0 };
+  } catch {
+    return { items: [], total: 0 };
+  }
+}
+
+// "Для вас" home tab — same not-cached reasoning as getFollowingStories
+// above. Preference signal is the union of the genres picked at onboarding
+// (profiles.interests) and the genres of everything the user has liked so
+// far, each expanded to every locale's label via genreVariants() (both
+// interests and stories.genre are stored in whatever locale was active
+// when they were picked/created — see src/lib/genre.ts). A brand new
+// account has neither yet, so this naturally falls back to the same
+// popular feed as everyone else until they pick interests or like
+// something — existing accounts from before this feature already have
+// likes but mostly no interests, so they're effectively ranked by likes
+// alone, which is exactly the intended behavior for them.
+export async function getForYouStories(userId: string, limit = 8, offset = 0): Promise<Paginated<StoryCard>> {
+  try {
+    const supabase = await createClient();
+    const [{ data: profile }, { data: likedRows }] = await Promise.all([
+      supabase.from("profiles").select("interests").eq("id", userId).single(),
+      supabase.from("likes").select("target_id").eq("user_id", userId).eq("target_type", "story"),
+    ]);
+
+    const likedStoryIds = (likedRows ?? []).map((r) => r.target_id as string);
+    let likedGenres: string[] = [];
+    if (likedStoryIds.length > 0) {
+      const { data: likedStories } = await supabase.from("stories").select("genre").in("id", likedStoryIds);
+      likedGenres = (likedStories ?? []).map((s) => s.genre as string);
+    }
+
+    const rawGenres = [...new Set([...(profile?.interests ?? []), ...likedGenres])];
+    const preferredGenres = [...new Set(rawGenres.flatMap((g) => genreVariants(g)))];
+
+    if (preferredGenres.length === 0) return getPopularStories(limit, offset);
+
+    const { data, count } = await supabase
+      .from("stories")
+      .select("*, author:profiles!stories_author_id_fkey(username, display_name)", { count: "exact" })
+      .eq("status", "published")
+      .eq("visibility", "public")
+      .in("genre", preferredGenres)
+      .order("like_count", { ascending: false })
+      .range(offset, offset + limit - 1);
+    return { items: (data as StoryCard[]) ?? [], total: count ?? 0 };
+  } catch {
+    return { items: [], total: 0 };
+  }
+}
+
 export type CollectionCardData = Collection & {
   owner: Pick<Profile, "display_name"> | null;
   coverUrls: string[];

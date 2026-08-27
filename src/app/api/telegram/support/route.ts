@@ -4,19 +4,19 @@ import { createAdminClient } from "@/lib/supabase/admin";
 // Support/feedback bot, modeled on a reference aiogram bot the user already
 // runs elsewhere (long-polling + in-memory dicts). Vercel has no
 // always-running process to poll from or hold state in, so this is a
-// webhook instead, and the reference's in-memory pending/awaiting_phone/
-// ticket-counter state lives in telegram_support_* tables (migration 0025).
+// webhook instead, and the reference's in-memory pending/ticket-counter
+// state lives in telegram_support_* tables (migration 0025).
 //
 // Flow: user DMs the bot -> text/photo/video get queued -> "Отправить
-// обращение" button -> phone number -> everything gets forwarded to the
-// staff group as a numbered ticket -> staff reply with /reply <n> <text> in
-// that group -> bot relays it back to the user's DM.
+// обращение" button -> everything gets forwarded to the staff group as a
+// numbered ticket -> staff reply with /reply <n> <text> in that group ->
+// bot relays it back to the user's DM. (No phone number collected — the
+// Telegram user id + username already identify who to message back.)
 
 const TELEGRAM_API = `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`;
 const SEND_CALLBACK_DATA = "send_appeal";
 
 const SEND_BUTTON_TEXT = "📨 Отправить обращение";
-const SHARE_CONTACT_BUTTON = "📞 Отправить номер";
 const WELCOME_TEXT =
   "Здравствуйте! Чем можем помочь?\n\n" +
   "Напишите ваш вопрос, отправьте фото или видео. Можно отправить несколько сообщений.\n\n" +
@@ -25,7 +25,6 @@ const ACK_TEXT = `✍️ Хотите добавить что-то ещё?\n\nЕ
 const EMPTY_QUEUE_TEXT = "Вы ещё ничего не отправили. Сначала напишите текст обращения, фото или видео.";
 const UNSUPPORTED_TYPE_TEXT = "Можно отправлять только текст, фото или видео.";
 const CONFIRMATION_TEXT = "Спасибо! Мы получили ваше обращение и свяжемся с вами.";
-const PHONE_REQUEST_TEXT = "Отправьте, пожалуйста, номер телефона для связи.";
 const REPLY_USAGE_TEXT = "Использование: /reply <номер> <текст>\nНапример: /reply 47 Здравствуйте, ваш вопрос решён";
 const TICKET_NOT_FOUND_TEXT = "❌ Обращение с таким номером не найдено.";
 const REPLY_FAILED_TEXT = "❌ Не удалось отправить. Пользователь заблокировал бота или ID неверен.";
@@ -33,10 +32,6 @@ const REPLY_SENT_TEXT = "✅ Отправлено.";
 const SEPARATOR = "-".repeat(30);
 
 const REPLY_PATTERN = /^\/reply(?:@\w+)?\s+(\d+)\s+([\s\S]+)$/;
-const PHONE_KEYBOARD = {
-  keyboard: [[{ text: SHARE_CONTACT_BUTTON, request_contact: true }]],
-  resize_keyboard: true,
-};
 
 type TelegramUser = {
   id: number;
@@ -52,7 +47,6 @@ type TelegramMessage = {
   text?: string;
   photo?: unknown[];
   video?: unknown;
-  contact?: { phone_number: string };
 };
 
 type TelegramUpdate = {
@@ -117,24 +111,7 @@ async function handleMessage(admin: AdminClient, message: TelegramMessage, group
 
   if (message.text === "/start") {
     await admin.from("telegram_support_pending_messages").delete().eq("telegram_user_id", userId);
-    await admin.from("telegram_support_sessions").delete().eq("telegram_user_id", userId);
-    await callTelegram("sendMessage", { chat_id: chatId, text: WELCOME_TEXT, reply_markup: { remove_keyboard: true } });
-    return;
-  }
-
-  const { data: session } = await admin
-    .from("telegram_support_sessions")
-    .select("awaiting_phone")
-    .eq("telegram_user_id", userId)
-    .maybeSingle();
-
-  if (session?.awaiting_phone) {
-    const phone = message.contact?.phone_number ?? message.text;
-    if (!phone) {
-      await callTelegram("sendMessage", { chat_id: chatId, text: PHONE_REQUEST_TEXT, reply_markup: PHONE_KEYBOARD });
-      return;
-    }
-    await finalizeTicket(admin, message.from, chatId, phone, groupChatId);
+    await callTelegram("sendMessage", { chat_id: chatId, text: WELCOME_TEXT });
     return;
   }
 
@@ -165,12 +142,13 @@ async function handleCallback(
   if (chatId === groupChatId) return;
   const userId = callback.from.id;
 
-  const { count } = await admin
+  const { data: pending } = await admin
     .from("telegram_support_pending_messages")
-    .select("*", { count: "exact", head: true })
-    .eq("telegram_user_id", userId);
+    .select("chat_id, message_id")
+    .eq("telegram_user_id", userId)
+    .order("created_at", { ascending: true });
 
-  if (!count) {
+  if (!pending || pending.length === 0) {
     await callTelegram("answerCallbackQuery", {
       callback_query_id: callback.id,
       text: EMPTY_QUEUE_TEXT,
@@ -179,33 +157,23 @@ async function handleCallback(
     return;
   }
 
-  await admin
-    .from("telegram_support_sessions")
-    .upsert({ telegram_user_id: userId, awaiting_phone: true, updated_at: new Date().toISOString() });
   await callTelegram("answerCallbackQuery", { callback_query_id: callback.id });
-  await callTelegram("sendMessage", { chat_id: chatId, text: PHONE_REQUEST_TEXT, reply_markup: PHONE_KEYBOARD });
+  await finalizeTicket(admin, callback.from, chatId, pending, groupChatId);
 }
 
 async function finalizeTicket(
   admin: AdminClient,
   user: TelegramUser,
   chatId: number,
-  phone: string,
+  pending: { chat_id: number; message_id: number }[],
   groupChatId: number
 ) {
-  const { data: pending } = await admin
-    .from("telegram_support_pending_messages")
-    .select("chat_id, message_id")
-    .eq("telegram_user_id", user.id)
-    .order("created_at", { ascending: true });
-
   const { data: ticket } = await admin
     .from("telegram_support_tickets")
     .insert({
       telegram_user_id: user.id,
       telegram_username: user.username ?? null,
       telegram_full_name: fullName(user),
-      phone,
     })
     .select("ticket_number")
     .single();
@@ -216,7 +184,7 @@ async function finalizeTicket(
     text: `🎫 Обращение #${ticket?.ticket_number}\n${username} ${fullName(user)}`,
   });
 
-  for (const item of pending ?? []) {
+  for (const item of pending) {
     await callTelegram("copyMessage", {
       chat_id: groupChatId,
       from_chat_id: item.chat_id,
@@ -224,17 +192,11 @@ async function finalizeTicket(
     });
   }
 
-  await callTelegram("sendMessage", { chat_id: groupChatId, text: `📞 Телефон: ${phone}` });
   await callTelegram("sendMessage", { chat_id: groupChatId, text: SEPARATOR });
 
   await admin.from("telegram_support_pending_messages").delete().eq("telegram_user_id", user.id);
-  await admin.from("telegram_support_sessions").delete().eq("telegram_user_id", user.id);
 
-  await callTelegram("sendMessage", {
-    chat_id: chatId,
-    text: CONFIRMATION_TEXT,
-    reply_markup: { remove_keyboard: true },
-  });
+  await callTelegram("sendMessage", { chat_id: chatId, text: CONFIRMATION_TEXT });
 }
 
 async function handleReplyCommand(admin: AdminClient, message: TelegramMessage) {

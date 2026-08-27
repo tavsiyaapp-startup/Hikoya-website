@@ -367,26 +367,18 @@ create table telegram_support_pending_messages (
 );
 create index telegram_support_pending_messages_user_idx on telegram_support_pending_messages (telegram_user_id);
 
-create table telegram_support_sessions (
-  telegram_user_id bigint primary key,
-  awaiting_phone boolean not null default false,
-  updated_at timestamptz not null default now()
-);
-
 create table telegram_support_tickets (
   id uuid primary key default gen_random_uuid(),
   ticket_number integer generated always as identity,   -- атомарная нумерация от Postgres вместо счётчика в памяти
   telegram_user_id bigint not null,
   telegram_username text,
   telegram_full_name text,
-  phone text not null,
   created_at timestamptz not null default now()
 );
 create unique index telegram_support_tickets_number_idx on telegram_support_tickets (ticket_number);
 create index telegram_support_tickets_user_idx on telegram_support_tickets (telegram_user_id);
 
 alter table telegram_support_pending_messages enable row level security;
-alter table telegram_support_sessions enable row level security;
 alter table telegram_support_tickets enable row level security;
 
 -- =============================================================================
@@ -941,3 +933,10 @@ on conflict (code) do nothing;
 --   это не работает (serverless, инстанс не переживает между вызовами),
 --   поэтому состояние переехало в три таблицы, а нумерация тикетов — в
 --   identity-колонку Postgres (атомарность бесплатно, вместо счётчика).
+-- [2026-08-27] Убран сбор номера телефона у бота поддержки (миграция
+--   0026). Не нужен — staff отвечает прямо через бота (/reply), Telegram
+--   user id + username и так однозначно определяют, кому писать. Кнопка
+--   "Отправить обращение" теперь сразу создаёт тикет и пересылает
+--   очередь сообщений в группу, без промежуточного шага. Таблица
+--   telegram_support_sessions (держала только awaiting_phone) удалена
+--   целиком, telegram_support_tickets.phone тоже.

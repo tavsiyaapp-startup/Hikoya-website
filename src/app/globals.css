@@ -97,9 +97,9 @@ html, body {
 /* Dark-mode-only tiled starfield texture, sitting behind the page (the
    .site-shell wrapper drops its own opaque bg-bg to let it show through in
    the gaps around cards). Fixed + oversized inset avoids a blurred-out
-   transparent fringe at the viewport edge; low opacity keeps it a subtle
-   texture rather than a competing photo, since real content sits on its own
-   opaque bg-card/bg-surface anyway.
+   transparent fringe at the viewport edge; real content sits on its own
+   opaque bg-card/bg-surface, so it stays unaffected regardless of how
+   bright/blurred this layer is tuned.
 
    body itself also needs to give up its own opaque background here — a
    negative z-index child still paints *behind* its non-positioned parent's
@@ -120,8 +120,8 @@ html, body {
   background-image: url("/images/background.jpg");
   background-repeat: repeat;
   background-size: 380px auto;
-  filter: blur(18px);
-  opacity: 0.22;
+  filter: blur(8px);
+  opacity: 0.45;
 }
 
 body {

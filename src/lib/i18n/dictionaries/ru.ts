@@ -126,6 +126,8 @@ const ru = {
     requestBadge: "По заявке",
     addToCollection: "Добавить в подборку",
     noCollectionsYet: "Подборок пока нет",
+    newCollectionConfirm: "Создать",
+    newCollectionError: "Не удалось создать подборку. Попробуйте ещё раз.",
     readingStatusNone: "Статус чтения",
     readingStatusWantToRead: "Хочу прочитать",
     readingStatusRead: "Прочитано",

@@ -38,6 +38,43 @@ async function isAuthor(userId: string) {
   return data?.role === "author";
 }
 
+// The "+ Создать подборку" row inside the story card's collection picker —
+// creating a collection there means you obviously want *this* story in it,
+// so it's added in the same round trip instead of dropping the user on
+// /collections with the story they started from now nowhere in sight.
+export async function createCollectionWithStory(
+  storyId: string,
+  title: string,
+  path: string
+): Promise<{ id: string; title: string } | { error: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect(ROUTES.onboarding);
+
+  const trimmed = title.trim();
+  if (!trimmed) return { error: "empty_title" };
+
+  const ownerType = (await isAuthor(user.id)) ? "author" : "user";
+
+  const { data: collection, error } = await supabase
+    .from("collections")
+    .insert({ owner_id: user.id, owner_type: ownerType, title: trimmed })
+    .select("id, title")
+    .single();
+  if (error || !collection) return { error: "failed" };
+
+  await supabase.from("collection_items").insert({ collection_id: collection.id, story_id: storyId });
+
+  updateTag("collections");
+  revalidatePath(path);
+  revalidatePath(ROUTES.collections);
+  revalidatePath(ROUTES.library);
+
+  return { id: collection.id, title: collection.title };
+}
+
 export async function updateCollection(collectionId: string, formData: FormData) {
   const supabase = await createClient();
   const {

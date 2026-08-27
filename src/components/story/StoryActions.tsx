@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { clsx } from "clsx";
 import Link from "next/link";
 import { toggleStoryLike, toggleStoryBookmark, toggleFollowAuthor } from "@/lib/actions/social";
-import { toggleStoryInCollection } from "@/lib/actions/collections";
+import { toggleStoryInCollection, createCollectionWithStory } from "@/lib/actions/collections";
 import { setReadingStatus } from "@/lib/actions/reading";
 import { HeartIcon, BookmarkIcon, CollectionsIcon, ChevronDownIcon } from "@/components/ui/icons";
 import { ROUTES } from "@/lib/constants";
@@ -105,6 +105,9 @@ function CollectionPickerButton({
   const { t } = useLocale();
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState(collections);
+  const [creating, setCreating] = useState(false);
+  const [newTitle, setNewTitle] = useState("");
+  const [createError, setCreateError] = useState<string | null>(null);
   const [, startTransition] = useTransition();
   const ref = useRef<HTMLDivElement>(null);
 
@@ -115,6 +118,26 @@ function CollectionPickerButton({
     document.addEventListener("mousedown", onClickOutside);
     return () => document.removeEventListener("mousedown", onClickOutside);
   }, []);
+
+  // Creating a collection from here means the intent is "put this story in
+  // a new collection" — so it's added in the same request, and the picker
+  // stays open with the new collection already checked, same as YouTube's
+  // "Save to playlist" → "Create new playlist" flow.
+  function handleCreate() {
+    const title = newTitle.trim();
+    if (!title) return;
+    setCreateError(null);
+    startTransition(async () => {
+      const result = await createCollectionWithStory(storyId, title, path);
+      if ("error" in result) {
+        setCreateError(t.story.newCollectionError);
+        return;
+      }
+      setItems((prev) => [{ id: result.id, title: result.title, hasStory: true }, ...prev]);
+      setNewTitle("");
+      setCreating(false);
+    });
+  }
 
   if (!isAuthenticated) {
     return (
@@ -166,14 +189,43 @@ function CollectionPickerButton({
               </button>
             ))
           ) : (
-            <p className="px-3 py-2.5 text-[13px] text-muted-2">{t.story.noCollectionsYet}</p>
+            !creating && <p className="px-3 py-2.5 text-[13px] text-muted-2">{t.story.noCollectionsYet}</p>
           )}
-          <Link
-            href={`${ROUTES.collections}?create=1`}
-            className="mt-1 block rounded-xl px-3 py-2.5 text-[13px] font-bold text-primary-800 hover:bg-surface"
-          >
-            + {t.library.createCollection}
-          </Link>
+
+          {creating ? (
+            <div className="mt-1 flex items-center gap-1.5 px-1 py-1">
+              <input
+                autoFocus
+                value={newTitle}
+                onChange={(e) => setNewTitle(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    handleCreate();
+                  }
+                  if (e.key === "Escape") setCreating(false);
+                }}
+                placeholder={t.collections.createTitlePlaceholder}
+                className="h-9 min-w-0 flex-1 rounded-lg border border-border bg-surface px-2.5 text-[13px] text-ink outline-none focus:border-primary-500"
+              />
+              <button
+                type="button"
+                onClick={handleCreate}
+                className="shrink-0 cursor-pointer rounded-lg bg-[#6D28D9] px-2.5 py-2 text-[12.5px] font-bold text-white"
+              >
+                {t.story.newCollectionConfirm}
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setCreating(true)}
+              className="mt-1 block w-full cursor-pointer rounded-xl px-3 py-2.5 text-left text-[13px] font-bold text-primary-800 hover:bg-surface"
+            >
+              + {t.library.createCollection}
+            </button>
+          )}
+          {createError && <p className="mt-1 px-3 text-[12px] text-danger">{createError}</p>}
         </div>
       )}
     </div>

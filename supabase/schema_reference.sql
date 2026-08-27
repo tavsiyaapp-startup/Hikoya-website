@@ -457,6 +457,9 @@ begin
   insert into profiles (id, username, display_name)
   values (new.id, candidate, coalesce(new.raw_user_meta_data ->> 'full_name', candidate));
 
+  insert into collections (owner_id, owner_type, title)
+  values (new.id, 'user', 'Моя подборка');
+
   return new;
 end;
 $$ language plpgsql security definer set search_path = public;
@@ -961,3 +964,13 @@ on conflict (code) do nothing;
 --   логинится на /admin-login тем же email/паролем, что и обычный вход
 --   (signInWithPassword) — отдельного "логина" не заводили, email и есть
 --   логин.
+-- [2026-08-27] Каждый пользователь получает подборку "Моя подборка" по
+--   умолчанию (миграция 0030) — handle_new_user() теперь вставляет и
+--   profiles, и эту стартовую collections-строку в одном триггере.
+--   Backfill той же миграцией выдал её всем уже существующим пользователям
+--   без подборки с таким названием. Заодно: "+ Создать подборку" в
+--   селекторе подборок на карточке произведения (StoryActions.tsx) больше
+--   не уводит на /collections — создаёт подборку и сразу добавляет в неё
+--   текущее произведение одним запросом (createCollectionWithStory),
+--   селектор остаётся открытым с новой подборкой уже отмеченной — как
+--   YouTube "Save to playlist" → "Create new playlist".

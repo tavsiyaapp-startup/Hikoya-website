@@ -128,6 +128,8 @@ const uz: typeof ru = {
     requestBadge: "Soʻrov boʻyicha",
     addToCollection: "Tanlanmaga qoʻshish",
     noCollectionsYet: "Hozircha tanlanmalar yoʻq",
+    newCollectionConfirm: "Yaratish",
+    newCollectionError: "Tanlanma yaratib boʻlmadi. Qaytadan urinib koʻring.",
     readingStatusNone: "Oʻqish holati",
     readingStatusWantToRead: "Oʻqimoqchiman",
     readingStatusRead: "Oʻqilgan",

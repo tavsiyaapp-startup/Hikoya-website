@@ -99,7 +99,7 @@ export default async function SearchPage({
         </summary>
 
         <FilterGroup label={t.search.language}>
-          {["ru", "uz"].map((code) => (
+          {["uz", "ru"].map((code) => (
             <LinkChip key={code} href={buildHref(sp, { lang: filters.language === code ? undefined : code })} active={filters.language === code}>
               {t.languages[code as "ru" | "uz"]}
             </LinkChip>

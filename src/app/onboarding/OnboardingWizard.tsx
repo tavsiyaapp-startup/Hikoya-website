@@ -243,7 +243,7 @@ export function OnboardingWizard({
             <p className="mb-6.5 text-[15px] leading-relaxed text-muted">{t.onboarding.langBody}</p>
 
             <div className="mb-6.5 grid grid-cols-2 gap-3.5">
-              {(["ru", "uz"] as const).map((code) => (
+              {(["uz", "ru"] as const).map((code) => (
                 <button
                   key={code}
                   type="button"

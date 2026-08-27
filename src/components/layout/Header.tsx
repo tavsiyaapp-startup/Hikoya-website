@@ -62,7 +62,7 @@ export function Header({ user, unreadCount = 0 }: { user: CurrentUser | null; un
 
       <div className="flex items-center gap-1.5 sm:ml-auto sm:gap-2.5">
         <div className="hidden gap-0.5 rounded-xl border border-border bg-primary-50 p-[3px] xs:flex">
-          {(["ru", "uz"] as const).map((code) => (
+          {(["uz", "ru"] as const).map((code) => (
             <button
               key={code}
               type="button"

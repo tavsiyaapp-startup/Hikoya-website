@@ -1,9 +1,9 @@
 import ru from "./dictionaries/ru";
 import uz from "./dictionaries/uz";
 
-export const locales = ["ru", "uz"] as const;
+export const locales = ["uz", "ru"] as const;
 export type Locale = (typeof locales)[number];
-export const defaultLocale: Locale = "ru";
+export const defaultLocale: Locale = "uz";
 export const LOCALE_COOKIE = "hikoya_locale";
 
 export type Dictionary = typeof ru;

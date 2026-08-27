@@ -219,7 +219,7 @@ export function CreateWizard({ userId, existingTags }: { userId: string; existin
 
                 <label className="mb-2 block text-[14px] font-bold">{t.create.languageLabel} *</label>
                 <div className="mb-5 flex gap-2.5">
-                  {(["ru", "uz"] as const).map((code) => (
+                  {(["uz", "ru"] as const).map((code) => (
                     <Chip key={code} active={language === code} onClick={() => setLanguage(code)}>
                       {t.languages[code]}
                     </Chip>

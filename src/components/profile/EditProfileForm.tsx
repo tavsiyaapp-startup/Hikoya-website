@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 import { useTheme } from "@/lib/ThemeProvider";
 import { createClient } from "@/lib/supabase/client";
@@ -35,6 +35,7 @@ export function EditProfileForm({
   const { t } = useLocale();
   const { theme, setTheme } = useTheme();
   const [open, setOpen] = useState(false);
+  const boxRef = useRef<HTMLDivElement>(null);
   const [preview, setPreview] = useState<string | null>(avatarUrl);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -45,6 +46,19 @@ export function EditProfileForm({
   const [resetMessage, setResetMessage] = useState<string | null>(null);
   const [resetError, setResetError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+
+  useEffect(() => {
+    if (!open) return;
+    function onClickOutside(e: MouseEvent) {
+      if (boxRef.current && !boxRef.current.contains(e.target as Node)) {
+        setAccountMessages([]);
+        setAccountErrors([]);
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", onClickOutside);
+    return () => document.removeEventListener("mousedown", onClickOutside);
+  }, [open]);
 
   async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -121,7 +135,7 @@ export function EditProfileForm({
   }
 
   return (
-    <div className="mt-4 flex flex-col gap-4 rounded-2xl border border-border bg-card p-5">
+    <div ref={boxRef} className="mt-4 flex flex-col gap-4 rounded-2xl border border-border bg-card p-5">
       <form action={handleSubmit} className="flex flex-col gap-4">
         <input type="hidden" name="avatarUrl" value={preview ?? ""} />
 

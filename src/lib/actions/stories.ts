@@ -218,7 +218,37 @@ export async function deleteChapter(chapterId: string, storyId: string, storySlu
   } = await supabase.auth.getUser();
   if (!user) redirect(ROUTES.onboarding);
 
-  await supabase.from("chapters").delete().eq("id", chapterId).eq("story_id", storyId);
+  const { data: deleted } = await supabase
+    .from("chapters")
+    .delete()
+    .eq("id", chapterId)
+    .eq("story_id", storyId)
+    .select("order_index")
+    .single();
+
+  // Close the gap this left behind — addChapter always appends at
+  // max(order_index) + 1, so without this a chapter written after a
+  // deletion lands past the gap instead of filling it, and its
+  // author-typed "Глава N" title (free text, not derived from order_index)
+  // drifts out of sync with the number readers actually see. Shifted one
+  // row at a time in ascending order so no two chapters ever briefly share
+  // an order_index (the unique(story_id, order_index) constraint isn't
+  // deferrable).
+  if (deleted) {
+    const { data: after } = await supabase
+      .from("chapters")
+      .select("id, order_index")
+      .eq("story_id", storyId)
+      .gt("order_index", deleted.order_index)
+      .order("order_index", { ascending: true });
+
+    for (const chapter of after ?? []) {
+      await supabase
+        .from("chapters")
+        .update({ order_index: chapter.order_index - 1 })
+        .eq("id", chapter.id);
+    }
+  }
 
   updateTag("stories");
   revalidatePath(ROUTES.manage(storySlug));

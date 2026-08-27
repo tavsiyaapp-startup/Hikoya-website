@@ -13,6 +13,7 @@ import { AddChapterForm } from "@/components/manage/AddChapterForm";
 import { ChapterRow } from "@/components/manage/ChapterRow";
 import { EditStoryForm } from "@/components/manage/EditStoryForm";
 import { StoryModerationActions } from "@/components/manage/StoryModerationActions";
+import { DeleteStoryButton } from "@/components/manage/DeleteStoryButton";
 
 const TABS = ["chapters", "edit"] as const;
 type Tab = (typeof TABS)[number];
@@ -91,7 +92,9 @@ export default async function ManagePage({
           )}
           {story.status === "draft" && story.rejection_reason && (
             <div className="mb-3 rounded-[14px] bg-danger-bg px-4 py-3">
-              <div className="mb-1 text-[12.5px] font-bold text-danger">{t.manage.rejectionReasonLabel}</div>
+              <div className="mb-1 text-[12.5px] font-bold text-danger">
+                {story.published_at ? t.manage.hiddenReasonLabel : t.manage.rejectionReasonLabel}
+              </div>
               <p className="text-[13.5px] leading-relaxed text-ink-soft">{story.rejection_reason}</p>
             </div>
           )}
@@ -142,17 +145,20 @@ export default async function ManagePage({
       )}
 
       {tab === "edit" && (
-        <EditStoryForm
-          storyId={story.id}
-          storySlug={slug}
-          authorId={story.author.id}
-          initialCoverUrl={story.cover_url}
-          initialGenre={story.genre}
-          initialRelationshipType={story.relationship_type}
-          initialDescription={story.description}
-          initialTags={tags}
-          existingTags={existingTags}
-        />
+        <>
+          <EditStoryForm
+            storyId={story.id}
+            storySlug={slug}
+            authorId={story.author.id}
+            initialCoverUrl={story.cover_url}
+            initialGenre={story.genre}
+            initialRelationshipType={story.relationship_type}
+            initialDescription={story.description}
+            initialTags={tags}
+            existingTags={existingTags}
+          />
+          <DeleteStoryButton storyId={story.id} storySlug={slug} />
+        </>
       )}
     </div>
   );

@@ -177,7 +177,8 @@ create index reading_statuses_user_status_idx on reading_statuses (user_id, stat
 create type notification_type as enum (
   'new_comment', 'comment_reply', 'comment_like',
   'story_approved', 'story_rejected', 'chapter_approved', 'chapter_rejected',
-  'story_like'   -- добавлено в 0019: лайк истории раньше не уведомлял автора
+  'story_like',   -- добавлено в 0019: лайк истории раньше не уведомлял автора
+  'story_hidden'  -- добавлено в 0027: отдельно от story_rejected, см. changelog
 );
 
 create table notifications (
@@ -512,7 +513,7 @@ create policy "published public stories are readable" on stories for select usin
 );
 create policy "authors insert their own stories" on stories for insert with check (author_id = auth.uid());
 create policy "authors update their own stories" on stories for update using (author_id = auth.uid() or is_staff());
-create policy "authors delete their own stories" on stories for delete using (author_id = auth.uid() or is_staff());
+create policy "authors delete their own stories" on stories for delete using (author_id = auth.uid());   -- staff can never delete, see changelog 0027
 
 -- chapters
 alter table chapters enable row level security;
@@ -940,3 +941,17 @@ on conflict (code) do nothing;
 --   очередь сообщений в группу, без промежуточного шага. Таблица
 --   telegram_support_sessions (держала только awaiting_phone) удалена
 --   целиком, telegram_support_tickets.phone тоже.
+-- [2026-08-27] Только автор может удалить своё произведение — admin
+--   может только скрыть (миграция 0027). Политика delete на stories
+--   раньше пускала и is_staff() тоже, хотя ни один UI этим не пользовался
+--   (delete вообще нигде не было построено ни для автора, ни для admin) —
+--   убрала is_staff() из политики, это чистое ужесточение, а не смена
+--   поведения чего-то уже работавшего. deleteStory (author-only, RLS)
+--   вручную чистит likes для истории/её глав/комментариев перед delete —
+--   likes полиморфная (target_type/target_id), FK на неё нет, каскад её
+--   не подхватывает. hideStory (admin) — то же самое, что rejectStory
+--   (status → draft, тот же rejection_reason), просто применяется к уже
+--   опубликованной истории вместо ожидающей проверки; уведомление другого
+--   типа (story_hidden, новое значение notification_type), чтобы автору
+--   не пришло "ваша история отклонена" про то, что на самом деле уже
+--   опубликованную работу сняли с показа.

@@ -23,6 +23,7 @@ export type NotificationType =
   | "comment_like"
   | "story_approved"
   | "story_rejected"
+  | "story_hidden"
   | "chapter_approved"
   | "chapter_rejected"
   | "story_like";

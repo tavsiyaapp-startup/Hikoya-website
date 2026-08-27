@@ -10,7 +10,8 @@ import type { NotificationWithContext } from "@/lib/queries/notifications";
 
 function notificationHref(n: NotificationWithContext): string {
   if (!n.story) return ROUTES.home;
-  if (n.type === "story_rejected" || n.type === "chapter_rejected") return ROUTES.manage(n.story.slug);
+  if (n.type === "story_rejected" || n.type === "story_hidden" || n.type === "chapter_rejected")
+    return ROUTES.manage(n.story.slug);
   if (!n.chapter) return ROUTES.story(n.story.slug);
   const base = ROUTES.chapter(n.story.slug, n.chapter.order_index);
   return n.comment_id ? `${base}#comment-${n.comment_id}` : base;
@@ -85,6 +86,12 @@ export function NotificationItem({
             {n.type === "story_rejected" && (
               <>
                 {t.notifications.storyRejected} {storyTitle && <>«{storyTitle}»</>}
+                {n.message && <span className="block text-[13px] text-muted-2">{n.message}</span>}
+              </>
+            )}
+            {n.type === "story_hidden" && (
+              <>
+                {t.notifications.storyHidden} {storyTitle && <>«{storyTitle}»</>}
                 {n.message && <span className="block text-[13px] text-muted-2">{n.message}</span>}
               </>
             )}

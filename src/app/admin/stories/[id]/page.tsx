@@ -8,6 +8,7 @@ import { ROUTES } from "@/lib/constants";
 import { Badge } from "@/components/ui/Chip";
 import { ChevronLeftIcon } from "@/components/ui/icons";
 import { StoryModerateActions } from "./StoryModerateActions";
+import { StoryHideAction } from "./StoryHideAction";
 import { ChapterModerateActions } from "./ChapterModerateActions";
 
 function statusTone(status: string) {
@@ -69,6 +70,9 @@ export default async function AdminStoryModeratePage({ params }: { params: Promi
 
             {story.status === "pending_review" && (
               <StoryModerateActions storyId={story.id} storySlug={story.slug} />
+            )}
+            {(story.status === "published" || story.status === "unlisted") && (
+              <StoryHideAction storyId={story.id} storySlug={story.slug} />
             )}
           </div>
         </div>

@@ -78,6 +78,33 @@ export async function rejectStory(storyId: string, storySlug: string, reason: st
   revalidatePath(ROUTES.admin);
 }
 
+// Same status/reason fields as rejectStory, applied to an already-live
+// story instead of a pending submission — staff can only take a published
+// story off public view, never delete it (RLS blocks that outright, see
+// migration 0027). Distinct notification type from story_rejected so the
+// author isn't told a live story was "rejected".
+export async function hideStory(storyId: string, storySlug: string, reason: string) {
+  await requireStaff();
+  const admin = createAdminClient();
+  const { data: story } = await admin
+    .from("stories")
+    .update({ status: "draft", rejection_reason: reason })
+    .eq("id", storyId)
+    .select("author_id")
+    .single();
+  if (story) {
+    await createNotification({ userId: story.author_id, type: "story_hidden", storyId, message: reason });
+  }
+  updateTag("stories");
+  revalidatePath(ROUTES.manage(storySlug));
+  revalidatePath(ROUTES.story(storySlug));
+  revalidatePath(`${ROUTES.admin}/stories`);
+  revalidatePath(ROUTES.adminStory(storyId));
+  revalidatePath(ROUTES.admin);
+  revalidatePath(ROUTES.home);
+  revalidatePath(ROUTES.search);
+}
+
 export async function approveChapter(chapterId: string, storyId: string, storySlug: string) {
   await requireStaff();
   const admin = createAdminClient();

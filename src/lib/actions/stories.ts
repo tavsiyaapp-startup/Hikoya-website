@@ -289,6 +289,51 @@ export async function submitStoryForReview(storyId: string, storySlug: string) {
   revalidatePath(ROUTES.home);
 }
 
+// Author-only — RLS enforces this on the delete itself (see migration
+// 0027, which also removed staff's delete rights: admin can only hide a
+// story, never delete it). The ownership check here runs first so the
+// admin-client cleanup below — needed because `likes` is polymorphic
+// (target_type/target_id, no FK) and can't be scoped by RLS the way an
+// owned row can — never touches another author's story.
+export async function deleteStory(storyId: string, storySlug: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect(ROUTES.onboarding);
+
+  const { data: story } = await supabase.from("stories").select("author_id").eq("id", storyId).single();
+  if (!story || story.author_id !== user.id) return;
+
+  const admin = createAdminClient();
+  const { data: chapterRows } = await admin.from("chapters").select("id").eq("story_id", storyId);
+  const chapterIds = (chapterRows ?? []).map((c) => c.id as string);
+
+  let commentIds: string[] = [];
+  if (chapterIds.length > 0) {
+    const { data: commentRows } = await admin.from("comments").select("id").in("chapter_id", chapterIds);
+    commentIds = (commentRows ?? []).map((c) => c.id as string);
+  }
+
+  await admin.from("likes").delete().eq("target_type", "story").eq("target_id", storyId);
+  if (chapterIds.length > 0) {
+    await admin.from("likes").delete().eq("target_type", "chapter").in("target_id", chapterIds);
+  }
+  if (commentIds.length > 0) {
+    await admin.from("likes").delete().eq("target_type", "comment").in("target_id", commentIds);
+  }
+
+  // chapters/comments/bookmarks/reading_statuses/story_tags/collection_stories/
+  // featured_stories cascade; notifications/request_responses.story_id go null.
+  await supabase.from("stories").delete().eq("id", storyId).eq("author_id", user.id);
+
+  updateTag("stories");
+  revalidatePath(ROUTES.story(storySlug));
+  revalidatePath(ROUTES.home);
+  revalidatePath(ROUTES.search);
+  redirect(ROUTES.library);
+}
+
 export async function submitChapterForReview(chapterId: string, storyId: string, storySlug: string) {
   const supabase = await createClient();
   const {

@@ -487,6 +487,10 @@ const uz: typeof ru = {
     loginTitle: "Boshqaruv paneliga kirish",
     loginPasswordPlaceholder: "Parol",
     loginError: "Email yoki parol notoʻgʻri.",
+    loginForgotPassword: "Parolni unutdingizmi yoki hali oʻrnatmadingizmi?",
+    loginResetNeedsEmail: "Avval yuqorida email kiriting.",
+    loginResetSent: "Parol oʻrnatish uchun xat pochtaga yuborildi. Havola orqali oʻting, parol qoʻying va shu yerdan kiring.",
+    loginResetError: "Xatni yuborib boʻlmadi. Emailni tekshirib, qayta urinib koʻring.",
   },
   auth: {
     googleError: "Kirish serveriga ulanib boʻlmadi. Birozdan keyin qayta urinib koʻring.",

@@ -116,23 +116,6 @@ export default async function HomePage({
 
   return (
     <div>
-      <div className="mb-6 flex items-center gap-2.5 overflow-x-auto">
-        {TABS.map((key) => {
-          const locked = !user && (key === "forYou" || key === "following");
-          return (
-            <LinkChip key={key} href={locked ? ROUTES.onboarding : `?tab=${key}`} active={tab === key} shrink>
-              <span>{t.home.tabs[key]}</span>
-              {locked && <LockIcon />}
-            </LinkChip>
-          );
-        })}
-        {!user && (
-          <div className="ml-auto hidden shrink-0 items-center gap-2 rounded-xl bg-primary-50 px-3.5 py-2 text-[12.5px] font-semibold text-[#5B4B8A] dark:text-[#C4B8E8] sm:flex">
-            <span>{t.home.guestHint}</span>
-          </div>
-        )}
-      </div>
-
       <HeroCarousel slides={heroSlides} />
 
       {/* "Топ" section — commented out for now, re-enable later (see also the
@@ -204,6 +187,23 @@ export default async function HomePage({
           </div>
         </>
       )}
+
+      <div className="mb-6 flex items-center gap-2.5 overflow-x-auto">
+        {TABS.map((key) => {
+          const locked = !user && (key === "forYou" || key === "following");
+          return (
+            <LinkChip key={key} href={locked ? ROUTES.onboarding : `?tab=${key}`} active={tab === key} shrink>
+              <span>{t.home.tabs[key]}</span>
+              {locked && <LockIcon />}
+            </LinkChip>
+          );
+        })}
+        {!user && (
+          <div className="ml-auto hidden shrink-0 items-center gap-2 rounded-xl bg-primary-50 px-3.5 py-2 text-[12.5px] font-semibold text-[#5B4B8A] dark:text-[#C4B8E8] sm:flex">
+            <span>{t.home.guestHint}</span>
+          </div>
+        )}
+      </div>
 
       <div className="mb-4.5 flex items-baseline gap-3.5">
         <h2 className="text-2xl font-extrabold tracking-tight">{t.home.feedTitle}</h2>

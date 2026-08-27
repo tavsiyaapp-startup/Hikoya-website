@@ -51,7 +51,7 @@ export function NotificationItem({
       }`}
     >
       <Link href={notificationHref(n)} className="flex min-w-0 flex-1 gap-3.5">
-        <span className="flex h-9.5 w-9.5 shrink-0 items-center justify-center rounded-full bg-white">
+        <span className="flex h-9.5 w-9.5 shrink-0 items-center justify-center rounded-full bg-card">
           <NotificationIcon type={n.type} />
         </span>
         <div className="min-w-0 flex-1">

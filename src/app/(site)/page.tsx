@@ -68,7 +68,7 @@ export default async function HomePage({
           );
         })}
         {!user && (
-          <div className="ml-auto hidden shrink-0 items-center gap-2 rounded-xl bg-primary-50 px-3.5 py-2 text-[12.5px] font-semibold text-[#5B4B8A] sm:flex">
+          <div className="ml-auto hidden shrink-0 items-center gap-2 rounded-xl bg-primary-50 px-3.5 py-2 text-[12.5px] font-semibold text-[#5B4B8A] dark:text-[#C4B8E8] sm:flex">
             <span>{t.home.guestHint}</span>
           </div>
         )}

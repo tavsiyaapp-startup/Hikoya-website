@@ -44,7 +44,7 @@ export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
             type="button"
             onClick={() => go(index - 1)}
             aria-label="Previous slide"
-            className="absolute left-3 top-1/2 z-10 flex h-9 w-9 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full bg-white/85 text-ink-soft shadow-[0_4px_14px_rgba(60,40,120,0.16)] hover:bg-white"
+            className="absolute left-3 top-1/2 z-10 flex h-9 w-9 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full bg-white/85 text-ink-soft shadow-[0_4px_14px_rgba(60,40,120,0.16)] hover:bg-card"
           >
             <ChevronLeftIcon />
           </button>
@@ -52,7 +52,7 @@ export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
             type="button"
             onClick={() => go(index + 1)}
             aria-label="Next slide"
-            className="absolute right-3 top-1/2 z-10 flex h-9 w-9 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full bg-white/85 text-ink-soft shadow-[0_4px_14px_rgba(60,40,120,0.16)] hover:bg-white"
+            className="absolute right-3 top-1/2 z-10 flex h-9 w-9 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full bg-white/85 text-ink-soft shadow-[0_4px_14px_rgba(60,40,120,0.16)] hover:bg-card"
           >
             <ChevronRightIcon />
           </button>
@@ -65,7 +65,7 @@ export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
                 aria-label={`Go to slide ${i + 1}`}
                 className={clsx(
                   "h-2 cursor-pointer rounded-full transition-all",
-                  i === index ? "w-6 bg-primary-700" : "w-2 bg-white/70 hover:bg-white"
+                  i === index ? "w-6 bg-[#7C3AED]" : "w-2 bg-white/70 hover:bg-card"
                 )}
               />
             ))}
@@ -87,7 +87,7 @@ function Slide({ slide, locale }: { slide: HeroSlide; locale: "ru" | "uz" }) {
   const hasText = Boolean(title || body);
 
   return (
-    <div className="flex h-[460px] flex-col border border-primary-100 bg-linear-to-br from-primary-50 via-[#F6ECFB] to-pink-bg sm:h-90 sm:flex-row">
+    <div className="flex h-[460px] flex-col border border-primary-100 bg-linear-to-br from-primary-50 via-[#F6ECFB] to-pink-bg dark:via-[#2A2044] sm:h-90 sm:flex-row">
       {hasText && (
         <div className="flex flex-1 flex-col justify-center p-6 sm:p-11">
           {title && (

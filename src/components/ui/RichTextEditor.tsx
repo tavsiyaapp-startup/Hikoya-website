@@ -144,7 +144,7 @@ function Toolbar({ editor }: { editor: Editor }) {
           if (size) chain.setFontSize(size).run();
           else chain.unsetFontSize().run();
         }}
-        className="h-8 cursor-pointer rounded-[8px] border border-border bg-white px-1.5 text-[12.5px] text-ink-soft outline-none"
+        className="h-8 cursor-pointer rounded-[8px] border border-border bg-card px-1.5 text-[12.5px] text-ink-soft outline-none"
       >
         {FONT_SIZES.map((f) => (
           <option key={f.label} value={f.value}>
@@ -157,7 +157,7 @@ function Toolbar({ editor }: { editor: Editor }) {
         title="Шрифт"
         value={currentFontFamily}
         onChange={(e) => editor.chain().focus().setFontFamily(e.target.value).run()}
-        className="h-8 cursor-pointer rounded-[8px] border border-border bg-white px-1.5 text-[12.5px] text-ink-soft outline-none"
+        className="h-8 cursor-pointer rounded-[8px] border border-border bg-card px-1.5 text-[12.5px] text-ink-soft outline-none"
       >
         {FONT_FAMILIES.map((f) => (
           <option key={f.label} value={f.value}>
@@ -284,7 +284,7 @@ export const RichTextEditor = forwardRef<
   return (
     <div
       className={clsx(
-        "w-full overflow-hidden rounded-[13px] border border-border bg-surface transition focus-within:border-primary-500 focus-within:bg-white",
+        "w-full overflow-hidden rounded-[13px] border border-border bg-surface transition focus-within:border-primary-500 focus-within:bg-card",
         className
       )}
     >

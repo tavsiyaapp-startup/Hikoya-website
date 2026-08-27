@@ -258,6 +258,8 @@ const uz: typeof ru = {
     emailChangeError: "Emailni oʻzgartirib boʻlmadi. Qaytadan urinib koʻring.",
     changePassword: "Parolni oʻzgartirish",
     changePasswordHint: "Pochtangizga tasdiqlash havolasini yuboramiz — parol shu havola bosilgandan keyin oʻzgaradi.",
+    darkTheme: "Tungi mavzu",
+    darkThemeHint: "Shu qurilmada qoʻllaniladi.",
     passwordResetSent: "Tasdiqlash xati pochtangizga yuborildi. Yangi parol qoʻyish uchun havolani bosing.",
     passwordResetError: "Xatni yuborib boʻlmadi. Qaytadan urinib koʻring.",
     passwordChanged: "Parol yangilandi.",

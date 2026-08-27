@@ -33,7 +33,7 @@ export function UserRoleSelect({
       value={role}
       disabled={pending}
       onChange={(e) => startTransition(() => updateUserRole(userId, e.target.value as UserRole))}
-      className="h-8.5 cursor-pointer rounded-[9px] border border-border bg-white px-2 text-[12.5px] font-bold text-ink-soft disabled:opacity-50"
+      className="h-8.5 cursor-pointer rounded-[9px] border border-border bg-card px-2 text-[12.5px] font-bold text-ink-soft disabled:opacity-50"
     >
       {ROLES.map((r) => (
         <option key={r} value={r}>

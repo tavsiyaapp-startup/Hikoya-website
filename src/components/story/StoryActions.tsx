@@ -37,14 +37,14 @@ export function LikeBookmarkRow({
       <div className="mb-4.5 flex gap-2.5">
         <Link
           href={ROUTES.onboarding}
-          className="flex h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-border bg-white text-[13.5px] font-bold text-ink-soft"
+          className="flex h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-border bg-card text-[13.5px] font-bold text-ink-soft"
         >
           <HeartIcon />
           <span>{t.common.like}</span>
         </Link>
         <Link
           href={ROUTES.onboarding}
-          className="flex h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-border bg-white text-[13.5px] font-bold text-ink-soft"
+          className="flex h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-border bg-card text-[13.5px] font-bold text-ink-soft"
         >
           <BookmarkIcon />
           <span>{t.common.bookmark}</span>
@@ -64,7 +64,7 @@ export function LikeBookmarkRow({
         }}
         className={clsx(
           "flex h-11 flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl border text-[13.5px] font-bold transition",
-          liked ? "border-primary-300 bg-primary-50 text-primary-900" : "border-border bg-white text-ink-soft"
+          liked ? "border-primary-300 bg-primary-50 text-primary-900" : "border-border bg-card text-ink-soft"
         )}
       >
         <HeartIcon filled={liked} className={liked ? "text-primary-600" : undefined} />
@@ -80,7 +80,7 @@ export function LikeBookmarkRow({
           "flex h-11 flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl border text-[13.5px] font-bold transition",
           bookmarked
             ? "border-primary-300 bg-primary-50 text-primary-900"
-            : "border-border bg-white text-ink-soft"
+            : "border-border bg-card text-ink-soft"
         )}
       >
         <BookmarkIcon filled={bookmarked} className={bookmarked ? "text-primary-600" : undefined} />
@@ -121,7 +121,7 @@ function CollectionPickerButton({
       <Link
         href={ROUTES.onboarding}
         title={t.story.addToCollection}
-        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-border bg-white text-ink-soft"
+        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-border bg-card text-ink-soft"
       >
         <CollectionsIcon />
       </Link>
@@ -136,13 +136,13 @@ function CollectionPickerButton({
         onClick={() => setOpen((v) => !v)}
         className={clsx(
           "flex h-11 w-11 cursor-pointer items-center justify-center rounded-xl border transition",
-          open ? "border-primary-300 bg-primary-50 text-primary-900" : "border-border bg-white text-ink-soft"
+          open ? "border-primary-300 bg-primary-50 text-primary-900" : "border-border bg-card text-ink-soft"
         )}
       >
         <CollectionsIcon />
       </button>
       {open && (
-        <div className="absolute right-0 top-full z-20 mt-2 w-64 max-h-72 overflow-y-auto rounded-2xl border border-border bg-white p-2 shadow-[0_14px_30px_rgba(60,40,120,0.14)]">
+        <div className="absolute right-0 top-full z-20 mt-2 w-64 max-h-72 overflow-y-auto rounded-2xl border border-border bg-card p-2 shadow-[0_14px_30px_rgba(60,40,120,0.14)]">
           {items.length > 0 ? (
             items.map((c) => (
               <button
@@ -157,7 +157,7 @@ function CollectionPickerButton({
                 <span
                   className={clsx(
                     "flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-[5px] border text-[10px] text-white",
-                    c.hasStory ? "border-primary-600 bg-primary-600" : "border-border-soft bg-white"
+                    c.hasStory ? "border-[#9333EA] bg-[#9333EA]" : "border-border-soft bg-card"
                   )}
                 >
                   {c.hasStory && "✓"}
@@ -224,14 +224,14 @@ export function ReadingStatusSelect({
         onClick={() => setOpen((v) => !v)}
         className={clsx(
           "flex h-11 w-full cursor-pointer items-center justify-between rounded-xl border px-3.5 text-[13.5px] font-bold transition",
-          status ? "border-primary-300 bg-primary-50 text-primary-900" : "border-border bg-white text-ink-soft"
+          status ? "border-primary-300 bg-primary-50 text-primary-900" : "border-border bg-card text-ink-soft"
         )}
       >
         <span>{current.label}</span>
         <ChevronDownIcon className={clsx("transition-transform", open && "rotate-180")} />
       </button>
       {open && (
-        <div className="absolute left-0 right-0 top-full z-20 mt-2 overflow-hidden rounded-2xl border border-border bg-white p-1.5 shadow-[0_14px_30px_rgba(60,40,120,0.14)]">
+        <div className="absolute left-0 right-0 top-full z-20 mt-2 overflow-hidden rounded-2xl border border-border bg-card p-1.5 shadow-[0_14px_30px_rgba(60,40,120,0.14)]">
           {options.map((o) => (
             <button
               key={o.label}
@@ -289,7 +289,7 @@ export function FollowButton({
       }}
       className={clsx(
         "flex h-10.5 w-full cursor-pointer items-center justify-center rounded-xl border text-[14px] font-bold transition",
-        following ? "border-border bg-white text-ink-soft" : "border-primary-200 bg-primary-50 text-primary-900"
+        following ? "border-border bg-card text-ink-soft" : "border-primary-200 bg-primary-50 text-primary-900"
       )}
     >
       {content}

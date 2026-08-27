@@ -55,7 +55,7 @@ export function Sidebar({ user }: { user: CurrentUser | null }) {
 
       <aside
         className={clsx(
-          "fixed inset-y-0 left-0 z-40 flex w-[248px] shrink-0 flex-col overflow-y-auto border-r border-border bg-white px-3.5 py-5 transition-transform duration-200 lg:sticky lg:top-[76px] lg:z-auto lg:h-[calc(100vh-76px)] lg:translate-x-0 lg:transition-[width]",
+          "fixed inset-y-0 left-0 z-40 flex w-[248px] shrink-0 flex-col overflow-y-auto border-r border-border bg-card px-3.5 py-5 transition-transform duration-200 lg:sticky lg:top-[76px] lg:z-auto lg:h-[calc(100vh-76px)] lg:translate-x-0 lg:transition-[width]",
           open ? "translate-x-0" : "-translate-x-full",
           expanded ? "lg:w-[248px]" : "lg:w-[76px]"
         )}

@@ -1,5 +1,10 @@
 @import "tailwindcss";
 
+/* Manual dark mode, toggled from profile settings (ThemeProvider sets
+   data-theme on <html>) — not tied to prefers-color-scheme, so dark: only
+   activates under an explicit choice, never silently from OS settings. */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
 @theme {
   --breakpoint-xs: 26rem;
 
@@ -38,6 +43,49 @@
   --color-danger-bg: #FDECEC;
   --color-pink: #C22E7C;
   --color-pink-bg: #FDECF4;
+}
+
+/* Dark mode: every token above gets redefined here except primary-950,
+   ink-dark and ink-darker — those three are only ever used as fixed-dark
+   decorative accents (the homepage/reader "gate" CTA gradient, the admin
+   sidebar), not as a light/dark-adaptive scale step, so they stay constant
+   in both themes. The primary-50..900 scale is deliberately mirrored
+   (light-mode's palest tints become dark-mode's near-background tints,
+   light-mode's darkest text-accent shades become dark-mode's lightest) —
+   verified against actual usage: bg-primary-{50,100,200} is almost always
+   a subtle tint behind a badge/chip, text-primary-{700,800,900} is almost
+   always a legible accent/link color, so mirroring the ramp keeps every
+   existing className working unchanged instead of requiring a dark: variant
+   on every one of them individually. */
+[data-theme="dark"] {
+  --color-bg: #14101F;
+  --color-ink: #EDEAF6;
+  --color-ink-soft: #C6C0DA;
+  --color-muted: #A39CC0;
+  --color-muted-2: #8B84A8;
+  --color-muted-3: #6B6488;
+  --color-border: #2D2745;
+  --color-border-soft: #251F3B;
+  --color-card: #201A38;
+  --color-surface: #1C1730;
+
+  --color-primary-50: #241E3D;
+  --color-primary-100: #2C2548;
+  --color-primary-200: #3A3060;
+  --color-primary-300: #4F4380;
+  --color-primary-400: #7A69B8;
+  --color-primary-500: #9683DE;
+  --color-primary-600: #B49CFB;
+  --color-primary-700: #C7B4FE;
+  --color-primary-800: #DCCFFF;
+  --color-primary-900: #EDE4FF;
+
+  --color-success: #6EE7B7;
+  --color-success-bg: #153728;
+  --color-danger: #F87171;
+  --color-danger-bg: #3D1A1A;
+  --color-pink: #F472B6;
+  --color-pink-bg: #3D1530;
 }
 
 html, body {

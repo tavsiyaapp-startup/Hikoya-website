@@ -69,7 +69,7 @@ export function UserRow({
           <button
             type="button"
             onClick={() => setBadgesOpen((v) => !v)}
-            className="h-8.5 cursor-pointer rounded-[9px] border border-border bg-white px-3.5 text-[12.5px] font-bold text-ink-soft"
+            className="h-8.5 cursor-pointer rounded-[9px] border border-border bg-card px-3.5 text-[12.5px] font-bold text-ink-soft"
           >
             {t.admin.manageBadges} ({initialCheckedIds.length})
           </button>
@@ -86,7 +86,7 @@ export function UserRow({
               {achievements.map((a) => (
                 <label
                   key={a.id}
-                  className="flex cursor-pointer items-center gap-2 rounded-[10px] border border-border bg-white px-3 py-1.5 text-[13px] font-semibold text-ink-soft hover:bg-primary-50"
+                  className="flex cursor-pointer items-center gap-2 rounded-[10px] border border-border bg-card px-3 py-1.5 text-[13px] font-semibold text-ink-soft hover:bg-primary-50"
                 >
                   <input
                     type="checkbox"

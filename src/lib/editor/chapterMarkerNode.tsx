@@ -20,7 +20,7 @@ function ChapterMarkerView({ node, updateAttributes, deleteNode }: NodeViewProps
         value={node.attrs.title as string}
         onChange={(e) => updateAttributes({ title: e.target.value })}
         placeholder="Название главы"
-        className="min-w-0 flex-1 rounded-[8px] border border-primary-200 bg-white px-2.5 py-1.5 text-[13.5px] outline-none focus:border-primary-500"
+        className="min-w-0 flex-1 rounded-[8px] border border-primary-200 bg-card px-2.5 py-1.5 text-[13.5px] outline-none focus:border-primary-500"
       />
       <button
         type="button"

@@ -121,16 +121,16 @@ export function CreateWizard({ userId, existingTags }: { userId: string; existin
               className={clsx(
                 "flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-2 text-[13px] font-bold",
                 n === step
-                  ? "border-primary-700 bg-primary-700 text-white"
+                  ? "border-[#7C3AED] bg-[#7C3AED] text-white"
                   : n < step
                     ? "cursor-pointer border-primary-500 bg-primary-50 text-primary-800"
-                    : "border-border bg-white text-muted-3"
+                    : "border-border bg-card text-muted-3"
               )}
             >
               {n}
             </button>
             {n < 3 && (
-              <div className={clsx("mx-2.5 h-0.5 flex-1", n < step ? "bg-primary-500" : "bg-border")} />
+              <div className={clsx("mx-2.5 h-0.5 flex-1", n < step ? "bg-[#A78BFA]" : "bg-border")} />
             )}
           </div>
         ))}
@@ -236,7 +236,7 @@ export function CreateWizard({ userId, existingTags }: { userId: string; existin
                       onClick={() => setAgeRating(age as AgeRating)}
                       className={clsx(
                         "flex flex-col items-start gap-0.5 rounded-[13px] border px-3.5 py-2.5 text-left",
-                        ageRating === age ? "border-primary-500 bg-primary-50" : "border-border bg-white"
+                        ageRating === age ? "border-primary-500 bg-primary-50" : "border-border bg-card"
                       )}
                     >
                       <span className="text-[14.5px] font-bold">{age}</span>
@@ -327,13 +327,13 @@ export function CreateWizard({ userId, existingTags }: { userId: string; existin
                       onClick={() => setVisibility(value)}
                       className={clsx(
                         "flex items-center gap-3.5 rounded-2xl border px-4.5 py-3.5 text-left",
-                        visibility === value ? "border-primary-500 bg-primary-50" : "border-border bg-white"
+                        visibility === value ? "border-primary-500 bg-primary-50" : "border-border bg-card"
                       )}
                     >
                       <span
                         className={clsx(
                           "h-4.5 w-4.5 shrink-0 rounded-full border-2",
-                          visibility === value ? "border-primary-700 bg-primary-700" : "border-border"
+                          visibility === value ? "border-[#7C3AED] bg-[#7C3AED]" : "border-border"
                         )}
                       />
                       <span className="flex flex-col gap-0.5">
@@ -364,7 +364,7 @@ export function CreateWizard({ userId, existingTags }: { userId: string; existin
               <button
                 type="button"
                 onClick={() => setStep((s) => s - 1)}
-                className="h-13.5 cursor-pointer rounded-[15px] border border-border bg-white px-6 text-[15px] font-semibold text-ink-soft"
+                className="h-13.5 cursor-pointer rounded-[15px] border border-border bg-card px-6 text-[15px] font-semibold text-ink-soft"
               >
                 {t.common.back}
               </button>
@@ -373,7 +373,7 @@ export function CreateWizard({ userId, existingTags }: { userId: string; existin
               type="button"
               disabled={(step === 1 && !step1Valid) || (step === 2 && !step2Valid) || pending}
               onClick={() => (step < 3 ? setStep((s) => s + 1) : handlePublish())}
-              className="h-13.5 flex-1 cursor-pointer rounded-[15px] border-none bg-linear-to-br from-primary-800 to-primary-600 text-[16px] font-bold text-white shadow-[0_10px_24px_rgba(109,40,217,0.3)] disabled:cursor-not-allowed disabled:opacity-50"
+              className="h-13.5 flex-1 cursor-pointer rounded-[15px] border-none bg-linear-to-br from-[#6D28D9] to-[#9333EA] text-[16px] font-bold text-white shadow-[0_10px_24px_rgba(109,40,217,0.3)] disabled:cursor-not-allowed disabled:opacity-50"
             >
               {step < 3 ? t.common.next : pending ? t.common.loading : t.create.publish}
             </button>

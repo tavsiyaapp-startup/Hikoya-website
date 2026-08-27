@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
+import { useTheme } from "@/lib/ThemeProvider";
 import { createClient } from "@/lib/supabase/client";
 import { updateProfile } from "@/lib/actions/profile";
 import { ROUTES } from "@/lib/constants";
@@ -9,6 +10,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { Button } from "@/components/ui/Button";
+import { Toggle } from "@/components/ui/Toggle";
 import { SignOutButton } from "@/components/profile/SignOutButton";
 
 function siteUrl() {
@@ -31,6 +33,7 @@ export function EditProfileForm({
   bio: string | null;
 }) {
   const { t } = useLocale();
+  const { theme, setTheme } = useTheme();
   const [open, setOpen] = useState(false);
   const [preview, setPreview] = useState<string | null>(avatarUrl);
   const [uploading, setUploading] = useState(false);
@@ -190,6 +193,20 @@ export function EditProfileForm({
         </Button>
         {resetMessage && <p className="mt-2 text-[12px] text-primary-800">{resetMessage}</p>}
         {resetError && <p className="mt-2 text-[12px] text-danger">{resetError}</p>}
+      </div>
+
+      <div className="border-t border-border-soft pt-4">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <div className="text-[13px] font-bold">{t.profile.darkTheme}</div>
+            <p className="mt-0.5 text-[12px] text-muted-2">{t.profile.darkThemeHint}</p>
+          </div>
+          <Toggle
+            checked={theme === "dark"}
+            onChange={(next) => setTheme(next ? "dark" : "light")}
+            label={t.profile.darkTheme}
+          />
+        </div>
       </div>
 
       <div className="border-t border-border-soft pt-4">

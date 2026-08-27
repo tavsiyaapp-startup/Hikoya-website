@@ -15,7 +15,7 @@ export function DeleteStoryButton({ storyId, storySlug }: { storyId: string; sto
   }
 
   return (
-    <div className="mt-6 rounded-3xl border border-red-200 bg-danger-bg p-4.5 sm:p-6.5">
+    <div className="mt-6 rounded-3xl border border-red-200 dark:border-red-900/60 bg-danger-bg p-4.5 sm:p-6.5">
       <h3 className="mb-1 text-[15px] font-extrabold text-danger">{t.manage.dangerZoneTitle}</h3>
       <p className="mb-4 text-[13.5px] leading-relaxed text-ink-soft">{t.manage.deleteStoryWarning}</p>
       <Button variant="danger" disabled={pending} onClick={handleDelete}>

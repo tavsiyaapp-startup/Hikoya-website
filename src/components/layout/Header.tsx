@@ -48,7 +48,7 @@ export function Header({ user, unreadCount = 0 }: { user: CurrentUser | null; un
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder={t.common.searchPlaceholder}
-          className="h-12 w-full rounded-[14px] border border-border bg-surface pl-12 pr-4 text-[14.5px] text-ink outline-none transition focus:border-primary-500 focus:bg-white focus:shadow-[0_0_0_4px_rgba(167,139,250,0.16)]"
+          className="h-12 w-full rounded-[14px] border border-border bg-surface pl-12 pr-4 text-[14.5px] text-ink outline-none transition focus:border-primary-500 focus:bg-card focus:shadow-[0_0_0_4px_rgba(167,139,250,0.16)]"
         />
       </form>
 
@@ -69,7 +69,7 @@ export function Header({ user, unreadCount = 0 }: { user: CurrentUser | null; un
               onClick={() => setLocale(code)}
               className={clsx(
                 "h-8 cursor-pointer rounded-[10px] px-3 text-[12.5px] font-bold transition",
-                locale === code ? "bg-white text-primary-800 shadow-sm" : "text-muted"
+                locale === code ? "bg-card text-primary-800 shadow-sm" : "text-muted"
               )}
             >
               {code.toUpperCase()}
@@ -81,7 +81,7 @@ export function Header({ user, unreadCount = 0 }: { user: CurrentUser | null; un
           href={user ? `${ROUTES.author(user.profile?.username ?? "")}?tab=notifications` : ROUTES.onboarding}
           title={user ? t.nav.notifications : t.common.guestLockedTitle}
           className={clsx(
-            "relative flex h-10 w-10 shrink-0 items-center justify-center rounded-[13px] border border-border bg-white text-ink-soft transition sm:h-11 sm:w-11",
+            "relative flex h-10 w-10 shrink-0 items-center justify-center rounded-[13px] border border-border bg-card text-ink-soft transition sm:h-11 sm:w-11",
             !user && "cursor-not-allowed opacity-50"
           )}
         >

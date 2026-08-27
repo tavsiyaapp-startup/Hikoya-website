@@ -4,6 +4,8 @@ import "./globals.css";
 import { LocaleProvider } from "@/lib/i18n/LocaleProvider";
 import { getServerLocale } from "@/lib/i18n/locale-server";
 import { getDictionary } from "@/lib/i18n";
+import { ThemeProvider } from "@/lib/ThemeProvider";
+import { getServerTheme } from "@/lib/theme-server";
 
 const manrope = Manrope({
   subsets: ["latin", "cyrillic"],
@@ -25,11 +27,14 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const locale = await getServerLocale();
+  const theme = await getServerTheme();
 
   return (
-    <html lang={locale} className={`${manrope.variable} ${kaushan.variable}`}>
+    <html lang={locale} data-theme={theme} className={`${manrope.variable} ${kaushan.variable}`}>
       <body>
-        <LocaleProvider initialLocale={locale}>{children}</LocaleProvider>
+        <ThemeProvider initialTheme={theme}>
+          <LocaleProvider initialLocale={locale}>{children}</LocaleProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

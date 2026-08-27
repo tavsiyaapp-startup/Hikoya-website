@@ -35,7 +35,7 @@ export default async function AdminStoryModeratePage({ params }: { params: Promi
 
   return (
     <div>
-      <div className="flex items-center gap-3.5 border-b border-border bg-white px-4 py-5.5 sm:px-8.5">
+      <div className="flex items-center gap-3.5 border-b border-border bg-card px-4 py-5.5 sm:px-8.5">
         <Link
           href={`${ROUTES.admin}/stories`}
           className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border text-ink-soft hover:bg-surface"

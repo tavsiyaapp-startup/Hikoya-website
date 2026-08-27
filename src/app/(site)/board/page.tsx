@@ -146,7 +146,7 @@ export default async function BoardPage({
                       <select
                         name="storyId"
                         defaultValue=""
-                        className="h-10 w-full rounded-[10px] border border-border bg-white px-2.5 text-[13.5px] outline-none"
+                        className="h-10 w-full rounded-[10px] border border-border bg-card px-2.5 text-[13.5px] outline-none"
                       >
                         <option value="">{t.board.attachStoryNone}</option>
                         {myStories.map((s) => (

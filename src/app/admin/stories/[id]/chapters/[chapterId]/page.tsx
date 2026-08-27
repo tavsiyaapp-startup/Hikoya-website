@@ -29,7 +29,7 @@ export default async function AdminChapterModeratePage({
 
   return (
     <div>
-      <div className="flex items-center gap-3.5 border-b border-border bg-white px-4 py-5.5 sm:px-8.5">
+      <div className="flex items-center gap-3.5 border-b border-border bg-card px-4 py-5.5 sm:px-8.5">
         <Link
           href={ROUTES.adminStory(id)}
           className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border text-ink-soft hover:bg-surface"

@@ -43,7 +43,7 @@ export function HeroSlideListItem({ slide, canDelete }: { slide: HeroSlide; canD
       <button
         type="button"
         onClick={() => setEditing(true)}
-        className="h-8.5 shrink-0 cursor-pointer rounded-[9px] border border-border bg-white px-3.5 text-[12.5px] font-bold text-ink hover:border-primary-300"
+        className="h-8.5 shrink-0 cursor-pointer rounded-[9px] border border-border bg-card px-3.5 text-[12.5px] font-bold text-ink hover:border-primary-300"
       >
         {t.admin.editAction}
       </button>
@@ -52,7 +52,7 @@ export function HeroSlideListItem({ slide, canDelete }: { slide: HeroSlide; canD
         disabled={pending || !canDelete}
         onClick={handleDelete}
         title={!canDelete ? t.admin.bannerCannotDeleteLast : undefined}
-        className="h-8.5 shrink-0 cursor-pointer rounded-[9px] border border-red-200 bg-white px-3.5 text-[12.5px] font-bold text-danger disabled:cursor-not-allowed disabled:opacity-50"
+        className="h-8.5 shrink-0 cursor-pointer rounded-[9px] border border-red-200 dark:border-red-900/60 bg-card px-3.5 text-[12.5px] font-bold text-danger disabled:cursor-not-allowed disabled:opacity-50"
       >
         {t.admin.delete}
       </button>

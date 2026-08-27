@@ -28,9 +28,27 @@ export default async function AdminDashboardPage() {
 
   const cards = [
     { label: t.admin.stories, value: stats.storyCount, icon: LibraryIcon, bg: "bg-primary-100", fg: "text-primary-700" },
-    { label: t.admin.users, value: stats.userCount, icon: UserIcon, bg: "bg-blue-100", fg: "text-blue-700" },
-    { label: t.common.views, value: stats.totalViews, icon: EyeIcon, bg: "bg-emerald-100", fg: "text-emerald-700" },
-    { label: t.common.comments, value: stats.commentCount, icon: MessageIcon, bg: "bg-amber-100", fg: "text-amber-700" },
+    {
+      label: t.admin.users,
+      value: stats.userCount,
+      icon: UserIcon,
+      bg: "bg-blue-100 dark:bg-blue-950",
+      fg: "text-blue-700 dark:text-blue-300",
+    },
+    {
+      label: t.common.views,
+      value: stats.totalViews,
+      icon: EyeIcon,
+      bg: "bg-emerald-100 dark:bg-emerald-950",
+      fg: "text-emerald-700 dark:text-emerald-300",
+    },
+    {
+      label: t.common.comments,
+      value: stats.commentCount,
+      icon: MessageIcon,
+      bg: "bg-amber-100 dark:bg-amber-950",
+      fg: "text-amber-700 dark:text-amber-300",
+    },
   ];
 
   return (
@@ -142,14 +160,14 @@ function ActivityIcon({ type }: { type: AdminActivityItem["type"] }) {
   }
   if (type === "new_comment") {
     return (
-      <span className={`${base} bg-amber-100 text-amber-700`}>
+      <span className={`${base} bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300`}>
         <MessageIcon width={16} height={16} />
       </span>
     );
   }
   if (type === "new_user") {
     return (
-      <span className={`${base} bg-blue-100 text-blue-700`}>
+      <span className={`${base} bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300`}>
         <UserIcon width={16} height={16} />
       </span>
     );

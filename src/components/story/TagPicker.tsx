@@ -40,7 +40,7 @@ export function TagPicker({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="h-9 cursor-pointer rounded-[10px] border border-dashed border-primary-300 bg-white px-3.5 text-[13px] font-semibold text-primary-800"
+        className="h-9 cursor-pointer rounded-[10px] border border-dashed border-primary-300 bg-card px-3.5 text-[13px] font-semibold text-primary-800"
       >
         {t.create.addTag}
       </button>
@@ -72,7 +72,7 @@ export function TagPicker({
         />
       </form>
       {(suggestions.length > 0 || isNewTag) && (
-        <div className="absolute left-0 top-full z-20 mt-1.5 max-h-52 w-56 overflow-y-auto rounded-[12px] border border-border bg-white p-1.5 shadow-[0_14px_30px_rgba(60,40,120,0.14)]">
+        <div className="absolute left-0 top-full z-20 mt-1.5 max-h-52 w-56 overflow-y-auto rounded-[12px] border border-border bg-card p-1.5 shadow-[0_14px_30px_rgba(60,40,120,0.14)]">
           {suggestions.map((tag) => (
             <button
               key={tag}

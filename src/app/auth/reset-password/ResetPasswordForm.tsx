@@ -90,7 +90,7 @@ export function ResetPasswordForm() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-bg px-3 py-6 sm:px-5">
-      <div className="w-full max-w-105 overflow-hidden rounded-[24px] bg-white shadow-[0_30px_80px_rgba(30,20,60,0.2)] sm:rounded-[28px]">
+      <div className="w-full max-w-105 overflow-hidden rounded-[24px] bg-card shadow-[0_30px_80px_rgba(30,20,60,0.2)] sm:rounded-[28px]">
         <div className="px-5 pb-8 pt-7 sm:px-9 sm:pb-10 sm:pt-9">
           <div className="mb-6 text-center">
             <span className="font-script text-[25px]">{t.common.brand}</span>

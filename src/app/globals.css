@@ -99,7 +99,18 @@ html, body {
    the gaps around cards). Fixed + oversized inset avoids a blurred-out
    transparent fringe at the viewport edge; low opacity keeps it a subtle
    texture rather than a competing photo, since real content sits on its own
-   opaque bg-card/bg-surface anyway. */
+   opaque bg-card/bg-surface anyway.
+
+   body itself also needs to give up its own opaque background here — a
+   negative z-index child still paints *behind* its non-positioned parent's
+   own box background (per the CSS stacking-context painting order), so
+   body's flat background: var(--color-bg) above would otherwise sit right
+   on top of this pattern and hide it completely. html keeps the flat color
+   as the base canvas underneath everything. */
+[data-theme="dark"] body {
+  background: transparent;
+}
+
 [data-theme="dark"] body::before {
   content: "";
   position: fixed;

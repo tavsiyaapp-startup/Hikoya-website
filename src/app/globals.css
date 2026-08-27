@@ -137,6 +137,22 @@ a:hover {
     font-weight: 800;
     margin: 0.7em 0 0.4em;
   }
+  & h3 {
+    font-size: 1.05em;
+    font-weight: 800;
+    margin: 1.4em 0 0.4em;
+  }
+  & ul {
+    margin: 0 0 1.1em 1.3em;
+    list-style: disc;
+  }
+  & li {
+    margin-bottom: 0.4em;
+  }
+  & a {
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
   & blockquote {
     border-left: 3px solid var(--color-primary-300);
     padding-left: 1em;

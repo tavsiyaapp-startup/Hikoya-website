@@ -19,6 +19,9 @@ async function requireStaff() {
   return user;
 }
 
+// Stricter than requireStaff() — moderators have every admin-panel
+// capability except this one: only a real admin can hand out moderator
+// accounts (or promote/demote anyone) to other people.
 async function requireAdmin() {
   const supabase = await createClient();
   const {
@@ -264,21 +267,6 @@ export async function updateUserAchievements(userId: string, achievementIds: str
   if (data?.username) revalidatePath(ROUTES.author(data.username));
 }
 
-export async function resolveReport(reportId: string, status: "reviewed" | "resolved") {
-  await requireStaff();
-  const admin = createAdminClient();
-  await admin.from("reports").update({ status }).eq("id", reportId);
-  revalidatePath(`${ROUTES.admin}/reports`);
-  revalidatePath(ROUTES.admin);
-}
-
-export async function deleteReport(reportId: string) {
-  await requireStaff();
-  const admin = createAdminClient();
-  await admin.from("reports").delete().eq("id", reportId);
-  revalidatePath(`${ROUTES.admin}/reports`);
-}
-
 export async function setRequestStatusAdmin(requestId: string, status: "open" | "closed") {
   await requireStaff();
   const admin = createAdminClient();
@@ -322,6 +310,35 @@ export async function updatePlatformSettings(formData: FormData) {
 
   updateTag("settings");
   revalidatePath(`${ROUTES.admin}/settings`);
+}
+
+export async function createModerator(formData: FormData): Promise<{ error: string } | { ok: true }> {
+  await requireAdmin();
+
+  const email = String(formData.get("email") ?? "").trim();
+  const password = String(formData.get("password") ?? "");
+  const displayName = String(formData.get("displayName") ?? "").trim();
+
+  if (!email || !password || !displayName) return { error: "missing_fields" };
+  if (password.length < 6) return { error: "password_too_short" };
+
+  const admin = createAdminClient();
+  const { data, error } = await admin.auth.admin.createUser({
+    email,
+    password,
+    email_confirm: true,
+    user_metadata: { full_name: displayName },
+  });
+  if (error || !data.user) return { error: error?.message ?? "unknown" };
+
+  // on_auth_user_created stubs a profiles row (role defaults to 'reader')
+  // for every new auth.users insert, including this admin-created one —
+  // promote it to moderator right after.
+  await admin.from("profiles").update({ role: "moderator" }).eq("id", data.user.id);
+
+  revalidatePath(`${ROUTES.admin}/settings`);
+  revalidatePath(`${ROUTES.admin}/users`);
+  return { ok: true };
 }
 
 function collectionInputFromForm(formData: FormData) {

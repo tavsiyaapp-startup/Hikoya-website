@@ -3,9 +3,9 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import type { Chapter, Story, StoryTopTier, HeroSlide } from "@/types/database";
 
 // Admin panel reads always use the service-role client — staff need to see
-// everything regardless of RLS (draft stories, all users, all reports).
+// everything regardless of RLS (draft stories, all users).
 // There's no dedicated audit-log table yet, so the dashboard's "recent
-// activity" feed is derived from recent stories/users/reports instead of a
+// activity" feed is derived from recent stories/users/comments instead of a
 // true event log.
 
 export async function getAdminStats() {
@@ -61,16 +61,15 @@ export async function getRecentUsersAdmin(limit = 6) {
 export type AdminActivityItem =
   | { type: "story_published"; id: string; actorName: string; targetTitle: string; timestamp: string }
   | { type: "new_comment"; id: string; actorName: string; targetTitle: string; timestamp: string }
-  | { type: "new_user"; id: string; actorName: string; timestamp: string }
-  | { type: "new_report"; id: string; targetType: "story" | "chapter" | "comment"; reason: string; timestamp: string };
+  | { type: "new_user"; id: string; actorName: string; timestamp: string };
 
-// No dedicated audit-log table — this merges the four event types the
+// No dedicated audit-log table — this merges the three event types the
 // dashboard cares about (newly published story, new comment, new
-// registration, new report) from their own tables, sorted by timestamp.
+// registration) from their own tables, sorted by timestamp.
 export async function getRecentActivity(limit = 8): Promise<AdminActivityItem[]> {
   try {
     const admin = createAdminClient();
-    const [storiesRes, commentsRes, usersRes, reportsRes] = await Promise.all([
+    const [storiesRes, commentsRes, usersRes] = await Promise.all([
       admin
         .from("stories")
         .select("id, title, published_at, author:profiles!stories_author_id_fkey(display_name)")
@@ -83,7 +82,6 @@ export async function getRecentActivity(limit = 8): Promise<AdminActivityItem[]>
         .order("created_at", { ascending: false })
         .limit(limit),
       admin.from("profiles").select("id, display_name, created_at").order("created_at", { ascending: false }).limit(limit),
-      admin.from("reports").select("id, created_at, target_type, reason").order("created_at", { ascending: false }).limit(limit),
     ]);
 
     const items: AdminActivityItem[] = [];
@@ -103,10 +101,6 @@ export async function getRecentActivity(limit = 8): Promise<AdminActivityItem[]>
 
     for (const u of usersRes.data ?? []) {
       items.push({ type: "new_user", id: u.id, actorName: u.display_name, timestamp: u.created_at });
-    }
-
-    for (const r of reportsRes.data ?? []) {
-      items.push({ type: "new_report", id: r.id, targetType: r.target_type, reason: r.reason, timestamp: r.created_at });
     }
 
     items.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
@@ -328,35 +322,6 @@ export async function getChapterForModeration(chapterId: string): Promise<Chapte
     return (data as Chapter) ?? null;
   } catch {
     return null;
-  }
-}
-
-export async function getAllReportsAdmin(statusFilter?: string) {
-  try {
-    const admin = createAdminClient();
-    let q = admin
-      .from("reports")
-      .select("*, reporter:profiles!reports_reporter_id_fkey(display_name)")
-      .order("created_at", { ascending: false });
-    if (statusFilter) q = q.eq("status", statusFilter);
-    const { data } = await q.limit(100);
-    return data ?? [];
-  } catch {
-    return [];
-  }
-}
-
-export async function getReportStats() {
-  try {
-    const admin = createAdminClient();
-    const [{ count: open }, { count: reviewed }, { count: resolved }] = await Promise.all([
-      admin.from("reports").select("id", { count: "exact", head: true }).eq("status", "open"),
-      admin.from("reports").select("id", { count: "exact", head: true }).eq("status", "reviewed"),
-      admin.from("reports").select("id", { count: "exact", head: true }).eq("status", "resolved"),
-    ]);
-    return { open: open ?? 0, reviewed: reviewed ?? 0, resolved: resolved ?? 0 };
-  } catch {
-    return { open: 0, reviewed: 0, resolved: 0 };
   }
 }
 

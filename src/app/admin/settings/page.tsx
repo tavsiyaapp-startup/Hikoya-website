@@ -1,14 +1,17 @@
 import { getServerLocale } from "@/lib/i18n/locale-server";
 import { getDictionary } from "@/lib/i18n";
 import { getPlatformSettingsAdmin } from "@/lib/queries/admin";
+import { getCurrentUser } from "@/lib/current-user";
 import { AdminHeader } from "../AdminHeader";
 import { updatePlatformSettings } from "@/lib/actions/admin";
 import { Button } from "@/components/ui/Button";
+import { AddModeratorForm } from "./AddModeratorForm";
 
 export default async function AdminSettingsPage() {
   const locale = await getServerLocale();
   const t = getDictionary(locale);
-  const settings = await getPlatformSettingsAdmin();
+  const [settings, user] = await Promise.all([getPlatformSettingsAdmin(), getCurrentUser()]);
+  const isAdmin = user?.profile?.role === "admin";
 
   return (
     <div>
@@ -67,6 +70,12 @@ export default async function AdminSettingsPage() {
             <Button type="submit">{t.common.save}</Button>
           </div>
         </form>
+
+        {isAdmin && (
+          <div className="mt-5">
+            <AddModeratorForm />
+          </div>
+        )}
       </div>
     </div>
   );

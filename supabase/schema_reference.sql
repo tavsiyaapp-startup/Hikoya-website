@@ -31,8 +31,6 @@ create type tag_category as enum ('genre', 'relationship', 'warning', 'style', '
 create type collection_owner_type as enum ('user', 'author', 'moderator');
 create type request_status as enum ('open', 'in_progress', 'fulfilled', 'closed');
 create type request_response_status as enum ('proposed', 'accepted', 'declined');
-create type report_target_type as enum ('story', 'chapter', 'comment');
-create type report_status as enum ('open', 'reviewed', 'resolved');
 create type like_target_type as enum ('story', 'chapter', 'comment');
 create type reading_status as enum ('want_to_read', 'read', 'dropped');
 create type story_top_tier as enum ('day', 'week', 'month');
@@ -306,18 +304,6 @@ create table request_responses (
 );
 
 create index request_responses_request_id_idx on request_responses (request_id);
-
--- ── жалобы (модерация) ──────────────────────────────────────────────────────
-
-create table reports (
-  id uuid primary key default gen_random_uuid(),
-  reporter_id uuid not null references profiles (id) on delete cascade,
-  target_type report_target_type not null,
-  target_id uuid not null,
-  reason text not null,
-  status report_status not null default 'open',
-  created_at timestamptz not null default now()
-);
 
 -- ── карусель баннера на главной ───────────────────────────────────────────
 -- добавлено в 0023, title/body сделаны опциональными в 0024: каждый слайд —
@@ -665,13 +651,6 @@ create policy "authors insert their own responses" on request_responses for inse
 create policy "authors and staff update responses" on request_responses for update using (author_id = auth.uid() or is_staff());
 create policy "authors and staff delete responses" on request_responses for delete using (author_id = auth.uid() or is_staff());
 
--- reports
-alter table reports enable row level security;
-create policy "reporters and staff read reports" on reports for select using (reporter_id = auth.uid() or is_staff());
-create policy "authenticated users file reports" on reports for insert with check (reporter_id = auth.uid());
-create policy "staff manage reports" on reports for update using (is_staff());
-create policy "staff delete reports" on reports for delete using (is_staff());
-
 -- platform_settings
 alter table platform_settings enable row level security;
 create policy "platform settings are publicly readable" on platform_settings for select using (true);
@@ -968,3 +947,17 @@ on conflict (code) do nothing;
 --   колонки; bump_story_counters() расширена — при insert/delete в
 --   comments теперь бампает и chapters.comment_count параллельно с уже
 --   существующим stories.comment_count, а не вместо него.
+-- [2026-08-27] Убрана таблица reports и весь раздел "Жалобы" в админке
+--   (миграция 0029). Ни один UI никогда не создавал в неё запись — не было
+--   кнопки "пожаловаться" ни на истории, ни на комментарии, поэтому раздел
+--   в админке всегда был пуст. Заодно удалены enum'ы report_target_type/
+--   report_status и связанные RLS-политики (падают вместе с drop table).
+-- [2026-08-27] Админ теперь может создать модератора прямо из
+--   /admin/settings (createModerator, requireAdmin() — строже requireStaff(),
+--   пускает только role='admin', не moderator). Создаёт настоящего
+--   auth.users через supabase.auth.admin.createUser(email, password) —
+--   handle_new_user() как обычно застабит profiles (role по умолчанию
+--   'reader'), затем role сразу перезаписывается на 'moderator'. Модератор
+--   логинится на /admin-login тем же email/паролем, что и обычный вход
+--   (signInWithPassword) — отдельного "логина" не заводили, email и есть
+--   логин.

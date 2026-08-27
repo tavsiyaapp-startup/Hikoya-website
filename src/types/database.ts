@@ -12,8 +12,6 @@ export type TagCategory = "genre" | "relationship" | "warning" | "style" | "age_
 export type CollectionOwnerType = "user" | "author" | "moderator";
 export type RequestStatus = "open" | "in_progress" | "fulfilled" | "closed";
 export type RequestResponseStatus = "proposed" | "accepted" | "declined";
-export type ReportTargetType = "story" | "chapter" | "comment";
-export type ReportStatus = "open" | "reviewed" | "resolved";
 export type LikeTargetType = "story" | "chapter" | "comment";
 export type ReadingStatus = "want_to_read" | "read" | "dropped";
 export type StoryTopTier = "day" | "week" | "month";
@@ -223,16 +221,6 @@ export interface RequestResponse {
   text: string;
   status: RequestResponseStatus;
   story_id: string | null;
-  created_at: string;
-}
-
-export interface Report {
-  id: string;
-  reporter_id: string;
-  target_type: ReportTargetType;
-  target_id: string;
-  reason: string;
-  status: ReportStatus;
   created_at: string;
 }
 

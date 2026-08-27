@@ -11,7 +11,7 @@ import {
 import { ROUTES } from "@/lib/constants";
 import { formatRelativeTime } from "@/lib/format";
 import { Badge } from "@/components/ui/Chip";
-import { LibraryIcon, UserIcon, EyeIcon, MessageIcon, ShieldIcon } from "@/components/ui/icons";
+import { LibraryIcon, UserIcon, EyeIcon, MessageIcon } from "@/components/ui/icons";
 import { AdminHeader } from "./AdminHeader";
 import type { Dictionary } from "@/lib/i18n";
 
@@ -165,16 +165,9 @@ function ActivityIcon({ type }: { type: AdminActivityItem["type"] }) {
       </span>
     );
   }
-  if (type === "new_user") {
-    return (
-      <span className={`${base} bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300`}>
-        <UserIcon width={16} height={16} />
-      </span>
-    );
-  }
   return (
-    <span className={`${base} bg-danger-bg text-danger`}>
-      <ShieldIcon width={16} height={16} />
+    <span className={`${base} bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300`}>
+      <UserIcon width={16} height={16} />
     </span>
   );
 }
@@ -199,19 +192,6 @@ function activityText(item: AdminActivityItem, t: Dictionary) {
           {item.actorName} {t.admin.activityNewUser}
         </>
       );
-    case "new_report": {
-      const targetLabel =
-        item.targetType === "story"
-          ? t.admin.activityTargetStory
-          : item.targetType === "chapter"
-            ? t.admin.activityTargetChapter
-            : t.admin.activityTargetComment;
-      return (
-        <>
-          {t.admin.activityNewReportPrefix} {targetLabel}: «{item.reason}»
-        </>
-      );
-    }
   }
 }
 

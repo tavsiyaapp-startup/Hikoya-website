@@ -382,16 +382,26 @@ export async function getChapter(storyId: string, orderIndex: number): Promise<C
 export async function getContinueReading(userId: string, limit = 3) {
   try {
     const supabase = await createClient();
-    const { data } = await supabase
-      .from("reading_progress")
-      .select("percent, updated_at, story:stories(id, title, slug, cover_url, deleted_at)")
-      .eq("user_id", userId)
-      .order("updated_at", { ascending: false })
-      .limit(limit);
+    const [{ data }, { data: statusRows }] = await Promise.all([
+      supabase
+        .from("reading_progress")
+        .select("story_id, percent, updated_at, story:stories(id, title, slug, cover_url, deleted_at)")
+        .eq("user_id", userId)
+        .order("updated_at", { ascending: false })
+        .limit(limit * 3),
+      supabase.from("reading_statuses").select("story_id").eq("user_id", userId),
+    ]);
+    const statusedStoryIds = new Set((statusRows ?? []).map((r) => r.story_id as string));
     // A deleted story's progress row is stale — nothing to resume, and
     // there's no "continue reading" placeholder like collections/library
     // get, so it's simplest to just drop it rather than show a dead link.
-    return (data ?? []).filter((row) => !(row.story as unknown as { deleted_at: string | null } | null)?.deleted_at);
+    // Once the reader explicitly marks a story's reading status (want to
+    // read/read/dropped), it should move out of "Читаю" into that status's
+    // own tab instead of lingering in both.
+    return (data ?? [])
+      .filter((row) => !(row.story as unknown as { deleted_at: string | null } | null)?.deleted_at)
+      .filter((row) => !statusedStoryIds.has(row.story_id as string))
+      .slice(0, limit);
   } catch {
     return [];
   }

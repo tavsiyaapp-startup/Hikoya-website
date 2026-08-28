@@ -100,6 +100,21 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* Repeating wallpaper, same image/tile size in both themes — background.jpg
+   is 736×1098, tiled at 2x its native size (1472×2196) since at native size
+   it's too small to read as a pattern rather than a smear. background-color
+   above (from the html,body rule) stays as the fallback fill while the
+   image loads and shows through any transparency. Header/Sidebar/Footer all
+   paint their own opaque bg-card, so this only ever shows in <main>'s own
+   gutters and the gaps between cards — the header's bg-card/92 +
+   backdrop-blur-md lets a soft blurred hint of it through instead of a hard
+   edge. */
+body {
+  background-image: url("/images/background.jpg");
+  background-repeat: repeat;
+  background-size: 1472px 2196px;
+}
+
 a {
   color: var(--color-primary-800);
   text-decoration: none;

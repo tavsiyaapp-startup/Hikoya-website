@@ -88,20 +88,22 @@ export default async function ReaderPage({
         </div>
 
         {isUnlocked ? (
-          isRichContent ? (
-            <div
-              className="rich-content text-[17px] leading-8 text-ink-soft"
-              dangerouslySetInnerHTML={{ __html: sanitizeHtml(ch.content) }}
-            />
-          ) : (
-            <div className="text-[17px] leading-8 text-ink-soft">
-              {paragraphs.map((p, i) => (
-                <p key={i} className="mb-4.5">
-                  {p}
-                </p>
-              ))}
-            </div>
-          )
+          <div className="rounded-3xl border border-border bg-card p-5 sm:p-8">
+            {isRichContent ? (
+              <div
+                className="rich-content text-[17px] leading-8 text-ink-soft"
+                dangerouslySetInnerHTML={{ __html: sanitizeHtml(ch.content) }}
+              />
+            ) : (
+              <div className="text-[17px] leading-8 text-ink-soft">
+                {paragraphs.map((p, i) => (
+                  <p key={i} className="mb-4.5">
+                    {p}
+                  </p>
+                ))}
+              </div>
+            )}
+          </div>
         ) : (
           <div className="rounded-3xl bg-linear-to-br from-ink-dark to-primary-950 px-5 py-6 text-white sm:px-9 sm:py-8.5">
             <div className="mb-3.5 flex items-center gap-3">

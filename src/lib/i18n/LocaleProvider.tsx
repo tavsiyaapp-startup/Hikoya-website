@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   defaultLocale,
   getDictionary,
@@ -25,11 +26,23 @@ export function LocaleProvider({
   children: React.ReactNode;
 }) {
   const [locale, setLocaleState] = useState<Locale>(initialLocale ?? defaultLocale);
+  const router = useRouter();
 
-  const setLocale = useCallback((next: Locale) => {
-    setLocaleState(next);
-    document.cookie = `${LOCALE_COOKIE}=${next}; path=/; max-age=31536000; samesite=lax`;
-  }, []);
+  // Client components reading t/locale from this context update instantly,
+  // but every server component (most page content — story cards, section
+  // titles, tab labels...) already rendered its strings server-side using
+  // the *previous* cookie value and has no way to know locale changed
+  // underneath it. router.refresh() re-runs the current route's server
+  // components against the just-written cookie without losing client-side
+  // state (scroll position, open menus, etc).
+  const setLocale = useCallback(
+    (next: Locale) => {
+      setLocaleState(next);
+      document.cookie = `${LOCALE_COOKIE}=${next}; path=/; max-age=31536000; samesite=lax`;
+      router.refresh();
+    },
+    [router]
+  );
 
   const value = useMemo<LocaleContextValue>(
     () => ({ locale, t: getDictionary(locale), setLocale }),

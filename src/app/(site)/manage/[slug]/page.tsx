@@ -158,7 +158,7 @@ export default async function ManagePage({
             initialTags={tags}
             existingTags={existingTags}
           />
-          <DeleteStoryButton storyId={story.id} storySlug={slug} />
+          <DeleteStoryButton storyId={story.id} storySlug={slug} storyTitle={story.title} />
         </>
       )}
     </div>

@@ -301,10 +301,16 @@ export const getRecentPublishedChapters = unstable_cache(
   async (limit = 3, offset = 0) => {
     try {
       const supabase = createPublicClient();
+      // !inner + the story.status filter below: a chapter keeps its own
+      // 'published' status independent of its parent story's — staff hiding
+      // a story (or an author soft-deleting it, which also flips status to
+      // 'draft') never touches the chapters' own status, so without this the
+      // hidden/deleted story's chapters would still show up here.
       const { data, count } = await supabase
         .from("chapters")
-        .select("*, story:stories(id, title, slug, cover_url, status, visibility)", { count: "exact" })
+        .select("*, story:stories!inner(id, title, slug, cover_url, status, visibility)", { count: "exact" })
         .eq("status", "published")
+        .eq("story.status", "published")
         .order("published_at", { ascending: false })
         .range(offset, offset + limit - 1);
       return { items: data ?? [], total: count ?? 0 };
@@ -320,6 +326,13 @@ export type StoryDetail = Story & {
   author: Pick<Profile, "id" | "username" | "display_name" | "avatar_url">;
 };
 
+// Treats a soft-deleted story as not-found for everyone, including its own
+// author — this is the single choke point both the public story page and
+// the author's own /manage page read through, so it's what actually keeps a
+// deleted story out of the author's hands until staff restores it (RLS
+// itself still lets the row be *read*, see migration 0032, so the
+// placeholder in collections/library can show its title — this is the app-
+// level rule that nothing renders a full page for it regardless).
 export async function getStoryBySlug(slug: string): Promise<StoryDetail | null> {
   try {
     const supabase = await createClient();
@@ -328,7 +341,8 @@ export async function getStoryBySlug(slug: string): Promise<StoryDetail | null> 
       .select("*, author:profiles!stories_author_id_fkey(id, username, display_name, avatar_url)")
       .eq("slug", slug)
       .single();
-    return (data as StoryDetail) ?? null;
+    if (!data || data.deleted_at) return null;
+    return data as StoryDetail;
   } catch {
     return null;
   }
@@ -370,11 +384,14 @@ export async function getContinueReading(userId: string, limit = 3) {
     const supabase = await createClient();
     const { data } = await supabase
       .from("reading_progress")
-      .select("percent, updated_at, story:stories(id, title, slug, cover_url)")
+      .select("percent, updated_at, story:stories(id, title, slug, cover_url, deleted_at)")
       .eq("user_id", userId)
       .order("updated_at", { ascending: false })
       .limit(limit);
-    return data ?? [];
+    // A deleted story's progress row is stale — nothing to resume, and
+    // there's no "continue reading" placeholder like collections/library
+    // get, so it's simplest to just drop it rather than show a dead link.
+    return (data ?? []).filter((row) => !(row.story as unknown as { deleted_at: string | null } | null)?.deleted_at);
   } catch {
     return [];
   }
@@ -537,13 +554,19 @@ export async function getStoriesByReadingStatus(userId: string, status: string):
   }
 }
 
+// includeDrafts=true is what powers the author's own "cabinet" listing (own
+// profile page, the request-board story picker) — a soft-deleted story is
+// still author_id-owned and status='draft', so unlike every status='published'
+// filtered query elsewhere, this one needs an explicit deleted_at check to
+// actually keep it out of the author's hands.
 export async function getAuthorStories(authorId: string, includeDrafts: boolean): Promise<StoryCard[]> {
   try {
     const supabase = await createClient();
     let query = supabase
       .from("stories")
       .select("*, author:profiles!stories_author_id_fkey(username, display_name)")
-      .eq("author_id", authorId);
+      .eq("author_id", authorId)
+      .is("deleted_at", null);
     if (!includeDrafts) query = query.eq("status", "published").eq("visibility", "public");
     const { data } = await query.order("created_at", { ascending: false });
     return (data as StoryCard[]) ?? [];

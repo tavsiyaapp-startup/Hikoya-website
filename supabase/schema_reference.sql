@@ -79,12 +79,14 @@ create table stories (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   published_at timestamptz,
-  rejection_reason text   -- добавлено в 0011: причина отказа модератора, показывается автору
+  rejection_reason text,  -- добавлено в 0011: причина отказа модератора, показывается автору
+  deleted_at timestamptz  -- добавлено в 0032: автор "удалил" — попадает в корзину, не DELETE, см. changelog
 );
 
 create index stories_author_id_idx on stories (author_id);
 create index stories_status_idx on stories (status) where status = 'published';
 create index stories_genre_idx on stories (genre);
+create index stories_deleted_at_idx on stories (deleted_at) where deleted_at is not null;
 
 create table chapters (
   id uuid primary key default gen_random_uuid(),
@@ -192,7 +194,8 @@ create type notification_type as enum (
   'new_comment', 'comment_reply', 'comment_like',
   'story_approved', 'story_rejected', 'chapter_approved', 'chapter_rejected',
   'story_like',   -- добавлено в 0019: лайк истории раньше не уведомлял автора
-  'story_hidden'  -- добавлено в 0027: отдельно от story_rejected, см. changelog
+  'story_hidden',  -- добавлено в 0027: отдельно от story_rejected, см. changelog
+  'story_restored' -- добавлено в 0032: staff восстановил историю из корзины
 );
 
 create table notifications (
@@ -516,14 +519,21 @@ create policy "users update their own profile" on profiles for update using (id 
 
 -- stories
 alter table stories enable row level security;
+-- deleted_at is not null: readable by anyone once soft-deleted (see
+-- changelog 0032) — title/cover only really, chapters stay gated on the
+-- story's own status regardless, this is just what lets a reader who
+-- already saved/collected it still see the title in a "удалено" placeholder.
 create policy "published public stories are readable" on stories for select using (
   (status = 'published' and visibility in ('public', 'unlisted'))
   or author_id = auth.uid()
   or is_staff()
+  or deleted_at is not null
 );
 create policy "authors insert their own stories" on stories for insert with check (author_id = auth.uid());
 create policy "authors update their own stories" on stories for update using (author_id = auth.uid() or is_staff());
-create policy "authors delete their own stories" on stories for delete using (author_id = auth.uid());   -- staff can never delete, see changelog 0027
+-- No delete policy at all as of 0032 — soft-delete is an UPDATE (covered by
+-- the policy above), permanent delete only via the service-role client from
+-- the admin trash. See changelog 0032.
 
 -- chapters
 alter table chapters enable row level security;
@@ -1003,3 +1013,31 @@ on conflict (code) do nothing;
 --   стала "Продолжить чтение", если у пользователя уже есть
 --   reading_progress по этой истории — ведёт на ту же главу, на которой
 --   остановился, вместо всегда первой главы.
+-- [2026-08-28] Удаление истории автором стало soft-delete вместо реального
+--   DELETE (миграция 0032, отменяет 0027's "authors delete their own
+--   stories" policy целиком — RLS больше вообще не даёт клиентский DELETE
+--   на stories никому). deleteStory (stories.ts) теперь просто ставит
+--   status='draft' + deleted_at=now(): флип статуса означает, что все уже
+--   существующие status='published'-фильтры (лента, поиск, публичный
+--   профиль автора...) сами перестают её показывать бесплатно; отдельно
+--   поправлены только getAuthorStories (включает черновики — добавлен
+--   .is("deleted_at", null)) и getRecentPublishedChapters (проверял только
+--   статус главы, не родительской истории — теперь !inner join +
+--   story.status='published'). getStoryBySlug трактует deleted_at как
+--   "не найдено" для всех без исключений (и для самого автора тоже) — эта
+--   единая точка используется и /story/[slug], и /manage/[slug], и через
+--   него же /story/[slug]/[chapter], так что достаточно поправить её одну.
+--   RLS при этом НЕ блокирует чтение строки — see выше, deleted_at is not
+--   null читается кем угодно, иначе title/cover не дошли бы до JOIN'а в
+--   collection_items/bookmarks и карточку в подборке/библиотеке было бы
+--   нечем заменить на плашку "«Название» удалено" (StoryCard.tsx).
+--   Админка: /admin/stories получила вкладку "Корзина" (statusFilter=
+--   "deleted" в getAllStoriesAdmin — deleted_at is not null вместо
+--   status=...; остальные вкладки теперь явно исключают deleted_at is not
+--   null, чтобы корзина туда не подмешивалась). restoreStory (admin.ts)
+--   просто обнуляет deleted_at — status уже 'draft' с момента удаления,
+--   так что восстановленная история сама оказывается в черновиках автора
+--   без доп. правок; шлёт уведомление story_restored. permanentlyDeleteStory
+--   — тот самый реальный DELETE, теперь только отсюда (service-role,
+--   requireStaff(), плюс .not("deleted_at","is",null) вторым замком),
+--   чистит polymorphic likes так же, как раньше делал старый deleteStory.

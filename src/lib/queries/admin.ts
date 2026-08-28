@@ -223,6 +223,19 @@ export async function getAllStoriesAdmin(statusFilter?: string) {
   try {
     const admin = createAdminClient();
 
+    // The trash — soft-deleted by their author (deleted_at set, see
+    // deleteStory in stories.ts) — is its own tab, kept out of every other
+    // tab below rather than mixed into the regular status list.
+    if (statusFilter === "deleted") {
+      const { data } = await admin
+        .from("stories")
+        .select(storySelect)
+        .not("deleted_at", "is", null)
+        .order("deleted_at", { ascending: false })
+        .limit(100);
+      return data ?? [];
+    }
+
     // A story keeps its own status once published — adding chapters to it
     // afterward never touches stories.status, only the new chapters' own
     // (pending_review by default). Filtering this tab by stories.status
@@ -232,7 +245,7 @@ export async function getAllStoriesAdmin(statusFilter?: string) {
     // status is.
     if (statusFilter === "pending_review") {
       const [{ data: pendingStories }, { data: pendingChapterRows }] = await Promise.all([
-        admin.from("stories").select(storySelect).eq("status", "pending_review"),
+        admin.from("stories").select(storySelect).eq("status", "pending_review").is("deleted_at", null),
         admin.from("chapters").select("story_id").eq("status", "pending_review"),
       ]);
 
@@ -242,7 +255,7 @@ export async function getAllStoriesAdmin(statusFilter?: string) {
       );
 
       const extraStories = extraIds.length
-        ? ((await admin.from("stories").select(storySelect).in("id", extraIds)).data ?? [])
+        ? ((await admin.from("stories").select(storySelect).in("id", extraIds).is("deleted_at", null)).data ?? [])
         : [];
 
       return [...(pendingStories ?? []), ...extraStories]
@@ -250,7 +263,7 @@ export async function getAllStoriesAdmin(statusFilter?: string) {
         .slice(0, 100);
     }
 
-    let q = admin.from("stories").select(storySelect).order("created_at", { ascending: false });
+    let q = admin.from("stories").select(storySelect).is("deleted_at", null).order("created_at", { ascending: false });
     if (statusFilter) q = q.eq("status", statusFilter);
     const { data } = await q.limit(100);
     return data ?? [];

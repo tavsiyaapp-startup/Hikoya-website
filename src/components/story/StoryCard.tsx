@@ -12,6 +12,21 @@ export async function StoryCard({ story }: { story: StoryCardData }) {
   const locale = await getServerLocale();
   const t = getDictionary(locale);
 
+  // The story was soft-deleted by its author (see deleteStory) — it's still
+  // referenced by whatever collection/library row rendered this card, but
+  // there's nothing left to open, so no link, just the title and a note.
+  if (story.deleted_at) {
+    return (
+      <div
+        aria-disabled
+        className="flex aspect-[3/4] flex-col items-center justify-center rounded-[20px] border border-dashed border-border-soft bg-surface p-4 text-center"
+      >
+        <div className="line-clamp-4 text-[14px] font-bold leading-snug text-muted-2">{story.title}</div>
+        <div className="mt-2 text-[12.5px] font-semibold text-muted-3">{t.story.deletedPlaceholder}</div>
+      </div>
+    );
+  }
+
   return (
     <Link
       href={ROUTES.story(story.slug)}

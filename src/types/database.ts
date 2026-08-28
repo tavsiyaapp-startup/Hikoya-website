@@ -24,7 +24,8 @@ export type NotificationType =
   | "story_hidden"
   | "chapter_approved"
   | "chapter_rejected"
-  | "story_like";
+  | "story_like"
+  | "story_restored";
 
 export interface Profile {
   id: string; // references auth.users.id
@@ -65,6 +66,7 @@ export interface Story {
   updated_at: string;
   published_at: string | null;
   rejection_reason: string | null;
+  deleted_at: string | null;
 }
 
 export interface Chapter {

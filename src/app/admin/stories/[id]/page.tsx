@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/Chip";
 import { ChevronLeftIcon } from "@/components/ui/icons";
 import { StoryModerateActions } from "./StoryModerateActions";
 import { StoryHideAction } from "./StoryHideAction";
+import { TrashActions } from "./TrashActions";
 import { ChapterModerateActions } from "./ChapterModerateActions";
 
 function statusTone(status: string) {
@@ -53,7 +54,11 @@ export default async function AdminStoryModeratePage({ params }: { params: Promi
           </div>
           <div className="min-w-0 flex-1">
             <div className="mb-3 flex flex-wrap items-center gap-2.5">
-              <Badge tone={statusTone(story.status)}>{statusLabel[story.status] ?? story.status}</Badge>
+              {story.deleted_at ? (
+                <Badge tone="danger">{t.admin.deletedByAuthor}</Badge>
+              ) : (
+                <Badge tone={statusTone(story.status)}>{statusLabel[story.status] ?? story.status}</Badge>
+              )}
               <Badge tone="pink">{localizeGenre(story.genre, locale)}</Badge>
             </div>
             <div className="mb-3.5 text-[13.5px] text-muted-2">
@@ -62,17 +67,27 @@ export default async function AdminStoryModeratePage({ params }: { params: Promi
             </div>
             <p className="mb-4.5 max-w-160 text-[14.5px] leading-relaxed text-ink-soft">{story.description}</p>
 
-            {story.status === "draft" && story.rejection_reason && (
+            {story.deleted_at && (
+              <div className="mb-4.5 max-w-160 rounded-[14px] bg-danger-bg px-4 py-3">
+                <div className="mb-1 text-[12.5px] font-bold text-danger">{t.admin.deletedOnLabel}</div>
+                <p className="text-[13.5px] leading-relaxed text-ink-soft">
+                  {new Date(story.deleted_at).toLocaleString(locale)}
+                </p>
+              </div>
+            )}
+
+            {!story.deleted_at && story.status === "draft" && story.rejection_reason && (
               <div className="mb-4.5 max-w-160 rounded-[14px] bg-danger-bg px-4 py-3">
                 <div className="mb-1 text-[12.5px] font-bold text-danger">{t.manage.rejectionReasonLabel}</div>
                 <p className="text-[13.5px] leading-relaxed text-ink-soft">{story.rejection_reason}</p>
               </div>
             )}
 
-            {story.status === "pending_review" && (
+            {story.deleted_at && <TrashActions storyId={story.id} storySlug={story.slug} />}
+            {!story.deleted_at && story.status === "pending_review" && (
               <StoryModerateActions storyId={story.id} storySlug={story.slug} />
             )}
-            {(story.status === "published" || story.status === "unlisted") && (
+            {!story.deleted_at && (story.status === "published" || story.status === "unlisted") && (
               <StoryHideAction storyId={story.id} storySlug={story.slug} />
             )}
           </div>

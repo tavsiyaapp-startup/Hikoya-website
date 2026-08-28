@@ -108,6 +108,62 @@ export async function hideStory(storyId: string, storySlug: string, reason: stri
   revalidatePath(ROUTES.search);
 }
 
+// Trash (deleted_at set by the author's own soft-delete, see deleteStory in
+// stories.ts). Restoring just clears deleted_at — status is already 'draft'
+// from the moment the author deleted it, so this drops the story straight
+// back into their normal drafts list with nothing else to reconcile.
+export async function restoreStory(storyId: string, storySlug: string) {
+  await requireStaff();
+  const admin = createAdminClient();
+  const { data: story } = await admin
+    .from("stories")
+    .update({ deleted_at: null })
+    .eq("id", storyId)
+    .select("author_id")
+    .single();
+  if (story) {
+    await createNotification({ userId: story.author_id, type: "story_restored", storyId });
+  }
+  updateTag("stories");
+  revalidatePath(ROUTES.manage(storySlug));
+  revalidatePath(`${ROUTES.admin}/stories`);
+  revalidatePath(ROUTES.adminStory(storyId));
+  revalidatePath(ROUTES.admin);
+}
+
+// Irreversible — only ever reachable from the trash UI (deleted_at already
+// set), and the deleted_at check below is a second guard against that
+// UI-only gating. Mirrors the cleanup the old author-side hard-delete used
+// to do (likes is polymorphic — target_type/target_id, no FK — so cascade
+// doesn't reach it); chapters/comments/bookmarks/reading_statuses/
+// story_tags/collection_items/featured_stories all cascade on their own.
+export async function permanentlyDeleteStory(storyId: string) {
+  await requireStaff();
+  const admin = createAdminClient();
+
+  const { data: chapterRows } = await admin.from("chapters").select("id").eq("story_id", storyId);
+  const chapterIds = (chapterRows ?? []).map((c) => c.id as string);
+
+  let commentIds: string[] = [];
+  if (chapterIds.length > 0) {
+    const { data: commentRows } = await admin.from("comments").select("id").in("chapter_id", chapterIds);
+    commentIds = (commentRows ?? []).map((c) => c.id as string);
+  }
+
+  await admin.from("likes").delete().eq("target_type", "story").eq("target_id", storyId);
+  if (chapterIds.length > 0) {
+    await admin.from("likes").delete().eq("target_type", "chapter").in("target_id", chapterIds);
+  }
+  if (commentIds.length > 0) {
+    await admin.from("likes").delete().eq("target_type", "comment").in("target_id", commentIds);
+  }
+
+  await admin.from("stories").delete().eq("id", storyId).not("deleted_at", "is", null);
+
+  revalidatePath(`${ROUTES.admin}/stories`);
+  revalidatePath(ROUTES.admin);
+}
+
 export async function approveChapter(chapterId: string, storyId: string, storySlug: string) {
   await requireStaff();
   const admin = createAdminClient();

@@ -136,6 +136,7 @@ const uz: typeof ru = {
     readingStatusWantToRead: "Oʻqimoqchiman",
     readingStatusRead: "Oʻqilgan",
     readingStatusDropped: "Tashlab qoʻyilgan",
+    deletedPlaceholder: "Oʻchirilgan",
   },
   reader: {
     chapterLabel: "Bob",
@@ -218,9 +219,12 @@ const uz: typeof ru = {
     confirmDeleteChapter: "Bobni oʻchirasizmi? Bu amalni bekor qilib boʻlmaydi.",
     dangerZoneTitle: "Xavfli hudud",
     deleteStory: "Asarni oʻchirish",
-    deleteStoryWarning: "Barcha boblar, izohlar va layklar butunlay oʻchiriladi. Bu amalni bekor qilib boʻlmaydi.",
-    confirmDeleteStory:
-      "Asarni butunlay oʻchirasizmi? Barcha boblar, izohlar va layklar butunlay oʻchiriladi. Bu amalni bekor qilib boʻlmaydi.",
+    deleteStoryWarning:
+      "Asar shaxsiy kabinetingiz va qoralamalardan yoʻqoladi. Administratsiya uni qoralamalarga qaytarishi yoki butunlay oʻchirib tashlashi mumkin.",
+    deleteStoryModalTitle: "«{title}» oʻchirilsinmi?",
+    deleteStoryModalBody:
+      "U kabinetingiz va qoralamalardan, shuningdek oʻquvchilarning toʻplamlari va saqlanganlaridan ham yoʻqoladi — kartochka oʻrniga «Oʻchirilgan» belgisi qoladi. Administratsiya asarni qoralamalaringizga qaytarishi yoki butunlay oʻchirib tashlashi mumkin.",
+    deleteStoryConfirmButton: "Ha, oʻchirish",
     submitForReview: "Koʻrib chiqishga yuborish",
     approve: "Tasdiqlash",
     reject: "Rad etish",
@@ -318,6 +322,7 @@ const uz: typeof ru = {
     storyApproved: "Hikoyangiz tasdiqlandi va chop etildi:",
     storyRejected: "Hikoyangiz rad etildi:",
     storyHidden: "Administratsiya hikoyangizni boshqa foydalanuvchilardan yashirdi:",
+    storyRestored: "Administratsiya hikoyangizni chiqindilardan qaytardi — u qoralamalarda, uni qayta nashr eting:",
     chapterApproved: "Bob tasdiqlandi va chop etildi:",
     chapterRejected: "Bob rad etildi:",
   },
@@ -460,6 +465,14 @@ const uz: typeof ru = {
     hideStory: "Foydalanuvchilardan yashirish",
     hideReasonPlaceholder: "Hikoya nega yashirilyapti? Muallif shu matnni koʻradi.",
     confirmHide: "Yashirish",
+    trash: "Chiqindilar",
+    deletedByAuthor: "Muallif oʻchirdi",
+    deletedOnLabel: "Muallif tomonidan oʻchirilgan",
+    restoreStory: "Qaytarish",
+    permanentlyDelete: "Butunlay oʻchirish",
+    permanentDeleteWarning:
+      "Asar, uning barcha boblari, izohlari va layklari butunlay oʻchiriladi. Bu amalni bekor qilib boʻlmaydi.",
+    confirmPermanentDelete: "Ha, butunlay oʻchirish",
     colDate: "Sana",
     colAction: "Amal",
     colTitle: "Sarlavha",

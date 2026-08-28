@@ -10,7 +10,12 @@ import type { NotificationWithContext } from "@/lib/queries/notifications";
 
 function notificationHref(n: NotificationWithContext): string {
   if (!n.story) return ROUTES.home;
-  if (n.type === "story_rejected" || n.type === "story_hidden" || n.type === "chapter_rejected")
+  if (
+    n.type === "story_rejected" ||
+    n.type === "story_hidden" ||
+    n.type === "chapter_rejected" ||
+    n.type === "story_restored"
+  )
     return ROUTES.manage(n.story.slug);
   if (!n.chapter) return ROUTES.story(n.story.slug);
   const base = ROUTES.chapter(n.story.slug, n.chapter.order_index);
@@ -93,6 +98,11 @@ export function NotificationItem({
               <>
                 {t.notifications.storyHidden} {storyTitle && <>«{storyTitle}»</>}
                 {n.message && <span className="block text-[13px] text-muted-2">{n.message}</span>}
+              </>
+            )}
+            {n.type === "story_restored" && (
+              <>
+                {t.notifications.storyRestored} {storyTitle && <>«{storyTitle}»</>}
               </>
             )}
             {n.type === "chapter_approved" && (

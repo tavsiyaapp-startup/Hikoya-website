@@ -76,6 +76,7 @@ const ru = {
     },
     feedTitle: "Популярное",
     weekTitle: "Новые главы за неделю",
+    weekChaptersAddedN: "Добавлено {n} глав(ы)",
     editorialTitle: "Подборки",
     editorialBadge: "Выбор редакции",
     genreTitle: "По жанрам",

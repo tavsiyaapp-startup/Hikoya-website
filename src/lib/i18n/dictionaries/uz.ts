@@ -78,6 +78,7 @@ const uz: typeof ru = {
     },
     feedTitle: "Mashhur",
     weekTitle: "Hafta yangi boblari",
+    weekChaptersAddedN: "{n} ta bob qoʻshildi",
     editorialTitle: "Tanlanmalar",
     editorialBadge: "Tahririyat tanlovi",
     genreTitle: "Janrlar boʻyicha",

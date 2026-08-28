@@ -5,6 +5,7 @@ import { getCurrentUser } from "@/lib/current-user";
 import { getStoryBySlug } from "@/lib/queries/stories";
 import { ROUTES } from "@/lib/constants";
 import { ImportWizard } from "./ImportWizard";
+import { ImportGuide } from "./ImportGuide";
 
 export default async function ImportChapterPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -19,9 +20,10 @@ export default async function ImportChapterPage({ params }: { params: Promise<{ 
 
   return (
     <div>
-      <h1 className="mb-1.5 text-[24px] font-extrabold tracking-tight sm:text-[28px]">
-        {t.manage.importDocument}
-      </h1>
+      <div className="mb-1.5 flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-[24px] font-extrabold tracking-tight sm:text-[28px]">{t.manage.importDocument}</h1>
+        <ImportGuide />
+      </div>
       <p className="mb-6.5 text-[14.5px] text-muted">{story.title}</p>
       <ImportWizard storyId={story.id} storySlug={slug} />
     </div>

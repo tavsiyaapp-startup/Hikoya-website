@@ -248,6 +248,19 @@ const uz: typeof ru = {
     importTitlesRequired: "Har bir bob uchun nom kiriting (qizil bilan belgilangan) — aks holda saqlab bo'lmaydi.",
     untitledChapter: "Nomsiz",
     emptyChapterPreview: "(boʻsh)",
+    importTourLabel: "Yoʻriqnoma",
+    importTourSkip: "Oʻtkazib yuborish",
+    importTourStep1Title: "1-qadam. Hujjatni yuklang",
+    importTourStep1Body: "«Faylni tanlash .docx» tugmasini bosing va butun hikoya matni bo'lgan hujjatni yuklang.",
+    importTourStep2Title: "2-qadam. Har bir bobning boshini belgilang",
+    importTourStep2Body:
+      "Yangi bob boshlanadigan qatordan oldin kursorni qoʻying va «Bob boshini belgilash» tugmasini bosing. Matndagi har bir bob uchun takrorlang.",
+    importTourStep3Title: "3-qadam. Boblarga ajrating",
+    importTourStep3Body:
+      "«Ajratish va koʻrish» tugmasini bosing — hujjat sizning belgilaringiz boʻyicha boblarga ajraladi, har birini koʻrib chiqish va nomini oʻzgartirish mumkin.",
+    importTourStep4Title: "4-qadam. Tekshiring va saqlang",
+    importTourStep4Body:
+      "Har bir bob uchun nom kiriting va «Boblarni saqlash» tugmasini bosing — ular asaringizning boblar roʻyxatida paydo boʻladi.",
   },
   profile: {
     editProfile: "Profilni tahrirlash",

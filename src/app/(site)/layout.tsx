@@ -14,7 +14,7 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
     <MobileNavProvider>
       <div className="flex min-h-screen flex-col">
         <Header user={user} unreadCount={unreadCount} />
-        <div className="flex flex-1 items-start">
+        <div className="flex items-start">
           <Sidebar user={user} />
           <main className="min-w-0 flex-1 px-4 pb-14 pt-5 sm:px-6 lg:px-9 lg:pb-18 lg:pt-7">
             <BackButton />

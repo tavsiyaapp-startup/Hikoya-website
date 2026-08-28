@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
+import { ROUTES } from "@/lib/constants";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { PasswordInput } from "@/components/ui/PasswordInput";
@@ -48,11 +50,18 @@ export function GoogleButton({ next = "/", className }: { next?: string; classNa
   );
 }
 
-export function EmailForm({ next = "/" }: { next?: string }) {
+// mode="register" (onboarding) additionally checks email_is_registered
+// before sending anything — an already-registered email trying to "sign
+// up" gets steered to /login instead of a fresh magic link under a
+// misleading "you're registering" banner. mode="login" (the /login page)
+// skips that check entirely: there, "already registered" is the whole
+// point, not something to warn about.
+export function EmailForm({ next = "/", mode = "login" }: { next?: string; mode?: "login" | "register" }) {
   const { t } = useLocale();
   const [email, setEmail] = useState("");
   const [pending, setPending] = useState(false);
   const [sent, setSent] = useState(false);
+  const [alreadyRegistered, setAlreadyRegistered] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -61,6 +70,16 @@ export function EmailForm({ next = "/" }: { next?: string }) {
     setPending(true);
     setError(null);
     const supabase = createClient();
+
+    if (mode === "register") {
+      const { data: exists } = await supabase.rpc("email_is_registered", { check_email: email });
+      if (exists) {
+        setPending(false);
+        setAlreadyRegistered(true);
+        return;
+      }
+    }
+
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: { emailRedirectTo: `${siteUrl()}/auth/callback?next=${encodeURIComponent(next)}` },
@@ -71,6 +90,20 @@ export function EmailForm({ next = "/" }: { next?: string }) {
     } else {
       setSent(true);
     }
+  }
+
+  if (alreadyRegistered) {
+    return (
+      <div className="rounded-[13px] border border-primary-200 bg-primary-50 px-4 py-3.5">
+        <p className="mb-2 text-[14px] text-primary-900">{t.auth.emailAlreadyRegistered}</p>
+        <Link
+          href={`${ROUTES.login}?mode=password&next=${encodeURIComponent(next)}`}
+          className="text-[13px] font-bold text-primary-800 hover:underline"
+        >
+          {t.auth.goToLoginWithPassword}
+        </Link>
+      </div>
+    );
   }
 
   if (sent) {

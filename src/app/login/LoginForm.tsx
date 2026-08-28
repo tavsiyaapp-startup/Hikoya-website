@@ -6,9 +6,9 @@ import { useLocale } from "@/lib/i18n/LocaleProvider";
 import { ROUTES } from "@/lib/constants";
 import { GoogleButton, EmailForm, PasswordLoginForm } from "@/components/auth/AuthButtons";
 
-export function LoginForm({ next }: { next: string }) {
+export function LoginForm({ next, initialByPassword = false }: { next: string; initialByPassword?: boolean }) {
   const { t } = useLocale();
-  const [byPassword, setByPassword] = useState(false);
+  const [byPassword, setByPassword] = useState(initialByPassword);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-bg px-3 py-6 sm:px-5">

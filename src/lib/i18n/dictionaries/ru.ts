@@ -531,6 +531,8 @@ const ru = {
     emailError: "Не удалось отправить ссылку для входа. Проверьте адрес и попробуйте снова.",
     emailSentTo: "Ссылка для входа отправлена на",
     checkInbox: "Проверьте почту.",
+    emailAlreadyRegistered: "Этот email уже зарегистрирован.",
+    goToLoginWithPassword: "Войти с паролем →",
     telegramRemovedNotice:
       "Вход через Telegram больше не поддерживается. Если вы регистрировались через Telegram, зарегистрируйтесь заново через Google или email.",
     loginPageTitle: "С возвращением",

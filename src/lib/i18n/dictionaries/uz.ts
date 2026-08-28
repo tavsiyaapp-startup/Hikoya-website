@@ -533,6 +533,8 @@ const uz: typeof ru = {
     emailError: "Kirish havolasini yuborib boʻlmadi. Manzilni tekshirib, qayta urinib koʻring.",
     emailSentTo: "Kirish havolasi yuborildi:",
     checkInbox: "Pochtangizni tekshiring.",
+    emailAlreadyRegistered: "Bu email allaqachon roʻyxatdan oʻtgan.",
+    goToLoginWithPassword: "Parol bilan kirish →",
     telegramRemovedNotice:
       "Telegram orqali kirish endi qoʻllab-quvvatlanmaydi. Agar Telegram orqali roʻyxatdan oʻtgan boʻlsangiz, Google yoki email orqali qaytadan roʻyxatdan oʻting.",
     loginPageTitle: "Xush kelibsiz",

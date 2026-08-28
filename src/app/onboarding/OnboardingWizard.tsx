@@ -152,7 +152,7 @@ export function OnboardingWizard({
 
             <div className="mb-6.5 flex flex-col gap-3">
               <GoogleButton next={next} />
-              <EmailForm next={next} />
+              <EmailForm next={next} mode="register" />
             </div>
 
             <p className="text-center text-[13px] text-muted-2">

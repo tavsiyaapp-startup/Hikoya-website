@@ -6,14 +6,14 @@ import { LoginForm } from "./LoginForm";
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ next?: string }>;
+  searchParams: Promise<{ next?: string; mode?: string }>;
 }) {
-  const { next = "/" } = await searchParams;
+  const { next = "/", mode } = await searchParams;
   const user = await getCurrentUser();
 
   if (user) {
     redirect(user.profile?.onboarded_at ? next : `${ROUTES.onboarding}?next=${encodeURIComponent(next)}`);
   }
 
-  return <LoginForm next={next} />;
+  return <LoginForm next={next} initialByPassword={mode === "password"} />;
 }

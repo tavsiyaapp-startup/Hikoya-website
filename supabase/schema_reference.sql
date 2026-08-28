@@ -549,6 +549,17 @@ create or replace function is_staff() returns boolean as $$
   );
 $$ language sql security definer stable;
 
+-- добавлено в 0034: lets the registration form tell an already-registered
+-- email apart from a new one, see changelog. Deliberate, narrow
+-- email-enumeration surface (existence only) — accepted tradeoff for this
+-- exact "email already registered" UX.
+create or replace function email_is_registered(check_email text) returns boolean as $$
+  select exists (select 1 from auth.users where lower(email) = lower(check_email));
+$$ language sql security definer stable;
+
+revoke all on function email_is_registered(text) from public;
+grant execute on function email_is_registered(text) to anon, authenticated;
+
 -- profiles
 alter table profiles enable row level security;
 create policy "profiles are publicly readable" on profiles for select using (true);
@@ -1096,3 +1107,10 @@ on conflict (code) do nothing;
 --   вариант "Завершена" (был замаплен на status='unlisted') не мог найти
 --   вообще ничего — searchStories теперь фильтрует по progress_status
 --   напрямую (SearchFilters.status переименован в progressStatus).
+-- [2026-08-28] email_is_registered(text) (миграция 0034) — EmailForm на
+--   /onboarding теперь зовёт её через supabase.rpc(...) перед
+--   signInWithOtp: если email уже привязан к аккаунту, показывает "уже
+--   зарегистрирован" со ссылкой на /login?mode=password вместо того чтобы
+--   молча отправить очередной magic link под вывеской "регистрация".
+--   /login тем же EmailForm пользуется как обычно (mode="login", проверка
+--   не звонит) — там "уже зарегистрирован" это и есть весь смысл входа.

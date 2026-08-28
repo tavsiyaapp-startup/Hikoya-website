@@ -161,6 +161,7 @@ const uz: typeof ru = {
     spoilerCheckboxLabel: "Spoyler bor",
     spoilerBadge: "Spoyler",
     showSpoiler: "Spoylerni koʻrsatish",
+    hideSpoiler: "Spoylerni yashirish",
     commentRulesWarning: "Haqorat, spam va mavzuga aloqasi boʻlmagan xabarlar uchun akkauntni bloklashga majbur boʻlamiz.",
     commentRulesLink: "Platforma qoidalari",
     commentErrorNotice: "Sahifada xato topdingizmi?",

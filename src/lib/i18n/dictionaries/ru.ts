@@ -159,6 +159,7 @@ const ru = {
     spoilerCheckboxLabel: "Содержит спойлер",
     spoilerBadge: "Спойлер",
     showSpoiler: "Показать спойлер",
+    hideSpoiler: "Скрыть спойлер",
     commentRulesWarning: "Будем вынуждены заблокировать аккаунт за оскорбления, флуд и сообщения не по теме.",
     commentRulesLink: "Правила платформы",
     commentErrorNotice: "Нашли ошибку на странице?",

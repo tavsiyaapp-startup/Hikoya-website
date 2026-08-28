@@ -5,7 +5,7 @@ import { clsx } from "clsx";
 import { toggleCommentLike } from "@/lib/actions/social";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 import { Avatar } from "@/components/ui/Avatar";
-import { HeartIcon, EyeIcon } from "@/components/ui/icons";
+import { HeartIcon, EyeIcon, EyeOffIcon } from "@/components/ui/icons";
 import { CommentForm } from "@/components/story/CommentForm";
 import type { CommentRow } from "@/lib/queries/social";
 
@@ -63,14 +63,26 @@ export function CommentItem({
               {t.reader.showSpoiler}
             </button>
           ) : (
-            <p className="mb-2.5 text-[14.5px] leading-relaxed text-ink-soft">
+            <div className="mb-2.5">
+              <p className="text-[14.5px] leading-relaxed text-ink-soft">
+                {comment.is_spoiler && (
+                  <span className="mr-1.5 rounded-md bg-danger-bg px-1.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-danger">
+                    {t.reader.spoilerBadge}
+                  </span>
+                )}
+                {comment.text}
+              </p>
               {comment.is_spoiler && (
-                <span className="mr-1.5 rounded-md bg-danger-bg px-1.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-danger">
-                  {t.reader.spoilerBadge}
-                </span>
+                <button
+                  type="button"
+                  onClick={() => setSpoilerRevealed(false)}
+                  className="mt-1.5 flex cursor-pointer items-center gap-1.5 text-[12.5px] font-bold text-muted-2 transition hover:text-primary-800"
+                >
+                  <EyeOffIcon width={14} height={14} />
+                  {t.reader.hideSpoiler}
+                </button>
               )}
-              {comment.text}
-            </p>
+            </div>
           )}
           <div className="flex items-center gap-4">
             <button

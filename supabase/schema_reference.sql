@@ -120,7 +120,8 @@ create table comments (
   parent_id uuid references comments (id) on delete cascade,
   text text not null,
   like_count integer not null default 0,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  is_spoiler boolean not null default false  -- добавлено в 0035: автор сам отмечает при написании комментария
 );
 
 create index comments_chapter_id_idx on comments (chapter_id);
@@ -1114,3 +1115,11 @@ on conflict (code) do nothing;
 --   молча отправить очередной magic link под вывеской "регистрация".
 --   /login тем же EmailForm пользуется как обычно (mode="login", проверка
 --   не звонит) — там "уже зарегистрирован" это и есть весь смысл входа.
+-- [2026-08-28] comments.is_spoiler (миграция 0035) — чекбокс "Содержит
+--   спойлер" в CommentForm, postComment пишет его при вставке.
+--   CommentItem прячет текст такого комментария за кнопкой "Показать
+--   спойлер" вместо того чтобы сразу показывать. Заодно над формой добавления
+--   комментария (только когда её реально видно, т.е. один раз на странице,
+--   не на каждый reply) — плашка с напоминанием правил (ссылка на /rules) и
+--   способом сообщить об ошибке страницы через тот же Telegram-бот
+--   поддержки, что уже используется в футере.

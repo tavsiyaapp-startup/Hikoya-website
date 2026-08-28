@@ -22,6 +22,7 @@ export function CommentForm({
 }) {
   const { t } = useLocale();
   const [text, setText] = useState("");
+  const [isSpoiler, setIsSpoiler] = useState(false);
   const [pending, startTransition] = useTransition();
   const formRef = useRef<HTMLFormElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -30,8 +31,9 @@ export function CommentForm({
     e.preventDefault();
     if (!text.trim()) return;
     startTransition(async () => {
-      await postComment(chapterId, text, path, parentId);
+      await postComment(chapterId, text, path, parentId, isSpoiler);
       setText("");
+      setIsSpoiler(false);
       onSuccess?.();
     });
   }
@@ -53,20 +55,33 @@ export function CommentForm({
   }
 
   return (
-    <form ref={formRef} onSubmit={handleSubmit} className="flex items-start gap-3">
-      <Textarea
-        ref={textareaRef}
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        placeholder={t.reader.commentPlaceholder}
-        rows={2}
-        autoFocus={autoFocus}
-        className="flex-1"
-      />
-      <EmojiPickerButton onSelect={insertEmoji} />
-      <Button type="submit" disabled={pending || !text.trim()} className="mt-0.5 shrink-0">
-        {parentId ? t.manage.reply : t.reader.commentSubmit}
-      </Button>
+    <form ref={formRef} onSubmit={handleSubmit} className="flex flex-col gap-2.5">
+      <div className="flex items-start gap-3">
+        <Textarea
+          ref={textareaRef}
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder={t.reader.commentPlaceholder}
+          rows={2}
+          autoFocus={autoFocus}
+          className="flex-1"
+        />
+        <EmojiPickerButton onSelect={insertEmoji} />
+      </div>
+      <div className="flex items-center justify-between gap-3">
+        <label className="flex cursor-pointer items-center gap-2 text-[13px] font-semibold text-muted-2">
+          <input
+            type="checkbox"
+            checked={isSpoiler}
+            onChange={(e) => setIsSpoiler(e.target.checked)}
+            className="h-4 w-4 cursor-pointer accent-primary-600"
+          />
+          {t.reader.spoilerCheckboxLabel}
+        </label>
+        <Button type="submit" disabled={pending || !text.trim()} className="shrink-0">
+          {parentId ? t.manage.reply : t.reader.commentSubmit}
+        </Button>
+      </div>
     </form>
   );
 }

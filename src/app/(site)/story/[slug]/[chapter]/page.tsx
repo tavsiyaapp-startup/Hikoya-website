@@ -16,6 +16,7 @@ import { ChevronLeftIcon, LockIcon } from "@/components/ui/icons";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { ChapterReadingRecorder } from "@/components/story/ChapterReadingRecorder";
+import { CommentGuidelines } from "@/components/story/CommentGuidelines";
 import { CommentForm } from "@/components/story/CommentForm";
 import { CommentItem } from "@/components/story/CommentItem";
 
@@ -154,6 +155,7 @@ export default async function ReaderPage({
 
             {user ? (
               <div className="mb-5">
+                <CommentGuidelines />
                 <CommentForm chapterId={ch.id} path={ROUTES.chapter(slug, orderIndex)} />
               </div>
             ) : (

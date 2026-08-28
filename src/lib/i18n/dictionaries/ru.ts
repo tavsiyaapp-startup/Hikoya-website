@@ -155,6 +155,13 @@ const ru = {
     guestProgressHint: "прогресс не сохраняется для гостя",
     commentPlaceholder: "Ваш комментарий…",
     commentSubmit: "Отправить",
+    spoilerCheckboxLabel: "Содержит спойлер",
+    spoilerBadge: "Спойлер",
+    showSpoiler: "Показать спойлер",
+    commentRulesWarning: "Будем вынуждены заблокировать аккаунт за оскорбления, флуд и сообщения не по теме.",
+    commentRulesLink: "Правила платформы",
+    commentErrorNotice: "Нашли ошибку на странице?",
+    commentErrorLink: "Напишите нам в Telegram",
   },
   create: {
     step1: "Детали истории",

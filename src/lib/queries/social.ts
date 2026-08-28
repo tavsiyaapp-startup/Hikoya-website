@@ -130,6 +130,7 @@ export type CommentRow = {
   text: string;
   like_count: number;
   created_at: string;
+  is_spoiler: boolean;
   user: { display_name: string } | null;
 };
 

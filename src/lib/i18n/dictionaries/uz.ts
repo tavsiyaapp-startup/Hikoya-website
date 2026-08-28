@@ -157,6 +157,13 @@ const uz: typeof ru = {
     guestProgressHint: "mehmon uchun progress saqlanmaydi",
     commentPlaceholder: "Izohingiz…",
     commentSubmit: "Yuborish",
+    spoilerCheckboxLabel: "Spoyler bor",
+    spoilerBadge: "Spoyler",
+    showSpoiler: "Spoylerni koʻrsatish",
+    commentRulesWarning: "Haqorat, spam va mavzuga aloqasi boʻlmagan xabarlar uchun akkauntni bloklashga majbur boʻlamiz.",
+    commentRulesLink: "Platforma qoidalari",
+    commentErrorNotice: "Sahifada xato topdingizmi?",
+    commentErrorLink: "Telegram orqali yozing",
   },
   create: {
     step1: "Hikoya tafsilotlari",

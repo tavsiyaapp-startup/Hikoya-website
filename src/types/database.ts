@@ -97,6 +97,7 @@ export interface Comment {
   text: string;
   like_count: number;
   created_at: string;
+  is_spoiler: boolean;
 }
 
 export interface Like {

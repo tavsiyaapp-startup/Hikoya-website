@@ -5,7 +5,7 @@ import { clsx } from "clsx";
 import { toggleCommentLike } from "@/lib/actions/social";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 import { Avatar } from "@/components/ui/Avatar";
-import { HeartIcon } from "@/components/ui/icons";
+import { HeartIcon, EyeIcon } from "@/components/ui/icons";
 import { CommentForm } from "@/components/story/CommentForm";
 import type { CommentRow } from "@/lib/queries/social";
 
@@ -32,6 +32,7 @@ export function CommentItem({
   const [liked, setLiked] = useState(likedByMe);
   const [count, setCount] = useState(comment.like_count);
   const [replying, setReplying] = useState(false);
+  const [spoilerRevealed, setSpoilerRevealed] = useState(false);
   const [, startTransition] = useTransition();
 
   function handleLike() {
@@ -52,7 +53,25 @@ export function CommentItem({
               {new Date(comment.created_at).toLocaleDateString(locale)}
             </span>
           </div>
-          <p className="mb-2.5 text-[14.5px] leading-relaxed text-ink-soft">{comment.text}</p>
+          {comment.is_spoiler && !spoilerRevealed ? (
+            <button
+              type="button"
+              onClick={() => setSpoilerRevealed(true)}
+              className="mb-2.5 flex cursor-pointer items-center gap-2 rounded-xl border border-dashed border-primary-300 bg-primary-50 px-3.5 py-2.5 text-[13px] font-bold text-primary-800 transition hover:bg-primary-100"
+            >
+              <EyeIcon width={16} height={16} />
+              {t.reader.showSpoiler}
+            </button>
+          ) : (
+            <p className="mb-2.5 text-[14.5px] leading-relaxed text-ink-soft">
+              {comment.is_spoiler && (
+                <span className="mr-1.5 rounded-md bg-danger-bg px-1.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-danger">
+                  {t.reader.spoilerBadge}
+                </span>
+              )}
+              {comment.text}
+            </p>
+          )}
           <div className="flex items-center gap-4">
             <button
               type="button"

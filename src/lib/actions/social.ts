@@ -84,13 +84,25 @@ export async function toggleFollowAuthor(authorId: string, path: string) {
   revalidatePath(path);
 }
 
-export async function postComment(chapterId: string, text: string, path: string, parentId?: string) {
+export async function postComment(
+  chapterId: string,
+  text: string,
+  path: string,
+  parentId?: string,
+  isSpoiler?: boolean
+) {
   const { supabase, user } = await requireUser();
   if (!user || !text.trim()) return;
 
   const { data: comment, error } = await supabase
     .from("comments")
-    .insert({ chapter_id: chapterId, user_id: user.id, text: text.trim(), parent_id: parentId ?? null })
+    .insert({
+      chapter_id: chapterId,
+      user_id: user.id,
+      text: text.trim(),
+      parent_id: parentId ?? null,
+      is_spoiler: Boolean(isSpoiler),
+    })
     .select("id")
     .single();
   if (error || !comment) {

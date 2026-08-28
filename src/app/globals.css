@@ -91,28 +91,41 @@
 html, body {
   margin: 0;
   padding: 0;
+}
+
+/* Solid fallback lives on html, not body — body has to stay transparent
+   (see body rule below) so the blurred wallpaper on body::before shows
+   through instead of being painted over by an opaque body background. */
+html {
   background: var(--color-bg);
 }
 
 body {
+  background: transparent;
   font-family: var(--font-sans);
   color: var(--color-ink);
   -webkit-font-smoothing: antialiased;
 }
 
-/* Repeating wallpaper, same image/tile size in both themes — background.jpg
-   is 736×1098, tiled at 2x its native size (1472×2196) since at native size
-   it's too small to read as a pattern rather than a smear. background-color
-   above (from the html,body rule) stays as the fallback fill while the
-   image loads and shows through any transparency. Header/Sidebar/Footer all
-   paint their own opaque bg-card, so this only ever shows in <main>'s own
-   gutters and the gaps between cards — the header's bg-card/92 +
-   backdrop-blur-md lets a soft blurred hint of it through instead of a hard
-   edge. */
-body {
+/* Repeating wallpaper, same in both themes — background.jpg tiled at its
+   own native size (736×1098). A blur filter on body itself would blur the
+   actual page content too, so the image lives on its own fixed, z-index:-1
+   layer behind everything instead — inset is negative (overscanned past
+   the viewport) so the blur's soft edge falls outside what's visible
+   rather than showing as a faint lighter fringe right at the screen edge.
+   Header/Sidebar/Footer all paint their own opaque bg-card, so this only
+   ever shows in <main>'s own gutters and the gaps between cards — the
+   header's bg-card/92 + backdrop-blur-md lets a soft hint of it through
+   instead of a hard edge. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: -20px;
+  z-index: -1;
   background-image: url("/images/background.jpg");
   background-repeat: repeat;
-  background-size: 1472px 2196px;
+  background-size: 736px 1098px;
+  filter: blur(6px);
 }
 
 a {

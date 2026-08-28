@@ -1,6 +1,7 @@
 import { Header } from "@/components/layout/Header";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Footer } from "@/components/layout/Footer";
+import { BackButton } from "@/components/layout/BackButton";
 import { MobileNavProvider } from "@/components/layout/MobileNavContext";
 import { getCurrentUser } from "@/lib/current-user";
 import { getUnreadNotificationCount } from "@/lib/queries/notifications";
@@ -15,7 +16,10 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
         <Header user={user} unreadCount={unreadCount} />
         <div className="flex flex-1 items-start">
           <Sidebar user={user} />
-          <main className="min-w-0 flex-1 px-4 pb-14 pt-5 sm:px-6 lg:px-9 lg:pb-18 lg:pt-7">{children}</main>
+          <main className="min-w-0 flex-1 px-4 pb-14 pt-5 sm:px-6 lg:px-9 lg:pb-18 lg:pt-7">
+            <BackButton />
+            {children}
+          </main>
         </div>
         <Footer />
       </div>

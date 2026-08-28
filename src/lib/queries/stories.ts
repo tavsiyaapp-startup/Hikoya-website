@@ -297,23 +297,65 @@ export async function getCollectionsFeaturingAuthor(authorId: string, limit = 6)
   }
 }
 
+export type WeeklyStoryGroup = {
+  story: { id: string; title: string; slug: string; cover_url: string | null };
+  chapterCount: number;
+  // Only set when chapterCount === 1 — lets the card link straight to that
+  // one chapter instead of the story page, same as before this was grouped.
+  singleChapter: { id: string; title: string; order_index: number } | null;
+};
+
+// One row per story (not per chapter) — recent_chapter_stories() does the
+// grouping/windowing/pagination in SQL so total_count already matches what
+// gets rendered (one card per story), see migration 0036's comment for why
+// this moved out of a plain paginated chapters query.
 export const getRecentPublishedChapters = unstable_cache(
-  async (limit = 3, offset = 0) => {
+  async (limit = 3, offset = 0): Promise<Paginated<WeeklyStoryGroup>> => {
     try {
       const supabase = createPublicClient();
-      // !inner + the story.status filter below: a chapter keeps its own
-      // 'published' status independent of its parent story's — staff hiding
-      // a story (or an author soft-deleting it, which also flips status to
-      // 'draft') never touches the chapters' own status, so without this the
-      // hidden/deleted story's chapters would still show up here.
-      const { data, count } = await supabase
-        .from("chapters")
-        .select("*, story:stories!inner(id, title, slug, cover_url, status, visibility)", { count: "exact" })
-        .eq("status", "published")
-        .eq("story.status", "published")
-        .order("published_at", { ascending: false })
-        .range(offset, offset + limit - 1);
-      return { items: data ?? [], total: count ?? 0 };
+      const { data: groups } = (await supabase.rpc("recent_chapter_stories", {
+        days_back: 7,
+        page_limit: limit,
+        page_offset: offset,
+      })) as {
+        data: { story_id: string; chapter_count: number; total_count: number }[] | null;
+      };
+      if (!groups || groups.length === 0) return { items: [], total: 0 };
+
+      const total = Number(groups[0].total_count ?? 0);
+      const storyIds = groups.map((g) => g.story_id);
+      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+
+      const [{ data: stories }, { data: singleChapters }] = await Promise.all([
+        supabase.from("stories").select("id, title, slug, cover_url").in("id", storyIds),
+        supabase
+          .from("chapters")
+          .select("id, story_id, title, order_index")
+          .in(
+            "story_id",
+            groups.filter((g) => Number(g.chapter_count) === 1).map((g) => g.story_id as string)
+          )
+          .eq("status", "published")
+          // Matches the RPC's own window — without it a story that also has
+          // older published chapters (outside the 7-day window) could pick
+          // up one of those instead of its one genuinely recent chapter.
+          .gte("published_at", sevenDaysAgo),
+      ]);
+      const storyById = new Map((stories ?? []).map((s) => [s.id as string, s]));
+      const singleChapterByStory = new Map((singleChapters ?? []).map((c) => [c.story_id as string, c]));
+
+      const items: WeeklyStoryGroup[] = [];
+      for (const g of groups) {
+        const story = storyById.get(g.story_id as string);
+        if (!story) continue;
+        items.push({
+          story,
+          chapterCount: Number(g.chapter_count),
+          singleChapter: singleChapterByStory.get(g.story_id as string) ?? null,
+        });
+      }
+
+      return { items, total };
     } catch {
       return { items: [], total: 0 };
     }

@@ -561,6 +561,43 @@ $$ language sql security definer stable;
 revoke all on function email_is_registered(text) from public;
 grant execute on function email_is_registered(text) to anon, authenticated;
 
+-- добавлено в 0036: "Новые главы за неделю" на главной — одна строка на
+-- КАЖДУЮ историю с хотя бы одной опубликованной главой за days_back дней
+-- (не security definer — RLS применяется как обычно, читает только
+-- опубликованные главы, что anon и так может). total_count — window-
+-- функция поверх уже сгруппированных строк, отдаёт число различных
+-- ИСТОРИЙ, а не сырых строк chapters, см. changelog. join на stories с
+-- s.status='published' — та же проверка, что была раньше в
+-- getRecentPublishedChapters (скрытая/удалённая история не всплывает
+-- здесь просто потому что её собственные главы формально ещё
+-- status='published').
+create or replace function recent_chapter_stories(
+  days_back int default 7,
+  page_limit int default 6,
+  page_offset int default 0
+) returns table (
+  story_id uuid,
+  chapter_count bigint,
+  latest_published_at timestamptz,
+  total_count bigint
+) as $$
+  select
+    c.story_id,
+    count(*) as chapter_count,
+    max(c.published_at) as latest_published_at,
+    count(*) over () as total_count
+  from chapters c
+  join stories s on s.id = c.story_id
+  where c.status = 'published'
+    and c.published_at >= now() - (days_back || ' days')::interval
+    and s.status = 'published'
+  group by c.story_id
+  order by max(c.published_at) desc
+  limit page_limit offset page_offset;
+$$ language sql stable;
+
+grant execute on function recent_chapter_stories(int, int, int) to anon, authenticated;
+
 -- profiles
 alter table profiles enable row level security;
 create policy "profiles are publicly readable" on profiles for select using (true);
@@ -1123,3 +1160,17 @@ on conflict (code) do nothing;
 --   не на каждый reply) — плашка с напоминанием правил (ссылка на /rules) и
 --   способом сообщить об ошибке страницы через тот же Telegram-бот
 --   поддержки, что уже используется в футере.
+-- [2026-08-28] recent_chapter_stories(days_back, page_limit, page_offset)
+--   (миграция 0036) заменила прямую пагинацию chapters в
+--   getRecentPublishedChapters. Раньше "Новые главы за неделю" паджинировала
+--   сырые строки chapters, а на главной эти строки группировались по
+--   истории уже во время рендера — если все 6 глав на странице
+--   принадлежали одной истории, видна была одна карточка, а pagination
+--   всё равно показывала 6 страниц (посчитанных по главам, не по
+--   историям). Теперь группировка и пагинация происходят в самом запросе
+--   (SQL-функция, total_count через window-функцию поверх group by) — одна
+--   строка результата = одна история = одна карточка = один пункт
+--   pagination, взаимно согласовано. Заодно наконец появился настоящий
+--   7-дневный фильтр (days_back) — раньше секция называлась "за неделю",
+--   но фильтра по дате не было вообще, просто "последние опубликованные
+--   главы" без ограничения по времени.

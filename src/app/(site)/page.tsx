@@ -101,28 +101,9 @@ export default async function HomePage({
   ]);
 
   const feed = feedResult.items;
-  const weekly = weeklyResult.items;
+  const weeklyGroups = weeklyResult.items;
   const collections = collectionsResult.items;
   const genreStories = genreResult.items;
-
-  // "Новые главы за неделю" groups this page's chapter rows by story — a
-  // story with several new chapters this week gets one card showing how
-  // many were added instead of one duplicate-looking card per chapter.
-  type WeeklyStory = { title: string; slug: string; cover_url: string | null };
-  const weeklyGroups: { story: WeeklyStory; chapters: typeof weekly }[] = [];
-  const weeklyGroupBySlug = new Map<string, { story: WeeklyStory; chapters: typeof weekly }>();
-  for (const row of weekly) {
-    const story = row.story as unknown as WeeklyStory | null;
-    if (!story) continue;
-    const existing = weeklyGroupBySlug.get(story.slug);
-    if (existing) {
-      existing.chapters.push(row);
-    } else {
-      const group = { story, chapters: [row] };
-      weeklyGroupBySlug.set(story.slug, group);
-      weeklyGroups.push(group);
-    }
-  }
 
   const feedTotalPages = Math.max(1, Math.ceil(feedResult.total / PAGE_SIZE_FEED));
   const weekTotalPages = Math.max(1, Math.ceil(weeklyResult.total / PAGE_SIZE_WEEK));
@@ -262,28 +243,31 @@ export default async function HomePage({
       {weeklyGroups.length > 0 ? (
         <div className="mb-11">
           <div className="grid grid-cols-1 gap-4.5 xs:grid-cols-2 sm:grid-cols-3">
-            {weeklyGroups.map((group) => {
-              const single = group.chapters.length === 1 ? group.chapters[0] : null;
-              return (
-                <Link
-                  key={group.story.slug}
-                  href={single ? ROUTES.chapter(group.story.slug, single.order_index) : ROUTES.story(group.story.slug)}
-                  className="flex gap-3.5 rounded-[18px] border border-border bg-card p-3.5 hover:border-primary-300 hover:shadow-[0_10px_24px_rgba(60,40,120,0.09)]"
-                >
-                  <div className="relative h-21 w-21 shrink-0 overflow-hidden rounded-[14px] bg-primary-200">
-                    {group.story.cover_url && (
-                      <Image src={group.story.cover_url} alt="" fill className="object-cover" />
-                    )}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <Badge tone="primary" className="mb-1.5">{group.story.title}</Badge>
-                    <h3 className="mb-1 line-clamp-2 text-[15px] font-bold leading-tight">
-                      {single ? single.title : t.home.weekChaptersAddedN.replace("{n}", String(group.chapters.length))}
-                    </h3>
-                  </div>
-                </Link>
-              );
-            })}
+            {weeklyGroups.map((group) => (
+              <Link
+                key={group.story.id}
+                href={
+                  group.singleChapter
+                    ? ROUTES.chapter(group.story.slug, group.singleChapter.order_index)
+                    : ROUTES.story(group.story.slug)
+                }
+                className="flex gap-3.5 rounded-[18px] border border-border bg-card p-3.5 hover:border-primary-300 hover:shadow-[0_10px_24px_rgba(60,40,120,0.09)]"
+              >
+                <div className="relative h-21 w-21 shrink-0 overflow-hidden rounded-[14px] bg-primary-200">
+                  {group.story.cover_url && (
+                    <Image src={group.story.cover_url} alt="" fill className="object-cover" />
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <Badge tone="primary" className="mb-1.5">{group.story.title}</Badge>
+                  <h3 className="mb-1 line-clamp-2 text-[15px] font-bold leading-tight">
+                    {group.singleChapter
+                      ? group.singleChapter.title
+                      : t.home.weekChaptersAddedN.replace("{n}", String(group.chapterCount))}
+                  </h3>
+                </div>
+              </Link>
+            ))}
           </div>
           <Pagination page={weekPage} totalPages={weekTotalPages} buildHref={(p) => buildHref({ weekPage: p })} />
         </div>

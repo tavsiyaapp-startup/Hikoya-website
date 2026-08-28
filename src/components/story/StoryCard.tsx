@@ -6,6 +6,7 @@ import { localizeGenre } from "@/lib/genre";
 import { ROUTES } from "@/lib/constants";
 import { HeartIcon } from "@/components/ui/icons";
 import { Badge } from "@/components/ui/Chip";
+import { storyProgressTone, storyProgressLabel } from "@/lib/storyProgress";
 import type { StoryCard as StoryCardData } from "@/lib/queries/stories";
 
 export async function StoryCard({ story }: { story: StoryCardData }) {
@@ -48,6 +49,9 @@ export async function StoryCard({ story }: { story: StoryCardData }) {
         <div className="absolute bottom-3 left-3 flex items-center gap-1.5 rounded-full bg-black/50 px-2.5 py-1.5 text-[12.5px] font-bold text-white backdrop-blur-sm">
           <HeartIcon filled />
           <span>{story.like_count}</span>
+        </div>
+        <div className="absolute bottom-3 right-3">
+          <Badge tone={storyProgressTone(story.progress_status)}>{storyProgressLabel(t, story.progress_status)}</Badge>
         </div>
         {story.status !== "published" && (
           <div className="absolute right-3 top-3">

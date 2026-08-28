@@ -3,6 +3,7 @@ import { getServerLocale } from "@/lib/i18n/locale-server";
 import { getDictionary } from "@/lib/i18n";
 import { searchStories, type SearchFilters } from "@/lib/queries/stories";
 import { localizeGenre } from "@/lib/genre";
+import { storyProgressLabel } from "@/lib/storyProgress";
 import { Chip } from "@/components/ui/Chip";
 import { LinkChip } from "@/components/ui/LinkChip";
 import { Button } from "@/components/ui/Button";
@@ -32,12 +33,6 @@ function localizedLabel(value: string | undefined, locale: "ru" | "uz"): string 
   if (!value || locale === "ru") return value;
   const pair = [...RELATIONSHIP_TYPES, ...WARNINGS, ...STYLES].find(([ru]) => ru === value);
   return pair ? pair[1] : value;
-}
-
-function progressStatusLabel(value: string, t: ReturnType<typeof getDictionary>): string {
-  if (value === "finished") return t.common.finished;
-  if (value === "dropped") return t.common.dropped;
-  return t.common.ongoing;
 }
 
 function buildHref(current: Query, patch: Record<string, string | string[] | undefined>) {
@@ -236,7 +231,7 @@ export default async function SearchPage({
                     {key === "style" || key === "rel"
                       ? localizedLabel(value, locale)
                       : key === "progress"
-                        ? progressStatusLabel(value as string, t)
+                        ? storyProgressLabel(t, value as "ongoing" | "finished" | "dropped")
                         : value}
                   </span>
                   <span className="text-[14px] leading-none">×</span>

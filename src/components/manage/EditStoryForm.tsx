@@ -10,6 +10,7 @@ import { Chip } from "@/components/ui/Chip";
 import { Button } from "@/components/ui/Button";
 import { TagPicker } from "@/components/story/TagPicker";
 import { RELATIONSHIP_TYPES } from "@/lib/relationshipTypes";
+import { storyProgressLabel } from "@/lib/storyProgress";
 import type { StoryProgressStatus } from "@/types/database";
 
 const PROGRESS_STATUSES: StoryProgressStatus[] = ["ongoing", "finished", "dropped"];
@@ -73,11 +74,6 @@ export function EditStoryForm({
     });
   }
 
-  function progressStatusLabel(status: StoryProgressStatus) {
-    if (status === "finished") return t.common.finished;
-    if (status === "dropped") return t.common.dropped;
-    return t.common.ongoing;
-  }
 
   return (
     <div className="rounded-3xl border border-border bg-card p-4.5 sm:p-7.5">
@@ -134,7 +130,7 @@ export function EditStoryForm({
       <div className="mb-5 flex flex-wrap gap-2">
         {PROGRESS_STATUSES.map((status) => (
           <Chip key={status} active={progressStatus === status} onClick={() => setProgressStatus(status)}>
-            {progressStatusLabel(status)}
+            {storyProgressLabel(t, status)}
           </Chip>
         ))}
       </div>

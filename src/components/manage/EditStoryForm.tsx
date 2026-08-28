@@ -10,6 +10,9 @@ import { Chip } from "@/components/ui/Chip";
 import { Button } from "@/components/ui/Button";
 import { TagPicker } from "@/components/story/TagPicker";
 import { RELATIONSHIP_TYPES } from "@/lib/relationshipTypes";
+import type { StoryProgressStatus } from "@/types/database";
+
+const PROGRESS_STATUSES: StoryProgressStatus[] = ["ongoing", "finished", "dropped"];
 
 export function EditStoryForm({
   storyId,
@@ -20,6 +23,7 @@ export function EditStoryForm({
   initialRelationshipType,
   initialDescription,
   initialTags,
+  initialProgressStatus,
   existingTags,
 }: {
   storyId: string;
@@ -30,6 +34,7 @@ export function EditStoryForm({
   initialRelationshipType: string | null;
   initialDescription: string;
   initialTags: string[];
+  initialProgressStatus: StoryProgressStatus;
   existingTags: string[];
 }) {
   const { t, locale } = useLocale();
@@ -40,6 +45,7 @@ export function EditStoryForm({
   const [relationshipType, setRelationshipType] = useState<string | null>(initialRelationshipType);
   const [description, setDescription] = useState(initialDescription);
   const [tags, setTags] = useState<string[]>(initialTags);
+  const [progressStatus, setProgressStatus] = useState<StoryProgressStatus>(initialProgressStatus);
   const [pending, startTransition] = useTransition();
 
   async function handleCoverChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -63,8 +69,14 @@ export function EditStoryForm({
 
   function handleSave() {
     startTransition(() => {
-      updateStory(storyId, storySlug, { description, coverUrl, genre, relationshipType, tags });
+      updateStory(storyId, storySlug, { description, coverUrl, genre, relationshipType, tags, progressStatus });
     });
+  }
+
+  function progressStatusLabel(status: StoryProgressStatus) {
+    if (status === "finished") return t.common.finished;
+    if (status === "dropped") return t.common.dropped;
+    return t.common.ongoing;
   }
 
   return (
@@ -114,6 +126,15 @@ export function EditStoryForm({
             onClick={() => setRelationshipType((prev) => (prev === r ? null : r))}
           >
             {locale === "uz" ? rUz : r}
+          </Chip>
+        ))}
+      </div>
+
+      <label className="mb-2 block text-[14px] font-bold">{t.create.progressStatusLabel}</label>
+      <div className="mb-5 flex flex-wrap gap-2">
+        {PROGRESS_STATUSES.map((status) => (
+          <Chip key={status} active={progressStatus === status} onClick={() => setProgressStatus(status)}>
+            {progressStatusLabel(status)}
           </Chip>
         ))}
       </div>

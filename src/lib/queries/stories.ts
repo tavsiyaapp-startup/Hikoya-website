@@ -401,7 +401,7 @@ export interface SearchFilters {
   q?: string;
   language?: string;
   genre?: string;
-  status?: string;
+  progressStatus?: string;
   age?: string;
   relationship?: string;
   style?: string;
@@ -438,7 +438,7 @@ export const searchStories = unstable_cache(
       if (filters.q) query = query.ilike("title", `%${filters.q}%`);
       if (filters.language) query = query.eq("language", filters.language);
       if (filters.genre) query = query.in("genre", genreVariants(filters.genre));
-      if (filters.status) query = query.eq("status", filters.status);
+      if (filters.progressStatus) query = query.eq("progress_status", filters.progressStatus);
       if (filters.age) query = query.eq("age_rating", filters.age);
       if (filters.relationship) query = query.eq("relationship_type", filters.relationship);
 

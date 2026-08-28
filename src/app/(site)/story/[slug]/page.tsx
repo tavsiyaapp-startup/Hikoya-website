@@ -139,7 +139,17 @@ export default async function StoryPage({
             <Badge tone="primary">{relationshipLabel(story.relationship_type, locale)}</Badge>
           )}
           <Badge tone={story.age_rating === "18+" ? "danger" : "neutral"}>{story.age_rating}</Badge>
-          <Badge tone="success">{story.status === "published" ? t.common.ongoing : t.common.finished}</Badge>
+          <Badge
+            tone={
+              story.progress_status === "finished" ? "primary" : story.progress_status === "dropped" ? "danger" : "success"
+            }
+          >
+            {story.progress_status === "finished"
+              ? t.common.finished
+              : story.progress_status === "dropped"
+                ? t.common.dropped
+                : t.common.ongoing}
+          </Badge>
           <Badge tone="neutral">{t.languages[story.language]}</Badge>
           {linkedRequestId && (
             <Link href={`${ROUTES.board}?selected=${linkedRequestId}`}>

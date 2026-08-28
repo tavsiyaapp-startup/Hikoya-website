@@ -155,6 +155,7 @@ export default async function ManagePage({
             initialGenre={localizeGenre(story.genre, locale)}
             initialRelationshipType={story.relationship_type}
             initialDescription={story.description}
+            initialProgressStatus={story.progress_status}
             initialTags={tags}
             existingTags={existingTags}
           />

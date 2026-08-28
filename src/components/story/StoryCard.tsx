@@ -60,7 +60,12 @@ export async function StoryCard({ story }: { story: StoryCardData }) {
           {story.title}
         </h3>
         <div className="mb-2.5 truncate text-[13px] text-muted-2">{story.author?.display_name}</div>
-        <Badge tone="pink">{localizeGenre(story.genre, locale)}</Badge>
+        <div className="flex items-center justify-between gap-2">
+          <Badge tone="pink">{localizeGenre(story.genre, locale)}</Badge>
+          <span className="shrink-0 text-[12px] font-semibold text-muted-3">
+            {story.chapter_count} {t.common.chapters}
+          </span>
+        </div>
       </div>
     </Link>
   );

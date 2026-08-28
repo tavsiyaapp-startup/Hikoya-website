@@ -24,6 +24,7 @@ create type user_role as enum ('reader', 'author', 'moderator', 'admin');
 create type user_status as enum ('active', 'blocked');
 create type story_status as enum ('draft', 'published', 'unlisted', 'pending_review');
 create type story_visibility as enum ('public', 'unlisted', 'draft');
+create type story_progress_status as enum ('ongoing', 'finished', 'dropped');   -- добавлено в 0033: автор сам объявляет, см. changelog
 create type age_rating as enum ('0+', '12+', '16+', '18+');
 create type content_language as enum ('ru', 'uz');
 create type chapter_status as enum ('draft', 'published', 'pending_review');
@@ -71,11 +72,13 @@ create table stories (
   style text,
   status story_status not null default 'draft',
   visibility story_visibility not null default 'draft',
+  progress_status story_progress_status not null default 'ongoing',  -- добавлено в 0033: не то же самое, что status — см. changelog
   announce text,
   view_count integer not null default 0,
   like_count integer not null default 0,
   comment_count integer not null default 0,
   bookmark_count integer not null default 0,
+  chapter_count integer not null default 0,  -- добавлено в 0033: денормализованный счётчик опубликованных глав, см. bump_story_chapter_count()
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   published_at timestamptz,
@@ -452,6 +455,41 @@ create trigger bookmarks_bump_story_counters
 create trigger comments_bump_story_counters
   after insert or delete on comments
   for each row execute function bump_story_counters();
+
+-- добавлено в 0033: stories.chapter_count. Отдельная функция, не ветка
+-- bump_story_counters() выше — единственная из этих денормализованных
+-- счётчиков, которой нужно реагировать на UPDATE (глава уходит в
+-- 'published' и обратно через review/hide на той же строке, а не только
+-- insert/delete).
+create or replace function bump_story_chapter_count() returns trigger as $$
+begin
+  if tg_op = 'INSERT' then
+    if new.status = 'published' then
+      update stories set chapter_count = chapter_count + 1 where id = new.story_id;
+    end if;
+    return new;
+  elsif tg_op = 'DELETE' then
+    if old.status = 'published' then
+      update stories set chapter_count = greatest(chapter_count - 1, 0) where id = old.story_id;
+    end if;
+    return old;
+  elsif tg_op = 'UPDATE' then
+    if old.status is distinct from new.status then
+      if new.status = 'published' and old.status != 'published' then
+        update stories set chapter_count = chapter_count + 1 where id = new.story_id;
+      elsif old.status = 'published' and new.status != 'published' then
+        update stories set chapter_count = greatest(chapter_count - 1, 0) where id = new.story_id;
+      end if;
+    end if;
+    return new;
+  end if;
+  return null;
+end;
+$$ language plpgsql security definer;
+
+create trigger chapters_bump_story_chapter_count
+  after insert or update or delete on chapters
+  for each row execute function bump_story_chapter_count();
 
 -- Автосоздание профиля при регистрации (Google/Email/Telegram).
 -- Онбординг (3 шага) потом дозаполняет role/interests/locale_pref через UPDATE.
@@ -1041,3 +1079,20 @@ on conflict (code) do nothing;
 --   — тот самый реальный DELETE, теперь только отсюда (service-role,
 --   requireStaff(), плюс .not("deleted_at","is",null) вторым замком),
 --   чистит polymorphic likes так же, как раньше делал старый deleteStory.
+-- [2026-08-28] stories.chapter_count и stories.progress_status (миграция
+--   0033). chapter_count — денормализованный счётчик ОПУБЛИКОВАННЫХ глав,
+--   держится триггером bump_story_chapter_count() (insert/update/delete на
+--   chapters) — теперь показывается на каждой карточке произведения
+--   (StoryCard.tsx) вместо агрегата "всего глав у автора" на верхней
+--   карточке профиля автора (totals.totalChapters убран из
+--   /author/[username], getAuthorTotals больше не делает лишний запрос
+--   в chapters). progress_status ('ongoing'/'finished'/'dropped') —
+--   отдельное поле, которое автор теперь сам выставляет в
+--   EditStoryForm — раньше бейдж "В процессе"/"Завершена" на странице
+--   произведения был просто неправильно взят из story.status
+--   (published/unlisted — статус публикации, не готовности текста), и
+--   фильтр "Статус" в поиске так же ошибочно фильтровал по нему же:
+--   searchStories всегда требует status='published' на входе, поэтому
+--   вариант "Завершена" (был замаплен на status='unlisted') не мог найти
+--   вообще ничего — searchStories теперь фильтрует по progress_status
+--   напрямую (SearchFilters.status переименован в progressStatus).

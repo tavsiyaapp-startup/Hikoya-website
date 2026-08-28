@@ -34,6 +34,12 @@ function localizedLabel(value: string | undefined, locale: "ru" | "uz"): string 
   return pair ? pair[1] : value;
 }
 
+function progressStatusLabel(value: string, t: ReturnType<typeof getDictionary>): string {
+  if (value === "finished") return t.common.finished;
+  if (value === "dropped") return t.common.dropped;
+  return t.common.ongoing;
+}
+
 function buildHref(current: Query, patch: Record<string, string | string[] | undefined>) {
   const params = new URLSearchParams();
   const merged = { ...current, ...patch };
@@ -66,7 +72,7 @@ export default async function SearchPage({
     q: one(sp.q),
     language: one(sp.lang),
     genre: one(sp.genre),
-    status: one(sp.status),
+    progressStatus: one(sp.progress),
     age: one(sp.age),
     relationship: one(sp.rel),
     style: one(sp.style),
@@ -78,7 +84,7 @@ export default async function SearchPage({
   const hasActive = Boolean(
     filters.language ||
       filters.genre ||
-      filters.status ||
+      filters.progressStatus ||
       filters.age ||
       filters.relationship ||
       filters.style ||
@@ -130,10 +136,15 @@ export default async function SearchPage({
 
         <FilterGroup label={t.search.status}>
           {[
-            ["published", t.common.ongoing],
-            ["unlisted", t.common.finished],
+            ["ongoing", t.common.ongoing],
+            ["finished", t.common.finished],
+            ["dropped", t.common.dropped],
           ].map(([value, label]) => (
-            <LinkChip key={value} href={buildHref(sp, { status: filters.status === value ? undefined : value })} active={filters.status === value}>
+            <LinkChip
+              key={value}
+              href={buildHref(sp, { progress: filters.progressStatus === value ? undefined : value })}
+              active={filters.progressStatus === value}
+            >
               {label}
             </LinkChip>
           ))}
@@ -208,7 +219,7 @@ export default async function SearchPage({
               [
                 ["lang", filters.language],
                 ["genre", filters.genre],
-                ["status", filters.status],
+                ["progress", filters.progressStatus],
                 ["age", filters.age],
                 ["rel", filters.relationship],
                 ["style", filters.style],
@@ -221,7 +232,13 @@ export default async function SearchPage({
                   href={buildHref(sp, { [key]: undefined })}
                   className="flex items-center gap-1.5 rounded-[10px] border border-primary-300 bg-primary-50 px-3 py-1.5 text-[12.5px] font-semibold text-primary-900"
                 >
-                  <span>{key === "style" || key === "rel" ? localizedLabel(value, locale) : value}</span>
+                  <span>
+                    {key === "style" || key === "rel"
+                      ? localizedLabel(value, locale)
+                      : key === "progress"
+                        ? progressStatusLabel(value as string, t)
+                        : value}
+                  </span>
                   <span className="text-[14px] leading-none">×</span>
                 </Link>
               ))}

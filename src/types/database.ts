@@ -4,6 +4,7 @@
 export type UserRole = "reader" | "author" | "moderator" | "admin";
 export type UserStatus = "active" | "blocked";
 export type StoryStatus = "draft" | "published" | "unlisted" | "pending_review";
+export type StoryProgressStatus = "ongoing" | "finished" | "dropped";
 export type StoryVisibility = "public" | "unlisted" | "draft";
 export type AgeRating = "0+" | "12+" | "16+" | "18+";
 export type ContentLanguage = "ru" | "uz";
@@ -57,11 +58,13 @@ export interface Story {
   style: string | null;
   status: StoryStatus;
   visibility: StoryVisibility;
+  progress_status: StoryProgressStatus;
   announce: string | null;
   view_count: number;
   like_count: number;
   comment_count: number;
   bookmark_count: number;
+  chapter_count: number;
   created_at: string;
   updated_at: string;
   published_at: string | null;

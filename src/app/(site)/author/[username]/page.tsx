@@ -61,7 +61,6 @@ export default async function AuthorPage({
     { label: t.author.stories, value: storyCount },
     { label: t.author.subscribers, value: followerCount },
     { label: t.author.totalLikes, value: formatCompactCount(totals.totalLikes) },
-    { label: t.author.totalChapters, value: totals.totalChapters },
   ];
 
   return (

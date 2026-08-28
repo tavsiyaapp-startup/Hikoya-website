@@ -7,7 +7,14 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { slugify, withRandomSuffix } from "@/lib/slug";
 import { sanitizeHtml } from "@/lib/sanitize";
 import { ROUTES } from "@/lib/constants";
-import type { AgeRating, ChapterStatus, ContentLanguage, StoryStatus, StoryVisibility } from "@/types/database";
+import type {
+  AgeRating,
+  ChapterStatus,
+  ContentLanguage,
+  StoryStatus,
+  StoryVisibility,
+  StoryProgressStatus,
+} from "@/types/database";
 
 export interface CreateStoryInput {
   title: string;
@@ -142,6 +149,7 @@ export interface UpdateStoryInput {
   genre: string;
   relationshipType: string | null;
   tags: string[];
+  progressStatus: StoryProgressStatus;
 }
 
 export async function updateStory(
@@ -162,6 +170,7 @@ export async function updateStory(
       cover_url: input.coverUrl,
       genre: input.genre,
       relationship_type: input.relationshipType,
+      progress_status: input.progressStatus,
       updated_at: new Date().toISOString(),
     })
     .eq("id", storyId);

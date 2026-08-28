@@ -514,8 +514,8 @@ begin
   insert into profiles (id, username, display_name)
   values (new.id, candidate, coalesce(new.raw_user_meta_data ->> 'full_name', candidate));
 
-  insert into collections (owner_id, owner_type, title)
-  values (new.id, 'user', 'Моя подборка');
+  insert into collections (owner_id, owner_type, title, is_private)
+  values (new.id, 'user', 'Моя подборка', true);
 
   return new;
 end;
@@ -1174,3 +1174,12 @@ on conflict (code) do nothing;
 --   7-дневный фильтр (days_back) — раньше секция называлась "за неделю",
 --   но фильтра по дате не было вообще, просто "последние опубликованные
 --   главы" без ограничения по времени.
+-- [2026-08-28] Дефолтная "Моя подборка" (0030) стала приватной по умолчанию
+--   (миграция 0037) — раньше handle_new_user() создавал её с is_private=false,
+--   то есть она сразу была видна всем во вкладке "Пользователи" на
+--   /collections, хотя пользователь её не публиковал сознательно. Теперь
+--   ведёт себя как YouTube "Смотреть позже". Бэкфилл той же миграцией скрыл
+--   уже существующие дефолтные подборки, которые ещё не были вручную сделаны
+--   публичными (is_private=false, title='Моя подборка', owner_type='user').
+--   RLS (collections select policy) уже уважал is_private — правка только в
+--   значении по умолчанию, без изменений в политиках или UI-переключателе.

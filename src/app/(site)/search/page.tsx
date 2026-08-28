@@ -129,7 +129,7 @@ export default async function SearchPage({
 
         <div className="my-1 h-px bg-border-soft" />
 
-        <FilterGroup label={t.search.status}>
+        <FilterGroup label={t.search.status} wrap>
           {[
             ["ongoing", t.common.ongoing],
             ["finished", t.common.finished],

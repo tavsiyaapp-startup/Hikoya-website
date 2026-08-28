@@ -107,8 +107,9 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Repeating wallpaper, same in both themes — background.jpg tiled at its
-   own native size (736×1098). A blur filter on body itself would blur the
+/* Repeating wallpaper — a different tile per theme (pattern_light.jpg,
+   500×1000, for light; the starry background.jpg, 736×1098, for dark),
+   each at its own native size. A blur filter on body itself would blur the
    actual page content too, so the image lives on its own fixed, z-index:-1
    layer behind everything instead — inset is negative (overscanned past
    the viewport) so the blur's soft edge falls outside what's visible
@@ -122,10 +123,15 @@ body::before {
   position: fixed;
   inset: -20px;
   z-index: -1;
-  background-image: url("/images/background.jpg");
   background-repeat: repeat;
-  background-size: 736px 1098px;
   filter: blur(6px);
+  background-image: url("/images/pattern_light.jpg");
+  background-size: 500px 1000px;
+}
+
+[data-theme="dark"] body::before {
+  background-image: url("/images/background.jpg");
+  background-size: 736px 1098px;
 }
 
 a {

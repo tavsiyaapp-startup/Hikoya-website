@@ -107,20 +107,25 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Repeating starry wallpaper, dark theme only — plain solid --color-bg for
-   light. A blur filter on body itself would blur the actual page content
-   too, so the image lives on its own fixed, z-index:-1 layer behind
-   everything instead — inset is negative (overscanned past the viewport)
-   so the blurred edge falls outside what's visible rather than showing as
-   a faint lighter fringe right at the screen edge. Header/Sidebar/Footer
-   all paint their own opaque bg-card, so this only ever shows in <main>'s
-   own gutters and the gaps between cards — the header's bg-card/92 +
-   backdrop-blur-md lets a soft hint of it through instead of a hard edge. */
+/* Wallpaper, both themes — light gets a single full-bleed illustration
+   (cover, no repeat), dark keeps its repeating starry tile with a blur. A
+   blur filter on body itself would blur the actual page content too, so the
+   image lives on its own fixed, z-index:-1 layer behind everything instead
+   — inset is negative (overscanned past the viewport) so the dark theme's
+   blurred edge falls outside what's visible rather than showing as a faint
+   lighter fringe right at the screen edge. Header/Sidebar/Footer all paint
+   their own opaque bg-card, so this only ever shows in <main>'s own gutters
+   and the gaps between cards — the header's bg-card/92 + backdrop-blur-md
+   lets a soft hint of it through instead of a hard edge. */
 body::before {
   content: "";
   position: fixed;
   inset: -20px;
   z-index: -1;
+  background-image: url("/images/dragon-background.jpg");
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center;
 }
 
 [data-theme="dark"] body::before {

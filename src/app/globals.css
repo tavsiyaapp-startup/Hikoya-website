@@ -132,7 +132,7 @@ body::before {
   background-image: url("/images/background.jpg");
   background-repeat: repeat;
   background-size: 736px 1098px;
-  filter: blur(6px);
+  filter: blur(3px);
 }
 
 a {

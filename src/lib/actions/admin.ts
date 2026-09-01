@@ -255,6 +255,7 @@ function readHeroSlideFields(formData: FormData) {
   const bodyRu = String(formData.get("bodyRu") ?? "").trim();
   const bodyUz = String(formData.get("bodyUz") ?? "").trim();
   const imageUrl = String(formData.get("imageUrl") ?? "").trim();
+  const imageUrlMobile = String(formData.get("imageUrlMobile") ?? "").trim();
   const ctaLabelRu = String(formData.get("ctaLabelRu") ?? "").trim();
   const ctaLabelUz = String(formData.get("ctaLabelUz") ?? "").trim();
   const ctaUrl = String(formData.get("ctaUrl") ?? "").trim();
@@ -264,6 +265,7 @@ function readHeroSlideFields(formData: FormData) {
     body_ru: bodyRu || null,
     body_uz: bodyUz || null,
     image_url: imageUrl || null,
+    image_url_mobile: imageUrlMobile || null,
     cta_label_ru: ctaLabelRu || null,
     cta_label_uz: ctaLabelUz || null,
     cta_url: ctaUrl || null,

@@ -154,11 +154,21 @@ function Slide({ slide, locale }: { slide: HeroSlide; locale: "ru" | "uz" }) {
             hasText ? "h-48 sm:h-full sm:w-[46%]" : "h-full w-full"
           )}
         >
+          {/* Separate mobile/desktop sources, swapped by breakpoint (same sm
+              cutoff the rest of this layout already uses) rather than a
+              single image stretched across both — image_url_mobile falls
+              back to image_url when a slide never got its own mobile crop. */}
+          <Image
+            src={(slide.image_url_mobile || slide.image_url) as string}
+            alt=""
+            fill
+            className={clsx("object-cover sm:hidden", hasText ? "object-right" : "object-center")}
+          />
           <Image
             src={slide.image_url as string}
             alt=""
             fill
-            className={clsx("object-cover", hasText ? "object-right" : "object-center")}
+            className={clsx("hidden object-cover sm:block", hasText ? "object-right" : "object-center")}
           />
           {hasText && <div className="absolute inset-0 bg-linear-to-r from-primary-50 to-transparent sm:block hidden" />}
         </div>

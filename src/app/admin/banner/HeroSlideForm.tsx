@@ -13,10 +13,21 @@ import type { HeroSlide } from "@/types/database";
 export function HeroSlideForm({ slide, onDone }: { slide?: HeroSlide; onDone?: () => void }) {
   const { t } = useLocale();
   const [imageUrl, setImageUrl] = useState<string | null>(slide?.image_url ?? null);
+  const [imageUrlMobile, setImageUrlMobile] = useState<string | null>(slide?.image_url_mobile ?? null);
   const [uploading, setUploading] = useState(false);
+  const [uploadingMobile, setUploadingMobile] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [formKey, setFormKey] = useState(0);
+
+  async function uploadSlideImage(file: File): Promise<string> {
+    const supabase = createClient();
+    const path = `${Date.now()}-${file.name}`;
+    const { error } = await supabase.storage.from("hero-slides").upload(path, file, { upsert: true });
+    if (error) throw error;
+    const { data } = supabase.storage.from("hero-slides").getPublicUrl(path);
+    return data.publicUrl;
+  }
 
   async function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -24,18 +35,29 @@ export function HeroSlideForm({ slide, onDone }: { slide?: HeroSlide; onDone?: (
     setUploading(true);
     setError(null);
     try {
-      const supabase = createClient();
-      const path = `${Date.now()}-${file.name}`;
-      const { error } = await supabase.storage.from("hero-slides").upload(path, file, { upsert: true });
-      if (error) throw error;
-      const { data } = supabase.storage.from("hero-slides").getPublicUrl(path);
-      setImageUrl(data.publicUrl);
+      setImageUrl(await uploadSlideImage(file));
     } catch (err) {
       console.error("hero slide upload failed:", err);
       const detail = err instanceof Error ? err.message : String(err);
       setError(`${t.create.coverError} (${detail})`);
     } finally {
       setUploading(false);
+    }
+  }
+
+  async function handleMobileImageChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingMobile(true);
+    setError(null);
+    try {
+      setImageUrlMobile(await uploadSlideImage(file));
+    } catch (err) {
+      console.error("hero slide mobile upload failed:", err);
+      const detail = err instanceof Error ? err.message : String(err);
+      setError(`${t.create.coverError} (${detail})`);
+    } finally {
+      setUploadingMobile(false);
     }
   }
 
@@ -52,6 +74,7 @@ export function HeroSlideForm({ slide, onDone }: { slide?: HeroSlide; onDone?: (
       } else {
         await createHeroSlide(formData);
         setImageUrl(null);
+        setImageUrlMobile(null);
         setError(null);
         setFormKey((k) => k + 1);
       }
@@ -76,6 +99,33 @@ export function HeroSlideForm({ slide, onDone }: { slide?: HeroSlide; onDone?: (
           </label>
         </div>
         {error && <p className="mt-1 text-[12px] text-danger">{error}</p>}
+      </div>
+
+      <div>
+        <label className="mb-1.5 block text-[13px] font-bold">
+          {t.admin.bannerImageMobileLabel} <span className="font-medium text-muted-2">{t.admin.bannerOptional}</span>
+        </label>
+        <p className="mb-1.5 text-[12px] text-muted-2">{t.admin.bannerImageMobileHint}</p>
+        <div className="flex items-center gap-3.5">
+          {imageUrlMobile && (
+            <div className="relative h-14 w-24 shrink-0 overflow-hidden rounded-[10px] bg-primary-200">
+              <Image src={imageUrlMobile} alt="" fill className="object-cover" />
+            </div>
+          )}
+          <label className="cursor-pointer text-[13px] font-bold text-primary-800">
+            {uploadingMobile ? t.common.loading : t.create.uploadCover}
+            <input type="file" accept="image/*" onChange={handleMobileImageChange} className="hidden" />
+          </label>
+          {imageUrlMobile && (
+            <button
+              type="button"
+              onClick={() => setImageUrlMobile(null)}
+              className="cursor-pointer text-[12.5px] font-bold text-muted-2 hover:text-danger"
+            >
+              {t.admin.delete}
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
@@ -130,6 +180,7 @@ export function HeroSlideForm({ slide, onDone }: { slide?: HeroSlide; onDone?: (
       </div>
 
       <input type="hidden" name="imageUrl" value={imageUrl ?? ""} />
+      <input type="hidden" name="imageUrlMobile" value={imageUrlMobile ?? ""} />
       <div className="flex gap-2.5">
         <Button type="submit" disabled={pending} className="self-start">
           {pending ? t.common.loading : slide ? t.common.save : t.admin.bannerAddSlide}

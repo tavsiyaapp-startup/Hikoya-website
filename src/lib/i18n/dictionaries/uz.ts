@@ -428,6 +428,8 @@ const uz: typeof ru = {
     banner: "Banner",
     bannerHint: "Bosh sahifadagi karuseldagi har bir slaydni tahrirlash yoki oʻchirish mumkin — barcha slaydlar bir xil oʻlchamda. Sarlavha va matn ixtiyoriy: boʻsh qoldirilsa, rasm butun slaydni egallaydi. Rasm ham ixtiyoriy — u boʻlmasa, slayd gradient fonli matn boʻladi.",
     bannerImageLabel: "Rasm",
+    bannerImageMobileLabel: "Mobil versiya uchun rasm",
+    bannerImageMobileHint: "Yuklamasangiz, mobilda ham desktopdagi bilan bir xil rasm koʻrinadi.",
     bannerImageRequired: "Slayd uchun rasm yoki matn qoʻshing.",
     bannerImageOnly: "Matnsiz (faqat rasm)",
     bannerCannotDeleteLast: "Yagona qolgan slaydni oʻchirib boʻlmaydi",

@@ -202,6 +202,7 @@ export interface HeroSlide {
   body_ru: string | null;
   body_uz: string | null;
   image_url: string | null;
+  image_url_mobile: string | null;
   cta_label_ru: string | null;
   cta_label_uz: string | null;
   cta_url: string | null;

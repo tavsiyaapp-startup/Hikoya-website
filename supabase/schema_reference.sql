@@ -341,7 +341,7 @@ create table hero_slides (
   title_uz text,
   body_ru text,
   body_uz text,
-  image_url text not null,
+  image_url text,   -- необязательно с 0038: без изображения слайд текстовый, на градиентном фоне
   cta_label_ru text,
   cta_label_uz text,
   cta_url text,
@@ -1183,3 +1183,11 @@ on conflict (code) do nothing;
 --   публичными (is_private=false, title='Моя подборка', owner_type='user').
 --   RLS (collections select policy) уже уважал is_private — правка только в
 --   значении по умолчанию, без изменений в политиках или UI-переключателе.
+-- [2026-09-01] hero_slides.image_url стал необязательным (миграция 0038) —
+--   слайд без изображения рендерится как текст на градиентном фоне карточки
+--   слайда вместо разбивки на текстовую и картиночную половины
+--   (HeroCarousel.tsx Slide(), hasImage). Той же миграцией добавлен первый
+--   слайд карусели — обращение от создателей платформы, текстовый, без
+--   фото, created_at выставлен раньше всех существующих слайдов, чтобы
+--   попасть на первое место. AUTO_ADVANCE_MS в HeroCarousel поднят с 7 до
+--   15 секунд, чтобы длинный текст успевали дочитать.

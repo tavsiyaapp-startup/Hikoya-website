@@ -214,8 +214,8 @@ export const getFeaturedCollections = unstable_cache(
   { revalidate: CACHE_SECONDS, tags: ["collections"] }
 );
 
-// Extra hero-banner carousel slides staff added from /admin/banner — slide 1
-// itself is hand-built JSX on the homepage, not stored here.
+// Hero-banner carousel slides, managed from /admin/banner — ordered by
+// created_at, so slide 1 is whichever row was created earliest.
 export const getHeroSlides = unstable_cache(
   async (): Promise<HeroSlide[]> => {
     try {

@@ -5,6 +5,7 @@ import Image from "next/image";
 import { deleteHeroSlide } from "@/lib/actions/admin";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 import { HeroSlideForm } from "./HeroSlideForm";
+import { ImageIcon } from "@/components/ui/icons";
 import type { HeroSlide } from "@/types/database";
 
 export function HeroSlideListItem({ slide, canDelete }: { slide: HeroSlide; canDelete: boolean }) {
@@ -27,8 +28,12 @@ export function HeroSlideListItem({ slide, canDelete }: { slide: HeroSlide; canD
 
   return (
     <div className="flex items-center gap-3.5 border-b border-border-soft py-3.5 last:border-0">
-      <div className="relative h-14 w-24 shrink-0 overflow-hidden rounded-[10px] bg-primary-200">
-        <Image src={slide.image_url} alt="" fill className="object-cover" />
+      <div className="relative flex h-14 w-24 shrink-0 items-center justify-center overflow-hidden rounded-[10px] bg-linear-to-br from-primary-100 to-pink-bg">
+        {slide.image_url ? (
+          <Image src={slide.image_url} alt="" fill className="object-cover" />
+        ) : (
+          <ImageIcon width={20} height={20} className="text-primary-400" />
+        )}
       </div>
       <div className="min-w-0 flex-1">
         {slide.title_ru || slide.title_uz ? (

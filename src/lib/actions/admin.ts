@@ -263,7 +263,7 @@ function readHeroSlideFields(formData: FormData) {
     title_uz: titleUz || null,
     body_ru: bodyRu || null,
     body_uz: bodyUz || null,
-    image_url: imageUrl,
+    image_url: imageUrl || null,
     cta_label_ru: ctaLabelRu || null,
     cta_label_uz: ctaLabelUz || null,
     cta_url: ctaUrl || null,
@@ -274,7 +274,7 @@ export async function createHeroSlide(formData: FormData) {
   await requireStaff();
   const admin = createAdminClient();
   const fields = readHeroSlideFields(formData);
-  if (!fields.image_url) return;
+  if (!fields.image_url && !fields.title_ru && !fields.title_uz && !fields.body_ru && !fields.body_uz) return;
 
   await admin.from("hero_slides").insert(fields);
 
@@ -287,7 +287,7 @@ export async function updateHeroSlide(slideId: string, formData: FormData) {
   await requireStaff();
   const admin = createAdminClient();
   const fields = readHeroSlideFields(formData);
-  if (!fields.image_url) return;
+  if (!fields.image_url && !fields.title_ru && !fields.title_uz && !fields.body_ru && !fields.body_uz) return;
 
   await admin.from("hero_slides").update(fields).eq("id", slideId);
 

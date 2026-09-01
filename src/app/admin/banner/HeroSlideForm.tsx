@@ -40,7 +40,8 @@ export function HeroSlideForm({ slide, onDone }: { slide?: HeroSlide; onDone?: (
   }
 
   function handleSubmit(formData: FormData) {
-    if (!imageUrl) {
+    const hasText = ["titleRu", "titleUz", "bodyRu", "bodyUz"].some((k) => String(formData.get(k) ?? "").trim());
+    if (!imageUrl && !hasText) {
       setError(t.admin.bannerImageRequired);
       return;
     }
@@ -60,7 +61,9 @@ export function HeroSlideForm({ slide, onDone }: { slide?: HeroSlide; onDone?: (
   return (
     <form key={formKey} action={handleSubmit} className="flex flex-col gap-3.5 rounded-2xl border border-border bg-surface p-4.5">
       <div>
-        <label className="mb-1.5 block text-[13px] font-bold">{t.admin.bannerImageLabel}</label>
+        <label className="mb-1.5 block text-[13px] font-bold">
+          {t.admin.bannerImageLabel} <span className="font-medium text-muted-2">{t.admin.bannerOptional}</span>
+        </label>
         <div className="flex items-center gap-3.5">
           {imageUrl && (
             <div className="relative h-14 w-24 shrink-0 overflow-hidden rounded-[10px] bg-primary-200">

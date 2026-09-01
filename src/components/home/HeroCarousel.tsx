@@ -93,27 +93,50 @@ function Slide({ slide, locale }: { slide: HeroSlide; locale: "ru" | "uz" }) {
 
   return (
     <div className="flex h-[460px] flex-col border border-primary-100 bg-linear-to-br from-primary-50 via-[#F6ECFB] to-pink-bg dark:via-[#2A2044] sm:h-90 sm:flex-row">
-      {hasText && (
+      {hasText && !hasImage && (
+        // Photo-less slide = a personal note, not a promo blurb — dressed up
+        // like an actual letter: a soft floating card instead of bare text
+        // on the gradient, a big decorative opening quote mark, the brand's
+        // script wordmark font on the heading (used everywhere else only
+        // for "Hikoya" itself) for a handwritten, intimate feel, and a
+        // blockquote-style left rule on the body.
+        <div className="flex flex-1 items-center overflow-y-auto p-4 sm:p-6">
+          <div className="relative mx-auto w-full max-w-[640px] overflow-hidden rounded-[24px] bg-white/55 p-5 ring-1 ring-white/70 backdrop-blur-[2px] dark:bg-white/[0.05] dark:ring-white/10 sm:p-7">
+            <span
+              aria-hidden
+              className="pointer-events-none absolute -top-1 left-2 select-none font-serif text-[70px] italic leading-none text-primary-300/60 dark:text-primary-700/40 sm:left-3 sm:text-[100px]"
+            >
+              &ldquo;
+            </span>
+            <div className="relative">
+              {title && (
+                <h1 className="font-script mb-2 max-w-[560px] text-balance text-[22px] leading-tight text-primary-800 dark:text-primary-200 sm:text-[32px]">
+                  {title}
+                </h1>
+              )}
+              {body && (
+                <p className="max-w-[560px] whitespace-pre-line border-l-2 border-primary-300 pl-3.5 text-[13px] leading-[1.55] text-ink-soft dark:border-primary-700 sm:pl-4 sm:text-[14px]">
+                  {body}
+                </p>
+              )}
+              {ctaLabel && slide.cta_url && (
+                <Link href={slide.cta_url} className="mt-4 inline-block">
+                  <Button size="lg">{ctaLabel}</Button>
+                </Link>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+      {hasText && hasImage && (
         <div className="flex flex-1 flex-col justify-center overflow-y-auto p-6 sm:p-11">
           {title && (
-            <h1
-              className={clsx(
-                "mb-3 max-w-[480px] text-[28px] font-extrabold leading-tight tracking-tight text-balance sm:text-[40px]",
-                hasImage ? "line-clamp-2" : "max-w-[640px] text-[24px] sm:text-[32px]"
-              )}
-            >
+            <h1 className="mb-3 line-clamp-2 max-w-[480px] text-[28px] font-extrabold leading-tight tracking-tight text-balance sm:text-[40px]">
               {title}
             </h1>
           )}
           {body && (
-            <p
-              className={clsx(
-                "mb-6.5 whitespace-pre-line text-ink-soft",
-                hasImage
-                  ? "line-clamp-3 max-w-[430px] text-[14.5px] leading-relaxed sm:text-[15.5px]"
-                  : "max-w-[620px] text-[13.5px] leading-[1.6] sm:text-[14.5px]"
-              )}
-            >
+            <p className="mb-6.5 line-clamp-3 max-w-[430px] text-[14.5px] leading-relaxed text-ink-soft sm:text-[15.5px]">
               {body}
             </p>
           )}

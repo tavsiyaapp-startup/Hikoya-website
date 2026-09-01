@@ -137,6 +137,7 @@ const ru = {
     readingStatusRead: "Прочитано",
     readingStatusDropped: "Брошено",
     deletedPlaceholder: "Удалено",
+    unpublishedPlaceholder: "Черновик",
   },
   reader: {
     chapterLabel: "Глава",

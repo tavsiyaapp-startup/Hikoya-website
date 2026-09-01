@@ -155,7 +155,7 @@ export default async function AuthorPage({
         (stories.length > 0 ? (
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-5.5 lg:grid-cols-4">
             {stories.map((s) => (
-              <StoryCard key={s.id} story={s} />
+              <StoryCard key={s.id} story={s} viewerIsOwner={isOwner} />
             ))}
           </div>
         ) : (

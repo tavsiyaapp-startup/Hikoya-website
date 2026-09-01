@@ -607,15 +607,19 @@ create policy "users update their own profile" on profiles for update using (id 
 
 -- stories
 alter table stories enable row level security;
--- deleted_at is not null: readable by anyone once soft-deleted (see
--- changelog 0032) — title/cover only really, chapters stay gated on the
--- story's own status regardless, this is just what lets a reader who
--- already saved/collected it still see the title in a "удалено" placeholder.
+-- status != 'published' (added 0040, subsumes the old deleted_at-only
+-- carve-out since soft-delete always sets status='draft' too): readable by
+-- anyone once it's not published — title/cover only really, chapters stay
+-- gated on the story's own status regardless (separate policy below), this
+-- is just what lets a reader who already saved/collected it still see the
+-- title in a "черновик"/"удалено" placeholder instead of the row silently
+-- vanishing from their list. getStoryBySlug() still blocks the actual story
+-- page for non-owner/non-staff when status != 'published'.
 create policy "published public stories are readable" on stories for select using (
   (status = 'published' and visibility in ('public', 'unlisted'))
   or author_id = auth.uid()
   or is_staff()
-  or deleted_at is not null
+  or status != 'published'
 );
 create policy "authors insert their own stories" on stories for insert with check (author_id = auth.uid());
 create policy "authors update their own stories" on stories for update using (author_id = auth.uid() or is_staff());
@@ -1199,3 +1203,21 @@ on conflict (code) do nothing;
 --   мобильный <Image> берёт image_url_mobile || image_url — если поле не
 --   заполнено, мобильная версия совпадает с десктопной (так и остались
 --   слайды 1 и 2, у которых отдельной мобильной картинки нет).
+-- [2026-09-01] Автор вернул опубликованное произведение в черновики (или
+--   его status стал 'unlisted'/'pending_review') — раньше оно просто
+--   пропадало из чужих /library и /collections/[id] (RLS блокировала строку
+--   целиком, join к stories возвращал null). Миграция 0040 меняет RLS-
+--   политику "published public stories are readable" на stories: теперь
+--   любая status != 'published' строка тоже SELECT-абельна (не только
+--   deleted_at is not null, который эта ветка теперь и покрывает — мягкое
+--   удаление всегда заодно ставит status='draft'). getStoryBySlug()
+--   (queries/stories.ts) получил встречную проверку — если status не
+--   'published' и текущий пользователь не автор/не стаф, возвращает null
+--   (страницу произведения по-прежнему не открыть), а StoryCard.tsx
+--   получил новую ветку-плейсхолдер (как для deleted_at) для
+--   status !== 'published', пропускаемую только при viewerIsOwner —
+--   новом проп, который передаёт true только вкладка "Мои произведения" на
+--   собственном профиле автора, чтобы его собственные черновики остались
+--   кликабельными. getContinueReading() отдельно фильтрует по status
+--   (как и раньше по deleted_at) — у "Продолжить чтение" плейсхолдера нет,
+--   строка просто пропадает, как и было задумано изначально.

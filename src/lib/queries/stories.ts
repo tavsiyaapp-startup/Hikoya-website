@@ -3,6 +3,7 @@ import { unstable_cache } from "next/cache";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { createPublicClient } from "@/lib/supabase/public";
+import { getCurrentUser } from "@/lib/current-user";
 import { genreVariants } from "@/lib/genre";
 import type { Story, Chapter, Collection, Profile, StoryTopTier, HeroSlide } from "@/types/database";
 
@@ -384,6 +385,16 @@ export async function getStoryBySlug(slug: string): Promise<StoryDetail | null> 
       .eq("slug", slug)
       .single();
     if (!data || data.deleted_at) return null;
+    // RLS lets everyone SELECT a non-published story now too (0040, so
+    // stale collection/library references can render a "черновик"
+    // placeholder instead of silently vanishing) — the actual story page
+    // still needs to stay off-limits to anyone but the author/staff.
+    if (data.status !== "published") {
+      const viewer = await getCurrentUser();
+      const isOwner = viewer?.id === data.author_id;
+      const isStaff = viewer?.profile?.role === "admin" || viewer?.profile?.role === "moderator";
+      if (!isOwner && !isStaff) return null;
+    }
     return data as StoryDetail;
   } catch {
     return null;
@@ -427,21 +438,28 @@ export async function getContinueReading(userId: string, limit = 3) {
     const [{ data }, { data: statusRows }] = await Promise.all([
       supabase
         .from("reading_progress")
-        .select("story_id, percent, updated_at, story:stories(id, title, slug, cover_url, deleted_at)")
+        .select("story_id, percent, updated_at, story:stories(id, title, slug, cover_url, deleted_at, status)")
         .eq("user_id", userId)
         .order("updated_at", { ascending: false })
         .limit(limit * 3),
       supabase.from("reading_statuses").select("story_id").eq("user_id", userId),
     ]);
     const statusedStoryIds = new Set((statusRows ?? []).map((r) => r.story_id as string));
-    // A deleted story's progress row is stale — nothing to resume, and
-    // there's no "continue reading" placeholder like collections/library
-    // get, so it's simplest to just drop it rather than show a dead link.
+    // A deleted or unpublished (draft/unlisted/pending_review) story's
+    // progress row is stale — nothing to resume, and there's no "continue
+    // reading" placeholder like collections/library get (0040), so it's
+    // simplest to just drop it rather than show a dead link. RLS lets a
+    // non-published story's row through now too (for those other
+    // placeholders), so this has to filter status explicitly instead of
+    // relying on the join silently returning null the way it used to.
     // Once the reader explicitly marks a story's reading status (want to
     // read/read/dropped), it should move out of "Читаю" into that status's
     // own tab instead of lingering in both.
     return (data ?? [])
-      .filter((row) => !(row.story as unknown as { deleted_at: string | null } | null)?.deleted_at)
+      .filter((row) => {
+        const story = row.story as unknown as { deleted_at: string | null; status: string } | null;
+        return Boolean(story) && !story!.deleted_at && story!.status === "published";
+      })
       .filter((row) => !statusedStoryIds.has(row.story_id as string))
       .slice(0, limit);
   } catch {

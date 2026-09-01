@@ -139,6 +139,7 @@ const uz: typeof ru = {
     readingStatusRead: "Oʻqilgan",
     readingStatusDropped: "Tashlab qoʻyilgan",
     deletedPlaceholder: "Oʻchirilgan",
+    unpublishedPlaceholder: "Qoralama",
   },
   reader: {
     chapterLabel: "Bob",

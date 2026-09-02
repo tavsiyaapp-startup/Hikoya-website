@@ -128,6 +128,7 @@ const uz: typeof ru = {
     noChaptersYet: "Hozircha chop etilgan boblar yoʻq",
     noChaptersBody: "Muallif hali birorta ham bob chop etmagan.",
     chapterBadge: "Bob",
+    translationBadge: "Tarjima",
     noCommentsYet: "Hozircha izohlar yoʻq.",
     requestBadge: "Soʻrov boʻyicha",
     addToCollection: "Tanlanmaga qoʻshish",
@@ -190,6 +191,9 @@ const uz: typeof ru = {
     tagSearchPlaceholder: "Teg kiriting yoki tanlang",
     addNewTag: "+ «{tag}» qoʻshish",
     languageLabel: "Hikoya tili",
+    translationLabel: "Bu asar tarjimasi",
+    translationWarning:
+      "Hikoya platformasi noqonuniy tarjimalar uchun javobgar emas va ularning chop etilishini qoʻllab-quvvatlamaydi. Sizda rasmiy ruxsat boʻlmagan (va u umumiy mulk hisoblanmaydigan) asarning tarjimasini joylashtirar ekansiz, buning barcha oqibatlari uchun toʻliq javobgarlikni oʻz zimmangizga olasiz.",
     ageRatingLabel: "Yosh reytingi",
     ageRatingHint: "Hikoyangiz qaysi auditoriyaga mosligini belgilang",
     chapterTitleLabel: "Bob nomi",

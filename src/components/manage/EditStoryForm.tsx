@@ -8,6 +8,7 @@ import { updateStory } from "@/lib/actions/stories";
 import { Textarea } from "@/components/ui/Textarea";
 import { Chip } from "@/components/ui/Chip";
 import { Button } from "@/components/ui/Button";
+import { ShieldIcon } from "@/components/ui/icons";
 import { TagPicker } from "@/components/story/TagPicker";
 import { RELATIONSHIP_TYPES } from "@/lib/relationshipTypes";
 import { storyProgressLabel } from "@/lib/storyProgress";
@@ -25,6 +26,7 @@ export function EditStoryForm({
   initialDescription,
   initialTags,
   initialProgressStatus,
+  initialIsTranslation,
   existingTags,
 }: {
   storyId: string;
@@ -36,6 +38,7 @@ export function EditStoryForm({
   initialDescription: string;
   initialTags: string[];
   initialProgressStatus: StoryProgressStatus;
+  initialIsTranslation: boolean;
   existingTags: string[];
 }) {
   const { t, locale } = useLocale();
@@ -47,6 +50,7 @@ export function EditStoryForm({
   const [description, setDescription] = useState(initialDescription);
   const [tags, setTags] = useState<string[]>(initialTags);
   const [progressStatus, setProgressStatus] = useState<StoryProgressStatus>(initialProgressStatus);
+  const [isTranslation, setIsTranslation] = useState(initialIsTranslation);
   const [pending, startTransition] = useTransition();
 
   async function handleCoverChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -70,7 +74,15 @@ export function EditStoryForm({
 
   function handleSave() {
     startTransition(() => {
-      updateStory(storyId, storySlug, { description, coverUrl, genre, relationshipType, tags, progressStatus });
+      updateStory(storyId, storySlug, {
+        description,
+        coverUrl,
+        genre,
+        relationshipType,
+        tags,
+        progressStatus,
+        isTranslation,
+      });
     });
   }
 
@@ -133,6 +145,24 @@ export function EditStoryForm({
             {storyProgressLabel(t, status)}
           </Chip>
         ))}
+      </div>
+
+      <div className="mb-5">
+        <label className="flex cursor-pointer items-center gap-2.5 text-[14px] font-bold">
+          <input
+            type="checkbox"
+            checked={isTranslation}
+            onChange={(e) => setIsTranslation(e.target.checked)}
+            className="h-4.5 w-4.5"
+          />
+          {t.create.translationLabel}
+        </label>
+        {isTranslation && (
+          <div className="mt-3 flex items-start gap-2.5 rounded-2xl border border-red-200 dark:border-red-900/60 bg-danger-bg px-4 py-3.5 text-[13px] leading-relaxed text-danger">
+            <ShieldIcon width={16} height={16} className="mt-0.5 shrink-0" />
+            <span>{t.create.translationWarning}</span>
+          </div>
+        )}
       </div>
 
       <label className="mb-2 block text-[14px] font-bold">

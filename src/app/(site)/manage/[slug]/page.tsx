@@ -156,6 +156,7 @@ export default async function ManagePage({
             initialRelationshipType={story.relationship_type}
             initialDescription={story.description}
             initialProgressStatus={story.progress_status}
+            initialIsTranslation={story.is_translation}
             initialTags={tags}
             existingTags={existingTags}
           />

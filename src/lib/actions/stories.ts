@@ -25,6 +25,7 @@ export interface CreateStoryInput {
   tags: string[];
   language: ContentLanguage;
   ageRating: AgeRating;
+  isTranslation: boolean;
   chapterTitle: string;
   chapterText: string;
   visibility: StoryVisibility;
@@ -104,6 +105,7 @@ export async function createStory(input: CreateStoryInput) {
       relationship_type: input.relationshipType,
       language: input.language,
       age_rating: input.ageRating,
+      is_translation: input.isTranslation,
       status,
       visibility: input.visibility,
       announce: input.announce,
@@ -150,6 +152,7 @@ export interface UpdateStoryInput {
   relationshipType: string | null;
   tags: string[];
   progressStatus: StoryProgressStatus;
+  isTranslation: boolean;
 }
 
 export async function updateStory(
@@ -171,6 +174,7 @@ export async function updateStory(
       genre: input.genre,
       relationship_type: input.relationshipType,
       progress_status: input.progressStatus,
+      is_translation: input.isTranslation,
       updated_at: new Date().toISOString(),
     })
     .eq("id", storyId);

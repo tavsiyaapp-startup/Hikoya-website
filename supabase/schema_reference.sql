@@ -83,7 +83,8 @@ create table stories (
   updated_at timestamptz not null default now(),
   published_at timestamptz,
   rejection_reason text,  -- добавлено в 0011: причина отказа модератора, показывается автору
-  deleted_at timestamptz  -- добавлено в 0032: автор "удалил" — попадает в корзину, не DELETE, см. changelog
+  deleted_at timestamptz,  -- добавлено в 0032: автор "удалил" — попадает в корзину, не DELETE, см. changelog
+  is_translation boolean not null default false  -- добавлено в 0041: автор пометил произведение как перевод, см. changelog
 );
 
 create index stories_author_id_idx on stories (author_id);
@@ -1221,3 +1222,10 @@ on conflict (code) do nothing;
 --   кликабельными. getContinueReading() отдельно фильтрует по status
 --   (как и раньше по deleted_at) — у "Продолжить чтение" плейсхолдера нет,
 --   строка просто пропадает, как и было задумано изначально.
+-- [2026-09-02] stories.is_translation (миграция 0041) — чекбокс "Это
+--   перевод произведения" в CreateWizard и EditStoryForm; при отметке
+--   показывается предупреждение об ответственности за нелегальный перевод
+--   (t.create.translationWarning) — чисто информационный текст, ничего не
+--   блокирует и не проверяется на бэкенде. На странице произведения рядом
+--   с остальными бейджами (жанр/рейтинг/статус) появляется бейдж "Перевод",
+--   если флаг стоит.

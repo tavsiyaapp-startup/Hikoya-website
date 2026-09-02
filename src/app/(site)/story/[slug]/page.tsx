@@ -142,6 +142,7 @@ export default async function StoryPage({
           <Badge tone={story.age_rating === "18+" ? "danger" : "neutral"}>{story.age_rating}</Badge>
           <Badge tone={storyProgressTone(story.progress_status)}>{storyProgressLabel(t, story.progress_status)}</Badge>
           <Badge tone="neutral">{t.languages[story.language]}</Badge>
+          {story.is_translation && <Badge tone="neutral">{t.story.translationBadge}</Badge>}
           {linkedRequestId && (
             <Link href={`${ROUTES.board}?selected=${linkedRequestId}`}>
               <Badge tone="primary">{t.story.requestBadge}</Badge>

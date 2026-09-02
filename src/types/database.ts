@@ -70,6 +70,7 @@ export interface Story {
   published_at: string | null;
   rejection_reason: string | null;
   deleted_at: string | null;
+  is_translation: boolean;
 }
 
 export interface Chapter {

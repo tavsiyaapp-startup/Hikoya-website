@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { RichTextEditor } from "@/components/ui/RichTextEditor";
 import { Chip } from "@/components/ui/Chip";
+import { ShieldIcon } from "@/components/ui/icons";
 import { TagPicker } from "@/components/story/TagPicker";
 import { DocxImportFlow } from "@/components/manage/DocxImportFlow";
 import { ROUTES } from "@/lib/constants";
@@ -34,6 +35,7 @@ export function CreateWizard({ userId, existingTags }: { userId: string; existin
   const [tags, setTags] = useState<string[]>([]);
   const [language, setLanguage] = useState<ContentLanguage>("ru");
   const [ageRating, setAgeRating] = useState<AgeRating>("0+");
+  const [isTranslation, setIsTranslation] = useState(false);
 
   const [chapterMode, setChapterMode] = useState<"manual" | "import">("manual");
   const [chapterTitle, setChapterTitle] = useState("");
@@ -86,6 +88,7 @@ export function CreateWizard({ userId, existingTags }: { userId: string; existin
         tags,
         language,
         ageRating,
+        isTranslation,
         chapterTitle: firstChapter.title,
         chapterText: firstChapter.text,
         visibility,
@@ -215,6 +218,24 @@ export function CreateWizard({ userId, existingTags }: { userId: string; existin
                     existingTags={existingTags}
                     onAdd={(tag) => setTags((prev) => (prev.includes(tag) ? prev : [...prev, tag]))}
                   />
+                </div>
+
+                <div className="mb-5">
+                  <label className="flex cursor-pointer items-center gap-2.5 text-[14px] font-bold">
+                    <input
+                      type="checkbox"
+                      checked={isTranslation}
+                      onChange={(e) => setIsTranslation(e.target.checked)}
+                      className="h-4.5 w-4.5"
+                    />
+                    {t.create.translationLabel}
+                  </label>
+                  {isTranslation && (
+                    <div className="mt-3 flex items-start gap-2.5 rounded-2xl border border-red-200 dark:border-red-900/60 bg-danger-bg px-4 py-3.5 text-[13px] leading-relaxed text-danger">
+                      <ShieldIcon width={16} height={16} className="mt-0.5 shrink-0" />
+                      <span>{t.create.translationWarning}</span>
+                    </div>
+                  )}
                 </div>
 
                 <label className="mb-2 block text-[14px] font-bold">{t.create.languageLabel} *</label>

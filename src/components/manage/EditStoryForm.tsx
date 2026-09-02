@@ -10,6 +10,7 @@ import { Chip } from "@/components/ui/Chip";
 import { Button } from "@/components/ui/Button";
 import { ShieldIcon } from "@/components/ui/icons";
 import { TagPicker } from "@/components/story/TagPicker";
+import { AddGenreButton } from "@/components/story/AddGenreButton";
 import { RELATIONSHIP_TYPES } from "@/lib/relationshipTypes";
 import { storyProgressLabel } from "@/lib/storyProgress";
 import type { StoryProgressStatus } from "@/types/database";
@@ -46,6 +47,9 @@ export function EditStoryForm({
   const [coverUploading, setCoverUploading] = useState(false);
   const [coverError, setCoverError] = useState<string | null>(null);
   const [genre, setGenre] = useState(initialGenre);
+  const [customGenres, setCustomGenres] = useState<string[]>(
+    initialGenre && !t.genres.includes(initialGenre) ? [initialGenre] : []
+  );
   const [relationshipType, setRelationshipType] = useState<string | null>(initialRelationshipType);
   const [description, setDescription] = useState(initialDescription);
   const [tags, setTags] = useState<string[]>(initialTags);
@@ -110,17 +114,23 @@ export function EditStoryForm({
         value={description}
         onChange={(e) => setDescription(e.target.value)}
         placeholder={t.create.descPlaceholder}
-        rows={4}
+        rows={7}
         className="mb-5"
       />
 
       <label className="mb-2 block text-[14px] font-bold">{t.create.genreLabel}</label>
-      <div className="mb-5 flex flex-wrap gap-2">
-        {t.genres.map((g) => (
+      <div className="mb-5 flex flex-wrap items-center gap-2">
+        {[...t.genres, ...customGenres].map((g) => (
           <Chip key={g} active={genre === g} onClick={() => setGenre(g)}>
             {g}
           </Chip>
         ))}
+        <AddGenreButton
+          onAdd={(g) => {
+            setCustomGenres((prev) => (prev.includes(g) || t.genres.includes(g) ? prev : [...prev, g]));
+            setGenre(g);
+          }}
+        />
       </div>
 
       <label className="mb-2 block text-[14px] font-bold">

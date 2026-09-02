@@ -13,6 +13,7 @@ import { RichTextEditor } from "@/components/ui/RichTextEditor";
 import { Chip } from "@/components/ui/Chip";
 import { ShieldIcon } from "@/components/ui/icons";
 import { TagPicker } from "@/components/story/TagPicker";
+import { AddGenreButton } from "@/components/story/AddGenreButton";
 import { DocxImportFlow } from "@/components/manage/DocxImportFlow";
 import { ROUTES } from "@/lib/constants";
 import { RELATIONSHIP_TYPES } from "@/lib/relationshipTypes";
@@ -31,6 +32,7 @@ export function CreateWizard({ userId, existingTags }: { userId: string; existin
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [genre, setGenre] = useState(t.genres[0]);
+  const [customGenres, setCustomGenres] = useState<string[]>([]);
   const [relationshipType, setRelationshipType] = useState<string | null>(null);
   const [tags, setTags] = useState<string[]>([]);
   const [language, setLanguage] = useState<ContentLanguage>("ru");
@@ -170,17 +172,23 @@ export function CreateWizard({ userId, existingTags }: { userId: string; existin
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder={t.create.descPlaceholder}
-                  rows={4}
+                  rows={7}
                   className="mb-5"
                 />
 
                 <label className="mb-2 block text-[14px] font-bold">{t.create.genreLabel} *</label>
-                <div className="mb-5 flex flex-wrap gap-2">
-                  {t.genres.map((g) => (
+                <div className="mb-5 flex flex-wrap items-center gap-2">
+                  {[...t.genres, ...customGenres].map((g) => (
                     <Chip key={g} active={genre === g} onClick={() => setGenre(g)}>
                       {g}
                     </Chip>
                   ))}
+                  <AddGenreButton
+                    onAdd={(g) => {
+                      setCustomGenres((prev) => (prev.includes(g) || t.genres.includes(g) ? prev : [...prev, g]));
+                      setGenre(g);
+                    }}
+                  />
                 </div>
 
                 <label className="mb-2 block text-[14px] font-bold">

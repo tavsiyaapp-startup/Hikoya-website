@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { slugify, withRandomSuffix } from "@/lib/slug";
 import { sanitizeHtml } from "@/lib/sanitize";
+import { notifyPendingReview } from "@/lib/telegram";
 import { ROUTES } from "@/lib/constants";
 import type {
   AgeRating,
@@ -50,6 +51,11 @@ async function requiresReview(supabase: Awaited<ReturnType<typeof createClient>>
     .eq("id", 1)
     .single();
   return data?.new_story_requires_review ?? false;
+}
+
+async function getAuthorDisplayName(supabase: Awaited<ReturnType<typeof createClient>>, userId: string): Promise<string> {
+  const { data } = await supabase.from("profiles").select("display_name").eq("id", userId).single();
+  return data?.display_name ?? "Автор";
 }
 
 // `tags` write access is staff-only via RLS (spam prevention on a shared,
@@ -136,6 +142,11 @@ export async function createStory(input: CreateStoryInput) {
   }
 
   await supabase.from("profiles").update({ role: "author" }).eq("id", user.id).eq("role", "reader");
+
+  if (status === "pending_review") {
+    const authorName = await getAuthorDisplayName(supabase, user.id);
+    await notifyPendingReview({ kind: "story", authorName, storyTitle: input.title, storyId: story.id as string });
+  }
 
   updateTag("stories");
   revalidatePath(ROUTES.home);
@@ -302,6 +313,20 @@ export async function addChapter(storyId: string, storySlug: string, formData: F
     published_at: status === "published" ? new Date().toISOString() : null,
   });
 
+  if (status === "pending_review") {
+    const [{ data: storyRow }, authorName] = await Promise.all([
+      supabase.from("stories").select("title").eq("id", storyId).single(),
+      getAuthorDisplayName(supabase, user.id),
+    ]);
+    await notifyPendingReview({
+      kind: "chapter",
+      authorName,
+      storyTitle: storyRow?.title ?? "",
+      chapterTitle: title,
+      storyId,
+    });
+  }
+
   updateTag("stories");
   revalidatePath(ROUTES.manage(storySlug));
   revalidatePath(ROUTES.story(storySlug));
@@ -316,7 +341,7 @@ export async function submitStoryForReview(storyId: string, storySlug: string) {
 
   const status: StoryStatus = (await requiresReview(supabase)) ? "pending_review" : "published";
 
-  await supabase
+  const { data: updated } = await supabase
     .from("stories")
     .update({
       status,
@@ -324,7 +349,14 @@ export async function submitStoryForReview(storyId: string, storySlug: string) {
       rejection_reason: null,
     })
     .eq("id", storyId)
-    .eq("status", "draft");
+    .eq("status", "draft")
+    .select("title")
+    .single();
+
+  if (status === "pending_review" && updated) {
+    const authorName = await getAuthorDisplayName(supabase, user.id);
+    await notifyPendingReview({ kind: "story", authorName, storyTitle: updated.title, storyId });
+  }
 
   updateTag("stories");
   revalidatePath(ROUTES.manage(storySlug));
@@ -372,7 +404,7 @@ export async function submitChapterForReview(chapterId: string, storyId: string,
 
   const status: ChapterStatus = (await requiresReview(supabase)) ? "pending_review" : "published";
 
-  await supabase
+  const { data: updated } = await supabase
     .from("chapters")
     .update({
       status,
@@ -381,7 +413,15 @@ export async function submitChapterForReview(chapterId: string, storyId: string,
     })
     .eq("id", chapterId)
     .eq("story_id", storyId)
-    .eq("status", "draft");
+    .eq("status", "draft")
+    .select("title, story:stories(title)")
+    .single();
+
+  if (status === "pending_review" && updated) {
+    const authorName = await getAuthorDisplayName(supabase, user.id);
+    const storyTitle = (updated.story as unknown as { title: string } | null)?.title ?? "";
+    await notifyPendingReview({ kind: "chapter", authorName, storyTitle, chapterTitle: updated.title, storyId });
+  }
 
   updateTag("stories");
   revalidatePath(ROUTES.manage(storySlug));

@@ -26,7 +26,7 @@ import { Pagination } from "@/components/ui/Pagination";
 import { SparkleIcon, LockIcon } from "@/components/ui/icons";
 // import type { StoryTopTier } from "@/types/database";
 
-const TABS = ["forYou", "popular", "new", "following"] as const;
+const TABS = ["new", "forYou", "popular", "following"] as const;
 type Tab = (typeof TABS)[number];
 // const TOP_TIERS: StoryTopTier[] = ["day", "week", "month"];
 
@@ -65,7 +65,7 @@ export default async function HomePage({
     collectionsPage: rawCollectionsPage,
     genrePage: rawGenrePage,
   } = await searchParams;
-  const tab: Tab = TABS.includes(rawTab as Tab) ? (rawTab as Tab) : "forYou";
+  const tab: Tab = TABS.includes(rawTab as Tab) ? (rawTab as Tab) : "new";
   // const topTier: StoryTopTier = TOP_TIERS.includes(rawTopTier as StoryTopTier)
   //   ? (rawTopTier as StoryTopTier)
   //   : "day";

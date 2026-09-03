@@ -110,7 +110,7 @@ function Slide({ slide, locale, isFirst }: { slide: HeroSlide; locale: "ru" | "u
             </span>
             <div className="relative">
               {title && (
-                <h1 className="font-script mb-2 max-w-[560px] text-balance text-[22px] leading-tight text-primary-800 dark:text-primary-200 sm:text-[32px]">
+                <h1 className="font-script mb-2 max-w-[560px] text-balance text-[22px] leading-tight text-primary-800 sm:text-[32px]">
                   {title}
                 </h1>
               )}

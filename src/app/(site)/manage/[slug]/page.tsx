@@ -151,6 +151,7 @@ export default async function ManagePage({
             storyId={story.id}
             storySlug={slug}
             authorId={story.author.id}
+            initialTitle={story.title}
             initialCoverUrl={story.cover_url}
             initialGenre={localizeGenre(story.genre, locale)}
             initialRelationshipType={story.relationship_type}

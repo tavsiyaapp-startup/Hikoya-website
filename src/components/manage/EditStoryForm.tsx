@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 import { createClient } from "@/lib/supabase/client";
 import { updateStory } from "@/lib/actions/stories";
+import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { Chip } from "@/components/ui/Chip";
 import { Button } from "@/components/ui/Button";
@@ -21,6 +22,7 @@ export function EditStoryForm({
   storyId,
   storySlug,
   authorId,
+  initialTitle,
   initialCoverUrl,
   initialGenre,
   initialRelationshipType,
@@ -33,6 +35,7 @@ export function EditStoryForm({
   storyId: string;
   storySlug: string;
   authorId: string;
+  initialTitle: string;
   initialCoverUrl: string | null;
   initialGenre: string;
   initialRelationshipType: string | null;
@@ -43,6 +46,7 @@ export function EditStoryForm({
   existingTags: string[];
 }) {
   const { t, locale } = useLocale();
+  const [title, setTitle] = useState(initialTitle);
   const [coverUrl, setCoverUrl] = useState<string | null>(initialCoverUrl);
   const [coverUploading, setCoverUploading] = useState(false);
   const [coverError, setCoverError] = useState<string | null>(null);
@@ -79,6 +83,7 @@ export function EditStoryForm({
   function handleSave() {
     startTransition(() => {
       updateStory(storyId, storySlug, {
+        title,
         description,
         coverUrl,
         genre,
@@ -109,7 +114,10 @@ export function EditStoryForm({
         </label>
       </div>
 
-      <label className="mb-2 mt-5 block text-[14px] font-bold">{t.create.descLabel}</label>
+      <label className="mb-2 mt-5 block text-[14px] font-bold">{t.create.titleLabel} *</label>
+      <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t.create.titlePlaceholder} className="mb-5" />
+
+      <label className="mb-2 block text-[14px] font-bold">{t.create.descLabel}</label>
       <Textarea
         value={description}
         onChange={(e) => setDescription(e.target.value)}
@@ -196,7 +204,7 @@ export function EditStoryForm({
         />
       </div>
 
-      <Button onClick={handleSave} disabled={pending}>
+      <Button onClick={handleSave} disabled={pending || !title.trim()}>
         {pending ? t.common.loading : t.common.save}
       </Button>
     </div>

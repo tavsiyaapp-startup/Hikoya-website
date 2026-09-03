@@ -157,6 +157,7 @@ export async function createStory(input: CreateStoryInput) {
 }
 
 export interface UpdateStoryInput {
+  title: string;
   description: string;
   coverUrl: string | null;
   genre: string;
@@ -177,9 +178,13 @@ export async function updateStory(
   } = await supabase.auth.getUser();
   if (!user) redirect(ROUTES.onboarding);
 
+  const title = input.title.trim();
+  if (!title) return;
+
   await supabase
     .from("stories")
     .update({
+      title,
       description: input.description,
       cover_url: input.coverUrl,
       genre: input.genre,

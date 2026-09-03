@@ -1,8 +1,11 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { getServerLocale } from "@/lib/i18n/locale-server";
 import { getDictionary } from "@/lib/i18n";
+import type { Dictionary } from "@/lib/i18n";
 import { getCurrentUser } from "@/lib/current-user";
+import type { CurrentUser } from "@/lib/current-user";
 import { ROUTES } from "@/lib/constants";
 import {
   getPopularStories,
@@ -80,6 +83,52 @@ export default async function HomePage({
   const collectionsPage = toPage(rawCollectionsPage);
   const genrePage = toPage(rawGenrePage);
 
+  // Hero data is a single small, 60s-cached query — fetched and awaited
+  // directly (not behind Suspense) so the hero — the page's LCP element —
+  // renders as part of the static shell instead of waiting on the five
+  // heavier queries below, which is what used to gate every byte of this
+  // page behind one shared Promise.all.
+  const heroSlides = await getHeroSlides();
+
+  return (
+    <div>
+      <HeroCarousel slides={heroSlides} />
+
+      <Suspense fallback={<HomeSectionsSkeleton />}>
+        <HomeSections
+          tab={tab}
+          genre={genre}
+          user={user}
+          t={t}
+          feedPage={feedPage}
+          weekPage={weekPage}
+          collectionsPage={collectionsPage}
+          genrePage={genrePage}
+        />
+      </Suspense>
+    </div>
+  );
+}
+
+async function HomeSections({
+  tab,
+  genre,
+  user,
+  t,
+  feedPage,
+  weekPage,
+  collectionsPage,
+  genrePage,
+}: {
+  tab: Tab;
+  genre: string;
+  user: CurrentUser | null;
+  t: Dictionary;
+  feedPage: number;
+  weekPage: number;
+  collectionsPage: number;
+  genrePage: number;
+}) {
   const feedOffset = (feedPage - 1) * PAGE_SIZE_FEED;
   const feedQuery =
     tab === "new"
@@ -90,13 +139,12 @@ export default async function HomePage({
           ? getForYouStories(user.id, PAGE_SIZE_FEED, feedOffset)
           : getPopularStories(PAGE_SIZE_FEED, feedOffset);
 
-  const [feedResult, weeklyResult, collectionsResult, genreResult, continueReading, heroSlides] = await Promise.all([
+  const [feedResult, weeklyResult, collectionsResult, genreResult, continueReading] = await Promise.all([
     feedQuery,
     getRecentPublishedChapters(PAGE_SIZE_WEEK, (weekPage - 1) * PAGE_SIZE_WEEK),
     getFeaturedCollections(PAGE_SIZE_COLLECTIONS, (collectionsPage - 1) * PAGE_SIZE_COLLECTIONS),
     getStoriesByGenre(genre, PAGE_SIZE_GENRE, (genrePage - 1) * PAGE_SIZE_GENRE),
     user ? getContinueReading(user.id, 3) : Promise.resolve([]),
-    getHeroSlides(),
     // getTopStories(topTier, 8),
   ]);
 
@@ -125,9 +173,7 @@ export default async function HomePage({
   }
 
   return (
-    <div>
-      <HeroCarousel slides={heroSlides} />
-
+    <>
       {/* "Топ" section — commented out for now, re-enable later (see also the
           commented-out topTier/getTopStories bits above).
       <div className="mb-4.5 flex items-center gap-3.5">
@@ -177,7 +223,7 @@ export default async function HomePage({
                 >
                   <div className="relative h-21 w-21 shrink-0 overflow-hidden rounded-[13px] bg-primary-200">
                     {story.cover_url && (
-                      <Image src={story.cover_url} alt="" fill className="object-cover" />
+                      <Image src={story.cover_url} alt="" fill sizes="84px" className="object-cover" />
                     )}
                   </div>
                   <div className="min-w-0 flex-1">
@@ -255,7 +301,7 @@ export default async function HomePage({
               >
                 <div className="relative h-21 w-21 shrink-0 overflow-hidden rounded-[14px] bg-primary-200">
                   {group.story.cover_url && (
-                    <Image src={group.story.cover_url} alt="" fill className="object-cover" />
+                    <Image src={group.story.cover_url} alt="" fill sizes="84px" className="object-cover" />
                   )}
                 </div>
                 <div className="min-w-0 flex-1">
@@ -346,7 +392,7 @@ export default async function HomePage({
           </Link>
         </div>
       )}
-    </div>
+    </>
   );
 }
 
@@ -358,6 +404,26 @@ async function EmptyRow({ className = "" }: { className?: string }) {
       className={`rounded-2xl border border-dashed border-border-soft bg-surface px-6 py-10 text-center text-[14px] text-muted ${className}`}
     >
       {t.home.emptyFeed}
+    </div>
+  );
+}
+
+// Matches the tab row + feed grid's approximate shape so replacing it with
+// real content doesn't visibly jump (CLS).
+function HomeSectionsSkeleton() {
+  return (
+    <div className="animate-pulse">
+      <div className="mb-6 flex gap-2.5">
+        {[0, 1, 2, 3].map((i) => (
+          <div key={i} className="h-10 w-24 shrink-0 rounded-[10px] bg-surface" />
+        ))}
+      </div>
+      <div className="mb-4.5 h-8 w-40 rounded-lg bg-surface" />
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-5.5 lg:grid-cols-4">
+        {Array.from({ length: 10 }).map((_, i) => (
+          <div key={i} className="aspect-[3/4] rounded-[20px] bg-surface" />
+        ))}
+      </div>
     </div>
   );
 }

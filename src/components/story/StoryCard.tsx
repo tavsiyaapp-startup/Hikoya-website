@@ -48,7 +48,13 @@ export async function StoryCard({
     >
       <div className="relative flex aspect-[3/4] items-center justify-center bg-primary-200 p-4">
         {story.cover_url ? (
-          <Image src={story.cover_url} alt="" fill className="object-cover" />
+          <Image
+            src={story.cover_url}
+            alt=""
+            fill
+            sizes="(max-width: 639px) 50vw, (max-width: 1023px) 33vw, 25vw"
+            className="object-cover"
+          />
         ) : (
           <div className="text-center">
             <div className="line-clamp-4 text-[15px] font-extrabold leading-snug text-primary-900">

@@ -31,9 +31,9 @@ export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
   return (
     <section className="relative mb-9.5 overflow-hidden rounded-[26px]">
       <div className="flex transition-transform duration-500 ease-out" style={{ transform: `translateX(-${index * 100}%)` }}>
-        {slides.map((slide) => (
+        {slides.map((slide, i) => (
           <div key={slide.id} className="w-full shrink-0">
-            <Slide slide={slide} locale={locale} />
+            <Slide slide={slide} locale={locale} isFirst={i === 0} />
           </div>
         ))}
       </div>
@@ -84,7 +84,7 @@ export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
 // gradient background instead of sharing it with an image half — no clamp
 // on the text in that case, since a photo-less slide exists specifically to
 // carry a longer message (e.g. a note from the platform's creators).
-function Slide({ slide, locale }: { slide: HeroSlide; locale: "ru" | "uz" }) {
+function Slide({ slide, locale, isFirst }: { slide: HeroSlide; locale: "ru" | "uz"; isFirst: boolean }) {
   const title = locale === "uz" ? slide.title_uz : slide.title_ru;
   const body = locale === "uz" ? slide.body_uz : slide.body_ru;
   const ctaLabel = locale === "uz" ? slide.cta_label_uz : slide.cta_label_ru;
@@ -157,17 +157,28 @@ function Slide({ slide, locale }: { slide: HeroSlide; locale: "ru" | "uz" }) {
           {/* Separate mobile/desktop sources, swapped by breakpoint (same sm
               cutoff the rest of this layout already uses) rather than a
               single image stretched across both — image_url_mobile falls
-              back to image_url when a slide never got its own mobile crop. */}
+              back to image_url when a slide never got its own mobile crop.
+              sizes matches this box's actual rendered width so the browser
+              doesn't fetch a full-viewport-sized image for a 46%-wide slot;
+              priority (+ fetchPriority) only on slide 1, since it's the
+              carousel's likely LCP element and Next's own guidance is to
+              never mark more than one image priority on a page. */}
           <Image
             src={(slide.image_url_mobile || slide.image_url) as string}
             alt=""
             fill
+            sizes="100vw"
+            priority={isFirst}
+            fetchPriority={isFirst ? "high" : undefined}
             className={clsx("object-cover sm:hidden", hasText ? "object-right" : "object-center")}
           />
           <Image
             src={slide.image_url as string}
             alt=""
             fill
+            sizes={hasText ? "46vw" : "100vw"}
+            priority={isFirst}
+            fetchPriority={isFirst ? "high" : undefined}
             className={clsx("hidden object-cover sm:block", hasText ? "object-right" : "object-center")}
           />
           {hasText && <div className="absolute inset-0 bg-linear-to-r from-primary-50 to-transparent sm:block hidden" />}

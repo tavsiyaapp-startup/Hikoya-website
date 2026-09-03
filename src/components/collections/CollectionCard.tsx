@@ -63,7 +63,7 @@ function CollectionCoverStack({ coverUrls }: { coverUrls: string[] }) {
           key={url + i}
           className={`absolute h-28 w-21 overflow-hidden rounded-[10px] border-2 border-white shadow-[0_8px_18px_rgba(60,40,120,0.18)] ${positions[i]}`}
         >
-          <Image src={url} alt="" fill className="object-cover" />
+          <Image src={url} alt="" fill sizes="84px" className="object-cover" />
         </div>
       ))}
     </div>

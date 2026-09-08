@@ -10,6 +10,7 @@ export const ROUTES = {
   admin: "/admin",
   adminLogin: "/admin-login",
   adminChats: (userId?: string) => (userId ? `/admin/chats?selected=${userId}` : "/admin/chats"),
+  adminComments: "/admin/comments",
   adminStory: (id: string) => `/admin/stories/${id}`,
   adminChapter: (storyId: string, chapterId: string) => `/admin/stories/${storyId}/chapters/${chapterId}`,
   onboarding: "/onboarding",

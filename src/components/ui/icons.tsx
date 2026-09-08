@@ -151,6 +151,15 @@ export function MessageIcon(props: IconProps) {
   );
 }
 
+export function CommentsIcon(props: IconProps) {
+  return (
+    <svg {...base()} {...props}>
+      <path d="M3 5a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H9l-4 3v-3H5a2 2 0 0 1-2-2z" />
+      <path d="M20 9a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2h-1v3l-4-3" />
+    </svg>
+  );
+}
+
 export function ChevronLeftIcon(props: IconProps) {
   return (
     <svg {...base(16)} {...props}>

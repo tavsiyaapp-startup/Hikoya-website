@@ -420,6 +420,63 @@ export async function getAllStoriesForAdminPicker() {
   }
 }
 
+export type AdminCommentRow = {
+  id: string;
+  parent_id: string | null;
+  text: string;
+  like_count: number;
+  is_spoiler: boolean;
+  created_at: string;
+  user: { display_name: string; username: string } | null;
+  story: { id: string; title: string; slug: string } | null;
+  chapter: { id: string; order_index: number; title: string } | null;
+};
+
+export type AdminCommentThread = AdminCommentRow & { replies: AdminCommentRow[] };
+
+const adminCommentSelect =
+  "id, parent_id, text, like_count, is_spoiler, created_at, user:profiles!comments_user_id_fkey(display_name, username), story:stories(id, title, slug), chapter:chapters(id, order_index, title)";
+
+// Top-level comments only, paginated — each thread's replies are fetched
+// separately (one extra query keyed off the page's parent ids) and nested
+// underneath so "reply comes together with the comment it answers" holds
+// even though replies themselves aren't paginated independently.
+export async function getAllCommentsAdmin(page = 1, pageSize = 24): Promise<{ threads: AdminCommentThread[]; total: number }> {
+  try {
+    const admin = createAdminClient();
+    const { count } = await admin.from("comments").select("id", { count: "exact", head: true }).is("parent_id", null);
+
+    const from = (page - 1) * pageSize;
+    const { data: topLevel } = await admin
+      .from("comments")
+      .select(adminCommentSelect)
+      .is("parent_id", null)
+      .order("created_at", { ascending: false })
+      .range(from, from + pageSize - 1);
+
+    const topIds = (topLevel ?? []).map((c) => c.id);
+    const { data: replies } = topIds.length
+      ? await admin.from("comments").select(adminCommentSelect).in("parent_id", topIds).order("created_at", { ascending: true })
+      : { data: [] as AdminCommentRow[] };
+
+    const repliesByParent = new Map<string, AdminCommentRow[]>();
+    for (const r of (replies as AdminCommentRow[] | null) ?? []) {
+      const arr = repliesByParent.get(r.parent_id as string) ?? [];
+      arr.push(r);
+      repliesByParent.set(r.parent_id as string, arr);
+    }
+
+    const threads = ((topLevel as AdminCommentRow[] | null) ?? []).map((c) => ({
+      ...c,
+      replies: repliesByParent.get(c.id) ?? [],
+    }));
+
+    return { threads, total: count ?? 0 };
+  } catch {
+    return { threads: [], total: 0 };
+  }
+}
+
 export async function getPlatformSettingsAdmin() {
   try {
     const admin = createAdminClient();

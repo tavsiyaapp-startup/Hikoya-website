@@ -6,7 +6,7 @@ import { getServerLocale } from "@/lib/i18n/locale-server";
 import { getDictionary } from "@/lib/i18n";
 import { getUnreadAdminChatsCount } from "@/lib/queries/chat";
 import { ROUTES } from "@/lib/constants";
-import { ShieldIcon, UserIcon, CollectionsIcon, BoardIcon, HomeIcon, LibraryIcon, SparkleIcon, ImageIcon, ClockIcon, MessageIcon } from "@/components/ui/icons";
+import { ShieldIcon, UserIcon, CollectionsIcon, BoardIcon, HomeIcon, LibraryIcon, SparkleIcon, ImageIcon, ClockIcon, MessageIcon, CommentsIcon } from "@/components/ui/icons";
 import { AdminNavLink } from "./AdminNavLink";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -25,6 +25,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     { href: `${ROUTES.admin}/users`, icon: UserIcon, label: t.admin.users },
     { href: ROUTES.adminChats(), icon: MessageIcon, label: t.admin.chats, badge: unreadChats },
     { href: `${ROUTES.admin}/stories`, icon: CollectionsIcon, label: t.admin.stories },
+    { href: ROUTES.adminComments, icon: CommentsIcon, label: t.admin.comments },
     { href: `${ROUTES.admin}/featured`, icon: SparkleIcon, label: t.admin.featured },
     { href: `${ROUTES.admin}/banner`, icon: ImageIcon, label: t.admin.banner },
     { href: `${ROUTES.admin}/requests`, icon: BoardIcon, label: t.admin.requests },

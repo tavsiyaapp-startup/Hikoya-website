@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { clsx } from "clsx";
 import { toggleCommentLike } from "@/lib/actions/social";
+import { formatDate } from "@/lib/format";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 import { Avatar } from "@/components/ui/Avatar";
 import { HeartIcon, EyeIcon, EyeOffIcon } from "@/components/ui/icons";
@@ -52,7 +53,7 @@ export function CommentItem({
           <div className="mb-1.5 flex items-center gap-2.5">
             <span className="text-[14px] font-bold">{comment.user?.display_name}</span>
             <span className="text-[12.5px] text-muted-3">
-              {new Date(comment.created_at).toLocaleDateString(locale)}
+              {formatDate(comment.created_at, locale)}
             </span>
           </div>
           {comment.is_spoiler && !spoilerRevealed ? (

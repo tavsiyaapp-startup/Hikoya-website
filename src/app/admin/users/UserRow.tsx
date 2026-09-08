@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { updateUserAchievements } from "@/lib/actions/admin";
+import { formatDate } from "@/lib/format";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 import { Badge } from "@/components/ui/Chip";
 import { Button } from "@/components/ui/Button";
@@ -57,7 +58,7 @@ export function UserRow({
         </span>
         <span className="w-22.5 text-[13.5px] text-ink-soft">—</span>
         <span className="w-32.5 text-[13.5px] text-muted-2">
-          {new Date(user.created_at).toLocaleDateString(locale)}
+          {formatDate(user.created_at, locale)}
         </span>
         <span className="w-30">
           <Badge tone={user.status === "active" ? "success" : "danger"}>{user.status}</Badge>

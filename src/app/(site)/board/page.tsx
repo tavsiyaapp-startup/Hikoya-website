@@ -5,6 +5,7 @@ import { getCurrentUser } from "@/lib/current-user";
 import { getBoardRequests, getRequestById, getRequestResponses } from "@/lib/queries/requests";
 import { getAuthorStories } from "@/lib/queries/stories";
 import { requestStatusTone, requestStatusLabel } from "@/lib/requestStatus";
+import { formatDate } from "@/lib/format";
 import { ROUTES } from "@/lib/constants";
 import { Avatar } from "@/components/ui/Avatar";
 import { Badge } from "@/components/ui/Chip";
@@ -84,7 +85,7 @@ export default async function BoardPage({
                     <div className="min-w-0">
                       <div className="text-[14px] font-bold">{from?.display_name}</div>
                       <div className="text-[12.5px] text-muted-3">
-                        {new Date(r.created_at).toLocaleDateString(locale)}
+                        {formatDate(r.created_at, locale)}
                       </div>
                     </div>
                     <Badge tone={requestStatusTone(r.status)} className="ml-auto">

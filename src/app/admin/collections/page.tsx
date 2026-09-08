@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getServerLocale } from "@/lib/i18n/locale-server";
 import { getDictionary } from "@/lib/i18n";
 import { getAllCollectionsAdmin } from "@/lib/queries/admin";
+import { formatDate } from "@/lib/format";
 import { AdminHeader } from "../AdminHeader";
 import { Badge } from "@/components/ui/Chip";
 import { Button } from "@/components/ui/Button";
@@ -50,7 +51,7 @@ export default async function AdminCollectionsPage() {
                         </Badge>
                       </span>
                       <span className="w-27.5 text-[13px] text-muted-2">
-                        {new Date(c.created_at).toLocaleDateString(locale)}
+                        {formatDate(c.created_at, locale)}
                       </span>
                       <span className="w-42.5">
                         <CollectionActions collectionId={c.id} />

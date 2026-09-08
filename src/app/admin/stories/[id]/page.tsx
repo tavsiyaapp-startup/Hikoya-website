@@ -6,6 +6,7 @@ import { getDictionary } from "@/lib/i18n";
 import { getStoryForModeration, getChaptersForModeration } from "@/lib/queries/admin";
 import { ROUTES } from "@/lib/constants";
 import { localizeGenre } from "@/lib/genre";
+import { formatTimestamp } from "@/lib/format";
 import { Badge } from "@/components/ui/Chip";
 import { ChevronLeftIcon } from "@/components/ui/icons";
 import { StoryModerateActions } from "./StoryModerateActions";
@@ -71,7 +72,7 @@ export default async function AdminStoryModeratePage({ params }: { params: Promi
               <div className="mb-4.5 max-w-160 rounded-[14px] bg-danger-bg px-4 py-3">
                 <div className="mb-1 text-[12.5px] font-bold text-danger">{t.admin.deletedOnLabel}</div>
                 <p className="text-[13.5px] leading-relaxed text-ink-soft">
-                  {new Date(story.deleted_at).toLocaleString(locale)}
+                  {formatTimestamp(story.deleted_at, locale)}
                 </p>
               </div>
             )}

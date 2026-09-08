@@ -13,6 +13,12 @@ const RELATIVE_UNITS: [number, Intl.RelativeTimeFormatUnit][] = [
   [Infinity, "year"],
 ];
 
+// Every wall-clock display in the app is pinned to Tashkent time regardless
+// of where the server/viewer actually is — otherwise a serverless function
+// running in UTC (or a viewer's own browser in another timezone) shows
+// times shifted from what our audience expects.
+const TIMEZONE = "Asia/Tashkent";
+
 export function formatDateTime(dateStr: string, locale: string): string {
   return new Intl.DateTimeFormat(locale, {
     day: "numeric",
@@ -20,7 +26,16 @@ export function formatDateTime(dateStr: string, locale: string): string {
     year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
+    timeZone: TIMEZONE,
   }).format(new Date(dateStr));
+}
+
+export function formatDate(dateStr: string, locale: string): string {
+  return new Date(dateStr).toLocaleDateString(locale, { timeZone: TIMEZONE });
+}
+
+export function formatTimestamp(dateStr: string, locale: string): string {
+  return new Date(dateStr).toLocaleString(locale, { timeZone: TIMEZONE });
 }
 
 export function formatRelativeTime(dateStr: string, locale: string): string {

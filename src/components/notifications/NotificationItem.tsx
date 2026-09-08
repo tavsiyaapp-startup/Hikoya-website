@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { markNotificationRead } from "@/lib/actions/notifications";
+import { formatTimestamp } from "@/lib/format";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 import { ROUTES } from "@/lib/constants";
 import { HeartIcon, MessageIcon, ShieldIcon } from "@/components/ui/icons";
@@ -125,7 +126,7 @@ export function NotificationItem({
             )}
           </p>
           <span className="mt-1.5 block text-[12.5px] text-muted-3">
-            {new Date(n.created_at).toLocaleString(locale)}
+            {formatTimestamp(n.created_at, locale)}
           </span>
         </div>
       </Link>

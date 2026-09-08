@@ -2,6 +2,7 @@ import { getServerLocale } from "@/lib/i18n/locale-server";
 import { getDictionary } from "@/lib/i18n";
 import { getAllRequestsAdmin } from "@/lib/queries/admin";
 import { requestStatusTone, requestStatusLabel } from "@/lib/requestStatus";
+import { formatDate } from "@/lib/format";
 import { AdminHeader } from "../AdminHeader";
 import { Badge } from "@/components/ui/Chip";
 import { RequestActions } from "./RequestActions";
@@ -34,7 +35,7 @@ export default async function AdminRequestsPage() {
                       <span className="flex-[1.4] truncate text-[13.5px] font-semibold text-ink-soft">{r.title}</span>
                       <span className="w-32.5 text-[13.5px] text-ink-soft">{from?.display_name}</span>
                       <span className="w-27.5 text-[13px] text-muted-2">
-                        {new Date(r.created_at).toLocaleDateString(locale)}
+                        {formatDate(r.created_at, locale)}
                       </span>
                       <span className="w-25">
                         <Badge tone={requestStatusTone(r.status)}>{requestStatusLabel(t, r.status)}</Badge>

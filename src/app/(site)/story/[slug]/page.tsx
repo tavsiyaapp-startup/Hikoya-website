@@ -15,7 +15,7 @@ import {
 import type { StoryCommentRow } from "@/lib/queries/social";
 import type { Dictionary } from "@/lib/i18n";
 import { getLinkedRequestForStory } from "@/lib/queries/requests";
-import { formatDateTime } from "@/lib/format";
+import { formatDateTime, formatDate } from "@/lib/format";
 import { ROUTES } from "@/lib/constants";
 import { RELATIONSHIP_TYPES } from "@/lib/relationshipTypes";
 import { localizeGenre } from "@/lib/genre";
@@ -303,7 +303,7 @@ function StoryCommentCard({
         <div className="mb-1.5 flex flex-wrap items-center gap-2.5">
           <span className="text-[14px] font-bold">{comment.user?.display_name}</span>
           <span className="text-[12.5px] text-muted-3">
-            {new Date(comment.created_at).toLocaleDateString(locale)}
+            {formatDate(comment.created_at, locale)}
           </span>
           {!isReply && comment.chapter && (
             <Badge tone="neutral">

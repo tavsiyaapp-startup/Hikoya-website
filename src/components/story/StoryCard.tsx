@@ -6,8 +6,19 @@ import { formatCompactCount } from "@/lib/format";
 import { ROUTES } from "@/lib/constants";
 import { HeartIcon, EyeIcon } from "@/components/ui/icons";
 import { Badge } from "@/components/ui/Chip";
-import { storyProgressTone, storyProgressLabel } from "@/lib/storyProgress";
+import { storyProgressLabel } from "@/lib/storyProgress";
 import type { StoryCard as StoryCardData } from "@/lib/queries/stories";
+import type { StoryProgressStatus } from "@/types/database";
+
+// Solid-color pill, distinct from the shared Badge component's softer
+// pastel tones (Badge stays pastel everywhere else it's used) — this one's
+// meant to read as a small graphic accent overlaid on the cover image, so
+// it needs real contrast against any cover art behind it.
+const progressBadgeClasses: Record<StoryProgressStatus, string> = {
+  ongoing: "bg-[#16A34A] text-white",
+  finished: "bg-[#7C3AED] text-white",
+  dropped: "bg-[#DC2626] text-white",
+};
 
 export async function StoryCard({
   story,
@@ -66,7 +77,11 @@ export async function StoryCard({
           </div>
         )}
         <div className="absolute left-2 top-2">
-          <Badge tone={storyProgressTone(story.progress_status)}>{storyProgressLabel(t, story.progress_status)}</Badge>
+          <span
+            className={`inline-flex items-center rounded-[8px] px-2 py-1 text-[10.5px] font-bold shadow-[0_2px_6px_rgba(0,0,0,0.15)] ${progressBadgeClasses[story.progress_status]}`}
+          >
+            {storyProgressLabel(t, story.progress_status)}
+          </span>
         </div>
         {story.status !== "published" && (
           <div className="absolute right-2 top-2">

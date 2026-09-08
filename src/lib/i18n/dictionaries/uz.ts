@@ -364,7 +364,7 @@ const uz: typeof ru = {
   chat: {
     title: "Qoʻllab-quvvatlash chati",
     subtitle: "Savolingiz boʻlsa yozing — istalgan administrator javob beradi.",
-    withAdmin: "Qoʻllab-quvvatlashga yozish",
+    withAdmin: "Adminga yozish",
     placeholder: "Xabar yozing…",
     send: "Yuborish",
     emptyState: "Hozircha xabar yoʻq. Birinchi boʻlib yozing — javob beramiz.",

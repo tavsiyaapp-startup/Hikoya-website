@@ -11,8 +11,8 @@ export async function ChatWithAdminButton({ hasUnread }: { hasUnread: boolean })
 
   return (
     <Link href={ROUTES.chat} className="relative block w-full">
-      <Button variant="secondary" className="w-full justify-center">
-        <MessageIcon width={17} height={17} />
+      <Button variant="secondary" className="w-full justify-center whitespace-nowrap">
+        <MessageIcon width={17} height={17} className="shrink-0" />
         {t.chat.withAdmin}
       </Button>
       {hasUnread && <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-danger" />}

@@ -570,11 +570,19 @@ create trigger on_auth_user_created
 
 -- Атомарный инкремент просмотров главы + истории.
 -- Вызывается со страницы читалки через service-role клиент (у view_count
--- нет публичной RLS-политики на запись специально).
-create or replace function increment_view_counts(p_chapter_id uuid, p_story_id uuid) returns void as $$
+-- нет публичной RLS-политики на запись специально). С 0046 считает только
+-- уникальных читателей — вызывающий код (src/lib/actions/reading.ts) сам
+-- решает, новый ли это для читателя просмотр (chapter_reads для авторизо-
+-- ванных, cookie для гостей) и вызывает RPC только тогда; p_bump_story
+-- true только при первом просмотре ЛЮБОЙ главы этой истории этим читателем,
+-- поэтому stories.view_count = число уникальных читателей истории, а не
+-- сумма всех прочтений её глав.
+create or replace function increment_view_counts(p_chapter_id uuid, p_story_id uuid, p_bump_story boolean default true) returns void as $$
 begin
   update chapters set view_count = view_count + 1 where id = p_chapter_id;
-  update stories set view_count = view_count + 1 where id = p_story_id;
+  if p_bump_story then
+    update stories set view_count = view_count + 1 where id = p_story_id;
+  end if;
 end;
 $$ language plpgsql security definer;
 
@@ -1390,3 +1398,20 @@ on conflict (code) do nothing;
 --   конкретного админа) — на админской стороне, наоборот, показывается имя
 --   реального автора каждого сообщения (both from users and from staff),
 --   это внутренний UI и анонимность там не нужна.
+-- [2026-09-08] increment_view_counts(p_bump_story) (миграция 0046) —
+--   просмотры считали каждую загрузку страницы главы, включая повторные
+--   заходы того же читателя. Теперь считаются только уникальные читатели:
+--   src/lib/actions/reading.ts перед вызовом RPC сам проверяет, новый ли
+--   это для читателя просмотр — для авторизованных через chapter_reads
+--   (insert-only, PK user_id+chapter_id, уже существовала с 0031, просто
+--   раньше её не читали перед инкрементом) — RPC вызывается только если
+--   upsert реально вставил новую строку; для гостей (нет profiles-строки,
+--   писать в chapter_reads нечем) — через cookie GUEST_READ_COOKIE со
+--   списком id уже посчитанных глав/историй у этого браузера (JSON,
+--   капается на последние 50 глав / 30 историй, чтобы не разрастаться).
+--   stories.view_count теперь растёт не на каждое прочтение любой её главы,
+--   а только на первое прочтение читателем ЛЮБОЙ главы этой истории —
+--   p_bump_story = true только в этом случае, так что это отдельный от
+--   chapters.view_count смысл: не "сумма просмотров глав", а "уникальные
+--   читатели истории". Исторические значения view_count не пересчитывались
+--   назад — новая логика применяется только к просмотрам с этой даты.

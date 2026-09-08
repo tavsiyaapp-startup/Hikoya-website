@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { getServerLocale } from "@/lib/i18n/locale-server";
 import { getDictionary } from "@/lib/i18n";
 import { formatCompactCount } from "@/lib/format";
@@ -6,7 +7,6 @@ import { ROUTES } from "@/lib/constants";
 import { HeartIcon, EyeIcon } from "@/components/ui/icons";
 import { Badge } from "@/components/ui/Chip";
 import { storyProgressLabel } from "@/lib/storyProgress";
-import { StoryCoverZoom } from "@/components/story/StoryCoverZoom";
 import type { StoryCard as StoryCardData } from "@/lib/queries/stories";
 import type { StoryProgressStatus } from "@/types/database";
 
@@ -59,20 +59,36 @@ export async function StoryCard({
       >
         {storyProgressLabel(t, story.progress_status)}
       </span>
-      <div className="overflow-hidden rounded-[12px] border border-border bg-card shadow-[0_2px_10px_rgba(60,40,120,0.05)] transition hover:-translate-y-0.5 hover:shadow-[0_14px_30px_rgba(60,40,120,0.12)]">
-        <StoryCoverZoom
-          coverUrl={story.cover_url}
-          title={story.title}
-          authorName={story.author?.display_name}
-          topRightBadge={
-            story.status !== "published" ? (
-              <div className="absolute right-2 top-2">
-                <Badge tone="neutral">{story.status === "draft" ? t.common.draft : t.common.unlisted}</Badge>
+      <Link
+        href={ROUTES.story(story.slug)}
+        className="block overflow-hidden rounded-[12px] border border-border bg-card shadow-[0_2px_10px_rgba(60,40,120,0.05)] transition hover:-translate-y-0.5 hover:shadow-[0_14px_30px_rgba(60,40,120,0.12)]"
+      >
+        <div className="relative flex aspect-[3/4] items-center justify-center bg-primary-200 p-3">
+          {story.cover_url ? (
+            <Image
+              src={story.cover_url}
+              alt=""
+              fill
+              sizes="(max-width: 1023px) 25vw, 12.5vw"
+              className="object-cover"
+            />
+          ) : (
+            <div className="text-center">
+              <div className="line-clamp-4 text-[12.5px] font-extrabold leading-snug text-primary-900">
+                {story.title}
               </div>
-            ) : undefined
-          }
-        />
-        <Link href={ROUTES.story(story.slug)} className="block p-2.5">
+              <div className="mt-1.5 truncate text-[10.5px] font-semibold text-primary-800/80">
+                {story.author?.display_name}
+              </div>
+            </div>
+          )}
+          {story.status !== "published" && (
+            <div className="absolute right-2 top-2">
+              <Badge tone="neutral">{story.status === "draft" ? t.common.draft : t.common.unlisted}</Badge>
+            </div>
+          )}
+        </div>
+        <div className="p-2.5">
           <h3 className="mb-0.5 line-clamp-2 min-h-8 text-[12.5px] font-bold leading-tight">
             {story.title}
           </h3>
@@ -87,8 +103,8 @@ export async function StoryCard({
               {formatCompactCount(story.view_count)}
             </span>
           </div>
-        </Link>
-      </div>
+        </div>
+      </Link>
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { getServerLocale } from "@/lib/i18n/locale-server";
 import { getDictionary } from "@/lib/i18n";
 import { searchStories, getCustomLanguages, type SearchFilters } from "@/lib/queries/stories";
@@ -259,7 +260,17 @@ export default async function SearchPage({
                 href={`/story/${story.slug}`}
                 className="flex gap-3.5 rounded-[20px] border border-border bg-card p-3.5 hover:border-primary-300 hover:shadow-[0_12px_28px_rgba(60,40,120,0.09)] sm:gap-5 sm:p-4.5"
               >
-                <div className="h-28 w-20 shrink-0 overflow-hidden rounded-[14px] bg-primary-200 sm:h-38.75 sm:w-29" />
+                <div className="relative h-28 w-20 shrink-0 overflow-hidden rounded-[14px] bg-primary-200 sm:h-38.75 sm:w-29">
+                  {story.cover_url && (
+                    <Image
+                      src={story.cover_url}
+                      alt=""
+                      fill
+                      sizes="(max-width: 639px) 80px, 116px"
+                      className="object-cover"
+                    />
+                  )}
+                </div>
                 <div className="flex min-w-0 flex-1 flex-col">
                   <div className="mb-1.5 flex items-center gap-2">
                     <h3 className="text-[18.5px] font-extrabold tracking-tight">{story.title}</h3>

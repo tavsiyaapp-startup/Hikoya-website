@@ -194,6 +194,9 @@ const uz: typeof ru = {
     tagSearchPlaceholder: "Teg kiriting yoki tanlang",
     addNewTag: "+ «{tag}» qoʻshish",
     languageLabel: "Hikoya tili",
+    addLanguage: "+ Boshqa til",
+    languageInputPlaceholder: "Masalan, inglizcha",
+    addLanguageConfirm: "Qoʻshish",
     translationLabel: "Bu asar tarjimasi",
     translationWarning:
       "Hikoya platformasi noqonuniy tarjimalar uchun javobgar emas va ularning chop etilishini qoʻllab-quvvatlamaydi. Sizda rasmiy ruxsat boʻlmagan (va u umumiy mulk hisoblanmaydigan) asarning tarjimasini joylashtirar ekansiz, buning barcha oqibatlari uchun toʻliq javobgarlikni oʻz zimmangizga olasiz.",

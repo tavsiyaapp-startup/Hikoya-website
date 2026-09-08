@@ -66,7 +66,7 @@ create table stories (
   description text not null default '',
   cover_url text,
   genre text not null,
-  language content_language not null default 'ru',
+  language text not null default 'ru',   -- было content_language enum, стало text в 0043 — см. changelog
   age_rating age_rating not null default '0+',
   relationship_type text,
   style text,
@@ -234,6 +234,13 @@ create table story_tags (
   story_id uuid not null references stories (id) on delete cascade,
   tag_id uuid not null references tags (id) on delete cascade,
   primary key (story_id, tag_id)
+);
+
+-- добавлено в 0043: реестр языков, которые авторы вписали вручную (stories.language
+-- не входит в 'ru'/'uz') — чтобы предложить их следующим авторам и в поиске.
+create table custom_languages (
+  label text primary key,
+  created_at timestamptz not null default now()
 );
 
 -- ── коллекции (подборки) ──────────────────────────────────────────────────
@@ -728,6 +735,11 @@ create policy "users remove their own follows" on follows for delete using (foll
 alter table tags enable row level security;
 create policy "tags are publicly readable" on tags for select using (true);
 create policy "staff manage tags" on tags for all using (is_staff()) with check (is_staff());
+
+-- custom_languages — добавлено в 0043
+alter table custom_languages enable row level security;
+create policy "custom_languages are publicly readable" on custom_languages for select using (true);
+create policy "staff manage custom_languages" on custom_languages for all using (is_staff()) with check (is_staff());
 
 alter table story_tags enable row level security;
 create policy "story_tags are publicly readable" on story_tags for select using (true);
@@ -1267,3 +1279,23 @@ on conflict (code) do nothing;
 --   комментарий оттуда виден среди комментариев из глав; StoryCommentCard
 --   у комментария без главы (chapter=null) рендерится не ссылкой (раньше
 --   вела в никуда, href="#"), а обычным блоком.
+-- [2026-09-08] stories.language стал text вместо enum content_language
+--   (миграция 0043) — в CreateWizard рядом с чипами "Русский"/"Ўзбекча"
+--   появилась кнопка "+ Другой язык" (AddLanguageButton, копия
+--   AddGenreButton), через которую автор вписывает любой язык свободным
+--   текстом. Новая таблица custom_languages (label text primary key)
+--   хранит уже введённые кастомные значения — createStory() добавляет туда
+--   строку через admin-клиент, если language не 'ru'/'uz' (тот же приём,
+--   что resolveTagIds() для тегов), и она становится доступна как чип всем
+--   следующим авторам (getCustomLanguages(), queries/stories.ts,
+--   unstable_cache с тегом "custom-languages") и как фильтр на /search
+--   (языковые LinkChip-ы там больше не жёстко заданы ["uz","ru"], а
+--   дополняются этим списком). t.languages по-прежнему покрывает только
+--   ru/uz переводом — остальные языки показываются как есть, raw text,
+--   через новый хелпер languageLabel() (src/lib/language.ts), которым
+--   заменены прежние прямые обращения t.languages[story.language] на
+--   странице произведения и в результатах поиска (иначе TS не пропустит
+--   произвольную строку как индекс фиксированного объекта).
+-- content_language enum сохранён как есть — используется только для
+--   profiles.locale_pref и platform_settings.enabled_locales (язык
+--   интерфейса сайта, отдельное понятие от языка произведения).

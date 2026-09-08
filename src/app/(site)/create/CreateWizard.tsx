@@ -14,13 +14,23 @@ import { Chip } from "@/components/ui/Chip";
 import { ShieldIcon } from "@/components/ui/icons";
 import { TagPicker } from "@/components/story/TagPicker";
 import { AddGenreButton } from "@/components/story/AddGenreButton";
+import { AddLanguageButton } from "@/components/story/AddLanguageButton";
 import { DocxImportFlow } from "@/components/manage/DocxImportFlow";
 import { ROUTES } from "@/lib/constants";
 import { RELATIONSHIP_TYPES } from "@/lib/relationshipTypes";
+import { languageLabel } from "@/lib/language";
 import type { SplitChapter } from "@/lib/editor/splitChapters";
-import type { AgeRating, ContentLanguage, StoryVisibility } from "@/types/database";
+import type { AgeRating, StoryVisibility } from "@/types/database";
 
-export function CreateWizard({ userId, existingTags }: { userId: string; existingTags: string[] }) {
+export function CreateWizard({
+  userId,
+  existingTags,
+  existingLanguages,
+}: {
+  userId: string;
+  existingTags: string[];
+  existingLanguages: string[];
+}) {
   const { t, locale } = useLocale();
   const router = useRouter();
   const [step, setStep] = useState(1);
@@ -35,7 +45,8 @@ export function CreateWizard({ userId, existingTags }: { userId: string; existin
   const [customGenres, setCustomGenres] = useState<string[]>([]);
   const [relationshipType, setRelationshipType] = useState<string | null>(null);
   const [tags, setTags] = useState<string[]>([]);
-  const [language, setLanguage] = useState<ContentLanguage>("ru");
+  const [language, setLanguage] = useState("ru");
+  const [customLanguages, setCustomLanguages] = useState<string[]>(existingLanguages);
   const [ageRating, setAgeRating] = useState<AgeRating>("0+");
   const [isTranslation, setIsTranslation] = useState(false);
 
@@ -247,12 +258,18 @@ export function CreateWizard({ userId, existingTags }: { userId: string; existin
                 </div>
 
                 <label className="mb-2 block text-[14px] font-bold">{t.create.languageLabel} *</label>
-                <div className="mb-5 flex gap-2.5">
-                  {(["uz", "ru"] as const).map((code) => (
+                <div className="mb-5 flex flex-wrap items-center gap-2.5">
+                  {["uz", "ru", ...customLanguages].map((code) => (
                     <Chip key={code} active={language === code} onClick={() => setLanguage(code)}>
-                      {t.languages[code]}
+                      {languageLabel(t, code)}
                     </Chip>
                   ))}
+                  <AddLanguageButton
+                    onAdd={(l) => {
+                      setCustomLanguages((prev) => (prev.includes(l) ? prev : [...prev, l]));
+                      setLanguage(l);
+                    }}
+                  />
                 </div>
 
                 <label className="mb-1 block text-[14px] font-bold">{t.create.ageRatingLabel}</label>

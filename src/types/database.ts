@@ -52,7 +52,7 @@ export interface Story {
   description: string;
   cover_url: string | null;
   genre: string;
-  language: ContentLanguage;
+  language: string;
   age_rating: AgeRating;
   relationship_type: string | null;
   style: string | null;

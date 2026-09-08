@@ -736,6 +736,23 @@ export const getAllTags = unstable_cache(
   { revalidate: CACHE_SECONDS, tags: ["tags"] }
 );
 
+// Language labels authors have typed in that aren't "ru"/"uz" — offered as
+// extra chips next to Русский/Ўзбекча on the create form and as extra
+// filters on /search, alongside whatever this specific author just typed.
+export const getCustomLanguages = unstable_cache(
+  async (): Promise<string[]> => {
+    try {
+      const supabase = createPublicClient();
+      const { data } = await supabase.from("custom_languages").select("label").order("label", { ascending: true });
+      return (data ?? []).map((l) => l.label as string);
+    } catch {
+      return [];
+    }
+  },
+  ["custom-languages"],
+  { revalidate: CACHE_SECONDS, tags: ["custom-languages"] }
+);
+
 export async function getTagsForStory(storyId: string): Promise<string[]> {
   try {
     const supabase = await createClient();

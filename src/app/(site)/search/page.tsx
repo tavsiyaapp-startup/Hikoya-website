@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { getServerLocale } from "@/lib/i18n/locale-server";
 import { getDictionary } from "@/lib/i18n";
-import { searchStories, type SearchFilters } from "@/lib/queries/stories";
+import { searchStories, getCustomLanguages, type SearchFilters } from "@/lib/queries/stories";
 import { localizeGenre } from "@/lib/genre";
+import { languageLabel } from "@/lib/language";
 import { storyProgressLabel } from "@/lib/storyProgress";
 import { Chip } from "@/components/ui/Chip";
 import { LinkChip } from "@/components/ui/LinkChip";
@@ -75,7 +76,7 @@ export default async function SearchPage({
     sort: (one(sp.sort) as SearchFilters["sort"]) ?? "popular",
   };
 
-  const results = await searchStories(filters);
+  const [results, customLanguages] = await Promise.all([searchStories(filters), getCustomLanguages()]);
   const hasActive = Boolean(
     filters.language ||
       filters.genre ||
@@ -99,10 +100,10 @@ export default async function SearchPage({
           </Link>
         </summary>
 
-        <FilterGroup label={t.search.language}>
-          {["uz", "ru"].map((code) => (
+        <FilterGroup label={t.search.language} wrap>
+          {["uz", "ru", ...customLanguages].map((code) => (
             <LinkChip key={code} href={buildHref(sp, { lang: filters.language === code ? undefined : code })} active={filters.language === code}>
-              {t.languages[code as "ru" | "uz"]}
+              {languageLabel(t, code)}
             </LinkChip>
           ))}
         </FilterGroup>
@@ -264,7 +265,7 @@ export default async function SearchPage({
                     <h3 className="text-[18.5px] font-extrabold tracking-tight">{story.title}</h3>
                   </div>
                   <div className="mb-2.5 text-[13.5px] text-ink-soft">
-                    {story.author?.display_name} · {t.languages[story.language]}
+                    {story.author?.display_name} · {languageLabel(t, story.language)}
                   </div>
                   <p className="mb-3 line-clamp-2 max-w-160 text-[14px] leading-relaxed text-ink-soft">
                     {story.description}

@@ -11,7 +11,6 @@ import { ROUTES } from "@/lib/constants";
 import type {
   AgeRating,
   ChapterStatus,
-  ContentLanguage,
   StoryStatus,
   StoryVisibility,
   StoryProgressStatus,
@@ -24,7 +23,7 @@ export interface CreateStoryInput {
   genre: string;
   relationshipType: string | null;
   tags: string[];
-  language: ContentLanguage;
+  language: string;
   ageRating: AgeRating;
   isTranslation: boolean;
   chapterTitle: string;
@@ -88,6 +87,17 @@ async function resolveTagIds(labels: string[]): Promise<string[]> {
   return ids;
 }
 
+// stories.language is free text (not limited to ru/uz) — when an author
+// types one that isn't ru/uz, register it here so it shows up as a pickable
+// chip for every author afterwards (same admin-client-bypasses-RLS pattern
+// as resolveTagIds above), and in the search-by-language filter.
+async function registerCustomLanguage(language: string) {
+  if (language === "ru" || language === "uz") return;
+  const admin = createAdminClient();
+  await admin.from("custom_languages").upsert({ label: language }, { onConflict: "label", ignoreDuplicates: true });
+  updateTag("custom-languages");
+}
+
 export async function createStory(input: CreateStoryInput) {
   const supabase = await createClient();
   const {
@@ -98,6 +108,7 @@ export async function createStory(input: CreateStoryInput) {
   const status: StoryStatus =
     input.visibility === "draft" ? "draft" : (await requiresReview(supabase)) ? "pending_review" : "published";
   const slug = withRandomSuffix(slugify(input.title));
+  const language = input.language.trim() || "ru";
 
   const { data: story, error } = await supabase
     .from("stories")
@@ -109,7 +120,7 @@ export async function createStory(input: CreateStoryInput) {
       cover_url: input.coverUrl,
       genre: input.genre,
       relationship_type: input.relationshipType,
-      language: input.language,
+      language,
       age_rating: input.ageRating,
       is_translation: input.isTranslation,
       status,
@@ -123,6 +134,8 @@ export async function createStory(input: CreateStoryInput) {
   if (error || !story) {
     throw new Error(error?.message ?? "Failed to create story");
   }
+
+  await registerCustomLanguage(language);
 
   const chapterContent = sanitizeHtml(input.chapterText);
   await supabase.from("chapters").insert({

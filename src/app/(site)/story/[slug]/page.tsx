@@ -19,6 +19,7 @@ import { formatDateTime } from "@/lib/format";
 import { ROUTES } from "@/lib/constants";
 import { RELATIONSHIP_TYPES } from "@/lib/relationshipTypes";
 import { localizeGenre } from "@/lib/genre";
+import { languageLabel } from "@/lib/language";
 import { storyProgressTone, storyProgressLabel } from "@/lib/storyProgress";
 import { Avatar } from "@/components/ui/Avatar";
 import { Badge } from "@/components/ui/Chip";
@@ -144,7 +145,7 @@ export default async function StoryPage({
           )}
           <Badge tone={story.age_rating === "18+" ? "danger" : "neutral"}>{story.age_rating}</Badge>
           <Badge tone={storyProgressTone(story.progress_status)}>{storyProgressLabel(t, story.progress_status)}</Badge>
-          <Badge tone="neutral">{t.languages[story.language]}</Badge>
+          <Badge tone="neutral">{languageLabel(t, story.language)}</Badge>
           {story.is_translation && <Badge tone="neutral">{t.story.translationBadge}</Badge>}
           {linkedRequestId && (
             <Link href={`${ROUTES.board}?selected=${linkedRequestId}`}>

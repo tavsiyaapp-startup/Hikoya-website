@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { getServerLocale } from "@/lib/i18n/locale-server";
 import { getDictionary } from "@/lib/i18n";
 import { getChapterForModeration, getStoryForModeration } from "@/lib/queries/admin";
+import { sanitizeHtml } from "@/lib/sanitize";
 import { ROUTES } from "@/lib/constants";
 import { Badge } from "@/components/ui/Chip";
 import { ChevronLeftIcon } from "@/components/ui/icons";
@@ -20,7 +21,8 @@ export default async function AdminChapterModeratePage({
   const [story, chapter] = await Promise.all([getStoryForModeration(id), getChapterForModeration(chapterId)]);
   if (!story || !chapter || chapter.story_id !== id) notFound();
 
-  const paragraphs = chapter.content.split(/\n+/).filter(Boolean);
+  const isRichContent = /<[a-z][\s\S]*>/i.test(chapter.content);
+  const paragraphs = isRichContent ? [] : chapter.content.split(/\n+/).filter(Boolean);
   const statusLabel: Record<string, string> = {
     published: t.common.published,
     pending_review: t.common.pendingReview,
@@ -61,13 +63,20 @@ export default async function AdminChapterModeratePage({
           </div>
         )}
 
-        <div className="mb-9 text-[16px] leading-8 text-ink-soft">
-          {paragraphs.map((p, i) => (
-            <p key={i} className="mb-4.5">
-              {p}
-            </p>
-          ))}
-        </div>
+        {isRichContent ? (
+          <div
+            className="rich-content mb-9 text-[16px] leading-8 text-ink-soft"
+            dangerouslySetInnerHTML={{ __html: sanitizeHtml(chapter.content) }}
+          />
+        ) : (
+          <div className="mb-9 text-[16px] leading-8 text-ink-soft">
+            {paragraphs.map((p, i) => (
+              <p key={i} className="mb-4.5">
+                {p}
+              </p>
+            ))}
+          </div>
+        )}
 
         {chapter.status === "pending_review" && (
           <ChapterModerateActions chapterId={chapter.id} storyId={id} storySlug={story.slug} />

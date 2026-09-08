@@ -17,7 +17,7 @@ import {
   // getTopStories, // TODO: re-enable along with the "Топ" section below
 } from "@/lib/queries/stories";
 import { StoryCard } from "@/components/story/StoryCard";
-import { RemoveFromContinueReadingButton } from "@/components/story/RemoveFromContinueReadingButton";
+import { ContinueReadingSection } from "@/components/home/ContinueReadingSection";
 import { CollectionCard } from "@/components/collections/CollectionCard";
 import { HeroCarousel } from "@/components/home/HeroCarousel";
 import { Button } from "@/components/ui/Button";
@@ -192,47 +192,11 @@ async function HomeSections({
       */}
 
       {user && continueReading.length > 0 && (
-        <>
-          <h2 className="mb-4.5 text-2xl font-extrabold tracking-tight">
-            {t.home.continueReading}
-          </h2>
-          <div className="mb-11 grid grid-cols-1 gap-4.5 xs:grid-cols-2 sm:grid-cols-3">
-            {continueReading.map((item, i) => {
-              const story = item.story as unknown as {
-                id: string;
-                title: string;
-                slug: string;
-                cover_url: string | null;
-              } | null;
-              if (!story) return null;
-              return (
-                <Link
-                  key={i}
-                  href={ROUTES.story(story.slug)}
-                  className="relative flex gap-3.5 rounded-2xl border border-border bg-card p-3.5 hover:border-primary-300"
-                >
-                  <RemoveFromContinueReadingButton storyId={story.id} path={ROUTES.home} />
-                  <div className="relative h-21 w-21 shrink-0 overflow-hidden rounded-[13px] bg-primary-200">
-                    {story.cover_url && (
-                      <Image src={story.cover_url} alt="" fill sizes="84px" className="object-cover" />
-                    )}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <h3 className="mb-1.5 line-clamp-2 text-[15px] font-bold leading-tight">
-                      {story.title}
-                    </h3>
-                    <div className="h-2 w-full max-w-30 overflow-hidden rounded-full bg-border-soft">
-                      <div
-                        className="h-full rounded-full bg-linear-to-r from-primary-700 to-primary-500"
-                        style={{ width: `${Math.min(100, Math.round(item.percent))}%` }}
-                      />
-                    </div>
-                  </div>
-                </Link>
-              );
-            })}
-          </div>
-        </>
+        <ContinueReadingSection
+          items={continueReading as unknown as { percent: number; story: { id: string; title: string; slug: string; cover_url: string | null } | null }[]}
+          title={t.home.continueReading}
+          hideLabel={t.home.hideContinueReadingSection}
+        />
       )}
 
       <div className="mb-6 flex items-center gap-2.5 overflow-x-auto">
@@ -260,7 +224,7 @@ async function HomeSections({
       </div>
       {feed.length > 0 ? (
         <div className="mb-11">
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-5.5 lg:grid-cols-8">
+          <div className="grid grid-cols-4 gap-4 sm:gap-5.5 lg:grid-cols-8">
             {feed.map((story) => (
               <StoryCard key={story.id} story={story} />
             ))}
@@ -352,7 +316,7 @@ async function HomeSections({
         </div>
         {genreStories.length > 0 ? (
           <>
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-5.5 lg:grid-cols-8">
+            <div className="grid grid-cols-4 gap-4 sm:gap-5.5 lg:grid-cols-8">
               {genreStories.map((story) => (
                 <StoryCard key={story.id} story={story} />
               ))}
@@ -410,7 +374,7 @@ function HomeSectionsSkeleton() {
         ))}
       </div>
       <div className="mb-4.5 h-8 w-40 rounded-lg bg-surface" />
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-5.5 lg:grid-cols-8">
+      <div className="grid grid-cols-4 gap-4 sm:gap-5.5 lg:grid-cols-8">
         {Array.from({ length: 16 }).map((_, i) => (
           <div key={i} className="aspect-[3/4] rounded-[20px] bg-surface" />
         ))}

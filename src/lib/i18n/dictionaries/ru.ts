@@ -69,6 +69,7 @@ const ru = {
     heroCta2: "Начать читать",
     continueReading: "Продолжить чтение",
     removeFromContinueReading: "Убрать из «Продолжить чтение»",
+    hideContinueReadingSection: "Скрыть блок (появится снова при следующем визите)",
     topTitle: "Топ",
     topTiers: {
       day: "День",

@@ -2,9 +2,9 @@ import Link from "next/link";
 import Image from "next/image";
 import { getServerLocale } from "@/lib/i18n/locale-server";
 import { getDictionary } from "@/lib/i18n";
-import { localizeGenre } from "@/lib/genre";
+import { formatCompactCount } from "@/lib/format";
 import { ROUTES } from "@/lib/constants";
-import { HeartIcon } from "@/components/ui/icons";
+import { HeartIcon, EyeIcon } from "@/components/ui/icons";
 import { Badge } from "@/components/ui/Chip";
 import { storyProgressTone, storyProgressLabel } from "@/lib/storyProgress";
 import type { StoryCard as StoryCardData } from "@/lib/queries/stories";
@@ -44,52 +44,49 @@ export async function StoryCard({
   return (
     <Link
       href={ROUTES.story(story.slug)}
-      className="group block overflow-hidden rounded-[20px] border border-border bg-card shadow-[0_2px_10px_rgba(60,40,120,0.05)] transition hover:-translate-y-0.5 hover:shadow-[0_14px_30px_rgba(60,40,120,0.12)]"
+      className="group block overflow-hidden rounded-[16px] border border-border bg-card shadow-[0_2px_10px_rgba(60,40,120,0.05)] transition hover:-translate-y-0.5 hover:shadow-[0_14px_30px_rgba(60,40,120,0.12)]"
     >
-      <div className="relative flex aspect-[3/4] items-center justify-center bg-primary-200 p-4">
+      <div className="relative flex aspect-[3/4] items-center justify-center bg-primary-200 p-3">
         {story.cover_url ? (
           <Image
             src={story.cover_url}
             alt=""
             fill
-            sizes="(max-width: 639px) 50vw, (max-width: 1023px) 33vw, 25vw"
+            sizes="(max-width: 1023px) 25vw, 12.5vw"
             className="object-cover"
           />
         ) : (
           <div className="text-center">
-            <div className="line-clamp-4 text-[15px] font-extrabold leading-snug text-primary-900">
+            <div className="line-clamp-4 text-[12.5px] font-extrabold leading-snug text-primary-900">
               {story.title}
             </div>
-            <div className="mt-2 truncate text-[12.5px] font-semibold text-primary-800/80">
+            <div className="mt-1.5 truncate text-[10.5px] font-semibold text-primary-800/80">
               {story.author?.display_name}
             </div>
           </div>
         )}
-        <div className="absolute bottom-3 left-3 flex items-center gap-1.5 rounded-full bg-black/50 px-2.5 py-1.5 text-[12.5px] font-bold text-white backdrop-blur-sm">
-          <HeartIcon filled />
-          <span>{story.like_count}</span>
-        </div>
-        <div className="absolute bottom-3 right-3">
+        <div className="absolute left-2 top-2">
           <Badge tone={storyProgressTone(story.progress_status)}>{storyProgressLabel(t, story.progress_status)}</Badge>
         </div>
         {story.status !== "published" && (
-          <div className="absolute right-3 top-3">
+          <div className="absolute right-2 top-2">
             <Badge tone="neutral">{story.status === "draft" ? t.common.draft : t.common.unlisted}</Badge>
           </div>
         )}
       </div>
-      <div className="p-4 pb-4">
-        <h3 className="mb-1 line-clamp-2 min-h-10 text-[15.5px] font-bold leading-tight">
+      <div className="p-2.5">
+        <h3 className="mb-0.5 line-clamp-2 min-h-8 text-[12.5px] font-bold leading-tight">
           {story.title}
         </h3>
-        <div className="mb-2.5 truncate text-[13px] text-muted-2">{story.author?.display_name}</div>
-        <div className="flex flex-wrap items-center gap-1.5">
-          {story.genres.slice(0, 2).map((g) => (
-            <Badge key={g} tone="pink">{localizeGenre(g, locale)}</Badge>
-          ))}
-          {story.genres.length > 2 && <Badge tone="neutral">+{story.genres.length - 2}</Badge>}
-          <span className="ml-auto shrink-0 text-[12px] font-semibold text-muted-3">
-            {story.chapter_count} {t.common.chapters}
+        <div className="mb-1.5 truncate text-[11px] text-muted-2">{story.author?.display_name}</div>
+        <div className="flex items-center gap-2.5 text-[11px] font-semibold text-muted-3">
+          <span className="flex items-center gap-1">
+            <HeartIcon width={12} height={12} filled />
+            {formatCompactCount(story.like_count)}
+          </span>
+          <span className="flex items-center gap-1">
+            <EyeIcon width={12} height={12} />
+            {formatCompactCount(story.view_count)}
           </span>
         </div>
       </div>

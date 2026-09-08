@@ -5,19 +5,15 @@ import Link from "next/link";
 import Image from "next/image";
 import { ROUTES } from "@/lib/constants";
 import { CloseIcon } from "@/components/ui/icons";
-import { RemoveFromContinueReadingButton } from "@/components/story/RemoveFromContinueReadingButton";
 
 type ContinueReadingItem = {
   percent: number;
   story: { id: string; title: string; slug: string; cover_url: string | null } | null;
 };
 
-// Dismissing here only hides the section for this page view (plain client
-// state, nothing persisted) — a refresh or the next visit brings it right
-// back, same as before, still with its own hide button. That's distinct
-// from RemoveFromContinueReadingButton on each card, which actually deletes
-// the reading_progress row (so that story stops showing up here — and in
-// library's "Читаю" tab — for good).
+// The × next to the heading only hides the section for this page view
+// (plain client state, nothing persisted) — a refresh or the next visit
+// brings it right back.
 export function ContinueReadingSection({
   items,
   title,
@@ -52,9 +48,8 @@ export function ContinueReadingSection({
             <Link
               key={i}
               href={ROUTES.story(story.slug)}
-              className="relative flex gap-3.5 rounded-2xl border border-border bg-card p-3.5 hover:border-primary-300"
+              className="flex gap-3.5 rounded-2xl border border-border bg-card p-3.5 hover:border-primary-300"
             >
-              <RemoveFromContinueReadingButton storyId={story.id} path={ROUTES.home} />
               <div className="relative h-21 w-21 shrink-0 overflow-hidden rounded-[13px] bg-primary-200">
                 {story.cover_url && (
                   <Image src={story.cover_url} alt="" fill sizes="84px" className="object-cover" />

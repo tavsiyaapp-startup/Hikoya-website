@@ -33,10 +33,10 @@ import { HOME_TABS as TABS, type HomeTab as Tab } from "@/lib/homeTabs";
 // Per-section page sizes on the home page — beyond these, pagination kicks
 // in (each section keeps its own page number in the URL, independent of
 // the others).
-const PAGE_SIZE_FEED = 10;
+const PAGE_SIZE_FEED = 24; // 3 rows of 8 on desktop, matches /all
 const PAGE_SIZE_WEEK = 6;
 const PAGE_SIZE_COLLECTIONS = 6;
-const PAGE_SIZE_GENRE = 10;
+const PAGE_SIZE_GENRE = 24; // 3 rows of 8 on desktop, matches /all
 
 function toPage(raw: string | undefined): number {
   const n = Number(raw);
@@ -375,7 +375,7 @@ function HomeSectionsSkeleton() {
       </div>
       <div className="mb-4.5 h-8 w-40 rounded-lg bg-surface" />
       <div className="grid grid-cols-4 gap-4 sm:gap-5.5 lg:grid-cols-8">
-        {Array.from({ length: 16 }).map((_, i) => (
+        {Array.from({ length: 24 }).map((_, i) => (
           <div key={i} className="aspect-[3/4] rounded-[20px] bg-surface" />
         ))}
       </div>

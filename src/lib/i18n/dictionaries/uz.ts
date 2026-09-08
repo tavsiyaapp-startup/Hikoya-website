@@ -70,6 +70,7 @@ const uz: typeof ru = {
     heroCta: "Hikoya chiqarish",
     heroCta2: "Oʻqishni boshlash",
     continueReading: "Oʻqishni davom ettirish",
+    removeFromContinueReading: "«Oʻqishni davom ettirish»dan olib tashlash",
     topTitle: "Top",
     topTiers: {
       day: "Kun",

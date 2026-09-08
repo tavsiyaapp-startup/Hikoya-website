@@ -129,6 +129,23 @@ export async function recordChapterView(input: {
   }
 }
 
+// "Continue reading" (home page) and the "Читаю" tab in /library read from
+// the same reading_progress row per (user, story) — removing it here makes
+// the story disappear from both, not just the section the button was
+// clicked from.
+export async function removeFromContinueReading(storyId: string, path: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return;
+
+  await supabase.from("reading_progress").delete().eq("user_id", user.id).eq("story_id", storyId);
+
+  revalidatePath(path);
+  revalidatePath(ROUTES.library);
+}
+
 export async function setReadingStatus(storyId: string, status: ReadingStatus | null, path: string) {
   const supabase = await createClient();
   const {

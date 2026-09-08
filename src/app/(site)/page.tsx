@@ -17,6 +17,7 @@ import {
   // getTopStories, // TODO: re-enable along with the "Топ" section below
 } from "@/lib/queries/stories";
 import { StoryCard } from "@/components/story/StoryCard";
+import { RemoveFromContinueReadingButton } from "@/components/story/RemoveFromContinueReadingButton";
 import { CollectionCard } from "@/components/collections/CollectionCard";
 import { HeroCarousel } from "@/components/home/HeroCarousel";
 import { Button } from "@/components/ui/Button";
@@ -208,8 +209,9 @@ async function HomeSections({
                 <Link
                   key={i}
                   href={ROUTES.story(story.slug)}
-                  className="flex gap-3.5 rounded-2xl border border-border bg-card p-3.5 hover:border-primary-300"
+                  className="relative flex gap-3.5 rounded-2xl border border-border bg-card p-3.5 hover:border-primary-300"
                 >
+                  <RemoveFromContinueReadingButton storyId={story.id} path={ROUTES.home} />
                   <div className="relative h-21 w-21 shrink-0 overflow-hidden rounded-[13px] bg-primary-200">
                     {story.cover_url && (
                       <Image src={story.cover_url} alt="" fill sizes="84px" className="object-cover" />
@@ -258,7 +260,7 @@ async function HomeSections({
       </div>
       {feed.length > 0 ? (
         <div className="mb-11">
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-5.5 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-5.5 lg:grid-cols-8">
             {feed.map((story) => (
               <StoryCard key={story.id} story={story} />
             ))}
@@ -350,7 +352,7 @@ async function HomeSections({
         </div>
         {genreStories.length > 0 ? (
           <>
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-5.5 lg:grid-cols-4">
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-5.5 lg:grid-cols-8">
               {genreStories.map((story) => (
                 <StoryCard key={story.id} story={story} />
               ))}
@@ -408,8 +410,8 @@ function HomeSectionsSkeleton() {
         ))}
       </div>
       <div className="mb-4.5 h-8 w-40 rounded-lg bg-surface" />
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-5.5 lg:grid-cols-4">
-        {Array.from({ length: 10 }).map((_, i) => (
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-5.5 lg:grid-cols-8">
+        {Array.from({ length: 16 }).map((_, i) => (
           <div key={i} className="aspect-[3/4] rounded-[20px] bg-surface" />
         ))}
       </div>

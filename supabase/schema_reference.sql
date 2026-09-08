@@ -116,7 +116,8 @@ create index chapters_story_id_idx on chapters (story_id);
 
 create table comments (
   id uuid primary key default gen_random_uuid(),
-  chapter_id uuid not null references chapters (id) on delete cascade,
+  chapter_id uuid references chapters (id) on delete cascade,  -- необязательно с 0042: null = общий комментарий к произведению, не привязан к главе
+  story_id uuid not null references stories (id) on delete cascade,  -- добавлено в 0042, см. changelog
   user_id uuid not null references profiles (id) on delete cascade,
   parent_id uuid references comments (id) on delete cascade,
   text text not null,
@@ -126,6 +127,7 @@ create table comments (
 );
 
 create index comments_chapter_id_idx on comments (chapter_id);
+create index comments_story_id_idx on comments (story_id);
 
 create table likes (
   id uuid primary key default gen_random_uuid(),
@@ -410,6 +412,10 @@ alter table telegram_support_tickets enable row level security;
 -- добавлено в 0028: параллельно со stories.comment_count теперь бампается
 -- и chapters.comment_count (для отображения числа комментариев у каждой
 -- главы отдельно в списке глав).
+-- добавлено в 0042: stories.comment_count берётся из new/old.story_id
+-- напрямую (раньше — подзапросом к chapters по chapter_id, что давало
+-- NULL и молча ничего не делало для общих комментариев без главы);
+-- chapters.comment_count трогается, только если chapter_id реально задан.
 create or replace function bump_story_counters() returns trigger as $$
 begin
   if tg_op = 'INSERT' then
@@ -422,9 +428,10 @@ begin
     elsif tg_table_name = 'bookmarks' then
       update stories set bookmark_count = bookmark_count + 1 where id = new.story_id;
     elsif tg_table_name = 'comments' then
-      update stories set comment_count = comment_count + 1
-        where id = (select story_id from chapters where id = new.chapter_id);
-      update chapters set comment_count = comment_count + 1 where id = new.chapter_id;
+      update stories set comment_count = comment_count + 1 where id = new.story_id;
+      if new.chapter_id is not null then
+        update chapters set comment_count = comment_count + 1 where id = new.chapter_id;
+      end if;
     end if;
     return new;
   elsif tg_op = 'DELETE' then
@@ -437,9 +444,10 @@ begin
     elsif tg_table_name = 'bookmarks' then
       update stories set bookmark_count = greatest(bookmark_count - 1, 0) where id = old.story_id;
     elsif tg_table_name = 'comments' then
-      update stories set comment_count = greatest(comment_count - 1, 0)
-        where id = (select story_id from chapters where id = old.chapter_id);
-      update chapters set comment_count = greatest(comment_count - 1, 0) where id = old.chapter_id;
+      update stories set comment_count = greatest(comment_count - 1, 0) where id = old.story_id;
+      if old.chapter_id is not null then
+        update chapters set comment_count = greatest(comment_count - 1, 0) where id = old.chapter_id;
+      end if;
     end if;
     return old;
   end if;
@@ -657,10 +665,20 @@ create policy "story owners delete chapters" on chapters for delete using (
 
 -- comments
 alter table comments enable row level security;
-create policy "comments on readable chapters are readable" on comments for select using (
-  exists (
-    select 1 from chapters
-    where chapters.id = comments.chapter_id and chapters.status = 'published'
+-- добавлено в 0042: chapter_id is null означает общий комментарий к
+-- произведению (не привязан к главе) — читается, если сама история
+-- опубликована, а не через (несуществующую) главу.
+create policy "comments on readable chapters or stories are readable" on comments for select using (
+  (
+    chapter_id is not null
+    and exists (select 1 from chapters where chapters.id = comments.chapter_id and chapters.status = 'published')
+  )
+  or (
+    chapter_id is null
+    and exists (
+      select 1 from stories
+      where stories.id = comments.story_id and stories.status = 'published' and stories.visibility in ('public', 'unlisted')
+    )
   )
   or is_staff()
 );
@@ -1229,3 +1247,23 @@ on conflict (code) do nothing;
 --   блокирует и не проверяется на бэкенде. На странице произведения рядом
 --   с остальными бейджами (жанр/рейтинг/статус) появляется бейдж "Перевод",
 --   если флаг стоит.
+-- [2026-09-03] comments.story_id (миграция 0042) — комментарий теперь
+--   можно оставить не только к главе, но и в общем разделе "Комментарии"
+--   на странице произведения (вкладка tab=comments), не привязывая его к
+--   конкретной главе. chapter_id стал необязательным (null = общий
+--   комментарий); story_id обязательный у каждой строки (бэкфилл из
+--   chapters.story_id для существующих строк), чтобы не тянуть join через
+--   chapters ради RLS/счётчиков. RLS-политика на select переписана: общий
+--   комментарий читается по статусу самой истории, а не несуществующей
+--   главы; bump_story_counters() у comments теперь берёт story_id
+--   напрямую из new/old, а не подзапросом к chapters (см. выше). На
+--   бэкенде: postComment() (actions/social.ts) принимает storyId первым
+--   параметром и chapterId | null; getStoryComments() (queries/social.ts)
+--   стал left join на chapters (было chapters!inner — общие комментарии
+--   без главы просто не проходили) и фильтрует по comments.story_id
+--   напрямую. На фронтенде: CommentForm/CommentItem получили проп storyId;
+--   страница произведения (story/[slug]/page.tsx) во вкладке "Комментарии"
+--   получила свою форму отправки (chapterId=null) над списком — новый
+--   комментарий оттуда виден среди комментариев из глав; StoryCommentCard
+--   у комментария без главы (chapter=null) рендерится не ссылкой (раньше
+--   вела в никуда, href="#"), а обычным блоком.

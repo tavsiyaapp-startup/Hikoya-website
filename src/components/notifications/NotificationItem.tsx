@@ -17,7 +17,14 @@ function notificationHref(n: NotificationWithContext): string {
     n.type === "story_restored"
   )
     return ROUTES.manage(n.story.slug);
-  if (!n.chapter) return ROUTES.story(n.story.slug);
+  if (!n.chapter) {
+    // A general comment (posted from the story page's own Комментарии tab,
+    // not under a chapter) has nowhere else to point — land on that tab
+    // instead of the chapters tab every other chapterless notification
+    // (e.g. story_like) correctly falls back to.
+    const isGeneralComment = (n.type === "new_comment" || n.type === "comment_reply") && !n.chapter_id;
+    return isGeneralComment ? `${ROUTES.story(n.story.slug)}?tab=comments` : ROUTES.story(n.story.slug);
+  }
   const base = ROUTES.chapter(n.story.slug, n.chapter.order_index);
   return n.comment_id ? `${base}#comment-${n.comment_id}` : base;
 }

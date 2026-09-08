@@ -8,13 +8,17 @@ import { Textarea } from "@/components/ui/Textarea";
 import { EmojiPickerButton } from "@/components/story/EmojiPickerButton";
 
 export function CommentForm({
+  storyId,
   chapterId,
   path,
   parentId,
   onSuccess,
   autoFocus,
 }: {
-  chapterId: string;
+  storyId: string;
+  // null when posting from the story page's own "Комментарии" tab (all
+  // chapters at once) rather than under one specific chapter.
+  chapterId: string | null;
   path: string;
   parentId?: string;
   onSuccess?: () => void;
@@ -31,7 +35,7 @@ export function CommentForm({
     e.preventDefault();
     if (!text.trim()) return;
     startTransition(async () => {
-      await postComment(chapterId, text, path, parentId, isSpoiler);
+      await postComment(storyId, chapterId, text, path, parentId, isSpoiler);
       setText("");
       setIsSpoiler(false);
       onSuccess?.();

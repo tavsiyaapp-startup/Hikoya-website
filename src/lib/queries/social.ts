@@ -124,7 +124,8 @@ export async function getFollowedAuthorsWithStories(userId: string): Promise<Fol
 
 export type CommentRow = {
   id: string;
-  chapter_id: string;
+  chapter_id: string | null;
+  story_id: string;
   user_id: string;
   parent_id: string | null;
   text: string;
@@ -173,10 +174,16 @@ export type StoryCommentThread = StoryCommentRow & { replies: StoryCommentRow[] 
 export async function getStoryComments(storyId: string, limit = 300): Promise<StoryCommentThread[]> {
   try {
     const supabase = await createClient();
+    // Left join (not chapters!inner) — a general comment (chapter_id is
+    // null, added straight from the story page's own Comments tab) has no
+    // chapter row to join against and would be silently dropped by an
+    // inner join. Filtering on comments.story_id directly (rather than
+    // chapter.story_id) is also what makes those chapterless rows match at
+    // all.
     const { data } = await supabase
       .from("comments")
-      .select("*, user:profiles(display_name), chapter:chapters!inner(order_index, title, story_id)")
-      .eq("chapter.story_id", storyId)
+      .select("*, user:profiles(display_name), chapter:chapters(order_index, title, story_id)")
+      .eq("story_id", storyId)
       .order("created_at", { ascending: true })
       .limit(limit);
     const all = (data as StoryCommentRow[]) ?? [];

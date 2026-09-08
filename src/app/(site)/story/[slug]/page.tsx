@@ -25,6 +25,9 @@ import { Badge } from "@/components/ui/Chip";
 import { LinkChip } from "@/components/ui/LinkChip";
 import { Button } from "@/components/ui/Button";
 import { LikeBookmarkRow, FollowButton, ReadingStatusSelect } from "@/components/story/StoryActions";
+import { CommentGuidelines } from "@/components/story/CommentGuidelines";
+import { CommentForm } from "@/components/story/CommentForm";
+import { LockIcon } from "@/components/ui/icons";
 import type { ReadingStatus } from "@/types/database";
 
 function relationshipLabel(value: string, locale: "ru" | "uz"): string {
@@ -222,6 +225,20 @@ export default async function StoryPage({
 
         {tab === "comments" && (
           <div className="flex flex-col gap-3.5">
+            {user ? (
+              <div className="mb-1.5">
+                <CommentGuidelines />
+                <CommentForm storyId={story.id} chapterId={null} path={path} />
+              </div>
+            ) : (
+              <div className="mb-1.5 flex flex-wrap items-center gap-3 rounded-2xl border border-dashed border-primary-300 bg-card px-5 py-4">
+                <LockIcon className="text-muted-2" />
+                <span className="text-[14px] text-ink-soft">{t.reader.commentsLocked}</span>
+                <Link href={ROUTES.onboarding} className="ml-auto">
+                  <Button size="sm">{t.common.login}</Button>
+                </Link>
+              </div>
+            )}
             {storyComments.length > 0 ? (
               storyComments.map((c) => (
                 <div key={c.id} className="flex flex-col gap-2.5">
@@ -277,11 +294,9 @@ function StoryCommentCard({
   t: Dictionary;
   isReply?: boolean;
 }) {
-  return (
-    <Link
-      href={comment.chapter ? `${ROUTES.chapter(slug, comment.chapter.order_index)}#comment-${comment.id}` : "#"}
-      className={`flex gap-3.5 rounded-2xl border border-border p-4.5 hover:border-primary-300 ${isReply ? "bg-surface" : "bg-card"}`}
-    >
+  const className = `flex gap-3.5 rounded-2xl border border-border p-4.5 ${isReply ? "bg-surface" : "bg-card"}`;
+  const content = (
+    <>
       <Avatar name={comment.user?.display_name ?? "?"} size={isReply ? 32 : 38} />
       <div className="min-w-0 flex-1">
         <div className="mb-1.5 flex flex-wrap items-center gap-2.5">
@@ -297,6 +312,21 @@ function StoryCommentCard({
         </div>
         <p className="text-[14.5px] leading-relaxed text-ink-soft">{comment.text}</p>
       </div>
+    </>
+  );
+
+  // A general comment (posted from this tab, not under any one chapter) has
+  // nowhere to jump to — render it as a plain block instead of a dead link.
+  if (!comment.chapter) {
+    return <div className={className}>{content}</div>;
+  }
+
+  return (
+    <Link
+      href={`${ROUTES.chapter(slug, comment.chapter.order_index)}#comment-${comment.id}`}
+      className={`${className} hover:border-primary-300`}
+    >
+      {content}
     </Link>
   );
 }

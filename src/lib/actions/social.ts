@@ -84,8 +84,13 @@ export async function toggleFollowAuthor(authorId: string, path: string) {
   revalidatePath(path);
 }
 
+// chapterId is null for a general comment posted from the story page's own
+// "Комментарии" tab (all-chapters view) rather than under a specific
+// chapter — storyId is required either way so RLS/counters don't need to
+// derive it through a chapters join (see migration 0042).
 export async function postComment(
-  chapterId: string,
+  storyId: string,
+  chapterId: string | null,
   text: string,
   path: string,
   parentId?: string,
@@ -97,6 +102,7 @@ export async function postComment(
   const { data: comment, error } = await supabase
     .from("comments")
     .insert({
+      story_id: storyId,
       chapter_id: chapterId,
       user_id: user.id,
       text: text.trim(),
@@ -110,12 +116,7 @@ export async function postComment(
     return;
   }
 
-  const { data: chapter } = await supabase
-    .from("chapters")
-    .select("story:stories(id, author_id)")
-    .eq("id", chapterId)
-    .single();
-  const story = chapter?.story as unknown as { id: string; author_id: string } | null;
+  const { data: story } = await supabase.from("stories").select("id, author_id").eq("id", storyId).single();
 
   let parentAuthorId: string | null = null;
   if (parentId) {

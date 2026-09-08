@@ -92,7 +92,8 @@ export interface Chapter {
 
 export interface Comment {
   id: string;
-  chapter_id: string;
+  chapter_id: string | null;
+  story_id: string;
   user_id: string;
   parent_id: string | null;
   text: string;

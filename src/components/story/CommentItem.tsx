@@ -12,6 +12,7 @@ import type { CommentRow } from "@/lib/queries/social";
 export function CommentItem({
   comment,
   replies,
+  storyId,
   chapterId,
   path,
   locale,
@@ -21,7 +22,8 @@ export function CommentItem({
 }: {
   comment: CommentRow;
   replies?: CommentRow[];
-  chapterId: string;
+  storyId: string;
+  chapterId: string | null;
   path: string;
   locale: string;
   likedByMe: boolean;
@@ -111,7 +113,7 @@ export function CommentItem({
 
       {replying && (
         <div className="ml-10.5 mt-2.5">
-          <CommentForm chapterId={chapterId} path={path} parentId={comment.id} onSuccess={() => setReplying(false)} autoFocus />
+          <CommentForm storyId={storyId} chapterId={chapterId} path={path} parentId={comment.id} onSuccess={() => setReplying(false)} autoFocus />
         </div>
       )}
 
@@ -121,6 +123,7 @@ export function CommentItem({
             <CommentItem
               key={r.id}
               comment={r}
+              storyId={storyId}
               chapterId={chapterId}
               path={path}
               locale={locale}

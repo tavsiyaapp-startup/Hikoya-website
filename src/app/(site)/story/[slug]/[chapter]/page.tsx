@@ -156,7 +156,7 @@ export default async function ReaderPage({
             {user ? (
               <div className="mb-5">
                 <CommentGuidelines />
-                <CommentForm chapterId={ch.id} path={ROUTES.chapter(slug, orderIndex)} />
+                <CommentForm storyId={story.id} chapterId={ch.id} path={ROUTES.chapter(slug, orderIndex)} />
               </div>
             ) : (
               <div className="mb-5 flex flex-wrap items-center gap-3 rounded-2xl border border-dashed border-primary-300 bg-card px-5 py-4">
@@ -174,6 +174,7 @@ export default async function ReaderPage({
                   key={c.id}
                   comment={c}
                   replies={c.replies}
+                  storyId={story.id}
                   chapterId={ch.id}
                   path={ROUTES.chapter(slug, orderIndex)}
                   locale={locale}

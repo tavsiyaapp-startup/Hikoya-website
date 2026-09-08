@@ -12,6 +12,17 @@ export async function getProfileByUsername(username: string): Promise<Profile | 
   }
 }
 
+// Used by /admin/users/[id] — the admin list links by id, not username.
+export async function getProfileById(id: string): Promise<Profile | null> {
+  try {
+    const supabase = await createClient();
+    const { data } = await supabase.from("profiles").select("*").eq("id", id).maybeSingle();
+    return (data as Profile) ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export async function getAuthorStoryCount(authorId: string) {
   try {
     const supabase = await createClient();

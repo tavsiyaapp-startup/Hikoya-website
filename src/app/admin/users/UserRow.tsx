@@ -52,10 +52,10 @@ export function UserRow({
   return (
     <div className="border-b border-border-soft py-3.5 last:border-0">
       <div className="flex items-center gap-4">
-        <div className="min-w-0 flex-[1.4]">
+        <Link href={ROUTES.adminUser(user.id)} className="min-w-0 flex-[1.4] hover:underline">
           <div className="text-[14px] font-bold">{user.display_name}</div>
           <div className="text-[12.5px] text-muted-2">@{user.username}</div>
-        </div>
+        </Link>
         <span className="w-27.5">
           <UserRoleSelect userId={user.id} role={user.role as UserRole} disabled={!viewerIsAdmin} />
         </span>

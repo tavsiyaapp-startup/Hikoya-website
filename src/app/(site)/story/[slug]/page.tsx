@@ -26,6 +26,7 @@ import { Badge } from "@/components/ui/Chip";
 import { LinkChip } from "@/components/ui/LinkChip";
 import { Button } from "@/components/ui/Button";
 import { LikeBookmarkRow, FollowButton, ReadingStatusSelect } from "@/components/story/StoryActions";
+import { ImageZoom } from "@/components/story/ImageZoom";
 import { CommentGuidelines } from "@/components/story/CommentGuidelines";
 import { CommentForm } from "@/components/story/CommentForm";
 import { LockIcon } from "@/components/ui/icons";
@@ -85,9 +86,17 @@ export default async function StoryPage({
   return (
     <div className="flex flex-col items-start gap-6 lg:flex-row lg:gap-9">
       <div className="w-full lg:sticky lg:top-26 lg:w-75 lg:shrink-0">
-        <div className="relative mx-auto mb-4.5 aspect-[3/4] w-full max-w-60 overflow-hidden rounded-[14px] bg-primary-200 shadow-[0_18px_40px_rgba(60,40,120,0.18)] sm:max-w-70 lg:mx-0 lg:max-w-none">
-          {story.cover_url && <Image src={story.cover_url} alt={story.title} fill className="object-cover" />}
-        </div>
+        {story.cover_url ? (
+          <ImageZoom
+            src={story.cover_url}
+            alt={story.title}
+            triggerClassName="relative mx-auto mb-4.5 block aspect-[3/4] w-full max-w-60 cursor-zoom-in overflow-hidden rounded-[14px] bg-primary-200 shadow-[0_18px_40px_rgba(60,40,120,0.18)] sm:max-w-70 lg:mx-0 lg:max-w-none"
+          >
+            <Image src={story.cover_url} alt="" fill className="object-cover" />
+          </ImageZoom>
+        ) : (
+          <div className="relative mx-auto mb-4.5 aspect-[3/4] w-full max-w-60 overflow-hidden rounded-[14px] bg-primary-200 shadow-[0_18px_40px_rgba(60,40,120,0.18)] sm:max-w-70 lg:mx-0 lg:max-w-none" />
+        )}
 
         {readCta ? (
           <Link href={ROUTES.chapter(slug, readCta.order_index)}>

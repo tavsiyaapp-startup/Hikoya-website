@@ -55,7 +55,7 @@ export async function StoryCard({
   return (
     <div className="relative">
       <span
-        className={`absolute -left-1 -top-2 z-10 inline-flex items-center rounded-[8px] px-2 py-1 text-[10.5px] font-bold shadow-[0_2px_6px_rgba(0,0,0,0.2)] ${progressBadgeClasses[story.progress_status]}`}
+        className={`absolute -left-1 -top-3.5 z-10 inline-flex items-center rounded-[8px] px-2 py-1 text-[10.5px] font-bold shadow-[0_2px_6px_rgba(0,0,0,0.2)] ${progressBadgeClasses[story.progress_status]}`}
       >
         {storyProgressLabel(t, story.progress_status)}
       </span>

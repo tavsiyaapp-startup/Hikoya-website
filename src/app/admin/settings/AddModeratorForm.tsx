@@ -44,7 +44,7 @@ export function AddModeratorForm() {
   }
 
   return (
-    <div className="rounded-[22px] border border-border bg-card p-4.5 sm:p-6.5">
+    <div className="rounded-[14px] border border-border bg-card p-4.5 sm:p-6.5">
       <h3 className="mb-2 text-[17px] font-extrabold">{t.admin.addModeratorTitle}</h3>
       <p className="mb-4.5 text-[13.5px] leading-relaxed text-muted">{t.admin.addModeratorBody}</p>
 

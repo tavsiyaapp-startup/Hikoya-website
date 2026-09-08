@@ -102,7 +102,7 @@ export function Sidebar({ user }: { user: CurrentUser | null }) {
         </nav>
 
         {expanded && !user && (
-          <div className="mt-6.5 rounded-[18px] border border-primary-100 bg-linear-to-br from-primary-50 to-pink-bg p-4.5">
+          <div className="mt-6.5 rounded-[12px] border border-primary-100 bg-linear-to-br from-primary-50 to-pink-bg p-4.5">
             <div className="mb-1.5 text-[14px] font-extrabold leading-snug">{t.sidebar.title}</div>
             <div className="mb-3.5 text-[12.5px] leading-relaxed text-muted">{t.sidebar.body}</div>
             <Link href={ROUTES.onboarding} onClick={() => setOpen(false)}>

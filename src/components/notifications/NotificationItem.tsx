@@ -61,7 +61,7 @@ export function NotificationItem({
 
   return (
     <div
-      className={`flex items-start gap-3.5 rounded-2xl border p-4.5 transition ${
+      className={`flex items-start gap-3.5 rounded-[12px] border p-4.5 transition ${
         isRead ? "border-border bg-card" : "border-primary-200 bg-primary-50"
       }`}
     >

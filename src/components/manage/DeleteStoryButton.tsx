@@ -19,7 +19,7 @@ export function DeleteStoryButton({
   const [pending, startTransition] = useTransition();
 
   return (
-    <div className="mt-6 rounded-3xl border border-red-200 dark:border-red-900/60 bg-danger-bg p-4.5 sm:p-6.5">
+    <div className="mt-6 rounded-[16px] border border-red-200 dark:border-red-900/60 bg-danger-bg p-4.5 sm:p-6.5">
       <h3 className="mb-1 text-[15px] font-extrabold text-danger">{t.manage.dangerZoneTitle}</h3>
       <p className="mb-4 text-[13.5px] leading-relaxed text-ink-soft">{t.manage.deleteStoryWarning}</p>
       <Button variant="danger" onClick={() => setOpen(true)}>
@@ -35,7 +35,7 @@ export function DeleteStoryButton({
             role="alertdialog"
             aria-modal
             onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-105 rounded-3xl border border-border bg-card p-6 shadow-[0_30px_80px_rgba(30,20,60,0.25)]"
+            className="w-full max-w-105 rounded-[16px] border border-border bg-card p-6 shadow-[0_30px_80px_rgba(30,20,60,0.25)]"
           >
             <h3 className="mb-2 text-[18px] font-extrabold tracking-tight">
               {t.manage.deleteStoryModalTitle.replace("{title}", storyTitle)}

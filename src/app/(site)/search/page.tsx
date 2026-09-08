@@ -92,7 +92,7 @@ export default async function SearchPage({
     <div className="flex flex-col items-start gap-5 lg:flex-row lg:gap-7">
       <details
         open
-        className="w-full shrink-0 rounded-[22px] border border-border bg-card p-5.5 lg:sticky lg:top-26 lg:w-73"
+        className="w-full shrink-0 rounded-[14px] border border-border bg-card p-5.5 lg:sticky lg:top-26 lg:w-73"
       >
         <summary className="mb-4.5 flex cursor-pointer list-none items-center marker:hidden lg:pointer-events-none lg:cursor-default [&::-webkit-details-marker]:hidden">
           <span className="text-[17px] font-extrabold">{t.search.filters}</span>
@@ -258,7 +258,7 @@ export default async function SearchPage({
               <Link
                 key={story.id}
                 href={`/story/${story.slug}`}
-                className="flex gap-3.5 rounded-[20px] border border-border bg-card p-3.5 hover:border-primary-300 hover:shadow-[0_12px_28px_rgba(60,40,120,0.09)] sm:gap-5 sm:p-4.5"
+                className="flex gap-3.5 rounded-[14px] border border-border bg-card p-3.5 hover:border-primary-300 hover:shadow-[0_12px_28px_rgba(60,40,120,0.09)] sm:gap-5 sm:p-4.5"
               >
                 <div className="relative h-28 w-20 shrink-0 overflow-hidden rounded-[14px] bg-primary-200 sm:h-38.75 sm:w-29">
                   {story.cover_url && (
@@ -293,7 +293,7 @@ export default async function SearchPage({
             ))}
           </div>
         ) : (
-          <div className="rounded-[22px] border border-dashed border-border-soft bg-card px-8 py-16 text-center">
+          <div className="rounded-[14px] border border-dashed border-border-soft bg-card px-8 py-16 text-center">
             <div className="mb-2 text-[17px] font-bold">{t.search.noResultsTitle}</div>
             <div className="mb-4.5 text-[14px] text-muted-2">{t.search.noResultsBody}</div>
             <Link href="/search">

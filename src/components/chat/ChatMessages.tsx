@@ -44,7 +44,7 @@ export async function ChatMessages({
               {!isOwn && <span className="mb-1 px-1 text-[12px] font-bold text-muted-2">{senderName}</span>}
               <div
                 className={clsx(
-                  "rounded-2xl px-4 py-2.5 text-[14.5px] leading-relaxed whitespace-pre-wrap",
+                  "rounded-[12px] px-4 py-2.5 text-[14.5px] leading-relaxed whitespace-pre-wrap",
                   isOwn ? "bg-primary-700 text-white" : "border border-border bg-card text-ink-soft"
                 )}
               >

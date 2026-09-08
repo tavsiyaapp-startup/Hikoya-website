@@ -26,7 +26,7 @@ export default async function AdminUsersPage({
     <div>
       <AdminHeader title={t.admin.users} />
       <div className="px-4 pb-15 pt-7 sm:px-8.5">
-        <div className="rounded-[22px] border border-border bg-card p-4.5 sm:p-6.5">
+        <div className="rounded-[14px] border border-border bg-card p-4.5 sm:p-6.5">
           <form className="mb-5 max-w-105">
             <Input name="q" defaultValue={q} placeholder={t.admin.searchUsers} />
           </form>

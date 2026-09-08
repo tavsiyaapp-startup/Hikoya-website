@@ -25,7 +25,7 @@ export default async function AdminStoriesPage({
     <div>
       <AdminHeader title={t.admin.stories} />
       <div className="px-4 pb-15 pt-7 sm:px-8.5">
-        <div className="rounded-[22px] border border-border bg-card p-4.5 sm:p-6.5">
+        <div className="rounded-[14px] border border-border bg-card p-4.5 sm:p-6.5">
           <div className="mb-5 flex gap-2 overflow-x-auto">
             {[undefined, "pending_review", "published", "draft", "unlisted", "deleted"].map((s) => (
               <Link key={s ?? "all"} href={s ? `?status=${s}` : "?"} className="shrink-0">

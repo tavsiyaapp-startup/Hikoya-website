@@ -253,7 +253,7 @@ async function HomeSections({
                     ? ROUTES.chapter(group.story.slug, group.singleChapter.order_index)
                     : ROUTES.story(group.story.slug)
                 }
-                className="flex gap-3.5 rounded-[18px] border border-border bg-card p-3.5 hover:border-primary-300 hover:shadow-[0_10px_24px_rgba(60,40,120,0.09)]"
+                className="flex gap-3.5 rounded-[12px] border border-border bg-card p-3.5 hover:border-primary-300 hover:shadow-[0_10px_24px_rgba(60,40,120,0.09)]"
               >
                 <div className="relative h-21 w-21 shrink-0 overflow-hidden rounded-[14px] bg-primary-200">
                   {group.story.cover_url && (
@@ -304,7 +304,7 @@ async function HomeSections({
         <EmptyRow className="mb-11" />
       )}
 
-      <div className="rounded-3xl border border-border bg-card px-4 py-6 sm:px-7 sm:py-6.5">
+      <div className="rounded-[16px] border border-border bg-card px-4 py-6 sm:px-7 sm:py-6.5">
         <div className="mb-4.5 flex items-center gap-3.5">
           <h2 className="text-[22px] font-extrabold tracking-tight">{t.home.genreTitle}</h2>
         </div>
@@ -330,8 +330,8 @@ async function HomeSections({
       </div>
 
       {!user && (
-        <div className="mt-11 flex flex-col items-start gap-4 rounded-3xl bg-linear-to-br from-ink-dark to-primary-950 px-5 py-6 text-white sm:flex-row sm:items-center sm:gap-6 sm:px-8 sm:py-6.5">
-          <div className="flex h-13 w-13 shrink-0 items-center justify-center rounded-2xl bg-white/12">
+        <div className="mt-11 flex flex-col items-start gap-4 rounded-[16px] bg-linear-to-br from-ink-dark to-primary-950 px-5 py-6 text-white sm:flex-row sm:items-center sm:gap-6 sm:px-8 sm:py-6.5">
+          <div className="flex h-13 w-13 shrink-0 items-center justify-center rounded-[12px] bg-white/12">
             <LockIcon className="h-6 w-6" />
           </div>
           <div className="flex-1">
@@ -357,7 +357,7 @@ async function EmptyRow({ className = "" }: { className?: string }) {
   const t = getDictionary(locale);
   return (
     <div
-      className={`rounded-2xl border border-dashed border-border-soft bg-surface px-6 py-10 text-center text-[14px] text-muted ${className}`}
+      className={`rounded-[12px] border border-dashed border-border-soft bg-surface px-6 py-10 text-center text-[14px] text-muted ${className}`}
     >
       {t.home.emptyFeed}
     </div>
@@ -377,7 +377,7 @@ function HomeSectionsSkeleton() {
       <div className="mb-4.5 h-8 w-40 rounded-lg bg-surface" />
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-5.5 lg:grid-cols-8">
         {Array.from({ length: 24 }).map((_, i) => (
-          <div key={i} className="aspect-[3/4] rounded-[20px] bg-surface" />
+          <div key={i} className="aspect-[3/4] rounded-[14px] bg-surface" />
         ))}
       </div>
     </div>

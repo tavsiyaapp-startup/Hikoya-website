@@ -27,7 +27,7 @@ export async function CollectionCard({ collection }: { collection: CollectionCar
   return (
     <Link
       href={ROUTES.collection(collection.id)}
-      className="rounded-[22px] border border-border bg-card p-5 hover:border-primary-300 hover:shadow-[0_14px_30px_rgba(60,40,120,0.1)]"
+      className="rounded-[14px] border border-border bg-card p-5 hover:border-primary-300 hover:shadow-[0_14px_30px_rgba(60,40,120,0.1)]"
     >
       <CollectionCoverStack coverUrls={collection.coverUrls} />
 
@@ -48,7 +48,7 @@ export async function CollectionCard({ collection }: { collection: CollectionCar
 function CollectionCoverStack({ coverUrls }: { coverUrls: string[] }) {
   if (coverUrls.length === 0) {
     return (
-      <div className="relative mb-4 flex h-32 items-center justify-center rounded-[16px] bg-linear-to-br from-primary-100 to-pink-bg">
+      <div className="relative mb-4 flex h-32 items-center justify-center rounded-[12px] bg-linear-to-br from-primary-100 to-pink-bg">
         <CollectionsIcon className="text-primary-400" />
       </div>
     );

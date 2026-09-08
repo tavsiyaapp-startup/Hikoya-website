@@ -86,7 +86,7 @@ export default async function LibraryPage({
                 <Link
                   key={i}
                   href={ROUTES.story(story.slug)}
-                  className="flex items-center gap-3 rounded-[20px] border border-border bg-card p-3.5 hover:border-primary-300 sm:gap-4.5 sm:p-4.5"
+                  className="flex items-center gap-3 rounded-[14px] border border-border bg-card p-3.5 hover:border-primary-300 sm:gap-4.5 sm:p-4.5"
                 >
                   <div className="relative h-20 w-15 shrink-0 overflow-hidden rounded-[13px] bg-primary-200 sm:h-25 sm:w-19">
                     {story.cover_url && <Image src={story.cover_url} alt="" fill className="object-cover" />}
@@ -156,7 +156,7 @@ export default async function LibraryPage({
 
 function EmptyState({ text }: { text: string }) {
   return (
-    <div className="rounded-2xl border border-dashed border-border-soft bg-surface px-6 py-14 text-center text-[14px] text-muted">
+    <div className="rounded-[12px] border border-dashed border-border-soft bg-surface px-6 py-14 text-center text-[14px] text-muted">
       {text}
     </div>
   );

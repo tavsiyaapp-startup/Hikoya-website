@@ -68,7 +68,7 @@ export function StoryCoverZoom({
             className="relative aspect-[3/4] max-h-[85vh] w-full max-w-md"
             onClick={(e) => e.stopPropagation()}
           >
-            <Image src={coverUrl} alt="" fill sizes="90vw" className="rounded-2xl object-contain" />
+            <Image src={coverUrl} alt="" fill sizes="90vw" className="rounded-[12px] object-contain" />
           </div>
         </div>
       )}

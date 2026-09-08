@@ -55,7 +55,7 @@ export default async function AdminChatsPage({
                 <Link
                   key={c.user_id}
                   href={ROUTES.adminChats(c.user_id)}
-                  className={`flex items-center gap-3.5 rounded-[18px] border bg-card p-4 ${
+                  className={`flex items-center gap-3.5 rounded-[12px] border bg-card p-4 ${
                     selected === c.user_id ? "border-primary-400" : "border-border hover:border-primary-200"
                   }`}
                 >
@@ -73,14 +73,14 @@ export default async function AdminChatsPage({
                 </Link>
               ))
             ) : (
-              <div className="rounded-2xl border border-dashed border-border-soft bg-surface px-6 py-14 text-center text-[14px] text-muted">
+              <div className="rounded-[12px] border border-dashed border-border-soft bg-surface px-6 py-14 text-center text-[14px] text-muted">
                 {t.admin.noChatsYet}
               </div>
             )}
           </div>
 
           {selectedChat && (
-            <div className="w-full shrink-0 overflow-hidden rounded-[22px] border border-border bg-card p-5 lg:sticky lg:top-26 lg:w-100">
+            <div className="w-full shrink-0 overflow-hidden rounded-[14px] border border-border bg-card p-5 lg:sticky lg:top-26 lg:w-100">
               <MarkChatRead as="admin" targetUserId={selectedChat.user_id} />
               <div className="mb-4 flex items-center gap-3">
                 <Avatar name={selectedChat.user?.display_name ?? "?"} src={selectedChat.user?.avatar_url} size={36} />
@@ -95,7 +95,7 @@ export default async function AdminChatsPage({
                   <ChatMessages messages={messages} viewerIsStaff />
                 </ChatScrollArea>
               ) : (
-                <div className="mb-5 rounded-2xl border border-dashed border-border-soft bg-surface px-6 py-8 text-center text-[13.5px] text-muted">
+                <div className="mb-5 rounded-[12px] border border-dashed border-border-soft bg-surface px-6 py-8 text-center text-[13.5px] text-muted">
                   {t.chat.emptyState}
                 </div>
               )}

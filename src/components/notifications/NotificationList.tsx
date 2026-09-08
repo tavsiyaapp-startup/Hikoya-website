@@ -13,7 +13,7 @@ export async function NotificationList({
 
   if (notifications.length === 0) {
     return (
-      <div className="rounded-2xl border border-dashed border-border-soft bg-surface px-6 py-14 text-center text-[14px] text-muted">
+      <div className="rounded-[12px] border border-dashed border-border-soft bg-surface px-6 py-14 text-center text-[14px] text-muted">
         {t.notifications.empty}
       </div>
     );

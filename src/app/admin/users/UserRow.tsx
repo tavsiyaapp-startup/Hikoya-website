@@ -91,7 +91,7 @@ export function UserRow({
       </div>
 
       {badgesOpen && (
-        <div className="mt-3 rounded-2xl border border-border bg-surface p-4">
+        <div className="mt-3 rounded-[12px] border border-border bg-surface p-4">
           {achievements.length > 0 ? (
             <div className="mb-3 flex flex-wrap gap-2">
               {achievements.map((a) => (

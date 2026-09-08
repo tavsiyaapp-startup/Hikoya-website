@@ -85,7 +85,7 @@ export default async function StoryPage({
   return (
     <div className="flex flex-col items-start gap-6 lg:flex-row lg:gap-9">
       <div className="w-full lg:sticky lg:top-26 lg:w-75 lg:shrink-0">
-        <div className="relative mx-auto mb-4.5 aspect-[3/4] w-full max-w-60 overflow-hidden rounded-[22px] bg-primary-200 shadow-[0_18px_40px_rgba(60,40,120,0.18)] sm:max-w-70 lg:mx-0 lg:max-w-none">
+        <div className="relative mx-auto mb-4.5 aspect-[3/4] w-full max-w-60 overflow-hidden rounded-[14px] bg-primary-200 shadow-[0_18px_40px_rgba(60,40,120,0.18)] sm:max-w-70 lg:mx-0 lg:max-w-none">
           {story.cover_url && <Image src={story.cover_url} alt={story.title} fill className="object-cover" />}
         </div>
 
@@ -96,7 +96,7 @@ export default async function StoryPage({
             </Button>
           </Link>
         ) : (
-          <div className="mb-2.5 flex h-13.5 w-full items-center justify-center rounded-2xl border border-dashed border-border-soft text-[13px] text-muted">
+          <div className="mb-2.5 flex h-13.5 w-full items-center justify-center rounded-[12px] border border-dashed border-border-soft text-[13px] text-muted">
             {t.story.noChaptersYet}
           </div>
         )}
@@ -118,7 +118,7 @@ export default async function StoryPage({
           />
         )}
 
-        <div className="rounded-[18px] border border-border bg-card p-4.5">
+        <div className="rounded-[12px] border border-border bg-card p-4.5">
           <Link href={ROUTES.author(story.author.username)} className="mb-3.5 flex items-center gap-2.5">
             <Avatar name={story.author.display_name} src={story.author.avatar_url} />
             <div className="min-w-0">
@@ -166,7 +166,7 @@ export default async function StoryPage({
           {story.title}
         </h1>
 
-        <div className="mb-6.5 flex flex-wrap gap-6 rounded-[20px] border border-border bg-card px-4.5 py-5 sm:gap-11 sm:px-6.5 sm:py-5.5">
+        <div className="mb-6.5 flex flex-wrap gap-6 rounded-[14px] border border-border bg-card px-4.5 py-5 sm:gap-11 sm:px-6.5 sm:py-5.5">
           {metrics.map((m) => (
             <div key={m.label}>
               <div className="mb-0.5 text-2xl font-extrabold tracking-tight">{m.value}</div>
@@ -175,7 +175,7 @@ export default async function StoryPage({
           ))}
         </div>
 
-        <div className="mb-8 max-w-190">
+        <div className="mb-8 max-w-190 rounded-[12px] border border-border bg-card px-4.5 py-4 sm:px-5.5">
           <p className="text-[16px] leading-relaxed text-ink-soft">{story.description}</p>
         </div>
 
@@ -189,7 +189,7 @@ export default async function StoryPage({
         </div>
 
         {tab === "chapters" && (
-          <div className="overflow-hidden rounded-[20px] border border-border bg-card">
+          <div className="overflow-hidden rounded-[14px] border border-border bg-card">
             {chapters.length > 0 ? (
               chapters.map((ch, i) => {
                 const isRead = readChapterIds.has(ch.id);
@@ -234,7 +234,7 @@ export default async function StoryPage({
                 <CommentForm storyId={story.id} chapterId={null} path={path} />
               </div>
             ) : (
-              <div className="mb-1.5 flex flex-wrap items-center gap-3 rounded-2xl border border-dashed border-primary-300 bg-card px-5 py-4">
+              <div className="mb-1.5 flex flex-wrap items-center gap-3 rounded-[12px] border border-dashed border-primary-300 bg-card px-5 py-4">
                 <LockIcon className="text-muted-2" />
                 <span className="text-[14px] text-ink-soft">{t.reader.commentsLocked}</span>
                 <Link href={ROUTES.onboarding} className="ml-auto">
@@ -256,7 +256,7 @@ export default async function StoryPage({
                 </div>
               ))
             ) : (
-              <div className="rounded-[20px] border border-border bg-card px-6 py-10 text-center text-[14px] text-muted-2">
+              <div className="rounded-[14px] border border-border bg-card px-6 py-10 text-center text-[14px] text-muted-2">
                 {t.story.noCommentsYet}
               </div>
             )}
@@ -264,7 +264,7 @@ export default async function StoryPage({
         )}
 
         {!user && (
-          <div className="mt-7 flex flex-col items-start gap-4 rounded-[22px] border border-primary-100 bg-linear-to-br from-primary-50 to-pink-bg px-5 py-5 sm:flex-row sm:items-center sm:gap-5 sm:px-7 sm:py-6">
+          <div className="mt-7 flex flex-col items-start gap-4 rounded-[14px] border border-primary-100 bg-linear-to-br from-primary-50 to-pink-bg px-5 py-5 sm:flex-row sm:items-center sm:gap-5 sm:px-7 sm:py-6">
             <div className="flex-1">
               <div className="mb-1 text-[17px] font-extrabold">{t.story.authorCta}</div>
               <div className="text-[14px] leading-relaxed text-ink-soft">{t.story.authorCtaBody}</div>
@@ -297,7 +297,7 @@ function StoryCommentCard({
   t: Dictionary;
   isReply?: boolean;
 }) {
-  const className = `flex gap-3.5 rounded-2xl border border-border p-4.5 ${isReply ? "bg-surface" : "bg-card"}`;
+  const className = `flex gap-3.5 rounded-[12px] border border-border p-4.5 ${isReply ? "bg-surface" : "bg-card"}`;
   const content = (
     <>
       <Avatar name={comment.user?.display_name ?? "?"} size={isReply ? 32 : 38} />

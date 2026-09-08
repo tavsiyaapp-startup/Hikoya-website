@@ -48,7 +48,7 @@ export function ContinueReadingSection({
             <Link
               key={i}
               href={ROUTES.story(story.slug)}
-              className="flex gap-3.5 rounded-2xl border border-border bg-card p-3.5 hover:border-primary-300"
+              className="flex gap-3.5 rounded-[12px] border border-border bg-card p-3.5 hover:border-primary-300"
             >
               <div className="relative h-21 w-21 shrink-0 overflow-hidden rounded-[13px] bg-primary-200">
                 {story.cover_url && (

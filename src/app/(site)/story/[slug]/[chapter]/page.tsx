@@ -89,7 +89,7 @@ export default async function ReaderPage({
         </div>
 
         {isUnlocked ? (
-          <div className="rounded-3xl border border-border bg-card p-5 sm:p-8">
+          <div className="rounded-[16px] border border-border bg-card p-5 sm:p-8">
             {isRichContent ? (
               <div
                 className="rich-content text-[17px] leading-8 text-ink-soft"
@@ -106,7 +106,7 @@ export default async function ReaderPage({
             )}
           </div>
         ) : (
-          <div className="rounded-3xl bg-linear-to-br from-ink-dark to-primary-950 px-5 py-6 text-white sm:px-9 sm:py-8.5">
+          <div className="rounded-[16px] bg-linear-to-br from-ink-dark to-primary-950 px-5 py-6 text-white sm:px-9 sm:py-8.5">
             <div className="mb-3.5 flex items-center gap-3">
               <LockIcon className="h-5.5 w-5.5 text-primary-300" />
               <span className="text-[13px] font-bold uppercase tracking-wide text-primary-300">
@@ -130,7 +130,7 @@ export default async function ReaderPage({
             {prevChapter && (
               <Link
                 href={ROUTES.chapter(slug, prevChapter.order_index)}
-                className="flex w-full items-center justify-center gap-3 rounded-[18px] border border-border bg-card py-5 text-[15px] font-bold text-ink-soft sm:flex-1"
+                className="flex w-full items-center justify-center gap-3 rounded-[12px] border border-border bg-card py-5 text-[15px] font-bold text-ink-soft sm:flex-1"
               >
                 <span>← {t.reader.previousChapter}</span>
               </Link>
@@ -138,7 +138,7 @@ export default async function ReaderPage({
             {nextChapter && (
               <Link
                 href={ROUTES.chapter(slug, nextChapter.order_index)}
-                className="flex w-full items-center justify-center gap-3 rounded-[18px] border border-primary-200 bg-primary-50 py-5 text-[16px] font-bold text-primary-900 sm:flex-1"
+                className="flex w-full items-center justify-center gap-3 rounded-[12px] border border-primary-200 bg-primary-50 py-5 text-[16px] font-bold text-primary-900 sm:flex-1"
               >
                 <span>{t.reader.continueNext}</span>
               </Link>
@@ -159,7 +159,7 @@ export default async function ReaderPage({
                 <CommentForm storyId={story.id} chapterId={ch.id} path={ROUTES.chapter(slug, orderIndex)} />
               </div>
             ) : (
-              <div className="mb-5 flex flex-wrap items-center gap-3 rounded-2xl border border-dashed border-primary-300 bg-card px-5 py-4">
+              <div className="mb-5 flex flex-wrap items-center gap-3 rounded-[12px] border border-dashed border-primary-300 bg-card px-5 py-4">
                 <LockIcon className="text-muted-2" />
                 <span className="text-[14px] text-ink-soft">{t.reader.commentsLocked}</span>
                 <Link href={ROUTES.onboarding} className="ml-auto">
@@ -188,7 +188,7 @@ export default async function ReaderPage({
       </div>
 
       <div className="flex w-full flex-col gap-4 lg:sticky lg:top-26 lg:w-74 lg:shrink-0">
-        <div className="rounded-[20px] border border-border bg-card p-4.5">
+        <div className="rounded-[14px] border border-border bg-card p-4.5">
           <Link href={ROUTES.author(story.author.username)} className="flex items-center gap-3">
             <Avatar name={story.author.display_name} src={story.author.avatar_url} />
             <div>
@@ -201,7 +201,7 @@ export default async function ReaderPage({
         {prevChapter && (
           <Link
             href={ROUTES.chapter(slug, prevChapter.order_index)}
-            className="rounded-[20px] border border-border bg-card p-4.5 text-[13.5px] font-semibold text-ink-soft"
+            className="rounded-[14px] border border-border bg-card p-4.5 text-[13.5px] font-semibold text-ink-soft"
           >
             ← {prevChapter.title}
           </Link>

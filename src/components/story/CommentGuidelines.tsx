@@ -18,7 +18,7 @@ export function CommentGuidelines() {
   if (dismissed) return null;
 
   return (
-    <div className="relative mb-4 rounded-2xl border border-primary-200 bg-primary-50 p-4 pr-10">
+    <div className="relative mb-4 rounded-[12px] border border-primary-200 bg-primary-50 p-4 pr-10">
       <button
         type="button"
         onClick={() => setDismissed(true)}

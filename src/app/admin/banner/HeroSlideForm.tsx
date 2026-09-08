@@ -82,7 +82,7 @@ export function HeroSlideForm({ slide, onDone }: { slide?: HeroSlide; onDone?: (
   }
 
   return (
-    <form key={formKey} action={handleSubmit} className="flex flex-col gap-3.5 rounded-2xl border border-border bg-surface p-4.5">
+    <form key={formKey} action={handleSubmit} className="flex flex-col gap-3.5 rounded-[12px] border border-border bg-surface p-4.5">
       <div>
         <label className="mb-1.5 block text-[13px] font-bold">
           {t.admin.bannerImageLabel} <span className="font-medium text-muted-2">{t.admin.bannerOptional}</span>

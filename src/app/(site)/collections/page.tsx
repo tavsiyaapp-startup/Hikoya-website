@@ -65,7 +65,7 @@ export default async function CollectionsPage({
       </div>
 
       {create && user && (
-        <form action={createCollection} className="mb-7 rounded-3xl border border-border bg-card p-4.5 sm:p-6.5">
+        <form action={createCollection} className="mb-7 rounded-[16px] border border-border bg-card p-4.5 sm:p-6.5">
           <Input name="title" placeholder={t.collections.createTitlePlaceholder} required className="mb-3.5" />
           <Textarea name="description" placeholder={t.collections.createDescPlaceholder} rows={2} className="mb-3.5" />
           <label className="mb-4 flex items-center gap-2 text-[13.5px] text-ink-soft">
@@ -77,7 +77,7 @@ export default async function CollectionsPage({
       )}
 
       {needsLogin ? (
-        <div className="rounded-2xl border border-dashed border-border-soft bg-surface px-6 py-14 text-center text-[14px] text-muted">
+        <div className="rounded-[12px] border border-dashed border-border-soft bg-surface px-6 py-14 text-center text-[14px] text-muted">
           <p className="mb-4">{tab === "mine" ? t.collections.loginToManage : t.collections.loginToSave}</p>
           <Link href={ROUTES.onboarding} className="inline-block">
             <Button size="sm">{t.common.login}</Button>
@@ -90,7 +90,7 @@ export default async function CollectionsPage({
           ))}
         </div>
       ) : (
-        <div className="rounded-2xl border border-dashed border-border-soft bg-surface px-6 py-14 text-center text-[14px] text-muted">
+        <div className="rounded-[12px] border border-dashed border-border-soft bg-surface px-6 py-14 text-center text-[14px] text-muted">
           {emptyText}
         </div>
       )}

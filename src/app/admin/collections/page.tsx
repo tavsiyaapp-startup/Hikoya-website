@@ -24,7 +24,7 @@ export default async function AdminCollectionsPage() {
           </Link>
         </div>
 
-        <div className="rounded-[22px] border border-border bg-card p-4.5 sm:p-6.5">
+        <div className="rounded-[14px] border border-border bg-card p-4.5 sm:p-6.5">
           <div className="overflow-x-auto">
             <div className="min-w-[760px]">
               <div className="mb-3 flex items-center gap-4 border-b border-border-soft pb-3 text-[12px] font-bold uppercase tracking-wide text-muted-2">

@@ -46,8 +46,8 @@ export function CommentItem({
   }
 
   return (
-    <div id={`comment-${comment.id}`} className="scroll-mt-24 rounded-2xl [&:target]:bg-primary-50 [&:target]:ring-2 [&:target]:ring-primary-300">
-      <div className="flex gap-3.5 rounded-2xl border border-border bg-card p-4.5">
+    <div id={`comment-${comment.id}`} className="scroll-mt-24 rounded-[12px] [&:target]:bg-primary-50 [&:target]:ring-2 [&:target]:ring-primary-300">
+      <div className="flex gap-3.5 rounded-[12px] border border-border bg-card p-4.5">
         <Avatar name={comment.user?.display_name ?? "?"} size={38} />
         <div className="min-w-0 flex-1">
           <div className="mb-1.5 flex items-center gap-2.5">

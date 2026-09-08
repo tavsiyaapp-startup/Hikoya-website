@@ -49,8 +49,8 @@ export default async function AdminStoryModeratePage({ params }: { params: Promi
       </div>
 
       <div className="px-4 pb-15 pt-7 sm:px-8.5">
-        <div className="mb-6 flex flex-col gap-4.5 rounded-[22px] border border-border bg-card p-4.5 sm:flex-row sm:gap-6.5 sm:p-6.5">
-          <div className="relative mx-auto h-42 w-31.5 shrink-0 overflow-hidden rounded-2xl bg-primary-200 sm:mx-0">
+        <div className="mb-6 flex flex-col gap-4.5 rounded-[14px] border border-border bg-card p-4.5 sm:flex-row sm:gap-6.5 sm:p-6.5">
+          <div className="relative mx-auto h-42 w-31.5 shrink-0 overflow-hidden rounded-[12px] bg-primary-200 sm:mx-0">
             {story.cover_url && <Image src={story.cover_url} alt="" fill className="object-cover" />}
           </div>
           <div className="min-w-0 flex-1">
@@ -97,7 +97,7 @@ export default async function AdminStoryModeratePage({ params }: { params: Promi
         </div>
 
         <h2 className="mb-3.5 text-[18px] font-extrabold tracking-tight">{t.story.chapters}</h2>
-        <div className="overflow-hidden rounded-[22px] border border-border bg-card">
+        <div className="overflow-hidden rounded-[14px] border border-border bg-card">
           {chapters.length > 0 ? (
             chapters.map((ch, i) => (
               <div

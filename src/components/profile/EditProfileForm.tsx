@@ -135,7 +135,7 @@ export function EditProfileForm({
   }
 
   return (
-    <div ref={boxRef} className="mt-4 flex flex-col gap-4 rounded-2xl border border-border bg-card p-5">
+    <div ref={boxRef} className="mt-4 flex flex-col gap-4 rounded-[12px] border border-border bg-card p-5">
       <form action={handleSubmit} className="flex flex-col gap-4">
         <input type="hidden" name="avatarUrl" value={preview ?? ""} />
 

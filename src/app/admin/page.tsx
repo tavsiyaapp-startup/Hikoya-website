@@ -53,7 +53,7 @@ export default async function AdminDashboardPage() {
 
         <div className="mb-6 grid grid-cols-2 gap-5 lg:grid-cols-4">
           {cards.map((c) => (
-            <div key={c.label} className="rounded-[20px] border border-border bg-card px-6 py-5.5">
+            <div key={c.label} className="rounded-[14px] border border-border bg-card px-6 py-5.5">
               <div className="mb-3.5 flex items-center gap-2.5">
                 <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-[11px] ${c.bg} ${c.fg}`}>
                   <c.icon width={18} height={18} />
@@ -66,7 +66,7 @@ export default async function AdminDashboardPage() {
         </div>
 
         <div className="mb-5 grid grid-cols-1 gap-5 lg:grid-cols-2">
-          <div className="rounded-[20px] border border-border bg-card px-6.5 py-6">
+          <div className="rounded-[14px] border border-border bg-card px-6.5 py-6">
             <h3 className="mb-4.5 text-[17px] font-extrabold">{t.admin.recentActivity}</h3>
             <div className="flex flex-col gap-3">
               {activity.length > 0 ? (
@@ -80,7 +80,7 @@ export default async function AdminDashboardPage() {
             </Link>
           </div>
 
-          <div className="rounded-[20px] border border-border bg-card px-6.5 py-6">
+          <div className="rounded-[14px] border border-border bg-card px-6.5 py-6">
             <h3 className="mb-4.5 text-[17px] font-extrabold">{t.admin.allUsers}</h3>
             <div className="flex flex-col gap-3">
               {users.length > 0 ? (
@@ -103,7 +103,7 @@ export default async function AdminDashboardPage() {
           </div>
         </div>
 
-        <div className="rounded-[20px] border border-border bg-card px-6.5 py-6">
+        <div className="rounded-[14px] border border-border bg-card px-6.5 py-6">
           <h3 className="mb-4.5 text-[17px] font-extrabold">{t.admin.allStories}</h3>
           <div className="flex flex-col gap-3">
             {stories.length > 0 ? (

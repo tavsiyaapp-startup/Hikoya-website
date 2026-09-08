@@ -59,7 +59,7 @@ export default async function BoardPage({
       </div>
 
       {showNew && user && (
-        <form action={createRequest} className="mb-6.5 rounded-3xl border border-border bg-card p-4.5 sm:p-6.5">
+        <form action={createRequest} className="mb-6.5 rounded-[16px] border border-border bg-card p-4.5 sm:p-6.5">
           <Input name="title" placeholder={t.board.newRequestTitlePlaceholder} required className="mb-3.5" />
           <Textarea name="text" placeholder={t.board.newRequestTextPlaceholder} rows={3} required className="mb-3.5" />
           <Button type="submit">{t.board.leaveRequest}</Button>
@@ -76,7 +76,7 @@ export default async function BoardPage({
                 <Link
                   key={r.id}
                   href={`?selected=${r.id}${status ? `&status=${status}` : ""}`}
-                  className={`rounded-[20px] border bg-card p-5.5 ${
+                  className={`rounded-[14px] border bg-card p-5.5 ${
                     selected === r.id ? "border-primary-400" : "border-border hover:border-primary-200"
                   }`}
                 >
@@ -99,14 +99,14 @@ export default async function BoardPage({
               );
             })
           ) : (
-            <div className="rounded-2xl border border-dashed border-border-soft bg-surface px-6 py-14 text-center text-[14px] text-muted">
+            <div className="rounded-[12px] border border-dashed border-border-soft bg-surface px-6 py-14 text-center text-[14px] text-muted">
               {t.board.noRequestsYet}
             </div>
           )}
         </div>
 
         {selectedRequest && (
-          <div className="w-full shrink-0 overflow-hidden rounded-[22px] border border-border bg-card lg:sticky lg:top-26 lg:w-100">
+          <div className="w-full shrink-0 overflow-hidden rounded-[14px] border border-border bg-card lg:sticky lg:top-26 lg:w-100">
             <div className="border-b border-border-soft px-6 py-5.5">
               <div className="mb-2.5 flex items-center gap-2.5">
                 <span className="text-[12px] font-bold uppercase tracking-wide text-muted-2">

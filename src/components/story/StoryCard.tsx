@@ -42,7 +42,7 @@ export async function StoryCard({
     return (
       <div
         aria-disabled
-        className="flex aspect-[3/4] flex-col items-center justify-center rounded-[20px] border border-dashed border-border-soft bg-surface p-4 text-center"
+        className="flex aspect-[3/4] flex-col items-center justify-center rounded-[14px] border border-dashed border-border-soft bg-surface p-4 text-center"
       >
         <div className="line-clamp-4 text-[14px] font-bold leading-snug text-muted-2">{story.title}</div>
         <div className="mt-2 text-[12.5px] font-semibold text-muted-3">
@@ -59,7 +59,7 @@ export async function StoryCard({
       >
         {storyProgressLabel(t, story.progress_status)}
       </span>
-      <div className="overflow-hidden rounded-[16px] border border-border bg-card shadow-[0_2px_10px_rgba(60,40,120,0.05)] transition hover:-translate-y-0.5 hover:shadow-[0_14px_30px_rgba(60,40,120,0.12)]">
+      <div className="overflow-hidden rounded-[12px] border border-border bg-card shadow-[0_2px_10px_rgba(60,40,120,0.05)] transition hover:-translate-y-0.5 hover:shadow-[0_14px_30px_rgba(60,40,120,0.12)]">
         <StoryCoverZoom
           coverUrl={story.cover_url}
           title={story.title}

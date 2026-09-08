@@ -30,7 +30,7 @@ export default async function AdminCommentsPage({
         {threads.length > 0 ? (
           <div className="flex flex-col gap-4">
             {threads.map((c) => (
-              <div key={c.id} className="rounded-[18px] border border-border bg-card p-4.5 sm:p-5.5">
+              <div key={c.id} className="rounded-[12px] border border-border bg-card p-4.5 sm:p-5.5">
                 <CommentMeta comment={c} locale={locale} t={t} />
 
                 {c.replies.length > 0 && (
@@ -44,7 +44,7 @@ export default async function AdminCommentsPage({
             ))}
           </div>
         ) : (
-          <div className="rounded-2xl border border-dashed border-border-soft bg-surface px-6 py-14 text-center text-[14px] text-muted">
+          <div className="rounded-[12px] border border-dashed border-border-soft bg-surface px-6 py-14 text-center text-[14px] text-muted">
             {t.admin.noCommentsYet}
           </div>
         )}

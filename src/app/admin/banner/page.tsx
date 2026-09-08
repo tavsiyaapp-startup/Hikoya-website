@@ -14,12 +14,12 @@ export default async function AdminBannerPage() {
     <div>
       <AdminHeader title={t.admin.banner} />
       <div className="px-4 pb-15 pt-7 sm:px-8.5">
-        <div className="mb-5 rounded-[22px] border border-border bg-card p-4.5 sm:p-6.5">
+        <div className="mb-5 rounded-[14px] border border-border bg-card p-4.5 sm:p-6.5">
           <p className="mb-5 text-[13.5px] text-muted-2">{t.admin.bannerHint}</p>
           <HeroSlideForm />
         </div>
 
-        <div className="rounded-[22px] border border-border bg-card p-4.5 sm:p-6.5">
+        <div className="rounded-[14px] border border-border bg-card p-4.5 sm:p-6.5">
           <h3 className="mb-3 text-[15px] font-extrabold">{t.admin.bannerCurrentSlides}</h3>
           {slides.length > 0 ? (
             slides.map((slide) => (

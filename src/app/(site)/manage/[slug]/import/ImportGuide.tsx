@@ -73,7 +73,7 @@ export function ImportGuide() {
             role="dialog"
             aria-modal
             onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-105 rounded-3xl border border-border bg-card p-6 shadow-[0_30px_80px_rgba(30,20,60,0.25)]"
+            className="w-full max-w-105 rounded-[16px] border border-border bg-card p-6 shadow-[0_30px_80px_rgba(30,20,60,0.25)]"
           >
             <div className="mb-4 flex items-center justify-between">
               <span className="text-[12.5px] font-bold text-muted-2">

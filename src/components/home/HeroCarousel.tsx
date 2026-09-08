@@ -101,7 +101,7 @@ function Slide({ slide, locale, isFirst }: { slide: HeroSlide; locale: "ru" | "u
         // for "Hikoya" itself) for a handwritten, intimate feel, and a
         // blockquote-style left rule on the body.
         <div className="flex flex-1 items-center overflow-y-auto p-4 sm:p-6">
-          <div className="relative mx-auto w-full max-w-[640px] overflow-hidden rounded-[24px] bg-white/55 p-5 ring-1 ring-white/70 backdrop-blur-[2px] dark:bg-white/[0.05] dark:ring-white/10 sm:p-7">
+          <div className="relative mx-auto w-full max-w-[640px] overflow-hidden rounded-[16px] bg-white/55 p-5 ring-1 ring-white/70 backdrop-blur-[2px] dark:bg-white/[0.05] dark:ring-white/10 sm:p-7">
             <span
               aria-hidden
               className="pointer-events-none absolute -top-1 left-2 select-none font-serif text-[70px] italic leading-none text-primary-300/60 dark:text-primary-700/40 sm:left-3 sm:text-[100px]"

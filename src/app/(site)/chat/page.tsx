@@ -24,13 +24,13 @@ export default async function ChatPage() {
       <h1 className="mb-1 text-2xl font-extrabold tracking-tight">{t.chat.title}</h1>
       <p className="mb-6 text-[14px] text-muted-2">{t.chat.subtitle}</p>
 
-      <div className="rounded-[22px] border border-border bg-card p-4.5 sm:p-6.5">
+      <div className="rounded-[14px] border border-border bg-card p-4.5 sm:p-6.5">
         {messages.length > 0 ? (
           <ChatScrollArea>
             <ChatMessages messages={messages} viewerIsStaff={false} />
           </ChatScrollArea>
         ) : (
-          <div className="mb-5 rounded-2xl border border-dashed border-border-soft bg-surface px-6 py-10 text-center text-[14px] text-muted">
+          <div className="mb-5 rounded-[12px] border border-dashed border-border-soft bg-surface px-6 py-10 text-center text-[14px] text-muted">
             {t.chat.emptyState}
           </div>
         )}

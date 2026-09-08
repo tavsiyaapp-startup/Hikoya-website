@@ -51,7 +51,7 @@ export function OnboardingWizard({
 
   return (
     <div className="flex min-h-screen items-start justify-center bg-bg px-3 py-6 sm:px-5 sm:py-15">
-      <div className="w-full max-w-[780px] overflow-hidden rounded-[24px] bg-card shadow-[0_30px_80px_rgba(30,20,60,0.2)] sm:rounded-[28px]">
+      <div className="w-full max-w-[780px] overflow-hidden rounded-[16px] bg-card shadow-[0_30px_80px_rgba(30,20,60,0.2)] sm:rounded-[28px]">
         <div className="flex items-center gap-3 border-b border-border-soft px-5 py-4.5 sm:gap-4 sm:px-7.5 sm:py-5.5">
           <span className="font-script text-[25px]">{t.common.brand}</span>
           <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-border-soft">
@@ -132,7 +132,7 @@ export function OnboardingWizard({
                   type="button"
                   onClick={() => setRole(value)}
                   className={clsx(
-                    "flex flex-col items-start gap-1.5 rounded-2xl border p-5 text-left transition",
+                    "flex flex-col items-start gap-1.5 rounded-[12px] border p-5 text-left transition",
                     role === value
                       ? "border-primary-500 bg-primary-50"
                       : "border-border bg-card hover:bg-surface"

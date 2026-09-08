@@ -40,7 +40,7 @@ export function UserMenu({ user }: { user: CurrentUser }) {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full z-20 mt-2 w-64 rounded-2xl border border-border bg-card p-2 shadow-[0_14px_30px_rgba(60,40,120,0.14)]">
+        <div className="absolute right-0 top-full z-20 mt-2 w-64 rounded-[12px] border border-border bg-card p-2 shadow-[0_14px_30px_rgba(60,40,120,0.14)]">
           <div className="flex items-center gap-2.5 px-2.5 py-2">
             <Avatar name={displayName} src={user.profile?.avatar_url} size={36} />
             <div className="min-w-0">

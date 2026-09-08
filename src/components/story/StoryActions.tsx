@@ -165,7 +165,7 @@ function CollectionPickerButton({
         <CollectionsIcon />
       </button>
       {open && (
-        <div className="absolute right-0 top-full z-20 mt-2 w-64 max-h-72 overflow-y-auto rounded-2xl border border-border bg-card p-2 shadow-[0_14px_30px_rgba(60,40,120,0.14)]">
+        <div className="absolute right-0 top-full z-20 mt-2 w-64 max-h-72 overflow-y-auto rounded-[12px] border border-border bg-card p-2 shadow-[0_14px_30px_rgba(60,40,120,0.14)]">
           {items.length > 0 ? (
             items.map((c) => (
               <button
@@ -283,7 +283,7 @@ export function ReadingStatusSelect({
         <ChevronDownIcon className={clsx("transition-transform", open && "rotate-180")} />
       </button>
       {open && (
-        <div className="absolute left-0 right-0 top-full z-20 mt-2 overflow-hidden rounded-2xl border border-border bg-card p-1.5 shadow-[0_14px_30px_rgba(60,40,120,0.14)]">
+        <div className="absolute left-0 right-0 top-full z-20 mt-2 overflow-hidden rounded-[12px] border border-border bg-card p-1.5 shadow-[0_14px_30px_rgba(60,40,120,0.14)]">
           {options.map((o) => (
             <button
               key={o.label}

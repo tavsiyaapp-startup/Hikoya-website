@@ -101,14 +101,14 @@ export function EditStoryForm({
 
 
   return (
-    <div className="rounded-3xl border border-border bg-card p-4.5 sm:p-7.5">
+    <div className="rounded-[16px] border border-border bg-card p-4.5 sm:p-7.5">
       <h2 className="mb-1.5 text-[20px] font-extrabold">{t.manage.editStory}</h2>
 
       <div className="mt-5 flex flex-col items-start gap-5 sm:flex-row">
-        <div className="relative h-45 w-full shrink-0 overflow-hidden rounded-2xl bg-primary-200 shadow-[0_10px_26px_rgba(60,40,120,0.16)] sm:w-34">
+        <div className="relative h-45 w-full shrink-0 overflow-hidden rounded-[12px] bg-primary-200 shadow-[0_10px_26px_rgba(60,40,120,0.16)] sm:w-34">
           {coverUrl && <Image src={coverUrl} alt="" fill className="object-cover" />}
         </div>
-        <label className="flex h-40 w-full flex-1 cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-primary-300 bg-surface text-center hover:bg-primary-50 sm:h-45">
+        <label className="flex h-40 w-full flex-1 cursor-pointer flex-col items-center justify-center gap-2 rounded-[12px] border-2 border-dashed border-primary-300 bg-surface text-center hover:bg-primary-50 sm:h-45">
           <input type="file" accept="image/*" onChange={handleCoverChange} className="hidden" />
           <span className="text-[14.5px] font-bold text-primary-800">
             {coverUploading ? t.common.loading : t.create.uploadCover}
@@ -180,7 +180,7 @@ export function EditStoryForm({
           {t.create.translationLabel}
         </label>
         {isTranslation && (
-          <div className="mt-3 flex items-start gap-2.5 rounded-2xl border border-red-200 dark:border-red-900/60 bg-danger-bg px-4 py-3.5 text-[13px] leading-relaxed text-danger">
+          <div className="mt-3 flex items-start gap-2.5 rounded-[12px] border border-red-200 dark:border-red-900/60 bg-danger-bg px-4 py-3.5 text-[13px] leading-relaxed text-danger">
             <ShieldIcon width={16} height={16} className="mt-0.5 shrink-0" />
             <span>{t.create.translationWarning}</span>
           </div>

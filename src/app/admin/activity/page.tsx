@@ -27,7 +27,7 @@ export default async function AdminActivityPage({
     <div>
       <AdminHeader title={t.admin.recentActivity} />
       <div className="px-4 pb-15 pt-7 sm:px-8.5">
-        <form className="mb-5 flex flex-wrap items-end gap-3 rounded-[22px] border border-border bg-card p-4.5 sm:p-6.5">
+        <form className="mb-5 flex flex-wrap items-end gap-3 rounded-[14px] border border-border bg-card p-4.5 sm:p-6.5">
           <div>
             <label className="mb-1.5 block text-[13px] font-bold">{t.admin.filterFrom}</label>
             <Input type="date" name="from" defaultValue={from} />
@@ -47,7 +47,7 @@ export default async function AdminActivityPage({
           )}
         </form>
 
-        <div className="rounded-[20px] border border-border bg-card px-6.5 py-6">
+        <div className="rounded-[14px] border border-border bg-card px-6.5 py-6">
           <div className="flex flex-col gap-3">
             {activity.length > 0 ? (
               activity.map((item) => <ActivityRow key={`${item.type}-${item.id}`} item={item} locale={locale} t={t} full />)

@@ -64,7 +64,7 @@ export default async function AdminUserProfilePage({
     <div>
       <AdminHeader title={profile.display_name} />
       <div className="px-4 pb-15 pt-7 sm:px-8.5">
-        <div className="mb-6 flex flex-col items-start gap-5 rounded-3xl border border-border bg-card p-4.5 sm:flex-row sm:gap-6.5 sm:p-7">
+        <div className="mb-6 flex flex-col items-start gap-5 rounded-[16px] border border-border bg-card p-4.5 sm:flex-row sm:gap-6.5 sm:p-7">
           <Avatar name={profile.display_name} src={profile.avatar_url} size={80} className="sm:!h-24 sm:!w-24" />
           <div className="min-w-0 flex-1">
             <h1 className="mb-1 flex items-center gap-2 text-[24px] font-extrabold tracking-tight sm:text-[30px]">
@@ -156,7 +156,7 @@ export default async function AdminUserProfilePage({
 
 function EmptyState({ text }: { text: string }) {
   return (
-    <div className="rounded-2xl border border-dashed border-border-soft bg-surface px-6 py-14 text-center text-[14px] text-muted">
+    <div className="rounded-[12px] border border-dashed border-border-soft bg-surface px-6 py-14 text-center text-[14px] text-muted">
       {text}
     </div>
   );

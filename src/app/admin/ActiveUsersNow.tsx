@@ -32,7 +32,7 @@ export function ActiveUsersNow({ label }: { label: string }) {
   if (value === null) return null;
 
   return (
-    <div className="mb-6 flex items-center gap-3 rounded-[20px] border border-border bg-card px-6 py-4">
+    <div className="mb-6 flex items-center gap-3 rounded-[14px] border border-border bg-card px-6 py-4">
       <span className="relative flex h-2.5 w-2.5 shrink-0">
         <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success opacity-75" />
         <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-success" />

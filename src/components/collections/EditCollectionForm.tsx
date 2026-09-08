@@ -33,7 +33,7 @@ export function EditCollectionForm({ collection }: { collection: Collection }) {
           setEditing(false);
         })
       }
-      className="mb-7 rounded-3xl border border-border bg-card p-4.5 sm:p-6.5"
+      className="mb-7 rounded-[16px] border border-border bg-card p-4.5 sm:p-6.5"
     >
       <Input name="title" defaultValue={collection.title} required className="mb-3.5" />
       <Textarea name="description" defaultValue={collection.description ?? ""} rows={2} className="mb-3.5" />

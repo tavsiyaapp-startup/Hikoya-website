@@ -45,7 +45,7 @@ export async function CollectionForm({
       </label>
 
       <label className="mb-2 block text-[14px] font-bold">{t.admin.selectStories}</label>
-      <div className="mb-5 max-h-96 overflow-y-auto rounded-2xl border border-border p-2">
+      <div className="mb-5 max-h-96 overflow-y-auto rounded-[12px] border border-border p-2">
         {stories.length > 0 ? (
           stories.map((s) => {
             const author = s.author as unknown as { display_name: string } | null;

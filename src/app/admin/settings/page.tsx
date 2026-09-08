@@ -18,7 +18,7 @@ export default async function AdminSettingsPage() {
       <AdminHeader title={t.admin.settings} />
       <div className="px-4 pb-15 pt-7 sm:px-8.5">
         <form action={updatePlatformSettings} className="grid grid-cols-1 items-start gap-5 lg:grid-cols-2">
-          <div className="rounded-[22px] border border-border bg-card p-4.5 sm:p-6.5">
+          <div className="rounded-[14px] border border-border bg-card p-4.5 sm:p-6.5">
             <h3 className="mb-5 text-[17px] font-extrabold">{t.admin.moderationTitle}</h3>
             <div className="flex flex-col gap-4">
               <ToggleRow
@@ -36,7 +36,7 @@ export default async function AdminSettingsPage() {
             </div>
           </div>
 
-          <div className="rounded-[22px] border border-border bg-card p-4.5 sm:p-6.5">
+          <div className="rounded-[14px] border border-border bg-card p-4.5 sm:p-6.5">
             <h3 className="mb-2 text-[17px] font-extrabold">{t.admin.guestAccessTitle}</h3>
             <p className="mb-4.5 text-[13.5px] leading-relaxed text-muted">{t.admin.guestAccessBody}</p>
             <div className="mb-6.5 flex gap-2.5">
@@ -93,7 +93,7 @@ function ToggleRow({
   defaultChecked: boolean;
 }) {
   return (
-    <label className="flex cursor-pointer items-center gap-4.5 rounded-2xl border border-border-soft bg-surface px-4.5 py-4">
+    <label className="flex cursor-pointer items-center gap-4.5 rounded-[12px] border border-border-soft bg-surface px-4.5 py-4">
       <span className="min-w-0 flex-1">
         <span className="mb-0.5 block text-[14.5px] font-bold">{title}</span>
         <span className="block text-[13px] leading-relaxed text-muted-2">{desc}</span>

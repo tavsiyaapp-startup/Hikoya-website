@@ -68,7 +68,7 @@ export function DocxImportFlow({
   return (
     <div>
       {step === "upload" && (
-        <div className="rounded-3xl border border-border bg-card p-6.5 sm:p-7.5">
+        <div className="rounded-[16px] border border-border bg-card p-6.5 sm:p-7.5">
           <p className="mb-5 text-[14.5px] leading-relaxed text-ink-soft">{t.manage.importBody}</p>
           <input
             ref={fileInputRef}
@@ -91,7 +91,7 @@ export function DocxImportFlow({
           {/* Sticky, not just top-of-page — a manuscript can run long, and
               scrolling all the way back up to mark every chapter break was
               slow enough that authors were misplacing markers. */}
-          <div className="sticky top-16 z-10 mb-4 flex flex-wrap items-center gap-3 rounded-2xl border border-border bg-card p-3 shadow-[0_8px_20px_rgba(60,40,120,0.1)] sm:top-20">
+          <div className="sticky top-16 z-10 mb-4 flex flex-wrap items-center gap-3 rounded-[12px] border border-border bg-card p-3 shadow-[0_8px_20px_rgba(60,40,120,0.1)] sm:top-20">
             <Button variant="secondary" onClick={() => editorRef.current?.insertChapterMarker()}>
               {t.manage.markChapterStart}
             </Button>
@@ -124,13 +124,13 @@ export function DocxImportFlow({
           )}
 
           {chapters.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-border-soft bg-surface px-6 py-10 text-center text-[14px] text-muted">
+            <div className="rounded-[12px] border border-dashed border-border-soft bg-surface px-6 py-10 text-center text-[14px] text-muted">
               {t.manage.noMarkersFound}
             </div>
           ) : (
             <div className="flex flex-col gap-3">
               {chapters.map((c, i) => (
-                <div key={c.id} className="rounded-[18px] border border-border bg-card p-4.5">
+                <div key={c.id} className="rounded-[12px] border border-border bg-card p-4.5">
                   <div className="mb-2 flex items-center gap-2.5">
                     <span className="shrink-0 text-[13px] font-bold text-muted-3">{i + 1}.</span>
                     <Input

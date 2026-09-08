@@ -36,7 +36,7 @@ export function AdminBadgesPanel({
   }
 
   return (
-    <div className="mb-6 rounded-[20px] border border-border bg-card px-6.5 py-6">
+    <div className="mb-6 rounded-[14px] border border-border bg-card px-6.5 py-6">
       <h3 className="mb-4.5 text-[17px] font-extrabold">{t.admin.manageBadges}</h3>
       {achievements.length > 0 ? (
         <div className="mb-4 flex flex-wrap gap-2">

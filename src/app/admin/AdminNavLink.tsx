@@ -7,10 +7,12 @@ import { clsx } from "clsx";
 export function AdminNavLink({
   href,
   label,
+  badge,
   children,
 }: {
   href: string;
   label: string;
+  badge?: number;
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
@@ -26,6 +28,11 @@ export function AdminNavLink({
     >
       <span className="flex h-5 w-5 items-center justify-center">{children}</span>
       <span>{label}</span>
+      {Boolean(badge) && (
+        <span className="ml-auto flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-danger px-1.5 text-[11px] font-bold text-white">
+          {badge}
+        </span>
+      )}
     </Link>
   );
 }

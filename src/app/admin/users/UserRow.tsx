@@ -1,11 +1,14 @@
 "use client";
 
+import Link from "next/link";
 import { useState, useTransition } from "react";
 import { updateUserAchievements } from "@/lib/actions/admin";
 import { formatDate } from "@/lib/format";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
+import { ROUTES } from "@/lib/constants";
 import { Badge } from "@/components/ui/Chip";
 import { Button } from "@/components/ui/Button";
+import { MessageIcon } from "@/components/ui/icons";
 import { UserRoleSelect } from "./UserRoleSelect";
 import { UserStatusButton } from "./UserStatusButton";
 import { VerifiedToggle } from "./VerifiedToggle";
@@ -75,7 +78,14 @@ export function UserRow({
             {t.admin.manageBadges} ({initialCheckedIds.length})
           </button>
         </span>
-        <span className="w-30 shrink-0 text-right">
+        <span className="flex w-30 shrink-0 items-center justify-end gap-1.5">
+          <Link
+            href={ROUTES.adminChats(user.id)}
+            title={t.admin.writeMessage}
+            className="flex h-8.5 w-8.5 shrink-0 items-center justify-center rounded-[9px] border border-border bg-card text-ink-soft hover:bg-surface"
+          >
+            <MessageIcon width={15} height={15} />
+          </Link>
           <UserStatusButton userId={user.id} status={user.status} />
         </span>
       </div>

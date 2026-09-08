@@ -26,7 +26,8 @@ export type NotificationType =
   | "chapter_approved"
   | "chapter_rejected"
   | "story_like"
-  | "story_restored";
+  | "story_restored"
+  | "admin_message";
 
 export interface Profile {
   id: string; // references auth.users.id
@@ -244,6 +245,24 @@ export interface Notification {
   message: string | null;
   is_read: boolean;
   created_at: string;
+}
+
+export interface AdminChatMessage {
+  id: string;
+  user_id: string;
+  sender_id: string;
+  is_admin: boolean;
+  text: string;
+  created_at: string;
+}
+
+export interface AdminChatSummary {
+  user_id: string;
+  last_message_at: string;
+  last_message_preview: string;
+  last_sender_is_admin: boolean;
+  unread_by_admin: boolean;
+  unread_by_user: boolean;
 }
 
 export interface PlatformSettings {

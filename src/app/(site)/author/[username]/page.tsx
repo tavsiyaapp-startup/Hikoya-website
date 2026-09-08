@@ -9,6 +9,7 @@ import { getFollowerCount, isFollowingAuthor } from "@/lib/queries/social";
 import { getRequestsBySubmitter } from "@/lib/queries/requests";
 import { requestStatusTone, requestStatusLabel } from "@/lib/requestStatus";
 import { getNotifications } from "@/lib/queries/notifications";
+import { getAdminChatSummary } from "@/lib/queries/chat";
 import { ROUTES } from "@/lib/constants";
 import { formatCompactCount } from "@/lib/format";
 import { Avatar } from "@/components/ui/Avatar";
@@ -20,6 +21,7 @@ import { EditProfileForm } from "@/components/profile/EditProfileForm";
 import { NotificationList } from "@/components/notifications/NotificationList";
 import { CloseRequestButton } from "@/components/board/CloseRequestButton";
 import { CollectionCard } from "@/components/collections/CollectionCard";
+import { ChatWithAdminButton } from "@/components/chat/ChatWithAdminButton";
 import { VerifiedIcon, SparkleIcon } from "@/components/ui/icons";
 
 const TABS = ["stories", "collections", "myRequests", "notifications"] as const;
@@ -44,7 +46,7 @@ export default async function AuthorPage({
   if (!profile) notFound();
 
   const isOwner = user?.id === profile.id;
-  const [storyCount, followerCount, following, stories, myRequests, achievements, notifications, totals, featuringCollections] =
+  const [storyCount, followerCount, following, stories, myRequests, achievements, notifications, totals, featuringCollections, chatSummary] =
     await Promise.all([
       getAuthorStoryCount(profile.id),
       getFollowerCount(profile.id),
@@ -55,6 +57,7 @@ export default async function AuthorPage({
       isOwner && tab === "notifications" ? getNotifications(profile.id) : Promise.resolve([]),
       getAuthorTotals(profile.id),
       tab === "collections" ? getCollectionsFeaturingAuthor(profile.id) : Promise.resolve([]),
+      isOwner ? getAdminChatSummary(profile.id) : Promise.resolve(null),
     ]);
 
   const stats = [
@@ -107,16 +110,18 @@ export default async function AuthorPage({
             </div>
           )}
         </div>
-        {!isOwner && (
-          <div className="w-full shrink-0 sm:w-47.5">
+        <div className="w-full shrink-0 sm:w-47.5">
+          {isOwner ? (
+            <ChatWithAdminButton hasUnread={chatSummary?.unread_by_user ?? false} />
+          ) : (
             <FollowButton
               authorId={profile.id}
               isAuthenticated={Boolean(user)}
               initialFollowing={following}
               path={ROUTES.author(username)}
             />
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {isOwner && (

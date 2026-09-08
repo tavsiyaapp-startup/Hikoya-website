@@ -4,8 +4,9 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/current-user";
 import { getServerLocale } from "@/lib/i18n/locale-server";
 import { getDictionary } from "@/lib/i18n";
+import { getUnreadAdminChatsCount } from "@/lib/queries/chat";
 import { ROUTES } from "@/lib/constants";
-import { ShieldIcon, UserIcon, CollectionsIcon, BoardIcon, HomeIcon, LibraryIcon, SparkleIcon, ImageIcon, ClockIcon } from "@/components/ui/icons";
+import { ShieldIcon, UserIcon, CollectionsIcon, BoardIcon, HomeIcon, LibraryIcon, SparkleIcon, ImageIcon, ClockIcon, MessageIcon } from "@/components/ui/icons";
 import { AdminNavLink } from "./AdminNavLink";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -16,11 +17,13 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   const locale = await getServerLocale();
   const t = getDictionary(locale);
+  const unreadChats = await getUnreadAdminChatsCount();
 
   const nav = [
     { href: ROUTES.admin, icon: HomeIcon, label: t.admin.dashboard },
     { href: `${ROUTES.admin}/activity`, icon: ClockIcon, label: t.admin.recentActivity },
     { href: `${ROUTES.admin}/users`, icon: UserIcon, label: t.admin.users },
+    { href: ROUTES.adminChats(), icon: MessageIcon, label: t.admin.chats, badge: unreadChats },
     { href: `${ROUTES.admin}/stories`, icon: CollectionsIcon, label: t.admin.stories },
     { href: `${ROUTES.admin}/featured`, icon: SparkleIcon, label: t.admin.featured },
     { href: `${ROUTES.admin}/banner`, icon: ImageIcon, label: t.admin.banner },
@@ -44,7 +47,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
         <nav className="flex gap-1.5 overflow-x-auto lg:flex-col lg:overflow-visible">
           {nav.map((item) => (
-            <AdminNavLink key={item.href} href={item.href} label={item.label}>
+            <AdminNavLink key={item.href} href={item.href} label={item.label} badge={"badge" in item ? item.badge : undefined}>
               <item.icon width={20} height={20} />
             </AdminNavLink>
           ))}

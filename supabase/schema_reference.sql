@@ -202,7 +202,8 @@ create type notification_type as enum (
   'story_approved', 'story_rejected', 'chapter_approved', 'chapter_rejected',
   'story_like',   -- добавлено в 0019: лайк истории раньше не уведомлял автора
   'story_hidden',  -- добавлено в 0027: отдельно от story_rejected, см. changelog
-  'story_restored' -- добавлено в 0032: staff восстановил историю из корзины
+  'story_restored', -- добавлено в 0032: staff восстановил историю из корзины
+  'admin_message'  -- добавлено в 0045: staff ответил в чате поддержки, см. changelog
 );
 
 create table notifications (
@@ -219,6 +220,31 @@ create table notifications (
 );
 
 create index notifications_user_id_idx on notifications (user_id, created_at desc);
+
+-- ── чат с поддержкой (админкой) ───────────────────────────────────────────
+-- добавлено в 0045: один общий тред на пользователя, продолжить может любой
+-- staff — см. changelog внизу файла.
+
+create table admin_chats (
+  user_id uuid primary key references profiles (id) on delete cascade,
+  last_message_at timestamptz not null default now(),
+  last_message_preview text not null default '',
+  last_sender_is_admin boolean not null default false,
+  unread_by_admin boolean not null default false,
+  unread_by_user boolean not null default false
+);
+
+create table admin_chat_messages (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references profiles (id) on delete cascade,
+  sender_id uuid not null references profiles (id) on delete cascade,
+  is_admin boolean not null,
+  text text not null,
+  created_at timestamptz not null default now()
+);
+
+create index admin_chat_messages_user_id_idx on admin_chat_messages (user_id, created_at);
+create index admin_chats_unread_by_admin_idx on admin_chats (unread_by_admin) where unread_by_admin;
 
 -- ── теги ───────────────────────────────────────────────────────────────────
 
@@ -724,6 +750,22 @@ alter table notifications enable row level security;
 create policy "users read their own notifications" on notifications for select using (user_id = auth.uid());
 create policy "users update their own notifications" on notifications for update
   using (user_id = auth.uid()) with check (user_id = auth.uid());
+
+-- admin_chats / admin_chat_messages — читает свой тред пользователь, либо
+-- любой staff (весь чат общий, не привязан к конкретному админу). Нет
+-- insert/update-политик для обычного клиента: обе таблицы пишутся только
+-- через service-role клиент из src/lib/actions/admin-chat.ts (тот же приём,
+-- что у tags/custom_languages — явная проверка роли внутри server action
+-- вместо RLS-политики на запись).
+alter table admin_chats enable row level security;
+create policy "users and staff can read admin_chats" on admin_chats for select using (
+  user_id = auth.uid() or is_staff()
+);
+
+alter table admin_chat_messages enable row level security;
+create policy "users and staff can read admin_chat_messages" on admin_chat_messages for select using (
+  user_id = auth.uid() or is_staff()
+);
 
 -- follows — публично читаемо (списки подписчиков/подписок)
 alter table follows enable row level security;
@@ -1322,3 +1364,29 @@ on conflict (code) do nothing;
 --   так что множественность влезла без переверстки. Фильтр по жанру на
 --   /search остался single-click (жмёшь один жанр — видишь истории, у
 --   которых он есть среди прочих), это не менялось.
+-- [2026-09-08] Чат пользователь ↔ поддержка (миграция 0045) — новые таблицы
+--   admin_chats (одна строка-сводка на пользователя: last_message_at/
+--   preview/last_sender_is_admin, unread_by_admin, unread_by_user) и
+--   admin_chat_messages (сами сообщения, user_id — чей это тред, sender_id —
+--   кто фактически написал, is_admin — от чьего лица). Тред один на
+--   пользователя независимо от того, какой staff отвечает — продолжить
+--   разговор может любой админ/модератор, это не отдельные треды на
+--   каждого. notification_type получил новое значение 'admin_message' —
+--   уведомление уходит пользователю при каждом ответе staff (без
+--   actor_id, по тому же принципу анонимности модератора, что уже
+--   применяется к story_approved/story_rejected — пользователь не должен
+--   видеть, какой именно админ ответил). Обе таблицы пишутся только через
+--   src/lib/actions/admin-chat.ts на service-role клиенте — RLS даёт только
+--   select (user_id = auth.uid() или is_staff()), запись строго через
+--   явную проверку роли в самом server action (тот же приём, что уже
+--   применялся к tags/custom_languages). На фронтенде: /chat — страница
+--   пользователя со своим треугольником поддержки (кнопка на неё —
+--   отдельная кнопка на /author/[username], видна только на своём
+--   профиле, там же где у чужого профиля была бы FollowButton);
+--   /admin/chats — список тредов + открытый тред справа (тот же
+--   ?selected= приём, что у /board), плюс кнопка "Написать" у каждого
+--   пользователя в /admin/users ведёт туда же. На пользовательской стороне
+--   сообщения от staff показаны от лица общего "Администрация" (без имени
+--   конкретного админа) — на админской стороне, наоборот, показывается имя
+--   реального автора каждого сообщения (both from users and from staff),
+--   это внутренний UI и анонимность там не нужна.

@@ -2,21 +2,24 @@ import Link from "next/link";
 import { getServerLocale } from "@/lib/i18n/locale-server";
 import { getDictionary } from "@/lib/i18n";
 import { getAdminStats, getRecentStoriesAdmin, getRecentUsersAdmin, getRecentActivity } from "@/lib/queries/admin";
+import { getActiveUsersNow } from "@/lib/queries/analytics";
 import { ROUTES } from "@/lib/constants";
 import { Badge } from "@/components/ui/Chip";
 import { LibraryIcon, UserIcon, EyeIcon, MessageIcon } from "@/components/ui/icons";
 import { AdminHeader } from "./AdminHeader";
 import { ActivityRow } from "./ActivityFeed";
+import { ActiveUsersNow } from "./ActiveUsersNow";
 
 export default async function AdminDashboardPage() {
   const locale = await getServerLocale();
   const t = getDictionary(locale);
 
-  const [stats, stories, users, activity] = await Promise.all([
+  const [stats, stories, users, activity, activeUsersNow] = await Promise.all([
     getAdminStats(),
     getRecentStoriesAdmin(5),
     getRecentUsersAdmin(5),
     getRecentActivity(8),
+    getActiveUsersNow(),
   ]);
 
   const cards = [
@@ -48,6 +51,8 @@ export default async function AdminDashboardPage() {
     <div>
       <AdminHeader title={t.admin.dashboard} />
       <div className="px-4 pb-15 pt-7 sm:px-8.5">
+        {activeUsersNow !== null && <ActiveUsersNow initialValue={activeUsersNow} label={t.admin.activeUsersNow} />}
+
         <div className="mb-6 grid grid-cols-2 gap-5 lg:grid-cols-4">
           {cards.map((c) => (
             <div key={c.label} className="rounded-[20px] border border-border bg-card px-6 py-5.5">

@@ -550,6 +550,7 @@ const uz: typeof ru = {
     noCommentsYet: "Hozircha izohlar yoʻq.",
     colChapter: "Bob",
     generalComment: "Umumiy izoh",
+    activeUsersNow: "Hozir saytda",
     emptyGeneric: "Hozircha boʻsh.",
     editAction: "Tahrirlash",
     editCollection: "Tanlanmani tahrirlash",

@@ -548,6 +548,7 @@ const ru = {
     noCommentsYet: "Комментариев пока нет.",
     colChapter: "Глава",
     generalComment: "Общий комментарий",
+    activeUsersNow: "Сейчас на сайте",
     emptyGeneric: "Пока пусто.",
     editAction: "Изменить",
     editCollection: "Редактировать подборку",

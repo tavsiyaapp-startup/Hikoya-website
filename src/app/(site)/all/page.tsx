@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { getServerLocale } from "@/lib/i18n/locale-server";
 import { getDictionary } from "@/lib/i18n";
 import { getCurrentUser } from "@/lib/current-user";
@@ -6,7 +5,7 @@ import { getFeedForTab } from "@/lib/queries/stories";
 import { StoryCard } from "@/components/story/StoryCard";
 import { Pagination } from "@/components/ui/Pagination";
 import { LinkChip } from "@/components/ui/LinkChip";
-import { ChevronLeftIcon, LockIcon } from "@/components/ui/icons";
+import { LockIcon } from "@/components/ui/icons";
 import { ROUTES } from "@/lib/constants";
 import { HOME_TABS, type HomeTab } from "@/lib/homeTabs";
 
@@ -43,11 +42,6 @@ export default async function AllStoriesPage({
 
   return (
     <div>
-      <Link href={ROUTES.home} className="mb-5 inline-flex items-center gap-2 text-[14px] font-semibold">
-        <ChevronLeftIcon />
-        <span>{t.common.back}</span>
-      </Link>
-
       <h1 className="mb-5 text-2xl font-extrabold tracking-tight">{t.home.tabs[tab]}</h1>
 
       <div className="mb-6 flex items-center gap-2.5 overflow-x-auto">

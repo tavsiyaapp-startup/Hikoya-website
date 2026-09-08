@@ -53,58 +53,58 @@ export async function StoryCard({
   }
 
   return (
-    <Link
-      href={ROUTES.story(story.slug)}
-      className="group block overflow-hidden rounded-[16px] border border-border bg-card shadow-[0_2px_10px_rgba(60,40,120,0.05)] transition hover:-translate-y-0.5 hover:shadow-[0_14px_30px_rgba(60,40,120,0.12)]"
-    >
-      <div className="relative flex aspect-[3/4] items-center justify-center bg-primary-200 p-3">
-        {story.cover_url ? (
-          <Image
-            src={story.cover_url}
-            alt=""
-            fill
-            sizes="(max-width: 1023px) 25vw, 12.5vw"
-            className="object-cover"
-          />
-        ) : (
-          <div className="text-center">
-            <div className="line-clamp-4 text-[12.5px] font-extrabold leading-snug text-primary-900">
-              {story.title}
+    <div className="relative">
+      <span
+        className={`absolute -left-1 -top-2 z-10 inline-flex items-center rounded-[8px] px-2 py-1 text-[10.5px] font-bold shadow-[0_2px_6px_rgba(0,0,0,0.2)] ${progressBadgeClasses[story.progress_status]}`}
+      >
+        {storyProgressLabel(t, story.progress_status)}
+      </span>
+      <Link
+        href={ROUTES.story(story.slug)}
+        className="group block overflow-hidden rounded-[16px] border border-border bg-card shadow-[0_2px_10px_rgba(60,40,120,0.05)] transition hover:-translate-y-0.5 hover:shadow-[0_14px_30px_rgba(60,40,120,0.12)]"
+      >
+        <div className="relative flex aspect-[3/4] items-center justify-center bg-primary-200 p-3">
+          {story.cover_url ? (
+            <Image
+              src={story.cover_url}
+              alt=""
+              fill
+              sizes="(max-width: 1023px) 25vw, 12.5vw"
+              className="object-cover"
+            />
+          ) : (
+            <div className="text-center">
+              <div className="line-clamp-4 text-[12.5px] font-extrabold leading-snug text-primary-900">
+                {story.title}
+              </div>
+              <div className="mt-1.5 truncate text-[10.5px] font-semibold text-primary-800/80">
+                {story.author?.display_name}
+              </div>
             </div>
-            <div className="mt-1.5 truncate text-[10.5px] font-semibold text-primary-800/80">
-              {story.author?.display_name}
+          )}
+          {story.status !== "published" && (
+            <div className="absolute right-2 top-2">
+              <Badge tone="neutral">{story.status === "draft" ? t.common.draft : t.common.unlisted}</Badge>
             </div>
-          </div>
-        )}
-        <div className="absolute left-2 top-2">
-          <span
-            className={`inline-flex items-center rounded-[8px] px-2 py-1 text-[10.5px] font-bold shadow-[0_2px_6px_rgba(0,0,0,0.15)] ${progressBadgeClasses[story.progress_status]}`}
-          >
-            {storyProgressLabel(t, story.progress_status)}
-          </span>
+          )}
         </div>
-        {story.status !== "published" && (
-          <div className="absolute right-2 top-2">
-            <Badge tone="neutral">{story.status === "draft" ? t.common.draft : t.common.unlisted}</Badge>
+        <div className="p-2.5">
+          <h3 className="mb-0.5 line-clamp-2 min-h-8 text-[12.5px] font-bold leading-tight">
+            {story.title}
+          </h3>
+          <div className="mb-1.5 truncate text-[11px] text-muted-2">{story.author?.display_name}</div>
+          <div className="flex items-center gap-2.5 text-[11px] font-semibold text-muted-3">
+            <span className="flex items-center gap-1">
+              <HeartIcon width={12} height={12} filled />
+              {formatCompactCount(story.like_count)}
+            </span>
+            <span className="flex items-center gap-1">
+              <EyeIcon width={12} height={12} />
+              {formatCompactCount(story.view_count)}
+            </span>
           </div>
-        )}
-      </div>
-      <div className="p-2.5">
-        <h3 className="mb-0.5 line-clamp-2 min-h-8 text-[12.5px] font-bold leading-tight">
-          {story.title}
-        </h3>
-        <div className="mb-1.5 truncate text-[11px] text-muted-2">{story.author?.display_name}</div>
-        <div className="flex items-center gap-2.5 text-[11px] font-semibold text-muted-3">
-          <span className="flex items-center gap-1">
-            <HeartIcon width={12} height={12} filled />
-            {formatCompactCount(story.like_count)}
-          </span>
-          <span className="flex items-center gap-1">
-            <EyeIcon width={12} height={12} />
-            {formatCompactCount(story.view_count)}
-          </span>
         </div>
-      </div>
-    </Link>
+      </Link>
+    </div>
   );
 }

@@ -73,6 +73,19 @@ export async function rejectStory(storyId: string, storySlug: string, reason: st
   if (story) {
     await createNotification({ userId: story.author_id, type: "story_rejected", storyId, message: reason });
   }
+  // Rejecting the story's own pending submission drags its still-pending
+  // chapters back to draft too — otherwise they'd be stuck at
+  // pending_review forever with no way back in, and keep resurfacing the
+  // rejected story in the moderation queue via getAllStoriesAdmin's
+  // "has a pending chapter" fallback. Scoped to pending_review only so this
+  // never touches a chapter that's individually pending review on an
+  // already-published story (rejectChapter below is the one-chapter path
+  // for that case, untouched by this).
+  await admin
+    .from("chapters")
+    .update({ status: "draft", rejection_reason: reason })
+    .eq("story_id", storyId)
+    .eq("status", "pending_review");
   updateTag("stories");
   revalidatePath(ROUTES.manage(storySlug));
   revalidatePath(ROUTES.story(storySlug));

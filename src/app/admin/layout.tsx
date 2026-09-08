@@ -21,10 +21,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   const nav = [
     { href: ROUTES.admin, icon: HomeIcon, label: t.admin.dashboard },
-    { href: `${ROUTES.admin}/activity`, icon: ClockIcon, label: t.admin.recentActivity },
-    { href: `${ROUTES.admin}/users`, icon: UserIcon, label: t.admin.users },
-    { href: ROUTES.adminChats(), icon: MessageIcon, label: t.admin.chats, badge: unreadChats },
     { href: `${ROUTES.admin}/stories`, icon: CollectionsIcon, label: t.admin.stories },
+    { href: `${ROUTES.admin}/users`, icon: UserIcon, label: t.admin.users },
+    { href: `${ROUTES.admin}/activity`, icon: ClockIcon, label: t.admin.recentActivity },
+    { href: ROUTES.adminChats(), icon: MessageIcon, label: t.admin.chats, badge: unreadChats },
     { href: ROUTES.adminComments, icon: CommentsIcon, label: t.admin.comments },
     { href: `${ROUTES.admin}/featured`, icon: SparkleIcon, label: t.admin.featured },
     { href: `${ROUTES.admin}/banner`, icon: ImageIcon, label: t.admin.banner },

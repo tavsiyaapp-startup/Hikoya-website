@@ -1,6 +1,7 @@
 export const ROUTES = {
   home: "/",
   search: "/search",
+  allStories: (tab: string) => `/all?tab=${tab}`,
   collections: "/collections",
   board: "/board",
   create: "/create",

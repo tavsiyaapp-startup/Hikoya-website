@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createPublicClient } from "@/lib/supabase/public";
 import { getCurrentUser } from "@/lib/current-user";
 import { genreVariants } from "@/lib/genre";
+import type { HomeTab } from "@/lib/homeTabs";
 import type { Story, Chapter, Collection, Profile, StoryTopTier, HeroSlide } from "@/types/database";
 
 // Every query here tolerates an unreachable Supabase project (placeholder
@@ -153,6 +154,21 @@ export async function getForYouStories(userId: string, limit = 8, offset = 0): P
   } catch {
     return { items: [], total: 0 };
   }
+}
+
+// Same tab -> query dispatch the home page's feed section uses, shared with
+// the /all "все истории" page so both list identical content for a tab —
+// including the same not-logged-in fallback to popular for forYou/following.
+export async function getFeedForTab(
+  tab: HomeTab,
+  userId: string | undefined,
+  limit: number,
+  offset: number
+): Promise<Paginated<StoryCard>> {
+  if (tab === "new") return getNewestStories(limit, offset);
+  if (tab === "following" && userId) return getFollowingStories(userId, limit, offset);
+  if (tab === "forYou" && userId) return getForYouStories(userId, limit, offset);
+  return getPopularStories(limit, offset);
 }
 
 export type CollectionCardData = Collection & {

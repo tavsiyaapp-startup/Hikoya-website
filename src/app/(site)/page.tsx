@@ -8,11 +8,8 @@ import { getCurrentUser } from "@/lib/current-user";
 import type { CurrentUser } from "@/lib/current-user";
 import { ROUTES } from "@/lib/constants";
 import {
-  getPopularStories,
-  getNewestStories,
   getStoriesByGenre,
-  getFollowingStories,
-  getForYouStories,
+  getFeedForTab,
   getFeaturedCollections,
   getRecentPublishedChapters,
   getContinueReading,
@@ -27,10 +24,9 @@ import { Badge } from "@/components/ui/Chip";
 import { LinkChip } from "@/components/ui/LinkChip";
 import { Pagination } from "@/components/ui/Pagination";
 import { SparkleIcon, LockIcon } from "@/components/ui/icons";
+import { HOME_TABS as TABS, type HomeTab as Tab } from "@/lib/homeTabs";
 // import type { StoryTopTier } from "@/types/database";
 
-const TABS = ["new", "forYou", "popular", "following"] as const;
-type Tab = (typeof TABS)[number];
 // const TOP_TIERS: StoryTopTier[] = ["day", "week", "month"];
 
 // Per-section page sizes on the home page — beyond these, pagination kicks
@@ -130,14 +126,7 @@ async function HomeSections({
   genrePage: number;
 }) {
   const feedOffset = (feedPage - 1) * PAGE_SIZE_FEED;
-  const feedQuery =
-    tab === "new"
-      ? getNewestStories(PAGE_SIZE_FEED, feedOffset)
-      : tab === "following" && user
-        ? getFollowingStories(user.id, PAGE_SIZE_FEED, feedOffset)
-        : tab === "forYou" && user
-          ? getForYouStories(user.id, PAGE_SIZE_FEED, feedOffset)
-          : getPopularStories(PAGE_SIZE_FEED, feedOffset);
+  const feedQuery = getFeedForTab(tab, user?.id, PAGE_SIZE_FEED, feedOffset);
 
   const [feedResult, weeklyResult, collectionsResult, genreResult, continueReading] = await Promise.all([
     feedQuery,
@@ -263,7 +252,7 @@ async function HomeSections({
 
       <div className="mb-4.5 flex items-baseline gap-3.5">
         <h2 className="text-2xl font-extrabold tracking-tight">{t.home.feedTitle}</h2>
-        <Link href={ROUTES.search} className="ml-auto text-[14px] font-semibold">
+        <Link href={ROUTES.allStories(tab)} className="ml-auto text-[14px] font-semibold">
           {t.common.all}
         </Link>
       </div>

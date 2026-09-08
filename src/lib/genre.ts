@@ -1,13 +1,14 @@
 import { locales, getDictionary, type Locale } from "@/lib/i18n";
 
-// stories.genre is stored as whatever language's label was showing in the
-// picker when the author created the story (CreateWizard sets it straight
-// from t.genres[i], no canonical/stable id) — so two stories with the same
-// real genre can have different stored text depending on the author's
-// locale at creation time. Genre lists are kept as parallel same-order
-// arrays across dictionaries specifically so this index-based mapping
-// works: find which locale's list the stored value came from, then read
-// the same index out of the target locale's list.
+// Each entry in stories.genres is stored as whatever language's label was
+// showing in the picker when the author (de)selected it (CreateWizard sets
+// it straight from t.genres[i], no canonical/stable id) — so two stories
+// with the same real genre can have different stored text depending on the
+// author's locale at creation time. Genre lists are kept as parallel
+// same-order arrays across dictionaries specifically so this index-based
+// mapping works: find which locale's list the stored value came from, then
+// read the same index out of the target locale's list. Operates on one
+// genre string at a time — callers map it over stories.genres themselves.
 function genreIndex(genre: string): { locale: Locale; index: number } | null {
   for (const locale of locales) {
     const index = getDictionary(locale).genres.indexOf(genre);

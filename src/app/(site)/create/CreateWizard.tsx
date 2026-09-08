@@ -41,8 +41,12 @@ export function CreateWizard({
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [genre, setGenre] = useState(t.genres[0]);
+  const [genres, setGenres] = useState<string[]>([t.genres[0]]);
   const [customGenres, setCustomGenres] = useState<string[]>([]);
+
+  function toggleGenre(g: string) {
+    setGenres((prev) => (prev.includes(g) ? prev.filter((x) => x !== g) : [...prev, g]));
+  }
   const [relationshipType, setRelationshipType] = useState<string | null>(null);
   const [tags, setTags] = useState<string[]>([]);
   const [language, setLanguage] = useState("ru");
@@ -79,7 +83,7 @@ export function CreateWizard({
     }
   }
 
-  const step1Valid = title.trim().length > 0 && description.trim().length > 0;
+  const step1Valid = title.trim().length > 0 && description.trim().length > 0 && genres.length > 0;
   const step2Valid =
     chapterMode === "manual"
       ? chapterTitle.trim().length > 0 && chapterText.trim().length > 0
@@ -96,7 +100,7 @@ export function CreateWizard({
         title,
         description,
         coverUrl,
-        genre,
+        genres,
         relationshipType,
         tags,
         language,
@@ -190,14 +194,14 @@ export function CreateWizard({
                 <label className="mb-2 block text-[14px] font-bold">{t.create.genreLabel} *</label>
                 <div className="mb-5 flex flex-wrap items-center gap-2">
                   {[...t.genres, ...customGenres].map((g) => (
-                    <Chip key={g} active={genre === g} onClick={() => setGenre(g)}>
+                    <Chip key={g} active={genres.includes(g)} onClick={() => toggleGenre(g)}>
                       {g}
                     </Chip>
                   ))}
                   <AddGenreButton
                     onAdd={(g) => {
                       setCustomGenres((prev) => (prev.includes(g) || t.genres.includes(g) ? prev : [...prev, g]));
-                      setGenre(g);
+                      setGenres((prev) => (prev.includes(g) ? prev : [...prev, g]));
                     }}
                   />
                 </div>
@@ -437,9 +441,11 @@ export function CreateWizard({
             <div className="p-3.5">
               <h3 className="mb-1 line-clamp-2 text-[15.5px] font-bold">{title || t.create.titlePlaceholder}</h3>
               <div className="flex flex-wrap gap-1.5">
-                <span className="rounded-lg bg-primary-100 px-2.5 py-1 text-[11.5px] font-bold text-primary-800">
-                  {genre}
-                </span>
+                {genres.map((g) => (
+                  <span key={g} className="rounded-lg bg-primary-100 px-2.5 py-1 text-[11.5px] font-bold text-primary-800">
+                    {g}
+                  </span>
+                ))}
               </div>
             </div>
           </div>

@@ -65,7 +65,7 @@ create table stories (
   slug text not null unique,
   description text not null default '',
   cover_url text,
-  genre text not null,
+  genres text[] not null default '{}',   -- было genre text (одно значение), стало массив в 0044 — см. changelog
   language text not null default 'ru',   -- было content_language enum, стало text в 0043 — см. changelog
   age_rating age_rating not null default '0+',
   relationship_type text,
@@ -89,7 +89,7 @@ create table stories (
 
 create index stories_author_id_idx on stories (author_id);
 create index stories_status_idx on stories (status) where status = 'published';
-create index stories_genre_idx on stories (genre);
+create index stories_genres_idx on stories using gin (genres);   -- было btree на genre, стало gin на genres[] в 0044
 create index stories_deleted_at_idx on stories (deleted_at) where deleted_at is not null;
 
 create table chapters (
@@ -1299,3 +1299,26 @@ on conflict (code) do nothing;
 -- content_language enum сохранён как есть — используется только для
 --   profiles.locale_pref и platform_settings.enabled_locales (язык
 --   интерфейса сайта, отдельное понятие от языка произведения).
+-- [2026-09-08] stories.genre (text, одно значение) стал stories.genres
+--   (text[], миграция 0044) — автор теперь может выбрать несколько жанров
+--   при создании и при редактировании произведения. Бэкфилл:
+--   genres = array[genre] для существующих строк. Индекс stories_genre_idx
+--   (btree) заменён на stories_genres_idx (gin) — под операторы && (overlap)
+--   и @> (contains), которые используют запросы ниже. Значения — та же
+--   свободная строка, что и раньше (канонический список из t.genres +
+--   произвольный текст через AddGenreButton), просто теперь массивом.
+--   На бэкенде: CreateStoryInput/UpdateStoryInput.genre → genres: string[]
+--   (actions/stories.ts, дедуп через Set перед insert/update);
+--   .in("genre", …) заменено на .overlaps("genres", …) везде, где раньше
+--   фильтровали/подбирали по жанру (searchStories, getStoriesByGenre,
+--   getForYouStories — включая её собственный .select("genre") на лайкнутых
+--   историях, ставший .select("genres") + flatMap). На фронтенде: чипы жанра
+--   в CreateWizard/EditStoryForm стали тогглом (toggleGenre) вместо
+--   single-select — как минимум один жанр обязателен (кнопка
+--   публикации/сохранения задизейблена на пустом массиве); везде, где жанр
+--   показывался бейджем (StoryCard, страница произведения, /manage,
+--   /admin/stories/[id], карточки в /search), теперь рендерится по одному
+--   бейджу на каждый жанр — все эти места уже были flex-wrap рядом бейджей,
+--   так что множественность влезла без переверстки. Фильтр по жанру на
+--   /search остался single-click (жмёшь один жанр — видишь истории, у
+--   которых он есть среди прочих), это не менялось.

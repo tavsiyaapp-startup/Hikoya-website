@@ -51,7 +51,7 @@ export interface Story {
   slug: string;
   description: string;
   cover_url: string | null;
-  genre: string;
+  genres: string[];
   language: string;
   age_rating: AgeRating;
   relationship_type: string | null;

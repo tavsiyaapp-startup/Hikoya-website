@@ -3,10 +3,11 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 
-// Genre is stored as free text on stories.genre (not an enum) — the fixed
-// list in t.genres just covers the common cases, this lets an author type
-// one that isn't in it. Same trigger-then-input shape as TagPicker, minus
-// the suggestions dropdown since genre is a single pick, not a multi-add.
+// Each genre is stored as free text in stories.genres (not an enum) — the
+// fixed list in t.genres just covers the common cases, this lets an author
+// type one that isn't in it and add it to their story's genre selection.
+// Same trigger-then-input shape as TagPicker, minus the suggestions
+// dropdown since it only ever adds the one genre just typed.
 export function AddGenreButton({ onAdd }: { onAdd: (genre: string) => void }) {
   const { t } = useLocale();
   const [open, setOpen] = useState(false);

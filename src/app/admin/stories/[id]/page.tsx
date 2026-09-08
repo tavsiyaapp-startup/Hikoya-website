@@ -60,7 +60,9 @@ export default async function AdminStoryModeratePage({ params }: { params: Promi
               ) : (
                 <Badge tone={statusTone(story.status)}>{statusLabel[story.status] ?? story.status}</Badge>
               )}
-              <Badge tone="pink">{localizeGenre(story.genre, locale)}</Badge>
+              {story.genres.map((g) => (
+                <Badge key={g} tone="pink">{localizeGenre(g, locale)}</Badge>
+              ))}
             </div>
             <div className="mb-3.5 text-[13.5px] text-muted-2">
               {t.admin.colAuthor}: <span className="font-semibold text-ink-soft">{author?.display_name}</span>{" "}

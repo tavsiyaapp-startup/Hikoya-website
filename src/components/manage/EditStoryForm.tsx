@@ -24,7 +24,7 @@ export function EditStoryForm({
   authorId,
   initialTitle,
   initialCoverUrl,
-  initialGenre,
+  initialGenres,
   initialRelationshipType,
   initialDescription,
   initialTags,
@@ -37,7 +37,7 @@ export function EditStoryForm({
   authorId: string;
   initialTitle: string;
   initialCoverUrl: string | null;
-  initialGenre: string;
+  initialGenres: string[];
   initialRelationshipType: string | null;
   initialDescription: string;
   initialTags: string[];
@@ -50,10 +50,14 @@ export function EditStoryForm({
   const [coverUrl, setCoverUrl] = useState<string | null>(initialCoverUrl);
   const [coverUploading, setCoverUploading] = useState(false);
   const [coverError, setCoverError] = useState<string | null>(null);
-  const [genre, setGenre] = useState(initialGenre);
+  const [genres, setGenres] = useState<string[]>(initialGenres);
   const [customGenres, setCustomGenres] = useState<string[]>(
-    initialGenre && !t.genres.includes(initialGenre) ? [initialGenre] : []
+    initialGenres.filter((g) => !t.genres.includes(g))
   );
+
+  function toggleGenre(g: string) {
+    setGenres((prev) => (prev.includes(g) ? prev.filter((x) => x !== g) : [...prev, g]));
+  }
   const [relationshipType, setRelationshipType] = useState<string | null>(initialRelationshipType);
   const [description, setDescription] = useState(initialDescription);
   const [tags, setTags] = useState<string[]>(initialTags);
@@ -86,7 +90,7 @@ export function EditStoryForm({
         title,
         description,
         coverUrl,
-        genre,
+        genres,
         relationshipType,
         tags,
         progressStatus,
@@ -129,14 +133,14 @@ export function EditStoryForm({
       <label className="mb-2 block text-[14px] font-bold">{t.create.genreLabel}</label>
       <div className="mb-5 flex flex-wrap items-center gap-2">
         {[...t.genres, ...customGenres].map((g) => (
-          <Chip key={g} active={genre === g} onClick={() => setGenre(g)}>
+          <Chip key={g} active={genres.includes(g)} onClick={() => toggleGenre(g)}>
             {g}
           </Chip>
         ))}
         <AddGenreButton
           onAdd={(g) => {
             setCustomGenres((prev) => (prev.includes(g) || t.genres.includes(g) ? prev : [...prev, g]));
-            setGenre(g);
+            setGenres((prev) => (prev.includes(g) ? prev : [...prev, g]));
           }}
         />
       </div>
@@ -204,7 +208,7 @@ export function EditStoryForm({
         />
       </div>
 
-      <Button onClick={handleSave} disabled={pending || !title.trim()}>
+      <Button onClick={handleSave} disabled={pending || !title.trim() || genres.length === 0}>
         {pending ? t.common.loading : t.common.save}
       </Button>
     </div>

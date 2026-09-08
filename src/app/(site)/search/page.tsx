@@ -282,9 +282,11 @@ export default async function SearchPage({
                     {story.description}
                   </p>
                   <div className="mt-auto flex flex-wrap gap-1.5">
-                    <Chip active className="pointer-events-none">
-                      {localizeGenre(story.genre, locale)}
-                    </Chip>
+                    {story.genres.map((g) => (
+                      <Chip key={g} active className="pointer-events-none">
+                        {localizeGenre(g, locale)}
+                      </Chip>
+                    ))}
                   </div>
                 </div>
               </Link>

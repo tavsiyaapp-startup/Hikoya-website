@@ -72,7 +72,9 @@ export default async function ManagePage({
                   ? t.common.pendingReview
                   : t.common.draft}
             </Badge>
-            <Badge tone="pink">{localizeGenre(story.genre, locale)}</Badge>
+            {story.genres.map((g) => (
+              <Badge key={g} tone="pink">{localizeGenre(g, locale)}</Badge>
+            ))}
             {linkedRequestId && (
               <Link href={`${ROUTES.board}?selected=${linkedRequestId}`}>
                 <Badge tone="primary">{t.story.requestBadge}</Badge>
@@ -153,7 +155,7 @@ export default async function ManagePage({
             authorId={story.author.id}
             initialTitle={story.title}
             initialCoverUrl={story.cover_url}
-            initialGenre={localizeGenre(story.genre, locale)}
+            initialGenres={story.genres.map((g) => localizeGenre(g, locale))}
             initialRelationshipType={story.relationship_type}
             initialDescription={story.description}
             initialProgressStatus={story.progress_status}

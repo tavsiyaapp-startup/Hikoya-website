@@ -74,7 +74,7 @@ export const getStoriesByGenre = unstable_cache(
         .select("*, author:profiles!stories_author_id_fkey(username, display_name)", { count: "exact" })
         .eq("status", "published")
         .eq("visibility", "public")
-        .in("genre", genreVariants(genre))
+        .overlaps("genres", genreVariants(genre))
         .order("like_count", { ascending: false })
         .range(offset, offset + limit - 1);
       return { items: (data as StoryCard[]) ?? [], total: count ?? 0 };
@@ -115,7 +115,7 @@ export async function getFollowingStories(userId: string, limit = 8, offset = 0)
 // above. Preference signal is the union of the genres picked at onboarding
 // (profiles.interests) and the genres of everything the user has liked so
 // far, each expanded to every locale's label via genreVariants() (both
-// interests and stories.genre are stored in whatever locale was active
+// interests and stories.genres are stored in whatever locale was active
 // when they were picked/created — see src/lib/genre.ts). A brand new
 // account has neither yet, so this naturally falls back to the same
 // popular feed as everyone else until they pick interests or like
@@ -133,8 +133,8 @@ export async function getForYouStories(userId: string, limit = 8, offset = 0): P
     const likedStoryIds = (likedRows ?? []).map((r) => r.target_id as string);
     let likedGenres: string[] = [];
     if (likedStoryIds.length > 0) {
-      const { data: likedStories } = await supabase.from("stories").select("genre").in("id", likedStoryIds);
-      likedGenres = (likedStories ?? []).map((s) => s.genre as string);
+      const { data: likedStories } = await supabase.from("stories").select("genres").in("id", likedStoryIds);
+      likedGenres = (likedStories ?? []).flatMap((s) => (s.genres as string[]) ?? []);
     }
 
     const rawGenres = [...new Set([...(profile?.interests ?? []), ...likedGenres])];
@@ -147,7 +147,7 @@ export async function getForYouStories(userId: string, limit = 8, offset = 0): P
       .select("*, author:profiles!stories_author_id_fkey(username, display_name)", { count: "exact" })
       .eq("status", "published")
       .eq("visibility", "public")
-      .in("genre", preferredGenres)
+      .overlaps("genres", preferredGenres)
       .order("like_count", { ascending: false })
       .range(offset, offset + limit - 1);
     return { items: (data as StoryCard[]) ?? [], total: count ?? 0 };
@@ -523,7 +523,7 @@ export const searchStories = unstable_cache(
 
       if (filters.q) query = query.ilike("title", `%${filters.q}%`);
       if (filters.language) query = query.eq("language", filters.language);
-      if (filters.genre) query = query.in("genre", genreVariants(filters.genre));
+      if (filters.genre) query = query.overlaps("genres", genreVariants(filters.genre));
       if (filters.progressStatus) query = query.eq("progress_status", filters.progressStatus);
       if (filters.age) query = query.eq("age_rating", filters.age);
       if (filters.relationship) query = query.eq("relationship_type", filters.relationship);

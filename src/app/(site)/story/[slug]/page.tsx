@@ -139,7 +139,9 @@ export default async function StoryPage({
 
       <div className="min-w-0 flex-1">
         <div className="mb-3.5 flex flex-wrap items-center gap-2">
-          <Badge tone="pink">{localizeGenre(story.genre, locale)}</Badge>
+          {story.genres.map((g) => (
+            <Badge key={g} tone="pink">{localizeGenre(g, locale)}</Badge>
+          ))}
           {story.relationship_type && (
             <Badge tone="primary">{relationshipLabel(story.relationship_type, locale)}</Badge>
           )}

@@ -20,7 +20,7 @@ export interface CreateStoryInput {
   title: string;
   description: string;
   coverUrl: string | null;
-  genre: string;
+  genres: string[];
   relationshipType: string | null;
   tags: string[];
   language: string;
@@ -118,7 +118,7 @@ export async function createStory(input: CreateStoryInput) {
       slug,
       description: input.description,
       cover_url: input.coverUrl,
-      genre: input.genre,
+      genres: [...new Set(input.genres)],
       relationship_type: input.relationshipType,
       language,
       age_rating: input.ageRating,
@@ -173,7 +173,7 @@ export interface UpdateStoryInput {
   title: string;
   description: string;
   coverUrl: string | null;
-  genre: string;
+  genres: string[];
   relationshipType: string | null;
   tags: string[];
   progressStatus: StoryProgressStatus;
@@ -200,7 +200,7 @@ export async function updateStory(
       title,
       description: input.description,
       cover_url: input.coverUrl,
-      genre: input.genre,
+      genres: [...new Set(input.genres)],
       relationship_type: input.relationshipType,
       progress_status: input.progressStatus,
       is_translation: input.isTranslation,

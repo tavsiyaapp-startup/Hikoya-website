@@ -17,6 +17,7 @@ import {
   // getTopStories, // TODO: re-enable along with the "Топ" section below
 } from "@/lib/queries/stories";
 import { StoryCard } from "@/components/story/StoryCard";
+import { ExpandableStoryGrid } from "@/components/story/ExpandableStoryGrid";
 import { ContinueReadingSection } from "@/components/home/ContinueReadingSection";
 import { CollectionCard } from "@/components/collections/CollectionCard";
 import { HeroCarousel } from "@/components/home/HeroCarousel";
@@ -33,10 +34,10 @@ import { HOME_TABS as TABS, type HomeTab as Tab } from "@/lib/homeTabs";
 // Per-section page sizes on the home page — beyond these, pagination kicks
 // in (each section keeps its own page number in the URL, independent of
 // the others).
-const PAGE_SIZE_FEED = 10;
+const PAGE_SIZE_FEED = 24; // 3 rows of 8 on desktop; mobile shows 10 with a "show more" reveal
 const PAGE_SIZE_WEEK = 6;
 const PAGE_SIZE_COLLECTIONS = 6;
-const PAGE_SIZE_GENRE = 10;
+const PAGE_SIZE_GENRE = 24; // 3 rows of 8 on desktop; mobile shows 10 with a "show more" reveal
 
 function toPage(raw: string | undefined): number {
   const n = Number(raw);
@@ -224,11 +225,11 @@ async function HomeSections({
       </div>
       {feed.length > 0 ? (
         <div className="mb-11">
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-5.5 lg:grid-cols-8">
+          <ExpandableStoryGrid showMoreLabel={t.common.showMore}>
             {feed.map((story) => (
               <StoryCard key={story.id} story={story} />
             ))}
-          </div>
+          </ExpandableStoryGrid>
           <Pagination page={feedPage} totalPages={feedTotalPages} buildHref={(p) => buildHref({ feedPage: p })} />
         </div>
       ) : (
@@ -316,11 +317,11 @@ async function HomeSections({
         </div>
         {genreStories.length > 0 ? (
           <>
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-5.5 lg:grid-cols-8">
+            <ExpandableStoryGrid showMoreLabel={t.common.showMore}>
               {genreStories.map((story) => (
                 <StoryCard key={story.id} story={story} />
               ))}
-            </div>
+            </ExpandableStoryGrid>
             <Pagination page={genrePage} totalPages={genreTotalPages} buildHref={(p) => buildHref({ genrePage: p })} />
           </>
         ) : (
@@ -375,7 +376,7 @@ function HomeSectionsSkeleton() {
       </div>
       <div className="mb-4.5 h-8 w-40 rounded-lg bg-surface" />
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-5.5 lg:grid-cols-8">
-        {Array.from({ length: 10 }).map((_, i) => (
+        {Array.from({ length: 24 }).map((_, i) => (
           <div key={i} className="aspect-[3/4] rounded-[20px] bg-surface" />
         ))}
       </div>

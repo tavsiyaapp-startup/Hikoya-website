@@ -12,6 +12,7 @@ const ru = {
     cancel: "Отмена",
     back: "Назад",
     next: "Далее",
+    showMore: "Показать ещё",
     close: "Закрыть",
     loading: "Загрузка…",
     error: "Что-то пошло не так",

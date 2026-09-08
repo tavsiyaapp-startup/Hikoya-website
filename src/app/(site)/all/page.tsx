@@ -3,13 +3,14 @@ import { getDictionary } from "@/lib/i18n";
 import { getCurrentUser } from "@/lib/current-user";
 import { getFeedForTab } from "@/lib/queries/stories";
 import { StoryCard } from "@/components/story/StoryCard";
+import { ExpandableStoryGrid } from "@/components/story/ExpandableStoryGrid";
 import { Pagination } from "@/components/ui/Pagination";
 import { LinkChip } from "@/components/ui/LinkChip";
 import { LockIcon } from "@/components/ui/icons";
 import { ROUTES } from "@/lib/constants";
 import { HOME_TABS, type HomeTab } from "@/lib/homeTabs";
 
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 24; // 3 rows of 8 on desktop; mobile shows 10 with a "show more" reveal
 
 function toPage(raw: string | undefined): number {
   const n = Number(raw);
@@ -63,11 +64,11 @@ export default async function AllStoriesPage({
 
       {stories.length > 0 ? (
         <>
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-5.5 lg:grid-cols-8">
+          <ExpandableStoryGrid showMoreLabel={t.common.showMore}>
             {stories.map((story) => (
               <StoryCard key={story.id} story={story} />
             ))}
-          </div>
+          </ExpandableStoryGrid>
           <Pagination page={page} totalPages={totalPages} buildHref={(p) => buildHref({ page: p })} />
         </>
       ) : (

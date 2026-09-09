@@ -12,13 +12,11 @@ import {
   getFeedForTab,
   getFeaturedCollections,
   getRecentPublishedChapters,
-  getContinueReading,
   getHeroSlides,
   // getTopStories, // TODO: re-enable along with the "Топ" section below
 } from "@/lib/queries/stories";
 import { StoryCard } from "@/components/story/StoryCard";
 import { ExpandableStoryGrid } from "@/components/story/ExpandableStoryGrid";
-import { ContinueReadingSection } from "@/components/home/ContinueReadingSection";
 import { CollectionCard } from "@/components/collections/CollectionCard";
 import { HeroCarousel } from "@/components/home/HeroCarousel";
 import { Button } from "@/components/ui/Button";
@@ -130,12 +128,11 @@ async function HomeSections({
   const feedOffset = (feedPage - 1) * PAGE_SIZE_FEED;
   const feedQuery = getFeedForTab(tab, user?.id, PAGE_SIZE_FEED, feedOffset);
 
-  const [feedResult, weeklyResult, collectionsResult, genreResult, continueReading] = await Promise.all([
+  const [feedResult, weeklyResult, collectionsResult, genreResult] = await Promise.all([
     feedQuery,
     getRecentPublishedChapters(PAGE_SIZE_WEEK, (weekPage - 1) * PAGE_SIZE_WEEK),
     getFeaturedCollections(PAGE_SIZE_COLLECTIONS, (collectionsPage - 1) * PAGE_SIZE_COLLECTIONS),
     getStoriesByGenre(genre, PAGE_SIZE_GENRE, (genrePage - 1) * PAGE_SIZE_GENRE),
-    user ? getContinueReading(user.id, 3) : Promise.resolve([]),
     // getTopStories(topTier, 8),
   ]);
 
@@ -191,14 +188,6 @@ async function HomeSections({
         <EmptyRow className="mb-11" />
       )}
       */}
-
-      {user && continueReading.length > 0 && (
-        <ContinueReadingSection
-          items={continueReading as unknown as { percent: number; story: { id: string; title: string; slug: string; cover_url: string | null } | null }[]}
-          title={t.home.continueReading}
-          hideLabel={t.home.hideContinueReadingSection}
-        />
-      )}
 
       <div className="mb-6 flex items-center gap-2.5 overflow-x-auto">
         {TABS.map((key) => {

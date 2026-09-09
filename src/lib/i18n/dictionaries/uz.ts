@@ -70,8 +70,6 @@ const uz: typeof ru = {
       "Har qanday hikoyaning birinchi boblari roʻyxatdan oʻtmasdan ochiq. Oʻqing, davom etishni xohlasangiz — akkaunt yarating.",
     heroCta: "Hikoya chiqarish",
     heroCta2: "Oʻqishni boshlash",
-    continueReading: "Oʻqishni davom ettirish",
-    hideContinueReadingSection: "Blokni yashirish (keyingi tashrifda yana chiqadi)",
     topTitle: "Top",
     topTiers: {
       day: "Kun",

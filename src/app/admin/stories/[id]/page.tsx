@@ -65,8 +65,14 @@ export default async function AdminStoryModeratePage({ params }: { params: Promi
               ))}
             </div>
             <div className="mb-3.5 text-[13.5px] text-muted-2">
-              {t.admin.colAuthor}: <span className="font-semibold text-ink-soft">{author?.display_name}</span>{" "}
-              <span className="text-muted-3">@{author?.username}</span>
+              {t.admin.colAuthor}:{" "}
+              {author ? (
+                <Link href={ROUTES.adminUser(author.id)} className="font-semibold text-primary-800 hover:underline">
+                  {author.display_name} <span className="text-muted-3">@{author.username}</span>
+                </Link>
+              ) : (
+                "—"
+              )}
             </div>
             <p className="mb-4.5 max-w-160 text-[14.5px] leading-relaxed text-ink-soft">{story.description}</p>
 

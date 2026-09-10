@@ -10,7 +10,7 @@ import { LockIcon } from "@/components/ui/icons";
 import { ROUTES } from "@/lib/constants";
 import { HOME_TABS, type HomeTab } from "@/lib/homeTabs";
 
-const PAGE_SIZE = 24; // 3 rows of 8 on desktop; mobile shows 10 with a "show more" reveal
+const PAGE_SIZE = 24; // 3 rows of 8 on desktop; mobile shows 12 with a "show more" reveal
 
 function toPage(raw: string | undefined): number {
   const n = Number(raw);

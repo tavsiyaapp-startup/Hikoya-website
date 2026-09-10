@@ -23,12 +23,20 @@ const progressBadgeClasses: Record<StoryProgressStatus, string> = {
 export async function StoryCard({
   story,
   viewerIsOwner = false,
+  adminHref,
 }: {
   story: StoryCardData;
   // Only ever true from the author's own "stories" tab on their own profile
   // — everywhere else a viewer just isn't the story's author, so a
   // status !== "published" story stays a placeholder there too (see below).
   viewerIsOwner?: boolean;
+  // Set only from admin-only views (e.g. the author profile at
+  // /admin/users/[id]) — staff can't open a non-owner's draft/unlisted/
+  // deleted story through the normal public route (getStoryBySlug blocks
+  // it), so this points the card at the moderation page instead. Silent by
+  // design: that route never bumps view_count or notifies the author, same
+  // as every other staff moderation read on this site.
+  adminHref?: string;
 }) {
   const locale = await getServerLocale();
   const t = getDictionary(locale);
@@ -36,9 +44,12 @@ export async function StoryCard({
   // The story was soft-deleted (deleteStory), or an author pulled it back
   // to draft (or a moderator unlisted it) after it had already been
   // collected/bookmarked/etc — either way it's still referenced by
-  // whatever list rendered this card, but a non-owner has nothing left to
-  // open (getStoryBySlug blocks it), so no link: just the title and a note.
-  if (story.deleted_at || (story.status !== "published" && !viewerIsOwner)) {
+  // whatever list rendered this card. A non-owner has nothing left to open
+  // via the public route (getStoryBySlug blocks it) — without adminHref
+  // that's a dead end, just the title and a note; with it, staff still get
+  // a full card, pointed at the moderation page instead.
+  const isBlocked = Boolean(story.deleted_at) || (story.status !== "published" && !viewerIsOwner);
+  if (isBlocked && !adminHref) {
     return (
       <div
         aria-disabled
@@ -60,7 +71,7 @@ export async function StoryCard({
         {storyProgressLabel(t, story.progress_status)}
       </span>
       <Link
-        href={ROUTES.story(story.slug)}
+        href={isBlocked && adminHref ? adminHref : ROUTES.story(story.slug)}
         className="block overflow-hidden rounded-[12px] border border-border bg-card shadow-[0_2px_10px_rgba(60,40,120,0.05)] transition hover:-translate-y-0.5 hover:shadow-[0_14px_30px_rgba(60,40,120,0.12)]"
       >
         <div className="relative flex aspect-[3/4] items-center justify-center bg-primary-200 p-3">
@@ -82,10 +93,16 @@ export async function StoryCard({
               </div>
             </div>
           )}
-          {story.status !== "published" && (
+          {story.deleted_at ? (
             <div className="absolute right-2 top-2">
-              <Badge tone="neutral">{story.status === "draft" ? t.common.draft : t.common.unlisted}</Badge>
+              <Badge tone="danger">{t.admin.deletedByAuthor}</Badge>
             </div>
+          ) : (
+            story.status !== "published" && (
+              <div className="absolute right-2 top-2">
+                <Badge tone="neutral">{story.status === "draft" ? t.common.draft : t.common.unlisted}</Badge>
+              </div>
+            )
           )}
         </div>
         <div className="p-2.5">

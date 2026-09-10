@@ -49,7 +49,7 @@ export default async function AdminChatsPage({
       <AdminHeader title={t.admin.chatsTitle} />
       <div className="px-4 pb-15 pt-7 sm:px-8.5">
         <div className="flex flex-col items-start gap-5.5 lg:flex-row">
-          <div className="grid w-full min-w-0 flex-1 grid-cols-1 gap-3">
+          <div className="grid w-full min-w-0 grid-cols-1 gap-3 lg:w-80 lg:shrink-0">
             {chats.length > 0 ? (
               chats.map((c) => (
                 <Link
@@ -80,7 +80,7 @@ export default async function AdminChatsPage({
           </div>
 
           {selectedChat && (
-            <div className="w-full shrink-0 overflow-hidden rounded-[14px] border border-border bg-card p-5 lg:sticky lg:top-26 lg:w-100">
+            <div className="w-full min-w-0 overflow-hidden rounded-[14px] border border-border bg-card p-5 lg:sticky lg:top-26 lg:flex-1">
               <MarkChatRead as="admin" targetUserId={selectedChat.user_id} />
               <div className="mb-4 flex items-center gap-3">
                 <Avatar name={selectedChat.user?.display_name ?? "?"} src={selectedChat.user?.avatar_url} size={36} />

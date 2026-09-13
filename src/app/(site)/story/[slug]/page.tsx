@@ -98,6 +98,15 @@ export default async function StoryPage({
           <div className="relative mx-auto mb-4.5 aspect-[3/4] w-full max-w-60 overflow-hidden rounded-[14px] bg-primary-200 shadow-[0_18px_40px_rgba(60,40,120,0.18)] sm:max-w-70 lg:mx-0 lg:max-w-none" />
         )}
 
+        <div className="lg:hidden">
+          <h1 className="mb-2 text-[24px] font-extrabold leading-tight tracking-tight text-balance sm:text-[28px]">
+            {story.title}
+          </h1>
+          <div className="mb-4.5 rounded-[12px] border border-border bg-card px-4.5 py-4">
+            <p className="text-[15px] leading-relaxed text-ink-soft">{story.description}</p>
+          </div>
+        </div>
+
         {readCta ? (
           <Link href={ROUTES.chapter(slug, readCta.order_index)}>
             <Button size="lg" className="mb-2.5 w-full justify-center">
@@ -171,7 +180,7 @@ export default async function StoryPage({
             </Link>
           )}
         </div>
-        <h1 className="mb-5 max-w-175 text-[28px] font-extrabold leading-tight tracking-tight text-balance sm:text-[36px] lg:text-[44px]">
+        <h1 className="mb-5 hidden max-w-175 text-[28px] font-extrabold leading-tight tracking-tight text-balance lg:block lg:text-[44px]">
           {story.title}
         </h1>
 
@@ -184,7 +193,7 @@ export default async function StoryPage({
           ))}
         </div>
 
-        <div className="mb-8 max-w-190 rounded-[12px] border border-border bg-card px-4.5 py-4 sm:px-5.5">
+        <div className="mb-8 hidden max-w-190 rounded-[12px] border border-border bg-card px-4.5 py-4 sm:px-5.5 lg:block">
           <p className="text-[16px] leading-relaxed text-ink-soft">{story.description}</p>
         </div>
 

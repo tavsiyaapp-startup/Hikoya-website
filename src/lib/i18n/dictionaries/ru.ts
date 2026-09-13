@@ -574,6 +574,8 @@ const ru = {
     checkInbox: "Проверьте почту.",
     emailAlreadyRegistered: "Этот email уже зарегистрирован.",
     goToLoginWithPassword: "Войти с паролем →",
+    loginWithEmail: "Войти через email",
+    emailLoginComingSoon: "Пока можно войти только с помощью Google",
     telegramRemovedNotice:
       "Вход через Telegram больше не поддерживается. Если вы регистрировались через Telegram, зарегистрируйтесь заново через Google или email.",
     loginPageTitle: "С возвращением",

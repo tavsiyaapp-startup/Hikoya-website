@@ -131,6 +131,22 @@ export function EmailForm({ next = "/", mode = "login" }: { next?: string; mode?
   );
 }
 
+// Placeholder for the registration screen's "continue with email" option —
+// there's no standalone email-login screen to send people to yet, so this
+// stays disabled with a note instead of opening the inline EmailForm (that
+// form is still used as-is on /login).
+export function EmailLoginDisabled({ className }: { className?: string }) {
+  const { t } = useLocale();
+  return (
+    <div className={className}>
+      <Button type="button" variant="ghost" size="lg" className="w-full justify-center" disabled>
+        {t.auth.loginWithEmail}
+      </Button>
+      <p className="mt-2 text-center text-[12.5px] text-muted-2">{t.auth.emailLoginComingSoon}</p>
+    </div>
+  );
+}
+
 // Signing in with a password only ever applies to accounts that already set
 // one from their profile (or during onboarding) — signInWithPassword just
 // fails for everyone else, same as a wrong password, so no separate

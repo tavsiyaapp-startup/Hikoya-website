@@ -11,6 +11,11 @@ import { Chip } from "@/components/ui/Chip";
 // gave zero feedback until the new page arrived, reading as "did that even
 // register?". useLinkStatus() dims the specific chip the instant it's
 // clicked, independent of whatever the route's loading.tsx does.
+//
+// `replace` (not the Link default of push): these swap a query param on the
+// *same* page rather than navigate somewhere new, so pushing meant clicking
+// through a few tabs/filters and then hitting back had to unwind every one
+// of those intermediate states before it would actually leave the page.
 export function LinkChip({
   href,
   active,
@@ -27,7 +32,7 @@ export function LinkChip({
   className?: string;
 }) {
   return (
-    <Link href={href} scroll={scroll} className={clsx("inline-flex", shrink && "shrink-0")}>
+    <Link href={href} replace scroll={scroll} className={clsx("inline-flex", shrink && "shrink-0")}>
       <PendingChip active={active} className={className}>
         {children}
       </PendingChip>

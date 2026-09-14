@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { getServerLocale } from "@/lib/i18n/locale-server";
 import { getDictionary } from "@/lib/i18n";
-import { getRecentActivity } from "@/lib/queries/admin";
+import { getRecentActivity, getActivityCounts } from "@/lib/queries/admin";
 import { ROUTES } from "@/lib/constants";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
+import { UserIcon, LibraryIcon, CommentsIcon } from "@/components/ui/icons";
 import { AdminHeader } from "../AdminHeader";
 import { ActivityRow } from "../ActivityFeed";
 
@@ -21,7 +22,12 @@ export default async function AdminActivityPage({
   // `to` is a plain date (yyyy-mm-dd) from the <input type="date">, so lte
   // would otherwise cut off at that day's midnight — extend it through the
   // end of the day so the selected end date is actually included.
-  const activity = await getRecentActivity(MAX_ITEMS, { from, to: to ? `${to}T23:59:59.999` : undefined });
+  const range = { from, to: to ? `${to}T23:59:59.999` : undefined };
+  const hasRange = Boolean(from || to);
+  const [activity, counts] = await Promise.all([
+    getRecentActivity(MAX_ITEMS, range),
+    hasRange ? getActivityCounts(range) : Promise.resolve(null),
+  ]);
 
   return (
     <div>
@@ -46,6 +52,28 @@ export default async function AdminActivityPage({
             </Link>
           )}
         </form>
+
+        {counts && (
+          <div className="mb-5 grid grid-cols-1 gap-5 sm:grid-cols-3">
+            {(
+              [
+                [t.admin.activityStatsNewUsers, counts.newUsers, UserIcon, "bg-blue-100 dark:bg-blue-950", "text-blue-700 dark:text-blue-300"],
+                [t.admin.activityStatsPublishedChapters, counts.publishedChapters, LibraryIcon, "bg-primary-100", "text-primary-700"],
+                [t.admin.activityStatsNewComments, counts.newComments, CommentsIcon, "bg-amber-100 dark:bg-amber-950", "text-amber-700 dark:text-amber-300"],
+              ] as const
+            ).map(([label, value, Icon, bg, fg]) => (
+              <div key={label} className="rounded-[14px] border border-border bg-card px-6 py-5.5">
+                <div className="mb-3.5 flex items-center gap-2.5">
+                  <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-[11px] ${bg} ${fg}`}>
+                    <Icon width={18} height={18} />
+                  </span>
+                  <span className="text-[14px] text-muted-2">{label}</span>
+                </div>
+                <div className="text-[32px] font-extrabold tracking-tight">{value}</div>
+              </div>
+            ))}
+          </div>
+        )}
 
         <div className="rounded-[14px] border border-border bg-card px-6.5 py-6">
           <div className="flex flex-col gap-3">

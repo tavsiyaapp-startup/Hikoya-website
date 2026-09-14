@@ -130,6 +130,50 @@ export async function getRecentActivity(
   }
 }
 
+// Exact counts for the /admin/activity date-range summary — separate from
+// getRecentActivity because that one caps each source at `limit` rows
+// before merging, so activity.length by type would undercount a range with
+// more than `limit` events. "Published chapters" counts the chapters table
+// directly (each chapter's own published_at), not stories.published_at —
+// a story is only published once but can gain many chapters afterward.
+export async function getActivityCounts(range?: { from?: string; to?: string }): Promise<{
+  newUsers: number;
+  publishedChapters: number;
+  newComments: number;
+}> {
+  try {
+    const admin = createAdminClient();
+
+    let usersQuery = admin.from("profiles").select("id", { count: "exact", head: true });
+    let chaptersQuery = admin
+      .from("chapters")
+      .select("id", { count: "exact", head: true })
+      .not("published_at", "is", null);
+    let commentsQuery = admin.from("comments").select("id", { count: "exact", head: true });
+
+    if (range?.from) {
+      usersQuery = usersQuery.gte("created_at", range.from);
+      chaptersQuery = chaptersQuery.gte("published_at", range.from);
+      commentsQuery = commentsQuery.gte("created_at", range.from);
+    }
+    if (range?.to) {
+      usersQuery = usersQuery.lte("created_at", range.to);
+      chaptersQuery = chaptersQuery.lte("published_at", range.to);
+      commentsQuery = commentsQuery.lte("created_at", range.to);
+    }
+
+    const [{ count: newUsers }, { count: publishedChapters }, { count: newComments }] = await Promise.all([
+      usersQuery,
+      chaptersQuery,
+      commentsQuery,
+    ]);
+
+    return { newUsers: newUsers ?? 0, publishedChapters: publishedChapters ?? 0, newComments: newComments ?? 0 };
+  } catch {
+    return { newUsers: 0, publishedChapters: 0, newComments: 0 };
+  }
+}
+
 export async function searchUsersAdmin(query?: string) {
   try {
     const admin = createAdminClient();

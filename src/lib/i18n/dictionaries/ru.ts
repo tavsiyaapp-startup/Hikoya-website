@@ -506,6 +506,7 @@ const ru = {
     moderationStoriesTitle: "Проверка новых историй",
     moderationStoriesDesc: "Новые истории проходят проверку перед публикацией",
     readChapter: "Читать",
+    downloadDocx: "Скачать .docx",
     rejectReasonPlaceholder: "Почему отклонено? Автор увидит этот текст.",
     confirmReject: "Отклонить",
     hideStory: "Скрыть от пользователей",

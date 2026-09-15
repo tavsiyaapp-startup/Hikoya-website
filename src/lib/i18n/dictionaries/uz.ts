@@ -508,6 +508,7 @@ const uz: typeof ru = {
     moderationStoriesTitle: "Yangi hikoyalarni tekshirish",
     moderationStoriesDesc: "Yangi hikoyalar chop etishdan oldin tekshiruvdan oʻtadi",
     readChapter: "Oʻqish",
+    downloadDocx: ".docx yuklab olish",
     rejectReasonPlaceholder: "Nega rad etilyapti? Muallif shu matnni koʻradi.",
     confirmReject: "Rad etish",
     hideStory: "Foydalanuvchilardan yashirish",

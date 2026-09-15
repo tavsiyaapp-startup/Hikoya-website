@@ -45,7 +45,15 @@ export default async function AdminStoryModeratePage({ params }: { params: Promi
         >
           <ChevronLeftIcon />
         </Link>
-        <h1 className="min-w-0 truncate text-[20px] font-extrabold tracking-tight sm:text-[24px]">{story.title}</h1>
+        <h1 className="min-w-0 flex-1 truncate text-[20px] font-extrabold tracking-tight sm:text-[24px]">{story.title}</h1>
+        {chapters.length > 0 && (
+          <a
+            href={ROUTES.adminStoryDownload(story.id)}
+            className="flex h-9 shrink-0 items-center rounded-[10px] border border-border bg-card px-3.5 text-[13px] font-bold text-ink-soft hover:bg-surface"
+          >
+            {t.admin.downloadDocx}
+          </a>
+        )}
       </div>
 
       <div className="px-4 pb-15 pt-7 sm:px-8.5">

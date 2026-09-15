@@ -13,6 +13,7 @@ export const ROUTES = {
   adminComments: "/admin/comments",
   adminUser: (id: string) => `/admin/users/${id}`,
   adminStory: (id: string) => `/admin/stories/${id}`,
+  adminStoryDownload: (id: string) => `/api/admin/stories/${id}/download`,
   adminChapter: (storyId: string, chapterId: string) => `/admin/stories/${storyId}/chapters/${chapterId}`,
   onboarding: "/onboarding",
   login: "/login",

@@ -472,6 +472,26 @@ export async function getChapterForModeration(chapterId: string): Promise<Chapte
   }
 }
 
+export type ChapterForDownload = { order_index: number; title: string; content: string };
+
+// Every chapter regardless of status (draft/pending_review/published/
+// unlisted) — the .docx download is a staff-only tool for reading the story
+// as it currently stands, same "admins can see drafts" reasoning as the
+// adminHref path on StoryCard.
+export async function getChaptersForDownload(storyId: string): Promise<ChapterForDownload[]> {
+  try {
+    const admin = createAdminClient();
+    const { data } = await admin
+      .from("chapters")
+      .select("order_index, title, content")
+      .eq("story_id", storyId)
+      .order("order_index", { ascending: true });
+    return data ?? [];
+  } catch {
+    return [];
+  }
+}
+
 export async function getAllRequestsAdmin(statusFilter?: string) {
   try {
     const admin = createAdminClient();

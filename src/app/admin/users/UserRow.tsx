@@ -21,12 +21,16 @@ export function UserRow({
   locale,
   achievements,
   initialCheckedIds,
+  storyCount,
+  followerCount,
 }: {
   user: Profile;
   viewerIsAdmin: boolean;
   locale: Locale;
   achievements: Achievement[];
   initialCheckedIds: string[];
+  storyCount: number;
+  followerCount: number;
 }) {
   const { t } = useLocale();
   const [badgesOpen, setBadgesOpen] = useState(false);
@@ -59,7 +63,8 @@ export function UserRow({
         <span className="w-27.5">
           <UserRoleSelect userId={user.id} role={user.role as UserRole} disabled={!viewerIsAdmin} />
         </span>
-        <span className="w-22.5 text-[13.5px] text-ink-soft">—</span>
+        <span className="w-20 text-[13.5px] text-ink-soft">{storyCount}</span>
+        <span className="w-24 text-[13.5px] text-ink-soft">{followerCount}</span>
         <span className="w-32.5 text-[13.5px] text-muted-2">
           {formatDate(user.created_at, locale)}
         </span>

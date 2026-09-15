@@ -174,15 +174,64 @@ export async function getActivityCounts(range?: { from?: string; to?: string }):
   }
 }
 
-export async function searchUsersAdmin(query?: string) {
+export type AdminUserSort = "newest" | "followers" | "stories";
+
+export async function searchUsersAdmin(query?: string, sort: AdminUserSort = "newest") {
   try {
     const admin = createAdminClient();
-    let q = admin.from("profiles").select("*").order("created_at", { ascending: false });
+    let q = admin.from("profiles").select("*");
     if (query) q = q.or(`display_name.ilike.%${query}%,username.ilike.%${query}%`);
-    const { data } = await q.limit(100);
-    return data ?? [];
+
+    if (sort === "newest") {
+      const { data } = await q.order("created_at", { ascending: false }).limit(100);
+      return data ?? [];
+    }
+
+    // Profiles don't carry a denormalized follower/story count to order by
+    // in SQL, so popularity sorts rank in JS instead — fetch a generous
+    // window of matching profiles first (same "cap, don't paginate" style as
+    // the rest of this file), then rank the whole window before slicing to
+    // the 100 actually shown, so an older but genuinely popular author isn't
+    // hidden behind a newest-first cutoff.
+    const { data: profiles } = await q.limit(500);
+    const list = profiles ?? [];
+    if (list.length === 0) return list;
+
+    const ids = list.map((p) => p.id);
+    const counts = sort === "followers" ? await getAuthorFollowerCounts(ids) : await getAuthorStoryCounts(ids);
+
+    return list.sort((a, b) => (counts[b.id] ?? 0) - (counts[a.id] ?? 0)).slice(0, 100);
   } catch {
     return [];
+  }
+}
+
+// Batched per-author counts for the /admin/users list — one query for
+// however many profiles are on screen rather than one per row, same
+// pattern as getStoryChapterCounts below.
+export async function getAuthorStoryCounts(userIds: string[]): Promise<Record<string, number>> {
+  if (userIds.length === 0) return {};
+  try {
+    const admin = createAdminClient();
+    const { data } = await admin.from("stories").select("author_id").in("author_id", userIds).is("deleted_at", null);
+    const counts: Record<string, number> = {};
+    for (const row of data ?? []) counts[row.author_id] = (counts[row.author_id] ?? 0) + 1;
+    return counts;
+  } catch {
+    return {};
+  }
+}
+
+export async function getAuthorFollowerCounts(userIds: string[]): Promise<Record<string, number>> {
+  if (userIds.length === 0) return {};
+  try {
+    const admin = createAdminClient();
+    const { data } = await admin.from("follows").select("author_id").in("author_id", userIds);
+    const counts: Record<string, number> = {};
+    for (const row of data ?? []) counts[row.author_id] = (counts[row.author_id] ?? 0) + 1;
+    return counts;
+  } catch {
+    return {};
   }
 }
 
@@ -263,33 +312,44 @@ export async function getFeaturedTiersMap(storyIds: string[]): Promise<Map<strin
 
 const storySelect = "*, author:profiles!stories_author_id_fkey(display_name)";
 
-export async function getAllStoriesAdmin(statusFilter?: string) {
+export type AdminStorySort = "newest" | "views" | "likes";
+
+// Fetch window before the final sort+slice below — generous rather than
+// paginated (same style as every other admin list here), but wide enough
+// that sorting by views/likes actually surfaces the true top stories
+// instead of just re-ordering whatever happened to be newest.
+const STORY_FETCH_LIMIT = 500;
+
+export async function getAllStoriesAdmin(
+  statusFilter?: string,
+  options?: { q?: string; sort?: AdminStorySort }
+) {
+  const title = options?.q?.trim();
+  const sort = options?.sort ?? "newest";
   try {
     const admin = createAdminClient();
+    let list: (Story & { author: { display_name: string } | null })[] = [];
 
     // The trash — soft-deleted by their author (deleted_at set, see
     // deleteStory in stories.ts) — is its own tab, kept out of every other
     // tab below rather than mixed into the regular status list.
     if (statusFilter === "deleted") {
-      const { data } = await admin
-        .from("stories")
-        .select(storySelect)
-        .not("deleted_at", "is", null)
-        .order("deleted_at", { ascending: false })
-        .limit(100);
-      return data ?? [];
-    }
-
-    // A story keeps its own status once published — adding chapters to it
-    // afterward never touches stories.status, only the new chapters' own
-    // (pending_review by default). Filtering this tab by stories.status
-    // alone would silently hide every "add chapters to an already-approved
-    // story" submission from the pending queue, so it also pulls in any
-    // story that merely *has* a pending chapter, whatever the story's own
-    // status is.
-    if (statusFilter === "pending_review") {
+      let deletedQuery = admin.from("stories").select(storySelect).not("deleted_at", "is", null);
+      if (title) deletedQuery = deletedQuery.ilike("title", `%${title}%`);
+      const { data } = await deletedQuery.limit(STORY_FETCH_LIMIT);
+      list = data ?? [];
+    } else if (statusFilter === "pending_review") {
+      // A story keeps its own status once published — adding chapters to it
+      // afterward never touches stories.status, only the new chapters' own
+      // (pending_review by default). Filtering this tab by stories.status
+      // alone would silently hide every "add chapters to an already-approved
+      // story" submission from the pending queue, so it also pulls in any
+      // story that merely *has* a pending chapter, whatever the story's own
+      // status is.
+      let pendingQuery = admin.from("stories").select(storySelect).eq("status", "pending_review").is("deleted_at", null);
+      if (title) pendingQuery = pendingQuery.ilike("title", `%${title}%`);
       const [{ data: pendingStories }, { data: pendingChapterRows }] = await Promise.all([
-        admin.from("stories").select(storySelect).eq("status", "pending_review").is("deleted_at", null),
+        pendingQuery,
         admin.from("chapters").select("story_id").eq("status", "pending_review"),
       ]);
 
@@ -298,19 +358,29 @@ export async function getAllStoriesAdmin(statusFilter?: string) {
         (id) => !already.has(id)
       );
 
-      const extraStories = extraIds.length
-        ? ((await admin.from("stories").select(storySelect).in("id", extraIds).is("deleted_at", null)).data ?? [])
-        : [];
+      let extraStories: typeof pendingStories = [];
+      if (extraIds.length) {
+        let extraQuery = admin.from("stories").select(storySelect).in("id", extraIds).is("deleted_at", null);
+        if (title) extraQuery = extraQuery.ilike("title", `%${title}%`);
+        extraStories = (await extraQuery).data ?? [];
+      }
 
-      return [...(pendingStories ?? []), ...extraStories]
-        .sort((a, b) => +new Date(b.created_at) - +new Date(a.created_at))
-        .slice(0, 100);
+      list = [...(pendingStories ?? []), ...(extraStories ?? [])];
+    } else {
+      let generalQuery = admin.from("stories").select(storySelect).is("deleted_at", null);
+      if (statusFilter) generalQuery = generalQuery.eq("status", statusFilter);
+      if (title) generalQuery = generalQuery.ilike("title", `%${title}%`);
+      const { data } = await generalQuery.limit(STORY_FETCH_LIMIT);
+      list = data ?? [];
     }
 
-    let q = admin.from("stories").select(storySelect).is("deleted_at", null).order("created_at", { ascending: false });
-    if (statusFilter) q = q.eq("status", statusFilter);
-    const { data } = await q.limit(100);
-    return data ?? [];
+    list.sort((a, b) => {
+      if (sort === "views") return (b.view_count ?? 0) - (a.view_count ?? 0);
+      if (sort === "likes") return (b.like_count ?? 0) - (a.like_count ?? 0);
+      return +new Date(b.created_at) - +new Date(a.created_at);
+    });
+
+    return list.slice(0, 100);
   } catch {
     return [];
   }

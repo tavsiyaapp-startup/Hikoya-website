@@ -88,7 +88,10 @@ async function fetchImages(html: string): Promise<Map<string, FetchedImage>> {
   await Promise.all(
     [...urls].map(async (url) => {
       try {
-        const res = await fetch(url);
+        // Bounded so one slow/hanging Storage response can't eat the whole
+        // request's time budget — better to embed 9 of 10 images than to
+        // stall the entire export waiting on one.
+        const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
         if (!res.ok) return;
         const type = docxImageType(res.headers.get("content-type") ?? "", url);
         if (!type) return;

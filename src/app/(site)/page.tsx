@@ -8,7 +8,6 @@ import { getCurrentUser } from "@/lib/current-user";
 import type { CurrentUser } from "@/lib/current-user";
 import { ROUTES } from "@/lib/constants";
 import {
-  getStoriesByGenre,
   getFeedForTab,
   getFeaturedCollections,
   getRecentPublishedChapters,
@@ -35,7 +34,6 @@ import { HOME_TABS as TABS, type HomeTab as Tab } from "@/lib/homeTabs";
 const PAGE_SIZE_FEED = 24; // 3 rows of 8 on desktop; mobile shows 12 with a "show more" reveal
 const PAGE_SIZE_WEEK = 6;
 const PAGE_SIZE_COLLECTIONS = 6;
-const PAGE_SIZE_GENRE = 24; // 3 rows of 8 on desktop; mobile shows 12 with a "show more" reveal
 
 function toPage(raw: string | undefined): number {
   const n = Number(raw);
@@ -49,20 +47,16 @@ export default async function HomePage({
   // here when it comes back.
   searchParams: Promise<{
     tab?: string;
-    genre?: string;
     feedPage?: string;
     weekPage?: string;
     collectionsPage?: string;
-    genrePage?: string;
   }>;
 }) {
   const {
     tab: rawTab,
-    genre: rawGenre,
     feedPage: rawFeedPage,
     weekPage: rawWeekPage,
     collectionsPage: rawCollectionsPage,
-    genrePage: rawGenrePage,
   } = await searchParams;
   const tab: Tab = TABS.includes(rawTab as Tab) ? (rawTab as Tab) : "new";
   // const topTier: StoryTopTier = TOP_TIERS.includes(rawTopTier as StoryTopTier)
@@ -72,12 +66,10 @@ export default async function HomePage({
   const locale = await getServerLocale();
   const t = getDictionary(locale);
   const user = await getCurrentUser();
-  const genre = rawGenre ?? t.genres[0];
 
   const feedPage = toPage(rawFeedPage);
   const weekPage = toPage(rawWeekPage);
   const collectionsPage = toPage(rawCollectionsPage);
-  const genrePage = toPage(rawGenrePage);
 
   // Hero data is a single small, 60s-cached query — fetched and awaited
   // directly (not behind Suspense) so the hero — the page's LCP element —
@@ -93,13 +85,11 @@ export default async function HomePage({
       <Suspense fallback={<HomeSectionsSkeleton />}>
         <HomeSections
           tab={tab}
-          genre={genre}
           user={user}
           t={t}
           feedPage={feedPage}
           weekPage={weekPage}
           collectionsPage={collectionsPage}
-          genrePage={genrePage}
         />
       </Suspense>
     </div>
@@ -108,52 +98,44 @@ export default async function HomePage({
 
 async function HomeSections({
   tab,
-  genre,
   user,
   t,
   feedPage,
   weekPage,
   collectionsPage,
-  genrePage,
 }: {
   tab: Tab;
-  genre: string;
   user: CurrentUser | null;
   t: Dictionary;
   feedPage: number;
   weekPage: number;
   collectionsPage: number;
-  genrePage: number;
 }) {
   const feedOffset = (feedPage - 1) * PAGE_SIZE_FEED;
   const feedQuery = getFeedForTab(tab, user?.id, PAGE_SIZE_FEED, feedOffset);
 
-  const [feedResult, weeklyResult, collectionsResult, genreResult] = await Promise.all([
+  const [feedResult, weeklyResult, collectionsResult] = await Promise.all([
     feedQuery,
     getRecentPublishedChapters(PAGE_SIZE_WEEK, (weekPage - 1) * PAGE_SIZE_WEEK),
     getFeaturedCollections(PAGE_SIZE_COLLECTIONS, (collectionsPage - 1) * PAGE_SIZE_COLLECTIONS),
-    getStoriesByGenre(genre, PAGE_SIZE_GENRE, (genrePage - 1) * PAGE_SIZE_GENRE),
     // getTopStories(topTier, 8),
   ]);
 
   const feed = feedResult.items;
   const weeklyGroups = weeklyResult.items;
   const collections = collectionsResult.items;
-  const genreStories = genreResult.items;
 
   const feedTotalPages = Math.max(1, Math.ceil(feedResult.total / PAGE_SIZE_FEED));
   const weekTotalPages = Math.max(1, Math.ceil(weeklyResult.total / PAGE_SIZE_WEEK));
   const collectionsTotalPages = Math.max(1, Math.ceil(collectionsResult.total / PAGE_SIZE_COLLECTIONS));
-  const genreTotalPages = Math.max(1, Math.ceil(genreResult.total / PAGE_SIZE_GENRE));
 
   // Every home-page pagination link goes through this so paginating one
-  // section preserves the tab/genre filter and the other three sections'
-  // current pages, instead of resetting them.
-  function buildHref(overrides: Partial<Record<"feedPage" | "weekPage" | "collectionsPage" | "genrePage", number>>) {
+  // section preserves the tab filter and the other two sections' current
+  // pages, instead of resetting them.
+  function buildHref(overrides: Partial<Record<"feedPage" | "weekPage" | "collectionsPage", number>>) {
     const params = new URLSearchParams();
     params.set("tab", tab);
-    params.set("genre", genre);
-    const pages = { feedPage, weekPage, collectionsPage, genrePage, ...overrides };
+    const pages = { feedPage, weekPage, collectionsPage, ...overrides };
     for (const [key, value] of Object.entries(pages)) {
       if (value > 1) params.set(key, String(value));
     }
@@ -292,31 +274,6 @@ async function HomeSections({
       ) : (
         <EmptyRow className="mb-11" />
       )}
-
-      <div className="rounded-[16px] border border-border bg-card px-4 py-6 sm:px-7 sm:py-6.5">
-        <div className="mb-4.5 flex items-center gap-3.5">
-          <h2 className="text-[22px] font-extrabold tracking-tight">{t.home.genreTitle}</h2>
-        </div>
-        <div className="mb-6 flex flex-wrap gap-2">
-          {t.genres.map((g) => (
-            <LinkChip key={g} href={`?tab=${tab}&genre=${encodeURIComponent(g)}`} scroll={false} active={g === genre}>
-              {g}
-            </LinkChip>
-          ))}
-        </div>
-        {genreStories.length > 0 ? (
-          <>
-            <ExpandableStoryGrid showMoreLabel={t.common.showMore}>
-              {genreStories.map((story) => (
-                <StoryCard key={story.id} story={story} />
-              ))}
-            </ExpandableStoryGrid>
-            <Pagination page={genrePage} totalPages={genreTotalPages} buildHref={(p) => buildHref({ genrePage: p })} />
-          </>
-        ) : (
-          <EmptyRow />
-        )}
-      </div>
 
       {!user && (
         <div className="mt-11 flex flex-col items-start gap-4 rounded-[16px] bg-linear-to-br from-ink-dark to-primary-950 px-5 py-6 text-white sm:flex-row sm:items-center sm:gap-6 sm:px-8 sm:py-6.5">

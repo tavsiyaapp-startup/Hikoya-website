@@ -65,27 +65,6 @@ export const getNewestStories = unstable_cache(
   { revalidate: CACHE_SECONDS, tags: ["stories"] }
 );
 
-export const getStoriesByGenre = unstable_cache(
-  async (genre: string, limit = 4, offset = 0): Promise<Paginated<StoryCard>> => {
-    try {
-      const supabase = createPublicClient();
-      const { data, count } = await supabase
-        .from("stories")
-        .select("*, author:profiles!stories_author_id_fkey(username, display_name)", { count: "exact" })
-        .eq("status", "published")
-        .eq("visibility", "public")
-        .overlaps("genres", genreVariants(genre))
-        .order("like_count", { ascending: false })
-        .range(offset, offset + limit - 1);
-      return { items: (data as StoryCard[]) ?? [], total: count ?? 0 };
-    } catch {
-      return { items: [], total: 0 };
-    }
-  },
-  ["stories-by-genre"],
-  { revalidate: CACHE_SECONDS, tags: ["stories"] }
-);
-
 // "Подписки" home tab. Not unstable_cache'd like the functions above —
 // this result is different per viewer, so caching it under a shared key
 // would leak one user's feed to another. Uses the session-scoped client

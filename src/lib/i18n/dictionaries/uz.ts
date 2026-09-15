@@ -81,7 +81,6 @@ const uz: typeof ru = {
     weekChaptersAddedN: "{n} ta bob qoʻshildi",
     editorialTitle: "Tanlanmalar",
     editorialBadge: "Tahririyat tanlovi",
-    genreTitle: "Janrlar boʻyicha",
     gateTitle: "Birinchi boblarni akkauntsiz oʻqing",
     gateBody:
       "Bookmark, izohlar, tanlanmalar va davomi roʻyxatdan oʻtgandan keyin ochiladi.",

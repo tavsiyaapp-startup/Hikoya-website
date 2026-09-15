@@ -79,7 +79,6 @@ const ru = {
     weekChaptersAddedN: "Добавлено {n} глав(ы)",
     editorialTitle: "Подборки",
     editorialBadge: "Выбор редакции",
-    genreTitle: "По жанрам",
     gateTitle: "Читайте первые главы без аккаунта",
     gateBody:
       "Bookmark, комментарии, подборки и продолжение историй открываются после регистрации.",

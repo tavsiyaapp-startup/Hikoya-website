@@ -27,7 +27,7 @@ export function BackButton() {
     <button
       type="button"
       onClick={() => router.back()}
-      className="mb-4 flex cursor-pointer items-center gap-1.5 text-[13.5px] font-semibold text-muted-2 transition hover:text-ink-soft"
+      className="mb-4 flex cursor-pointer items-center gap-1.5 text-[13.5px] font-semibold text-muted transition hover:text-ink-soft"
     >
       <ChevronLeftIcon width={16} height={16} />
       {t.common.back}

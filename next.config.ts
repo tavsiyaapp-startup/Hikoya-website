@@ -1,6 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Self-hosted on Node (not Vercel): produces .next/standalone, a
+  // self-contained server.js + trimmed node_modules, so deployment doesn't
+  // need `npm install` on the target host.
+  output: "standalone",
   images: {
     remotePatterns: [
       {

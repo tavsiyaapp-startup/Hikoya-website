@@ -12,6 +12,10 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Plain CommonJS entry point for self-hosting — runs directly via
+    // `node server.js`, outside Next's build/bundling, so it predates the
+    // app's ESM/TypeScript conventions.
+    "server.js",
   ]),
 ]);
 

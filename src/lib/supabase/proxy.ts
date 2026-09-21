@@ -39,6 +39,12 @@ export async function updateSession(request: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
+        // Self-hosted: nginx's default proxy header buffer is too small for
+        // the full session (tokens + user object), causing "upstream sent
+        // too big header" 502s. Storing only the tokens keeps the cookie
+        // well under that limit — getUser() re-fetches the user anyway.
+        // Must match the browser client (client.ts) and server.ts.
+        encode: "tokens-only",
         getAll() {
           return request.cookies.getAll();
         },

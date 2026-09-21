@@ -6,9 +6,13 @@ import { useLocale } from "@/lib/i18n/LocaleProvider";
 import { ROUTES } from "@/lib/constants";
 import { GoogleButton, EmailForm, PasswordLoginForm } from "@/components/auth/AuthButtons";
 
-export function LoginForm({ next, initialByPassword = false }: { next: string; initialByPassword?: boolean }) {
+// Password (email + password) is the primary path — email-link and Google
+// are secondary, reached only via "forgot email or password?", since both
+// need no password at all and would otherwise undercut the point of every
+// account having one (see /auth/set-password).
+export function LoginForm({ next, initialFallback = false }: { next: string; initialFallback?: boolean }) {
   const { t } = useLocale();
-  const [byPassword, setByPassword] = useState(initialByPassword);
+  const [fallback, setFallback] = useState(initialFallback);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-bg px-3 py-6 sm:px-5">
@@ -21,21 +25,27 @@ export function LoginForm({ next, initialByPassword = false }: { next: string; i
             {t.auth.loginPageTitle}
           </h1>
           <p className="mb-7 text-center text-[14.5px] leading-relaxed text-muted">
-            {t.auth.loginPageBody}
+            {fallback ? t.auth.fallbackLoginBody : t.auth.loginPageBody}
           </p>
 
           <div className="mb-3 flex flex-col gap-3">
-            <GoogleButton next={next} />
-            {byPassword ? <PasswordLoginForm next={next} /> : <EmailForm next={next} />}
+            {fallback ? (
+              <>
+                <GoogleButton next={next} />
+                <EmailForm next={next} />
+              </>
+            ) : (
+              <PasswordLoginForm next={next} />
+            )}
           </div>
 
           <p className="mb-5 text-center text-[12.5px]">
             <button
               type="button"
-              onClick={() => setByPassword((v) => !v)}
+              onClick={() => setFallback((v) => !v)}
               className="cursor-pointer font-bold text-primary-800 hover:underline"
             >
-              {byPassword ? t.auth.magicLinkToggle : t.auth.passwordLoginToggle}
+              {fallback ? t.auth.backToPasswordLogin : t.auth.forgotLoginPassword}
             </button>
           </p>
 

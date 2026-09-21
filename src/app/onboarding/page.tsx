@@ -18,7 +18,10 @@ export default async function OnboardingPage({
     <OnboardingWizard
       initialStep={user ? 3 : 1}
       next={next}
+      userId={user?.id ?? null}
       initialDisplayName={user?.profile?.display_name ?? ""}
+      initialAvatarUrl={user?.profile?.avatar_url ?? null}
+      initialBio={user?.profile?.bio ?? ""}
     />
   );
 }

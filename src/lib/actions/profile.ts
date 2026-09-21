@@ -28,3 +28,18 @@ export async function updateProfile(username: string, formData: FormData) {
 
   revalidatePath(ROUTES.author(username));
 }
+
+// Called right after the client sets a password itself (supabase.auth.
+// updateUser — /auth/set-password and /auth/reset-password both do this)
+// to flip the tracking flag so redirectAfterAuth stops routing the user to
+// /auth/set-password. See profiles.has_password in schema_reference.sql for
+// why this can't be derived from the session/identities instead.
+export async function markPasswordSet() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return;
+
+  await supabase.from("profiles").update({ has_password: true }).eq("id", user.id);
+}

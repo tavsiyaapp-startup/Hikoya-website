@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 import { createClient } from "@/lib/supabase/client";
+import { markPasswordSet } from "@/lib/actions/profile";
 import { ROUTES } from "@/lib/constants";
 import { PasswordInput } from "@/components/ui/PasswordInput";
 import { Button } from "@/components/ui/Button";
@@ -78,11 +79,13 @@ export function ResetPasswordForm() {
     setError(null);
     const supabase = createClient();
     const { error } = await supabase.auth.updateUser({ password });
-    setPending(false);
     if (error) {
+      setPending(false);
       setError(t.profile.passwordChangeError);
       return;
     }
+    await markPasswordSet();
+    setPending(false);
     setDone(true);
   }
 

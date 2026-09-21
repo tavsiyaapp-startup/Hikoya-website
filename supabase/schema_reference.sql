@@ -53,6 +53,7 @@ create table profiles (
   telegram_id bigint unique,        -- добавлено в 0006: историческая привязка Telegram-аккаунтов, вход через Telegram убран в 0020
   onboarded_at timestamptz,         -- добавлено в 0006: отметка "прошёл онбординг"
   is_verified boolean not null default false,   -- добавлено в 0021: галочка "Верифицирован", ставит staff вручную
+  has_password boolean not null default false,  -- добавлено в 0047: пароль реально установлен (не только email/OAuth), см. changelog
   created_at timestamptz not null default now()
 );
 
@@ -1415,3 +1416,14 @@ on conflict (code) do nothing;
 --   chapters.view_count смысл: не "сумма просмотров глав", а "уникальные
 --   читатели истории". Исторические значения view_count не пересчитывались
 --   назад — новая логика применяется только к просмотрам с этой даты.
+-- [2026-09-21] profiles.has_password (миграция 0047) — регистрация и вход
+--   теперь ведут к обязательному экрану "установите пароль", если его ещё
+--   нет: сразу после регистрации (OnboardingWizard, шаг с именем — заодно
+--   расширен под аватар и "о себе") и после входа через Google/email-ссылку
+--   с /login, если у аккаунта ещё нет пароля (см. /auth/set-password,
+--   redirectAfterAuth в src/lib/auth-redirect.ts). identities Supabase не
+--   отличают "вошёл по ссылке" от "зарегистрировался по email+паролю" — оба
+--   создают identity с provider='email' без пароля — поэтому флаг ведётся
+--   отдельно, а не выводится из identities. Существующие аккаунты
+--   бэкафилены как false: ложноположительный повторный запрос пароля у
+--   тех, кто его уже ставил, безвреден, а надёжно отличить их нельзя.

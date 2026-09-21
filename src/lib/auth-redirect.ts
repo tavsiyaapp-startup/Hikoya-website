@@ -8,7 +8,10 @@ import { createClient } from "@/lib/supabase/server";
 // public URL as the base instead.
 const siteOrigin = process.env.NEXT_PUBLIC_SITE_URL || "https://hikoya.org";
 
-// After any successful sign-in, send first-time users into onboarding and
+// After any successful sign-in, send first-time users into onboarding,
+// existing users who don't have a password yet (they've only ever signed in
+// via Google or an emailed link — e.g. someone who forgot their password
+// using /login's fallback) into the mandatory set-password step, and
 // everyone else to wherever they were headed.
 export async function redirectAfterAuth(next: string) {
   const supabase = await createClient();
@@ -19,7 +22,7 @@ export async function redirectAfterAuth(next: string) {
   if (user) {
     const { data: profile } = await supabase
       .from("profiles")
-      .select("onboarded_at")
+      .select("onboarded_at, has_password")
       .eq("id", user.id)
       .single();
 
@@ -27,6 +30,12 @@ export async function redirectAfterAuth(next: string) {
       const onboardingUrl = new URL("/onboarding", siteOrigin);
       onboardingUrl.searchParams.set("next", next);
       return NextResponse.redirect(onboardingUrl);
+    }
+
+    if (!profile.has_password) {
+      const setPasswordUrl = new URL("/auth/set-password", siteOrigin);
+      setPasswordUrl.searchParams.set("next", next);
+      return NextResponse.redirect(setPasswordUrl);
     }
   }
 

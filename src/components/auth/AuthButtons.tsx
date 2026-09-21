@@ -97,7 +97,7 @@ export function EmailForm({ next = "/", mode = "login" }: { next?: string; mode?
       <div className="rounded-[13px] border border-primary-200 bg-primary-50 px-4 py-3.5">
         <p className="mb-2 text-[14px] text-primary-900">{t.auth.emailAlreadyRegistered}</p>
         <Link
-          href={`${ROUTES.login}?mode=password&next=${encodeURIComponent(next)}`}
+          href={`${ROUTES.login}?next=${encodeURIComponent(next)}`}
           className="text-[13px] font-bold text-primary-800 hover:underline"
         >
           {t.auth.goToLoginWithPassword}

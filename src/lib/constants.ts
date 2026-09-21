@@ -18,6 +18,7 @@ export const ROUTES = {
   onboarding: "/onboarding",
   login: "/login",
   resetPassword: "/auth/reset-password",
+  setPassword: "/auth/set-password",
   author: (username: string) => `/author/${username}`,
   story: (slug: string) => `/story/${slug}`,
   chapter: (slug: string, chapterNum: number | string) => `/story/${slug}/${chapterNum}`,

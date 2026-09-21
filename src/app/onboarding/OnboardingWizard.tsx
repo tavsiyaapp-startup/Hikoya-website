@@ -5,9 +5,12 @@ import Link from "next/link";
 import { clsx } from "clsx";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 import { ROUTES } from "@/lib/constants";
+import { createClient } from "@/lib/supabase/client";
 import { GoogleButton, EmailLoginToggle } from "@/components/auth/AuthButtons";
 import { CloseIcon } from "@/components/ui/icons";
+import { Avatar } from "@/components/ui/Avatar";
 import { Input } from "@/components/ui/Input";
+import { Textarea } from "@/components/ui/Textarea";
 import { PasswordInput } from "@/components/ui/PasswordInput";
 import { completeOnboarding } from "./actions";
 
@@ -17,16 +20,26 @@ const MIN_PASSWORD_LENGTH = 6;
 export function OnboardingWizard({
   initialStep,
   next,
+  userId,
   initialDisplayName,
+  initialAvatarUrl,
+  initialBio,
 }: {
   initialStep: 1 | 3;
   next: string;
+  userId: string | null;
   initialDisplayName: string;
+  initialAvatarUrl: string | null;
+  initialBio: string;
 }) {
   const { t, locale, setLocale } = useLocale();
   const [step, setStep] = useState<1 | 2 | 3 | 4>(initialStep);
   const [role, setRole] = useState<"reader" | "author">("reader");
   const [displayName, setDisplayName] = useState(initialDisplayName);
+  const [avatarUrl, setAvatarUrl] = useState(initialAvatarUrl);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [avatarError, setAvatarError] = useState(false);
+  const [bio, setBio] = useState(initialBio);
   const [password, setPassword] = useState("");
   const [passwordError, setPasswordError] = useState(false);
   const [interests, setInterests] = useState<string[]>([]);
@@ -41,8 +54,30 @@ export function OnboardingWizard({
     );
   }
 
+  async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || !userId) return;
+    setAvatarUploading(true);
+    setAvatarError(false);
+    try {
+      const supabase = createClient();
+      const path = `${userId}/${Date.now()}-${file.name}`;
+      const { error } = await supabase.storage.from("avatars").upload(path, file, { upsert: true });
+      if (error) throw error;
+      const { data } = supabase.storage.from("avatars").getPublicUrl(path);
+      setAvatarUrl(data.publicUrl);
+    } catch {
+      setAvatarError(true);
+    } finally {
+      setAvatarUploading(false);
+    }
+  }
+
+  // Mandatory: this account only exists via Google/email so far, neither of
+  // which sets a password — without one, the only way back in later is the
+  // same OAuth/magic-link flow every time. No skip option on purpose.
   function handleContinueFromName() {
-    if (password && password.length < MIN_PASSWORD_LENGTH) {
+    if (password.length < MIN_PASSWORD_LENGTH) {
       setPasswordError(true);
       return;
     }
@@ -174,9 +209,28 @@ export function OnboardingWizard({
             </h2>
             <p className="mb-6.5 text-[15px] leading-relaxed text-muted">{t.onboarding.nameBody}</p>
 
+            <div className="mb-5 flex items-center gap-4">
+              <Avatar name={displayName} src={avatarUrl} size={64} />
+              <label className="cursor-pointer text-[13px] font-bold text-primary-800">
+                {avatarUploading ? t.common.loading : t.profile.changeAvatar}
+                <input type="file" accept="image/*" onChange={handleAvatarChange} className="hidden" />
+              </label>
+            </div>
+            {avatarError && <p className="mb-3 text-[12px] text-danger">{t.profile.avatarError}</p>}
+
             <div className="mb-5">
               <label className="mb-1.5 block text-[13px] font-bold">{t.onboarding.nameLabel}</label>
               <Input value={displayName} onChange={(e) => setDisplayName(e.target.value)} required />
+            </div>
+
+            <div className="mb-5">
+              <label className="mb-1.5 block text-[13px] font-bold">{t.profile.bioLabel}</label>
+              <Textarea
+                value={bio}
+                onChange={(e) => setBio(e.target.value)}
+                placeholder={t.profile.bioPlaceholder}
+                rows={3}
+              />
             </div>
 
             <div className="mb-2">
@@ -188,6 +242,7 @@ export function OnboardingWizard({
                   setPasswordError(false);
                 }}
                 placeholder="••••••••"
+                required
               />
               <p className="mt-1.5 text-[12px] text-muted-2">{t.onboarding.passwordHint}</p>
               {passwordError && (
@@ -220,6 +275,8 @@ export function OnboardingWizard({
             <input type="hidden" name="next" value={next} />
             <input type="hidden" name="locale" value={locale} />
             <input type="hidden" name="displayName" value={displayName} />
+            <input type="hidden" name="avatarUrl" value={avatarUrl ?? ""} />
+            <input type="hidden" name="bio" value={bio} />
             <input type="hidden" name="password" value={password} />
             {interests.map((g) => (
               <input key={g} type="hidden" name="interests" value={g} />

@@ -12,8 +12,14 @@ export default async function LoginPage({
   const user = await getCurrentUser();
 
   if (user) {
-    redirect(user.profile?.onboarded_at ? next : `${ROUTES.onboarding}?next=${encodeURIComponent(next)}`);
+    if (!user.profile?.onboarded_at) {
+      redirect(`${ROUTES.onboarding}?next=${encodeURIComponent(next)}`);
+    }
+    if (!user.profile.has_password) {
+      redirect(`${ROUTES.setPassword}?next=${encodeURIComponent(next)}`);
+    }
+    redirect(next);
   }
 
-  return <LoginForm next={next} initialByPassword={mode === "password"} />;
+  return <LoginForm next={next} initialFallback={mode === "fallback"} />;
 }

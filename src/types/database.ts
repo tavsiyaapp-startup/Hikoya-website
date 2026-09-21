@@ -42,6 +42,7 @@ export interface Profile {
   telegram_id: number | null;
   onboarded_at: string | null;
   is_verified: boolean;
+  has_password: boolean;
   created_at: string;
 }
 

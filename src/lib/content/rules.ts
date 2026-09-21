@@ -201,7 +201,7 @@ export const RULES_HTML_RU = `
 <h1>14. Обратная связь</h1>
 <p>Если у вас есть вопрос, предложение, жалоба на контент или сообщение о нарушении авторских прав, свяжитесь с нами:</p>
 <p><strong>Telegram:</strong> <a href="https://t.me/hikoya_auth_bot" target="_blank" rel="noopener noreferrer">@hikoya_auth_bot</a></p>
-<p><strong>Сайт:</strong> <a href="https://hikoyaa.vercel.app">hikoyaa.vercel.app</a></p>
+<p><strong>Сайт:</strong> <a href="https://hikoya.org">hikoya.org</a></p>
 <p>Мы внимательно относимся к обращениям пользователей и стараемся отвечать в разумные сроки.</p>
 
 <h1>15. Наш главный принцип</h1>
@@ -406,7 +406,7 @@ export const RULES_HTML_UZ = `
 <h1>14. Aloqa</h1>
 <p>Agar savolingiz, taklifingiz, kontentga shikoyatingiz yoki mualliflik huquqi buzilishi haqida xabaringiz boʻlsa, biz bilan bogʻlaning:</p>
 <p><strong>Telegram:</strong> <a href="https://t.me/hikoya_auth_bot" target="_blank" rel="noopener noreferrer">@hikoya_auth_bot</a></p>
-<p><strong>Sayt:</strong> <a href="https://hikoyaa.vercel.app">hikoyaa.vercel.app</a></p>
+<p><strong>Sayt:</strong> <a href="https://hikoya.org">hikoya.org</a></p>
 <p>Biz foydalanuvchilar murojaatlariga eʼtibor bilan yondashamiz va oqilona muddatlarda javob berishga harakat qilamiz.</p>
 
 <h1>15. Bizning asosiy tamoyilimiz</h1>

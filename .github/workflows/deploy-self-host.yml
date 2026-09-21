@@ -38,6 +38,11 @@ jobs:
           EOF
 
       - name: Build
+        env:
+          # Stable across builds so Server Actions from a page loaded just
+          # before a deploy don't break with "Failed to find Server Action"
+          # once the new build (and its own random key, otherwise) is live.
+          NEXT_SERVER_ACTIONS_ENCRYPTION_KEY: ${{ secrets.NEXT_SERVER_ACTIONS_ENCRYPTION_KEY }}
         run: npm run build
 
       - name: Assemble deploy package

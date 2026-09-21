@@ -1,6 +1,12 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Self-hosted: a user with a page open from just before a deploy would
+  // otherwise silently fail on stale asset/Server Action requests. Tagging
+  // each build with the commit SHA lets Next.js detect that mismatch and
+  // force a full page reload instead. GITHUB_SHA is set automatically by
+  // Actions; falls back to a build timestamp for local/manual builds.
+  deploymentId: process.env.GITHUB_SHA || `local-${Date.now()}`,
   // Moving off Vercel to a self-hosted server (hikoya.org) — send anyone who
   // still lands on the old *.vercel.app URL to the real domain instead.
   // Scoped via `has: host`, so this is a no-op everywhere except that host.

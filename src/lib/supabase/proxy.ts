@@ -14,13 +14,19 @@ function isAdminPath(pathname: string) {
   return pathname === "/admin" || pathname.startsWith("/admin/");
 }
 
+// Self-hosted behind nginx: the reverse proxy doesn't forward the original
+// Host header, so building redirects off `request.url` resolves to the
+// app's internal localhost address instead of the public site — use the
+// known public URL as the base instead.
+const siteOrigin = process.env.NEXT_PUBLIC_SITE_URL || "https://hikoya.org";
+
 export async function updateSession(request: NextRequest) {
   // Runs on every request — never let an unconfigured/unreachable Supabase
   // project hang the whole app behind a slow DNS/connect timeout.
   if (!isSupabaseConfigured()) {
     if (isAdminPath(request.nextUrl.pathname)) {
       return NextResponse.redirect(
-        new URL(`/admin-login?next=${encodeURIComponent(request.nextUrl.pathname)}`, request.url)
+        new URL(`/admin-login?next=${encodeURIComponent(request.nextUrl.pathname)}`, siteOrigin)
       );
     }
     return NextResponse.next({ request });
@@ -54,7 +60,7 @@ export async function updateSession(request: NextRequest) {
   if (isAdminPath(request.nextUrl.pathname)) {
     if (!user) {
       return NextResponse.redirect(
-        new URL(`/admin-login?next=${encodeURIComponent(request.nextUrl.pathname)}`, request.url)
+        new URL(`/admin-login?next=${encodeURIComponent(request.nextUrl.pathname)}`, siteOrigin)
       );
     }
     const { data: profile } = await supabase
@@ -63,7 +69,7 @@ export async function updateSession(request: NextRequest) {
       .eq("id", user.id)
       .single();
     if (!profile || !["admin", "moderator"].includes(profile.role as string)) {
-      return NextResponse.redirect(new URL("/", request.url));
+      return NextResponse.redirect(new URL("/", siteOrigin));
     }
   }
 

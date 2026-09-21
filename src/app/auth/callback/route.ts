@@ -12,9 +12,10 @@ export async function GET(request: Request) {
     const supabase = await createClient();
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
-      return redirectAfterAuth(request, next);
+      return redirectAfterAuth(next);
     }
   }
 
-  return NextResponse.redirect(new URL("/onboarding?error=auth", request.url));
+  const siteOrigin = process.env.NEXT_PUBLIC_SITE_URL || "https://hikoya.org";
+  return NextResponse.redirect(new URL("/onboarding?error=auth", siteOrigin));
 }

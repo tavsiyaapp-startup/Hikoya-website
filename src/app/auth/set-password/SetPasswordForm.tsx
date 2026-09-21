@@ -39,7 +39,9 @@ export function SetPasswordForm({ next, email }: { next: string; email: string }
     const { error: updateError } = await supabase.auth.updateUser({ password });
     if (updateError) {
       setPending(false);
-      setError(t.auth.setPasswordFailed);
+      setError(
+        updateError.code === "same_password" ? t.profile.passwordSamePassword : t.auth.setPasswordFailed
+      );
       return;
     }
     await markPasswordSet();

@@ -295,6 +295,7 @@ const ru = {
     passwordConfirmLabel: "Повторите пароль",
     passwordMismatch: "Пароли не совпадают.",
     passwordTooShort: "Пароль должен быть не короче 6 символов.",
+    passwordSamePassword: "Новый пароль должен отличаться от текущего.",
     emailChangeSent: "Письмо для подтверждения нового email отправлено — проверьте почту.",
     emailChangeError: "Не удалось изменить email. Попробуйте ещё раз.",
     changePassword: "Изменить пароль",

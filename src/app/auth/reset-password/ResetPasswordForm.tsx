@@ -81,7 +81,9 @@ export function ResetPasswordForm() {
     const { error } = await supabase.auth.updateUser({ password });
     if (error) {
       setPending(false);
-      setError(t.profile.passwordChangeError);
+      setError(
+        error.code === "same_password" ? t.profile.passwordSamePassword : t.profile.passwordChangeError
+      );
       return;
     }
     await markPasswordSet();

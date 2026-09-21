@@ -131,18 +131,34 @@ export function EmailForm({ next = "/", mode = "login" }: { next?: string; mode?
   );
 }
 
-// Placeholder for the registration screen's "continue with email" option —
-// there's no standalone email-login screen to send people to yet, so this
-// stays disabled with a note instead of opening the inline EmailForm (that
-// form is still used as-is on /login).
-export function EmailLoginDisabled({ className }: { className?: string }) {
+// Registration screen's "continue with email" option — starts as a button
+// so Google stays visually primary, and reveals the same EmailForm used on
+// /login once clicked.
+export function EmailLoginToggle({
+  next = "/",
+  mode = "login",
+  className,
+}: {
+  next?: string;
+  mode?: "login" | "register";
+  className?: string;
+}) {
   const { t } = useLocale();
+  const [show, setShow] = useState(false);
+
+  if (show) return <EmailForm next={next} mode={mode} />;
+
   return (
     <div className={className}>
-      <Button type="button" variant="ghost" size="lg" className="w-full justify-center" disabled>
+      <Button
+        type="button"
+        variant="ghost"
+        size="lg"
+        className="w-full justify-center"
+        onClick={() => setShow(true)}
+      >
         {t.auth.loginWithEmail}
       </Button>
-      <p className="mt-2 text-center text-[12.5px] text-muted-2">{t.auth.emailLoginComingSoon}</p>
     </div>
   );
 }

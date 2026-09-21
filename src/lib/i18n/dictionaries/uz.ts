@@ -584,7 +584,6 @@ const uz: typeof ru = {
     emailAlreadyRegistered: "Bu email allaqachon roʻyxatdan oʻtgan.",
     goToLoginWithPassword: "Parol bilan kirish →",
     loginWithEmail: "Email orqali kirish",
-    emailLoginComingSoon: "Hozircha faqat Google orqali kirish mumkin",
     telegramRemovedNotice:
       "Telegram orqali kirish endi qoʻllab-quvvatlanmaydi. Agar Telegram orqali roʻyxatdan oʻtgan boʻlsangiz, Google yoki email orqali qaytadan roʻyxatdan oʻting.",
     loginPageTitle: "Xush kelibsiz",

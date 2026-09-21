@@ -5,7 +5,7 @@ import Link from "next/link";
 import { clsx } from "clsx";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 import { ROUTES } from "@/lib/constants";
-import { GoogleButton, EmailLoginDisabled } from "@/components/auth/AuthButtons";
+import { GoogleButton, EmailLoginToggle } from "@/components/auth/AuthButtons";
 import { CloseIcon } from "@/components/ui/icons";
 import { Input } from "@/components/ui/Input";
 import { PasswordInput } from "@/components/ui/PasswordInput";
@@ -152,7 +152,7 @@ export function OnboardingWizard({
 
             <div className="mb-6.5 flex flex-col gap-3">
               <GoogleButton next={next} />
-              <EmailLoginDisabled />
+              <EmailLoginToggle next={next} mode="register" />
             </div>
 
             <p className="text-center text-[13px] text-muted-2">

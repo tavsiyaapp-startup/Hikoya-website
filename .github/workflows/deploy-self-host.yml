@@ -1,0 +1,73 @@
+name: Deploy to self-hosted (hikoya.org)
+
+on:
+  push:
+    branches: [self-host-migration]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Write production env
+        run: |
+          cat > .env.production.local <<EOF
+          NEXT_PUBLIC_SUPABASE_URL=${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY=${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          TELEGRAM_BOT_TOKEN=${{ secrets.TELEGRAM_BOT_TOKEN }}
+          NEXT_PUBLIC_TELEGRAM_BOT_USERNAME=${{ secrets.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME }}
+          TELEGRAM_WEBHOOK_SECRET=${{ secrets.TELEGRAM_WEBHOOK_SECRET }}
+          TELEGRAM_SUPPORT_GROUP_CHAT_ID=${{ secrets.TELEGRAM_SUPPORT_GROUP_CHAT_ID }}
+          NEXT_PUBLIC_SITE_URL=https://hikoya.org
+          NEXT_PUBLIC_GA_MEASUREMENT_ID=${{ secrets.NEXT_PUBLIC_GA_MEASUREMENT_ID }}
+          GA4_PROPERTY_ID=${{ secrets.GA4_PROPERTY_ID }}
+          GA4_CLIENT_EMAIL=${{ secrets.GA4_CLIENT_EMAIL }}
+          GA4_PRIVATE_KEY=${{ secrets.GA4_PRIVATE_KEY }}
+          EOF
+
+      - name: Build
+        run: npm run build
+
+      - name: Assemble deploy package
+        run: |
+          mkdir -p deploy-stage
+          cp -r .next deploy-stage/.next
+          rm -rf deploy-stage/.next/cache
+          cp -r public deploy-stage/public
+          cp server.js deploy-stage/server.js
+          cp .env.production.local deploy-stage/.env.production.local
+          node -e "
+            const pkg = require('./package.json');
+            const fs = require('fs');
+            fs.writeFileSync('deploy-stage/package.json', JSON.stringify({
+              name: pkg.name,
+              version: pkg.version,
+              private: true,
+              main: 'server.js',
+              scripts: { start: 'node server.js' },
+              dependencies: pkg.dependencies,
+            }, null, 2));
+          "
+
+      - name: Upload via FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          local-dir: ./deploy-stage/
+          server-dir: /www/hikoya.org/
+          exclude: |
+            **/node_modules/**

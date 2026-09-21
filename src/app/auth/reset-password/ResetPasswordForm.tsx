@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 import { createClient } from "@/lib/supabase/client";
 import { markPasswordSet } from "@/lib/actions/profile";
+import { passwordErrorMessage } from "@/lib/password-error";
 import { ROUTES } from "@/lib/constants";
 import { PasswordInput } from "@/components/ui/PasswordInput";
 import { Button } from "@/components/ui/Button";
@@ -81,9 +82,7 @@ export function ResetPasswordForm() {
     const { error } = await supabase.auth.updateUser({ password });
     if (error) {
       setPending(false);
-      setError(
-        error.code === "same_password" ? t.profile.passwordSamePassword : t.profile.passwordChangeError
-      );
+      setError(passwordErrorMessage(error.code, t, t.profile.passwordChangeError));
       return;
     }
     await markPasswordSet();

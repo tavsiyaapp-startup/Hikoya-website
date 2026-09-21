@@ -298,6 +298,7 @@ const uz: typeof ru = {
     passwordMismatch: "Parollar mos kelmadi.",
     passwordTooShort: "Parol kamida 6 ta belgidan iborat boʻlishi kerak.",
     passwordSamePassword: "Yangi parol joriy paroldan farq qilishi kerak.",
+    passwordWeak: "Parol juda oddiy. Boshqasini sinab koʻring — masalan, raqamlar bilan.",
     emailChangeSent: "Yangi emailni tasdiqlash uchun xat yuborildi — pochtangizni tekshiring.",
     emailChangeError: "Emailni oʻzgartirib boʻlmadi. Qaytadan urinib koʻring.",
     changePassword: "Parolni oʻzgartirish",

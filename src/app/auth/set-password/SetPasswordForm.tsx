@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { PasswordInput } from "@/components/ui/PasswordInput";
 import { Button } from "@/components/ui/Button";
 import { markPasswordSet } from "@/lib/actions/profile";
+import { passwordErrorMessage } from "@/lib/password-error";
 
 const MIN_PASSWORD_LENGTH = 6;
 
@@ -39,9 +40,7 @@ export function SetPasswordForm({ next, email }: { next: string; email: string }
     const { error: updateError } = await supabase.auth.updateUser({ password });
     if (updateError) {
       setPending(false);
-      setError(
-        updateError.code === "same_password" ? t.profile.passwordSamePassword : t.auth.setPasswordFailed
-      );
+      setError(passwordErrorMessage(updateError.code, t, t.auth.setPasswordFailed));
       return;
     }
     await markPasswordSet();

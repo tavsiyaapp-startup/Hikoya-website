@@ -86,6 +86,11 @@ export function ResetPasswordForm() {
       return;
     }
     await markPasswordSet();
+    // A password change is the one moment we know for sure the old password
+    // could be compromised (that's usually why someone changes it) — kick
+    // every other signed-in device/browser out, but keep this one signed in
+    // since it just proved the new password.
+    await supabase.auth.signOut({ scope: "others" });
     setPending(false);
     setDone(true);
   }

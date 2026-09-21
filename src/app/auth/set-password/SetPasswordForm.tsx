@@ -44,6 +44,10 @@ export function SetPasswordForm({ next, email }: { next: string; email: string }
       return;
     }
     await markPasswordSet();
+    // Same reasoning as /auth/reset-password: once a password exists, any
+    // other signed-in device is worth re-verifying rather than trusting
+    // silently — sign out everywhere else, keep this session.
+    await supabase.auth.signOut({ scope: "others" });
     router.push(next);
     router.refresh();
   }

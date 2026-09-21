@@ -1,6 +1,19 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Moving off Vercel to a self-hosted server (hikoya.org) — send anyone who
+  // still lands on the old *.vercel.app URL to the real domain instead.
+  // Scoped via `has: host`, so this is a no-op everywhere except that host.
+  async redirects() {
+    return [
+      {
+        source: "/:path*",
+        has: [{ type: "host", value: "hikoyaa.vercel.app" }],
+        destination: "https://hikoya.org/:path*",
+        permanent: false,
+      },
+    ];
+  },
   images: {
     remotePatterns: [
       {

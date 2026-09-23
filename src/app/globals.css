@@ -154,6 +154,16 @@ a:hover {
   border-radius: 8px;
 }
 
+/* Arrow-scrolled rows (StoryCarousel): the arrows are the intended affordance,
+   a visible scrollbar underneath them is just noise. */
+.no-scrollbar {
+  scrollbar-width: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 /* Chapter rich-text: shared by the TipTap editor (RichTextEditor) and the
    reader page's rendered HTML output, so a chapter looks the same while
    writing it as it does once published. */

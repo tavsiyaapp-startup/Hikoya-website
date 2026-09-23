@@ -1,0 +1,52 @@
+"use client";
+
+import { Children, useRef } from "react";
+import { ChevronLeftIcon, ChevronRightIcon } from "@/components/ui/icons";
+
+const SCROLL_AMOUNT = 640;
+
+// Horizontal, arrow-scrolled row — same StoryCard children as the grid it
+// replaces, just given a fixed per-breakpoint width (a flex row has no
+// column tracks to size them, unlike the grid) and wrapped in a scroll
+// container instead of laid out in rows.
+export function StoryCarousel({ children }: { children: React.ReactNode }) {
+  const trackRef = useRef<HTMLDivElement>(null);
+  const items = Children.toArray(children);
+
+  function scroll(direction: 1 | -1) {
+    trackRef.current?.scrollBy({ left: direction * SCROLL_AMOUNT, behavior: "smooth" });
+  }
+
+  return (
+    <div className="relative">
+      <div ref={trackRef} className="no-scrollbar flex gap-4 overflow-x-auto scroll-smooth sm:gap-5.5">
+        {items.map((child, i) => (
+          <div key={i} className="w-[118px] shrink-0 xs:w-[138px] sm:w-[158px] lg:w-[172px]">
+            {child}
+          </div>
+        ))}
+      </div>
+
+      {items.length > 4 && (
+        <>
+          <button
+            type="button"
+            onClick={() => scroll(-1)}
+            aria-label="Previous"
+            className="absolute -left-3.5 top-[42%] z-10 hidden h-9 w-9 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full border border-border bg-card text-ink-soft shadow-[0_4px_14px_rgba(60,40,120,0.16)] transition hover:bg-surface sm:flex"
+          >
+            <ChevronLeftIcon />
+          </button>
+          <button
+            type="button"
+            onClick={() => scroll(1)}
+            aria-label="Next"
+            className="absolute -right-3.5 top-[42%] z-10 hidden h-9 w-9 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full border border-border bg-card text-ink-soft shadow-[0_4px_14px_rgba(60,40,120,0.16)] transition hover:bg-surface sm:flex"
+          >
+            <ChevronRightIcon />
+          </button>
+        </>
+      )}
+    </div>
+  );
+}

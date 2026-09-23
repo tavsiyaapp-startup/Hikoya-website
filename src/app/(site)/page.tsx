@@ -15,7 +15,7 @@ import {
   // getTopStories, // TODO: re-enable along with the "Топ" section below
 } from "@/lib/queries/stories";
 import { StoryCard } from "@/components/story/StoryCard";
-import { ExpandableStoryGrid } from "@/components/story/ExpandableStoryGrid";
+import { StoryCarousel } from "@/components/story/StoryCarousel";
 import { CollectionCard } from "@/components/collections/CollectionCard";
 import { HeroCarousel } from "@/components/home/HeroCarousel";
 import { Button } from "@/components/ui/Button";
@@ -30,8 +30,9 @@ import { HOME_TABS as TABS, type HomeTab as Tab } from "@/lib/homeTabs";
 
 // Per-section page sizes on the home page — beyond these, pagination kicks
 // in (each section keeps its own page number in the URL, independent of
-// the others).
-const PAGE_SIZE_FEED = 24; // 3 rows of 8 on desktop; mobile shows 12 with a "show more" reveal
+// the others). The main feed isn't paginated — it's a StoryCarousel, so this
+// is just how many items get pulled into that one scrollable row.
+const PAGE_SIZE_FEED = 24;
 const PAGE_SIZE_WEEK = 6;
 const PAGE_SIZE_COLLECTIONS = 6;
 
@@ -47,18 +48,12 @@ export default async function HomePage({
   // here when it comes back.
   searchParams: Promise<{
     tab?: string;
-    feedPage?: string;
     weekPage?: string;
     collectionsPage?: string;
   }>;
 }) {
-  const {
-    tab: rawTab,
-    feedPage: rawFeedPage,
-    weekPage: rawWeekPage,
-    collectionsPage: rawCollectionsPage,
-  } = await searchParams;
-  const tab: Tab = TABS.includes(rawTab as Tab) ? (rawTab as Tab) : "new";
+  const { tab: rawTab, weekPage: rawWeekPage, collectionsPage: rawCollectionsPage } = await searchParams;
+  const tab: Tab = TABS.includes(rawTab as Tab) ? (rawTab as Tab) : "popular";
   // const topTier: StoryTopTier = TOP_TIERS.includes(rawTopTier as StoryTopTier)
   //   ? (rawTopTier as StoryTopTier)
   //   : "day";
@@ -67,7 +62,6 @@ export default async function HomePage({
   const t = getDictionary(locale);
   const user = await getCurrentUser();
 
-  const feedPage = toPage(rawFeedPage);
   const weekPage = toPage(rawWeekPage);
   const collectionsPage = toPage(rawCollectionsPage);
 
@@ -83,14 +77,7 @@ export default async function HomePage({
       <HeroCarousel slides={heroSlides} />
 
       <Suspense fallback={<HomeSectionsSkeleton />}>
-        <HomeSections
-          tab={tab}
-          user={user}
-          t={t}
-          feedPage={feedPage}
-          weekPage={weekPage}
-          collectionsPage={collectionsPage}
-        />
+        <HomeSections tab={tab} user={user} t={t} weekPage={weekPage} collectionsPage={collectionsPage} />
       </Suspense>
     </div>
   );
@@ -100,22 +87,17 @@ async function HomeSections({
   tab,
   user,
   t,
-  feedPage,
   weekPage,
   collectionsPage,
 }: {
   tab: Tab;
   user: CurrentUser | null;
   t: Dictionary;
-  feedPage: number;
   weekPage: number;
   collectionsPage: number;
 }) {
-  const feedOffset = (feedPage - 1) * PAGE_SIZE_FEED;
-  const feedQuery = getFeedForTab(tab, user?.id, PAGE_SIZE_FEED, feedOffset);
-
   const [feedResult, weeklyResult, collectionsResult] = await Promise.all([
-    feedQuery,
+    getFeedForTab(tab, user?.id, PAGE_SIZE_FEED, 0),
     getRecentPublishedChapters(PAGE_SIZE_WEEK, (weekPage - 1) * PAGE_SIZE_WEEK),
     getFeaturedCollections(PAGE_SIZE_COLLECTIONS, (collectionsPage - 1) * PAGE_SIZE_COLLECTIONS),
     // getTopStories(topTier, 8),
@@ -125,17 +107,16 @@ async function HomeSections({
   const weeklyGroups = weeklyResult.items;
   const collections = collectionsResult.items;
 
-  const feedTotalPages = Math.max(1, Math.ceil(feedResult.total / PAGE_SIZE_FEED));
   const weekTotalPages = Math.max(1, Math.ceil(weeklyResult.total / PAGE_SIZE_WEEK));
   const collectionsTotalPages = Math.max(1, Math.ceil(collectionsResult.total / PAGE_SIZE_COLLECTIONS));
 
   // Every home-page pagination link goes through this so paginating one
-  // section preserves the tab filter and the other two sections' current
-  // pages, instead of resetting them.
-  function buildHref(overrides: Partial<Record<"feedPage" | "weekPage" | "collectionsPage", number>>) {
+  // section preserves the tab filter and the other section's current page,
+  // instead of resetting it.
+  function buildHref(overrides: Partial<Record<"weekPage" | "collectionsPage", number>>) {
     const params = new URLSearchParams();
     params.set("tab", tab);
-    const pages = { feedPage, weekPage, collectionsPage, ...overrides };
+    const pages = { weekPage, collectionsPage, ...overrides };
     for (const [key, value] of Object.entries(pages)) {
       if (value > 1) params.set(key, String(value));
     }
@@ -196,12 +177,11 @@ async function HomeSections({
       </div>
       {feed.length > 0 ? (
         <div className="mb-11">
-          <ExpandableStoryGrid showMoreLabel={t.common.showMore}>
+          <StoryCarousel>
             {feed.map((story) => (
               <StoryCard key={story.id} story={story} />
             ))}
-          </ExpandableStoryGrid>
-          <Pagination page={feedPage} totalPages={feedTotalPages} buildHref={(p) => buildHref({ feedPage: p })} />
+          </StoryCarousel>
         </div>
       ) : (
         <EmptyRow className="mb-11" />

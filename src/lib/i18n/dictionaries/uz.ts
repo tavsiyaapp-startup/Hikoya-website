@@ -51,11 +51,6 @@ const uz: typeof ru = {
     library: "Kutubxona",
     admin: "Admin panel",
   },
-  sidebar: {
-    title: "Bir kechada oʻz hikoyangiz",
-    body: "Roʻyxatdan oʻtish bepul. Boblar chiqaring va oʻquvchilaringizni toping.",
-    cta: "Muallif boʻlish",
-  },
   home: {
     guestHint: "Mehmon rejimi: «Siz uchun» mashhurni koʻrsatadi",
     tabs: {

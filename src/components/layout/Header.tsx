@@ -6,16 +6,14 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { clsx } from "clsx";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
-import { useMobileNav } from "@/components/layout/MobileNavContext";
 import { ROUTES } from "@/lib/constants";
 import { Button } from "@/components/ui/Button";
-import { BellIcon, MenuIcon, SearchIcon } from "@/components/ui/icons";
+import { BellIcon, SearchIcon } from "@/components/ui/icons";
 import { UserMenu } from "@/components/layout/UserMenu";
 import type { CurrentUser } from "@/lib/current-user";
 
 export function Header({ user, unreadCount = 0 }: { user: CurrentUser | null; unreadCount?: number }) {
   const { locale, setLocale, t } = useLocale();
-  const { setOpen } = useMobileNav();
   const router = useRouter();
   const [query, setQuery] = useState("");
 
@@ -26,15 +24,6 @@ export function Header({ user, unreadCount = 0 }: { user: CurrentUser | null; un
 
   return (
     <header className="sticky top-0 z-20 flex h-[64px] items-center gap-3 border-b border-border bg-card/92 px-3 backdrop-blur-md sm:h-[76px] sm:gap-5 sm:px-5 lg:gap-7 lg:px-8">
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        aria-label={t.nav.home}
-        className="flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-[12px] text-ink-soft transition hover:bg-surface lg:hidden"
-      >
-        <MenuIcon />
-      </button>
-
       <Link href={ROUTES.home} className="flex shrink-0 items-center gap-2.5 lg:w-52 lg:gap-3">
         <Image src="/images/logo.png" alt="Hikoya" width={36} height={36} className="object-contain sm:h-11 sm:w-11" />
         <span className="hidden font-script text-[24px] leading-none text-ink sm:inline sm:text-[30px]">

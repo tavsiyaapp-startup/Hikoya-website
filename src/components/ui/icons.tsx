@@ -210,23 +210,6 @@ export function SparkleIcon(props: IconProps) {
   );
 }
 
-export function SidebarToggleIcon(props: IconProps) {
-  return (
-    <svg {...base(17)} {...props}>
-      <rect x="3" y="4" width="18" height="16" rx="3" />
-      <path d="M9 4v16" />
-    </svg>
-  );
-}
-
-export function MenuIcon(props: IconProps) {
-  return (
-    <svg {...base(22)} {...props}>
-      <path d="M4 6h16M4 12h16M4 18h16" />
-    </svg>
-  );
-}
-
 export function AlignLeftIcon(props: IconProps) {
   return (
     <svg {...base(16)} {...props}>

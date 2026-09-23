@@ -113,7 +113,7 @@ body {
    image lives on its own fixed, z-index:-1 layer behind everything instead
    — inset is negative (overscanned past the viewport) so the dark theme's
    blurred edge falls outside what's visible rather than showing as a faint
-   lighter fringe right at the screen edge. Header/Sidebar/Footer all paint
+   lighter fringe right at the screen edge. Header/TopNav/Footer all paint
    their own opaque bg-card, so this only ever shows in <main>'s own gutters
    and the gaps between cards — the header's bg-card/92 + backdrop-blur-md
    lets a soft hint of it through instead of a hard edge. */

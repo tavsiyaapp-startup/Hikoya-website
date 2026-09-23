@@ -19,7 +19,12 @@ export function StoryCarousel({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="relative">
-      <div ref={trackRef} className="no-scrollbar flex gap-4 overflow-x-auto scroll-smooth sm:gap-5.5">
+      {/* pt-4: StoryCard's status ribbon pokes up 14px above the card itself
+          (-top-3.5). Setting overflow-x without an explicit overflow-y makes
+          the browser treat overflow-y as auto too (CSS overflow spec), which
+          was clipping that ribbon against the track's own top edge — this
+          padding gives it room to render instead of being cut off. */}
+      <div ref={trackRef} className="no-scrollbar flex gap-4 overflow-x-auto scroll-smooth pt-4 sm:gap-5.5">
         {items.map((child, i) => (
           <div key={i} className="w-[118px] shrink-0 xs:w-[138px] sm:w-[158px] lg:w-[172px]">
             {child}
@@ -33,7 +38,7 @@ export function StoryCarousel({ children }: { children: React.ReactNode }) {
             type="button"
             onClick={() => scroll(-1)}
             aria-label="Previous"
-            className="absolute -left-3.5 top-[42%] z-10 hidden h-9 w-9 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full border border-border bg-card text-ink-soft shadow-[0_4px_14px_rgba(60,40,120,0.16)] transition hover:bg-surface sm:flex"
+            className="absolute -left-3.5 top-[calc(42%+8px)] z-10 hidden h-9 w-9 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full border border-border bg-card text-ink-soft shadow-[0_4px_14px_rgba(60,40,120,0.16)] transition hover:bg-surface sm:flex"
           >
             <ChevronLeftIcon />
           </button>
@@ -41,7 +46,7 @@ export function StoryCarousel({ children }: { children: React.ReactNode }) {
             type="button"
             onClick={() => scroll(1)}
             aria-label="Next"
-            className="absolute -right-3.5 top-[42%] z-10 hidden h-9 w-9 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full border border-border bg-card text-ink-soft shadow-[0_4px_14px_rgba(60,40,120,0.16)] transition hover:bg-surface sm:flex"
+            className="absolute -right-3.5 top-[calc(42%+8px)] z-10 hidden h-9 w-9 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full border border-border bg-card text-ink-soft shadow-[0_4px_14px_rgba(60,40,120,0.16)] transition hover:bg-surface sm:flex"
           >
             <ChevronRightIcon />
           </button>

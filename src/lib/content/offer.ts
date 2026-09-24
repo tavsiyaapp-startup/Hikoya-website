@@ -70,7 +70,7 @@ export const OFFER_HTML_RU = `
 
 <h1>11. Контакты</h1>
 <p>По вопросам, связанным с этой офертой:</p>
-<p><strong>Telegram:</strong> <a href="https://t.me/hikoya_auth_bot" target="_blank" rel="noopener noreferrer">@hikoya_auth_bot</a></p>
+<p><strong>Telegram:</strong> <a href="https://t.me/hikoya_yoz" target="_blank" rel="noopener noreferrer">@hikoya_yoz</a></p>
 <p><strong>Сайт:</strong> <a href="https://hikoya.org">hikoya.org</a></p>
 <p><strong>Последнее обновление:</strong> 24.09.2026<br/><strong>Версия:</strong> 1.0</p>
 `;
@@ -139,7 +139,7 @@ export const OFFER_HTML_UZ = `
 
 <h1>11. Aloqa</h1>
 <p>Ushbu oferta bilan bogʻliq savollar boʻyicha:</p>
-<p><strong>Telegram:</strong> <a href="https://t.me/hikoya_auth_bot" target="_blank" rel="noopener noreferrer">@hikoya_auth_bot</a></p>
+<p><strong>Telegram:</strong> <a href="https://t.me/hikoya_yoz" target="_blank" rel="noopener noreferrer">@hikoya_yoz</a></p>
 <p><strong>Sayt:</strong> <a href="https://hikoya.org">hikoya.org</a></p>
 <p><strong>Oxirgi yangilanish:</strong> 24.09.2026<br/><strong>Versiya:</strong> 1.0</p>
 `;

@@ -6,7 +6,7 @@ import { useLocale } from "@/lib/i18n/LocaleProvider";
 import { ROUTES } from "@/lib/constants";
 import { ShieldIcon, SendIcon, CloseIcon } from "@/components/ui/icons";
 
-const TELEGRAM_SUPPORT_URL = `https://t.me/${process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME}`;
+const TELEGRAM_SUPPORT_URL = "https://t.me/hikoya_yoz";
 
 // Shown once above the top-level comment form (not repeated per reply) —
 // dismiss is session-only (component state, no localStorage), it just

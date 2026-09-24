@@ -294,7 +294,10 @@ export async function getCollectionsFeaturingAuthor(authorId: string, limit = 6)
 }
 
 export type WeeklyStoryGroup = {
-  story: { id: string; title: string; slug: string; cover_url: string | null };
+  // Full StoryCard shape (not just id/title/slug/cover_url) — the home
+  // page renders these with the same <StoryCard> component as everywhere
+  // else, just with its ribbon overridden to a chapter-count label.
+  story: StoryCard;
   chapterCount: number;
   // Only set when chapterCount === 1 — lets the card link straight to that
   // one chapter instead of the story page, same as before this was grouped.
@@ -323,7 +326,10 @@ export const getRecentPublishedChapters = unstable_cache(
       const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
       const [{ data: stories }, { data: singleChapters }] = await Promise.all([
-        supabase.from("stories").select("id, title, slug, cover_url").in("id", storyIds),
+        supabase
+          .from("stories")
+          .select("*, author:profiles!stories_author_id_fkey(username, display_name)")
+          .in("id", storyIds),
         supabase
           .from("chapters")
           .select("id, story_id, title, order_index")
@@ -337,7 +343,7 @@ export const getRecentPublishedChapters = unstable_cache(
           // up one of those instead of its one genuinely recent chapter.
           .gte("published_at", sevenDaysAgo),
       ]);
-      const storyById = new Map((stories ?? []).map((s) => [s.id as string, s]));
+      const storyById = new Map((stories as StoryCard[] | null ?? []).map((s) => [s.id, s]));
       const singleChapterByStory = new Map((singleChapters ?? []).map((c) => [c.story_id as string, c]));
 
       const items: WeeklyStoryGroup[] = [];

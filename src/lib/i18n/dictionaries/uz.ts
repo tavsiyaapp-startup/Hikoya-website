@@ -610,7 +610,6 @@ const uz: typeof ru = {
     contactTitle: "Aloqa",
     telegramSupport: "Telegram orqali yordam",
     instagram: "Instagram",
-    instagramSoon: "Tez orada",
   },
   staticPages: {
     placeholder: "Bu sahifaning matni tez orada qoʻshiladi.",

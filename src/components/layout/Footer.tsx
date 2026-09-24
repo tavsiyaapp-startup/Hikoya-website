@@ -7,6 +7,7 @@ import { ROUTES } from "@/lib/constants";
 import { SendIcon, InstagramIcon } from "@/components/ui/icons";
 
 const TELEGRAM_SUPPORT_URL = `https://t.me/${process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME}`;
+const INSTAGRAM_URL = "https://www.instagram.com/hikoya.yoz?stkn=Z2ZweDlvNjVvb2Nm";
 
 export function Footer() {
   const { t } = useLocale();
@@ -47,13 +48,15 @@ export function Footer() {
               <SendIcon width={15} height={15} />
               {t.footer.telegramSupport}
             </a>
-            <span
-              title={t.footer.instagramSoon}
-              className="flex cursor-not-allowed items-center gap-2 text-[13.5px] font-semibold text-muted opacity-60"
+            <a
+              href={INSTAGRAM_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 text-[13.5px] font-semibold text-ink-soft transition hover:text-primary-800"
             >
               <InstagramIcon width={15} height={15} />
               {t.footer.instagram}
-            </span>
+            </a>
           </div>
         </div>
       </div>

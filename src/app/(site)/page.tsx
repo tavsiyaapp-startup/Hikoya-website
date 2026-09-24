@@ -1,6 +1,5 @@
 import { Suspense } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { getServerLocale } from "@/lib/i18n/locale-server";
 import { getDictionary } from "@/lib/i18n";
 import type { Dictionary } from "@/lib/i18n";
@@ -32,7 +31,7 @@ import { HOME_TABS, type HomeTab } from "@/lib/homeTabs";
 // the others). The feed tabs aren't paginated — each is its own
 // StoryCarousel, so this is just how many items get pulled into each row.
 const PAGE_SIZE_FEED = 24;
-const PAGE_SIZE_WEEK = 6;
+const PAGE_SIZE_WEEK = 24; // also a carousel now, not paginated — see PAGE_SIZE_FEED
 const PAGE_SIZE_COLLECTIONS = 6;
 
 function toPage(raw: string | undefined): number {
@@ -46,11 +45,10 @@ export default async function HomePage({
   // "Топ" section temporarily commented out — see below. Re-add topTier?: string
   // here when it comes back.
   searchParams: Promise<{
-    weekPage?: string;
     collectionsPage?: string;
   }>;
 }) {
-  const { weekPage: rawWeekPage, collectionsPage: rawCollectionsPage } = await searchParams;
+  const { collectionsPage: rawCollectionsPage } = await searchParams;
   // const topTier: StoryTopTier = TOP_TIERS.includes(rawTopTier as StoryTopTier)
   //   ? (rawTopTier as StoryTopTier)
   //   : "day";
@@ -59,7 +57,6 @@ export default async function HomePage({
   const t = getDictionary(locale);
   const user = await getCurrentUser();
 
-  const weekPage = toPage(rawWeekPage);
   const collectionsPage = toPage(rawCollectionsPage);
 
   // Hero data is a single small, 60s-cached query — fetched and awaited
@@ -74,7 +71,7 @@ export default async function HomePage({
       <HeroCarousel slides={heroSlides} />
 
       <Suspense fallback={<HomeSectionsSkeleton />}>
-        <HomeSections user={user} t={t} weekPage={weekPage} collectionsPage={collectionsPage} />
+        <HomeSections user={user} t={t} collectionsPage={collectionsPage} />
       </Suspense>
     </div>
   );
@@ -83,12 +80,10 @@ export default async function HomePage({
 async function HomeSections({
   user,
   t,
-  weekPage,
   collectionsPage,
 }: {
   user: CurrentUser | null;
   t: Dictionary;
-  weekPage: number;
   collectionsPage: number;
 }) {
   // forYou/following need a real account to mean anything — getFeedForTab
@@ -99,7 +94,7 @@ async function HomeSections({
 
   const [feedResults, weeklyResult, collectionsResult] = await Promise.all([
     Promise.all(feedTabs.map((key) => getFeedForTab(key, user?.id, PAGE_SIZE_FEED, 0))),
-    getRecentPublishedChapters(PAGE_SIZE_WEEK, (weekPage - 1) * PAGE_SIZE_WEEK),
+    getRecentPublishedChapters(PAGE_SIZE_WEEK, 0),
     getFeaturedCollections(PAGE_SIZE_COLLECTIONS, (collectionsPage - 1) * PAGE_SIZE_COLLECTIONS),
     // getTopStories(topTier, 8),
   ]);
@@ -107,15 +102,14 @@ async function HomeSections({
   const weeklyGroups = weeklyResult.items;
   const collections = collectionsResult.items;
 
-  const weekTotalPages = Math.max(1, Math.ceil(weeklyResult.total / PAGE_SIZE_WEEK));
   const collectionsTotalPages = Math.max(1, Math.ceil(collectionsResult.total / PAGE_SIZE_COLLECTIONS));
 
-  // Every home-page pagination link goes through this so paginating one
-  // section preserves the other section's current page instead of resetting
+  // Every home-page pagination link goes through this so paginating the
+  // collections section preserves its own current page instead of resetting
   // it.
-  function buildHref(overrides: Partial<Record<"weekPage" | "collectionsPage", number>>) {
+  function buildHref(overrides: Partial<Record<"collectionsPage", number>>) {
     const params = new URLSearchParams();
-    const pages = { weekPage, collectionsPage, ...overrides };
+    const pages = { collectionsPage, ...overrides };
     for (const [key, value] of Object.entries(pages)) {
       if (value > 1) params.set(key, String(value));
     }
@@ -184,34 +178,20 @@ async function HomeSections({
       </div>
       {weeklyGroups.length > 0 ? (
         <div className="mb-11">
-          <div className="grid grid-cols-1 gap-4.5 xs:grid-cols-2 sm:grid-cols-3">
+          <StoryCarousel>
             {weeklyGroups.map((group) => (
-              <Link
+              <StoryCard
                 key={group.story.id}
+                story={group.story}
                 href={
                   group.singleChapter
                     ? ROUTES.chapter(group.story.slug, group.singleChapter.order_index)
                     : ROUTES.story(group.story.slug)
                 }
-                className="flex gap-3.5 rounded-[12px] border border-border bg-card p-3.5 hover:border-primary-300 hover:shadow-[0_10px_24px_rgba(60,40,120,0.09)]"
-              >
-                <div className="relative h-21 w-21 shrink-0 overflow-hidden rounded-[14px] bg-primary-200">
-                  {group.story.cover_url && (
-                    <Image src={group.story.cover_url} alt="" fill sizes="84px" className="object-cover" />
-                  )}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <Badge tone="primary" className="mb-1.5">{group.story.title}</Badge>
-                  <h3 className="mb-1 line-clamp-2 text-[15px] font-bold leading-tight">
-                    {group.singleChapter
-                      ? group.singleChapter.title
-                      : t.home.weekChaptersAddedN.replace("{n}", String(group.chapterCount))}
-                  </h3>
-                </div>
-              </Link>
+                ribbonLabel={t.home.weekChaptersAddedN.replace("{n}", String(group.chapterCount))}
+              />
             ))}
-          </div>
-          <Pagination page={weekPage} totalPages={weekTotalPages} buildHref={(p) => buildHref({ weekPage: p })} />
+          </StoryCarousel>
         </div>
       ) : (
         <EmptyRow className="mb-11" />

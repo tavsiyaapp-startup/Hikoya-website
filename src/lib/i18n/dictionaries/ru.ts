@@ -608,7 +608,6 @@ const ru = {
     contactTitle: "Связь",
     telegramSupport: "Поддержка в Telegram",
     instagram: "Instagram",
-    instagramSoon: "Скоро",
   },
   staticPages: {
     placeholder: "Текст этой страницы скоро появится.",

@@ -24,6 +24,8 @@ export async function StoryCard({
   story,
   viewerIsOwner = false,
   adminHref,
+  href,
+  ribbonLabel,
 }: {
   story: StoryCardData;
   // Only ever true from the author's own "stories" tab on their own profile
@@ -37,6 +39,14 @@ export async function StoryCard({
   // design: that route never bumps view_count or notifies the author, same
   // as every other staff moderation read on this site.
   adminHref?: string;
+  // Overrides the default ROUTES.story(story.slug) target — e.g. the home
+  // page's "this week" carousel links straight at the one new chapter
+  // instead of the story page.
+  href?: string;
+  // Overrides the ongoing/finished/dropped ribbon text (keeping its same
+  // pill styling/position) — e.g. "5 chapters added" instead of a status,
+  // again for the "this week" carousel.
+  ribbonLabel?: string;
 }) {
   const locale = await getServerLocale();
   const t = getDictionary(locale);
@@ -66,12 +76,14 @@ export async function StoryCard({
   return (
     <div className="relative">
       <span
-        className={`absolute -left-1 -top-3.5 z-10 inline-flex items-center rounded-[8px] px-2 py-1 text-[10.5px] font-bold shadow-[0_2px_6px_rgba(0,0,0,0.2)] ${progressBadgeClasses[story.progress_status]}`}
+        className={`absolute -left-1 -top-3.5 z-10 inline-flex items-center rounded-[8px] px-2 py-1 text-[10.5px] font-bold shadow-[0_2px_6px_rgba(0,0,0,0.2)] ${
+          ribbonLabel ? "bg-primary-600 text-white" : progressBadgeClasses[story.progress_status]
+        }`}
       >
-        {storyProgressLabel(t, story.progress_status)}
+        {ribbonLabel ?? storyProgressLabel(t, story.progress_status)}
       </span>
       <Link
-        href={isBlocked && adminHref ? adminHref : ROUTES.story(story.slug)}
+        href={isBlocked && adminHref ? adminHref : (href ?? ROUTES.story(story.slug))}
         className="block overflow-hidden rounded-[12px] border border-border bg-card shadow-[0_2px_10px_rgba(60,40,120,0.05)] transition hover:-translate-y-0.5 hover:shadow-[0_14px_30px_rgba(60,40,120,0.12)]"
       >
         <div className="relative flex aspect-[3/4] items-center justify-center bg-primary-200 p-3">

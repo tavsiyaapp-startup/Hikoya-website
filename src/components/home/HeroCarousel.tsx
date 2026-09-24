@@ -81,7 +81,7 @@ export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
 
 // Every slide shares this exact layout so the carousel never changes size
 // between slides — only the fixed h-[...] values below vary by breakpoint.
-// sm:h-90 = 360px is also AnnouncementBoard's fixed sm:h-[360px] (2 stacked
+// sm:h-[300px] is also AnnouncementBoard's fixed sm:h-[300px] (2 stacked
 // announcement cards + the gap between them) — keep these two in sync if
 // either ever changes, so the hero and the board beside it stay level.
 // Title/body are optional: with neither set, the image fills the whole
@@ -98,7 +98,7 @@ function Slide({ slide, locale, isFirst }: { slide: HeroSlide; locale: "ru" | "u
   const hasImage = Boolean(slide.image_url);
 
   return (
-    <div className="flex h-[460px] flex-col border border-primary-100 bg-linear-to-br from-primary-50 via-[#F6ECFB] to-pink-bg dark:via-[#2A2044] sm:h-90 sm:flex-row">
+    <div className="flex h-[460px] flex-col border border-primary-100 bg-linear-to-br from-primary-50 via-[#F6ECFB] to-pink-bg dark:via-[#2A2044] sm:h-[300px] sm:flex-row">
       {hasText && !hasImage && (
         // Photo-less slide = a personal note, not a promo blurb — dressed up
         // like an actual letter: a soft floating card instead of bare text

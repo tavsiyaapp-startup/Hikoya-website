@@ -14,9 +14,9 @@ function chunk<T>(items: T[], size: number): T[][] {
 }
 
 // Each card has a fixed height (not derived from however many announcements
-// exist) — sm:h-[360px] matches HeroCarousel's own fixed sm:h-90, so "the
-// banner's height = two announcements' height" holds by construction, not
-// as an accidental side effect of flex-stretch. Width is still a flex-grow
+// exist) — sm:h-[300px] matches HeroCarousel's own fixed sm:h-[300px], so
+// "the banner's height = two announcements' height" holds by construction,
+// not as an accidental side effect of flex-stretch. Width is still a flex-grow
 // share (sm:flex-1 against the hero wrapper's sm:flex-[3] in page.tsx — a
 // 3:1 ratio, ~25% of the row), so it scales with viewport width.
 //
@@ -40,7 +40,7 @@ export function AnnouncementBoard({ announcements }: { announcements: Announceme
   if (announcements.length === 0) return null;
 
   return (
-    <div className="h-[152px] overflow-hidden sm:h-[360px] sm:min-w-0 sm:flex-1">
+    <div className="h-[128px] overflow-hidden sm:h-[300px] sm:min-w-0 sm:flex-1">
       <div
         className="flex h-full flex-col transition-transform duration-500 ease-out"
         style={{ transform: `translateY(-${index * 100}%)` }}

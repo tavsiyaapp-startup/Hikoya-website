@@ -20,18 +20,17 @@ import { CollectionCard } from "@/components/collections/CollectionCard";
 import { HeroCarousel } from "@/components/home/HeroCarousel";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Chip";
-import { LinkChip } from "@/components/ui/LinkChip";
 import { Pagination } from "@/components/ui/Pagination";
 import { SparkleIcon, LockIcon } from "@/components/ui/icons";
-import { HOME_TABS as TABS, type HomeTab as Tab } from "@/lib/homeTabs";
+import { HOME_TABS, type HomeTab } from "@/lib/homeTabs";
 // import type { StoryTopTier } from "@/types/database";
 
 // const TOP_TIERS: StoryTopTier[] = ["day", "week", "month"];
 
 // Per-section page sizes on the home page — beyond these, pagination kicks
 // in (each section keeps its own page number in the URL, independent of
-// the others). The main feed isn't paginated — it's a StoryCarousel, so this
-// is just how many items get pulled into that one scrollable row.
+// the others). The feed tabs aren't paginated — each is its own
+// StoryCarousel, so this is just how many items get pulled into each row.
 const PAGE_SIZE_FEED = 24;
 const PAGE_SIZE_WEEK = 6;
 const PAGE_SIZE_COLLECTIONS = 6;
@@ -47,13 +46,11 @@ export default async function HomePage({
   // "Топ" section temporarily commented out — see below. Re-add topTier?: string
   // here when it comes back.
   searchParams: Promise<{
-    tab?: string;
     weekPage?: string;
     collectionsPage?: string;
   }>;
 }) {
-  const { tab: rawTab, weekPage: rawWeekPage, collectionsPage: rawCollectionsPage } = await searchParams;
-  const tab: Tab = TABS.includes(rawTab as Tab) ? (rawTab as Tab) : "popular";
+  const { weekPage: rawWeekPage, collectionsPage: rawCollectionsPage } = await searchParams;
   // const topTier: StoryTopTier = TOP_TIERS.includes(rawTopTier as StoryTopTier)
   //   ? (rawTopTier as StoryTopTier)
   //   : "day";
@@ -77,33 +74,36 @@ export default async function HomePage({
       <HeroCarousel slides={heroSlides} />
 
       <Suspense fallback={<HomeSectionsSkeleton />}>
-        <HomeSections tab={tab} user={user} t={t} weekPage={weekPage} collectionsPage={collectionsPage} />
+        <HomeSections user={user} t={t} weekPage={weekPage} collectionsPage={collectionsPage} />
       </Suspense>
     </div>
   );
 }
 
 async function HomeSections({
-  tab,
   user,
   t,
   weekPage,
   collectionsPage,
 }: {
-  tab: Tab;
   user: CurrentUser | null;
   t: Dictionary;
   weekPage: number;
   collectionsPage: number;
 }) {
-  const [feedResult, weeklyResult, collectionsResult] = await Promise.all([
-    getFeedForTab(tab, user?.id, PAGE_SIZE_FEED, 0),
+  // forYou/following need a real account to mean anything — getFeedForTab
+  // falls back to the popular feed for them without one, which would just
+  // render "Популярное" twice for a guest. Only fetch/show the two tabs that
+  // are genuinely public.
+  const feedTabs: readonly HomeTab[] = user ? HOME_TABS : HOME_TABS.filter((k) => k === "popular" || k === "new");
+
+  const [feedResults, weeklyResult, collectionsResult] = await Promise.all([
+    Promise.all(feedTabs.map((key) => getFeedForTab(key, user?.id, PAGE_SIZE_FEED, 0))),
     getRecentPublishedChapters(PAGE_SIZE_WEEK, (weekPage - 1) * PAGE_SIZE_WEEK),
     getFeaturedCollections(PAGE_SIZE_COLLECTIONS, (collectionsPage - 1) * PAGE_SIZE_COLLECTIONS),
     // getTopStories(topTier, 8),
   ]);
 
-  const feed = feedResult.items;
   const weeklyGroups = weeklyResult.items;
   const collections = collectionsResult.items;
 
@@ -111,11 +111,10 @@ async function HomeSections({
   const collectionsTotalPages = Math.max(1, Math.ceil(collectionsResult.total / PAGE_SIZE_COLLECTIONS));
 
   // Every home-page pagination link goes through this so paginating one
-  // section preserves the tab filter and the other section's current page,
-  // instead of resetting it.
+  // section preserves the other section's current page instead of resetting
+  // it.
   function buildHref(overrides: Partial<Record<"weekPage" | "collectionsPage", number>>) {
     const params = new URLSearchParams();
-    params.set("tab", tab);
     const pages = { weekPage, collectionsPage, ...overrides };
     for (const [key, value] of Object.entries(pages)) {
       if (value > 1) params.set(key, String(value));
@@ -152,40 +151,30 @@ async function HomeSections({
       )}
       */}
 
-      <div className="mb-6 flex items-center gap-2.5 overflow-x-auto">
-        {TABS.map((key) => {
-          const locked = !user && (key === "forYou" || key === "following");
-          return (
-            <LinkChip key={key} href={locked ? ROUTES.onboarding : `?tab=${key}`} active={tab === key} shrink>
-              <span>{t.home.tabs[key]}</span>
-              {locked && <LockIcon />}
-            </LinkChip>
-          );
-        })}
-        {!user && (
-          <div className="ml-auto hidden shrink-0 items-center gap-2 rounded-xl bg-primary-50 px-3.5 py-2 text-[12.5px] font-semibold text-[#5B4B8A] dark:text-[#C4B8E8] sm:flex">
-            <span>{t.home.guestHint}</span>
+      {feedTabs.map((key, i) => {
+        const items = feedResults[i].items;
+        return (
+          <div key={key}>
+            <div className="mb-4.5 flex items-baseline gap-3.5">
+              <h2 className="text-2xl font-extrabold tracking-tight">{t.home.tabs[key]}</h2>
+              <Link href={ROUTES.allStories(key)} className="ml-auto text-[14px] font-semibold">
+                {t.common.all}
+              </Link>
+            </div>
+            {items.length > 0 ? (
+              <div className="mb-11">
+                <StoryCarousel>
+                  {items.map((story) => (
+                    <StoryCard key={story.id} story={story} />
+                  ))}
+                </StoryCarousel>
+              </div>
+            ) : (
+              <EmptyRow className="mb-11" />
+            )}
           </div>
-        )}
-      </div>
-
-      <div className="mb-4.5 flex items-baseline gap-3.5">
-        <h2 className="text-2xl font-extrabold tracking-tight">{t.home.feedTitle}</h2>
-        <Link href={ROUTES.allStories(tab)} className="ml-auto text-[14px] font-semibold">
-          {t.common.all}
-        </Link>
-      </div>
-      {feed.length > 0 ? (
-        <div className="mb-11">
-          <StoryCarousel>
-            {feed.map((story) => (
-              <StoryCard key={story.id} story={story} />
-            ))}
-          </StoryCarousel>
-        </div>
-      ) : (
-        <EmptyRow className="mb-11" />
-      )}
+        );
+      })}
 
       <div className="mb-4.5 flex items-baseline gap-3.5">
         <h2 className="text-2xl font-extrabold tracking-tight">{t.home.weekTitle}</h2>
@@ -290,22 +279,21 @@ async function EmptyRow({ className = "" }: { className?: string }) {
   );
 }
 
-// Matches the tab row + feed grid's approximate shape so replacing it with
-// real content doesn't visibly jump (CLS).
+// Matches the stacked-carousels' approximate shape so replacing it with real
+// content doesn't visibly jump (CLS).
 function HomeSectionsSkeleton() {
   return (
     <div className="animate-pulse">
-      <div className="mb-6 flex gap-2.5">
-        {[0, 1, 2, 3].map((i) => (
-          <div key={i} className="h-10 w-24 shrink-0 rounded-[10px] bg-surface" />
-        ))}
-      </div>
-      <div className="mb-4.5 h-8 w-40 rounded-lg bg-surface" />
-      <div className="grid grid-cols-3 gap-4 sm:gap-5.5 lg:grid-cols-8">
-        {Array.from({ length: 24 }).map((_, i) => (
-          <div key={i} className="aspect-[3/4] rounded-[14px] bg-surface" />
-        ))}
-      </div>
+      {[0, 1].map((row) => (
+        <div key={row} className="mb-11">
+          <div className="mb-4.5 h-8 w-40 rounded-lg bg-surface" />
+          <div className="flex gap-4 overflow-hidden sm:gap-5.5">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} className="aspect-[3/4] w-[118px] shrink-0 rounded-[14px] bg-surface xs:w-[138px] sm:w-[158px] lg:w-[172px]" />
+            ))}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

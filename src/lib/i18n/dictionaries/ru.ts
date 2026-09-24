@@ -50,7 +50,6 @@ const ru = {
     admin: "Админ-панель",
   },
   home: {
-    guestHint: "Гостевой режим: «Для вас» показывает популярное",
     tabs: {
       forYou: "Для вас",
       popular: "Популярное",
@@ -69,7 +68,6 @@ const ru = {
       week: "Неделя",
       month: "Месяц",
     },
-    feedTitle: "Популярное",
     weekTitle: "Новые главы за неделю",
     weekChaptersAddedN: "Добавлено {n} глав(ы)",
     editorialTitle: "Подборки",

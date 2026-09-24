@@ -52,7 +52,6 @@ const uz: typeof ru = {
     admin: "Admin panel",
   },
   home: {
-    guestHint: "Mehmon rejimi: «Siz uchun» mashhurni koʻrsatadi",
     tabs: {
       forYou: "Siz uchun",
       popular: "Mashhur",
@@ -71,7 +70,6 @@ const uz: typeof ru = {
       week: "Hafta",
       month: "Oy",
     },
-    feedTitle: "Mashhur",
     weekTitle: "Hafta yangi boblari",
     weekChaptersAddedN: "{n} ta bob qoʻshildi",
     editorialTitle: "Tanlanmalar",

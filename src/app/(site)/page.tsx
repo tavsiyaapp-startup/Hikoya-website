@@ -70,8 +70,12 @@ export default async function HomePage({
 
   return (
     <div>
+      {/* flex-[3] vs. AnnouncementBoard's flex-1 (in AnnouncementBoard.tsx) —
+          a 3:1 ratio, so the board takes ~25% of the row on any screen
+          rather than a fixed pixel width that'd look disproportionate at
+          very narrow or very wide viewports. */}
       <div className="mb-9.5 flex flex-col gap-4 sm:flex-row">
-        <div className="sm:min-w-0 sm:flex-[2.6]">
+        <div className="sm:min-w-0 sm:flex-[3]">
           <HeroCarousel slides={heroSlides} />
         </div>
         <AnnouncementBoard announcements={announcements} />

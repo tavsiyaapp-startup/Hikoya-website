@@ -6,13 +6,19 @@ import type { Announcement } from "@/types/database";
 // stacked to match the hero's height from sm up, side by side below it on
 // mobile where there's no room next to a full-width hero. Plain, not a
 // link: admin only supplies an image and/or text, no CTA was asked for.
+//
+// Width is a flex-grow share (sm:flex-1 against the hero wrapper's
+// sm:flex-[3] in page.tsx — a 3:1 ratio, ~25% of the row) rather than a
+// fixed pixel width, so it's a percentage of whatever the viewer's own
+// screen gives the row, not a fixed size that looks disproportionate on
+// very narrow or very wide viewports.
 export async function AnnouncementBoard({ announcements }: { announcements: Announcement[] }) {
   if (announcements.length === 0) return null;
 
   const locale = await getServerLocale();
 
   return (
-    <div className="flex gap-4 sm:h-full sm:w-[260px] sm:shrink-0 sm:flex-col lg:w-[300px]">
+    <div className="flex gap-4 sm:h-full sm:min-w-0 sm:flex-1 sm:flex-col">
       {announcements.map((announcement) => {
         const text = locale === "uz" ? announcement.text_uz : announcement.text_ru;
         return (
@@ -21,7 +27,13 @@ export async function AnnouncementBoard({ announcements }: { announcements: Anno
             className="relative min-h-[140px] flex-1 overflow-hidden rounded-[18px] border border-primary-100 bg-linear-to-br from-primary-50 via-[#F6ECFB] to-pink-bg dark:via-[#2A2044]"
           >
             {announcement.image_url && (
-              <Image src={announcement.image_url} alt="" fill sizes="300px" className="object-cover" />
+              <Image
+                src={announcement.image_url}
+                alt=""
+                fill
+                sizes="(max-width: 639px) 50vw, 25vw"
+                className="object-cover"
+              />
             )}
             {text && (
               <div

@@ -66,7 +66,9 @@ export default async function HomePage({
   // element — renders as part of the static shell instead of waiting on the
   // heavier queries below, which is what used to gate every byte of this
   // page behind one shared Promise.all.
-  const [heroSlides, announcements] = await Promise.all([getHeroSlides(), getAnnouncements(2)]);
+  // AnnouncementBoard now paginates in groups of 2 (a vertical carousel) —
+  // no longer capped to the 2 that could be shown at once.
+  const [heroSlides, announcements] = await Promise.all([getHeroSlides(), getAnnouncements(12)]);
 
   return (
     <div>

@@ -81,6 +81,9 @@ export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
 
 // Every slide shares this exact layout so the carousel never changes size
 // between slides — only the fixed h-[...] values below vary by breakpoint.
+// sm:h-90 = 360px is also AnnouncementBoard's fixed sm:h-[360px] (2 stacked
+// announcement cards + the gap between them) — keep these two in sync if
+// either ever changes, so the hero and the board beside it stay level.
 // Title/body are optional: with neither set, the image fills the whole
 // banner instead of sharing it with a text panel. image_url is optional
 // too: without one, the text panel fills the whole banner on the shared

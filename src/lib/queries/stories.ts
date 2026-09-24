@@ -228,9 +228,10 @@ export const getHeroSlides = unstable_cache(
 
 // Small announcement cards next to the hero, managed from
 // /admin/announcements — newest first (unlike hero slides, recency is the
-// point), capped by the caller (the home page only shows 2).
+// point). AnnouncementBoard paginates these 2 at a time as a vertical
+// carousel, so the caller can (and does) fetch more than just 2.
 export const getAnnouncements = unstable_cache(
-  async (limit = 2): Promise<Announcement[]> => {
+  async (limit = 12): Promise<Announcement[]> => {
     try {
       const supabase = createPublicClient();
       const { data } = await supabase

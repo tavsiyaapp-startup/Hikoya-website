@@ -7,6 +7,7 @@ import { getServerLocale } from "@/lib/i18n/locale-server";
 import { getDictionary } from "@/lib/i18n";
 import { ThemeProvider } from "@/lib/ThemeProvider";
 import { getServerTheme } from "@/lib/theme-server";
+import { CookieConsent } from "@/components/layout/CookieConsent";
 
 const manrope = Manrope({
   subsets: ["latin", "cyrillic"],
@@ -35,7 +36,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     <html lang={locale} data-theme={theme} className={`${manrope.variable} ${kaushan.variable}`}>
       <body>
         <ThemeProvider initialTheme={theme}>
-          <LocaleProvider initialLocale={locale}>{children}</LocaleProvider>
+          <LocaleProvider initialLocale={locale}>
+            {children}
+            <CookieConsent />
+          </LocaleProvider>
         </ThemeProvider>
       </body>
       {gaId && <GoogleAnalytics gaId={gaId} />}

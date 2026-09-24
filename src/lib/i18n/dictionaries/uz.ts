@@ -621,10 +621,20 @@ const uz: typeof ru = {
     contactTitle: "Aloqa",
     telegramSupport: "Telegram orqali yordam",
     instagram: "Instagram",
+    legalTitle: "Hujjatlar",
+    privacy: "Maxfiylik siyosati",
+    cookiesPolicy: "Cookie siyosati",
+    offer: "Ommaviy oferta",
   },
   staticPages: {
     placeholder: "Bu sahifaning matni tez orada qoʻshiladi.",
     newsEmpty: "Hozircha yangiliklar yoʻq — keyinroq qayta kiring.",
+  },
+  cookieConsent: {
+    title: "Biz cookie fayllaridan foydalanamiz",
+    body: "Cookie saytning ishlashiga yordam beradi: akkauntga kirishni, interfeys tilini saqlaydi va tashriflar statistikasini toʻplaydi.",
+    learnMore: "Batafsil",
+    accept: "Tushunarli, rozi",
   },
   genres: [
     "Romantika",

@@ -27,6 +27,9 @@ export const ROUTES = {
   rules: "/rules",
   mission: "/mission",
   news: "/news",
+  privacy: "/privacy",
+  cookies: "/cookies",
+  offer: "/offer",
 } as const;
 
 export const GUEST_READ_COOKIE = "hikoya_guest_reads";

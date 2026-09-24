@@ -619,10 +619,20 @@ const ru = {
     contactTitle: "Связь",
     telegramSupport: "Поддержка в Telegram",
     instagram: "Instagram",
+    legalTitle: "Документы",
+    privacy: "Политика конфиденциальности",
+    cookiesPolicy: "Политика использования cookie",
+    offer: "Публичная оферта",
   },
   staticPages: {
     placeholder: "Текст этой страницы скоро появится.",
     newsEmpty: "Пока новостей нет — загляните позже.",
+  },
+  cookieConsent: {
+    title: "Мы используем cookie",
+    body: "Cookie помогают сайту работать: хранят вход в аккаунт, язык интерфейса и собирают статистику посещений.",
+    learnMore: "Подробнее",
+    accept: "Хорошо, понятно",
   },
   genres: [
     "Романтика",

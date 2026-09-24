@@ -38,6 +38,19 @@ export function Footer() {
           </div>
 
           <div className="flex flex-col gap-2.5">
+            <div className="text-[12px] font-bold uppercase tracking-wide text-muted-3">{t.footer.legalTitle}</div>
+            <Link href={ROUTES.privacy} className="text-[13.5px] font-semibold text-ink-soft transition hover:text-primary-800">
+              {t.footer.privacy}
+            </Link>
+            <Link href={ROUTES.cookies} className="text-[13.5px] font-semibold text-ink-soft transition hover:text-primary-800">
+              {t.footer.cookiesPolicy}
+            </Link>
+            <Link href={ROUTES.offer} className="text-[13.5px] font-semibold text-ink-soft transition hover:text-primary-800">
+              {t.footer.offer}
+            </Link>
+          </div>
+
+          <div className="flex flex-col gap-2.5">
             <div className="text-[12px] font-bold uppercase tracking-wide text-muted-3">{t.footer.contactTitle}</div>
             <a
               href={TELEGRAM_SUPPORT_URL}

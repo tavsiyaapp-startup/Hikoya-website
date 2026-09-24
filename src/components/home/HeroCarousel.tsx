@@ -29,7 +29,10 @@ export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
   if (total === 0) return null;
 
   return (
-    <section className="relative mb-9.5 overflow-hidden rounded-[26px]">
+    // mb-9.5 lives on the wrapping row in page.tsx now, not here — the hero
+    // no longer always owns the full row by itself (AnnouncementBoard can
+    // sit beside it).
+    <section className="relative overflow-hidden rounded-[26px]">
       <div className="flex transition-transform duration-500 ease-out" style={{ transform: `translateX(-${index * 100}%)` }}>
         {slides.map((slide, i) => (
           <div key={slide.id} className="w-full shrink-0">

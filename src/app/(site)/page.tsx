@@ -11,12 +11,14 @@ import {
   getFeaturedCollections,
   getRecentPublishedChapters,
   getHeroSlides,
+  getAnnouncements,
   // getTopStories, // TODO: re-enable along with the "Топ" section below
 } from "@/lib/queries/stories";
 import { StoryCard } from "@/components/story/StoryCard";
 import { StoryCarousel } from "@/components/story/StoryCarousel";
 import { CollectionCard } from "@/components/collections/CollectionCard";
 import { HeroCarousel } from "@/components/home/HeroCarousel";
+import { AnnouncementBoard } from "@/components/home/AnnouncementBoard";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Chip";
 import { Pagination } from "@/components/ui/Pagination";
@@ -59,16 +61,21 @@ export default async function HomePage({
 
   const collectionsPage = toPage(rawCollectionsPage);
 
-  // Hero data is a single small, 60s-cached query — fetched and awaited
-  // directly (not behind Suspense) so the hero — the page's LCP element —
-  // renders as part of the static shell instead of waiting on the five
+  // Hero + announcements are both small, 60s-cached queries — fetched and
+  // awaited directly (not behind Suspense) so this region — the page's LCP
+  // element — renders as part of the static shell instead of waiting on the
   // heavier queries below, which is what used to gate every byte of this
   // page behind one shared Promise.all.
-  const heroSlides = await getHeroSlides();
+  const [heroSlides, announcements] = await Promise.all([getHeroSlides(), getAnnouncements(2)]);
 
   return (
     <div>
-      <HeroCarousel slides={heroSlides} />
+      <div className="mb-9.5 flex flex-col gap-4 sm:flex-row">
+        <div className="sm:min-w-0 sm:flex-[2.6]">
+          <HeroCarousel slides={heroSlides} />
+        </div>
+        <AnnouncementBoard announcements={announcements} />
+      </div>
 
       <Suspense fallback={<HomeSectionsSkeleton />}>
         <HomeSections user={user} t={t} collectionsPage={collectionsPage} />

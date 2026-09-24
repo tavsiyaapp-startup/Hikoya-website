@@ -1,6 +1,6 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
-import type { Chapter, Story, StoryTopTier, HeroSlide } from "@/types/database";
+import type { Chapter, Story, StoryTopTier, HeroSlide, Announcement } from "@/types/database";
 
 // Admin panel reads always use the service-role client — staff need to see
 // everything regardless of RLS (draft stories, all users).
@@ -271,6 +271,16 @@ export async function getAllHeroSlidesAdmin(): Promise<HeroSlide[]> {
     const admin = createAdminClient();
     const { data } = await admin.from("hero_slides").select("*").order("created_at", { ascending: true });
     return (data as HeroSlide[]) ?? [];
+  } catch {
+    return [];
+  }
+}
+
+export async function getAllAnnouncementsAdmin(): Promise<Announcement[]> {
+  try {
+    const admin = createAdminClient();
+    const { data } = await admin.from("announcements").select("*").order("created_at", { ascending: false });
+    return (data as Announcement[]) ?? [];
   } catch {
     return [];
   }

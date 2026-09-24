@@ -322,6 +322,52 @@ export async function deleteHeroSlide(slideId: string) {
   revalidatePath(ROUTES.home);
 }
 
+function readAnnouncementFields(formData: FormData) {
+  const textRu = String(formData.get("textRu") ?? "").trim();
+  const textUz = String(formData.get("textUz") ?? "").trim();
+  const imageUrl = String(formData.get("imageUrl") ?? "").trim();
+  return {
+    text_ru: textRu || null,
+    text_uz: textUz || null,
+    image_url: imageUrl || null,
+  };
+}
+
+export async function createAnnouncement(formData: FormData) {
+  await requireStaff();
+  const admin = createAdminClient();
+  const fields = readAnnouncementFields(formData);
+  if (!fields.image_url && !fields.text_ru && !fields.text_uz) return;
+
+  await admin.from("announcements").insert(fields);
+
+  updateTag("announcements");
+  revalidatePath(`${ROUTES.admin}/announcements`);
+  revalidatePath(ROUTES.home);
+}
+
+export async function updateAnnouncement(announcementId: string, formData: FormData) {
+  await requireStaff();
+  const admin = createAdminClient();
+  const fields = readAnnouncementFields(formData);
+  if (!fields.image_url && !fields.text_ru && !fields.text_uz) return;
+
+  await admin.from("announcements").update(fields).eq("id", announcementId);
+
+  updateTag("announcements");
+  revalidatePath(`${ROUTES.admin}/announcements`);
+  revalidatePath(ROUTES.home);
+}
+
+export async function deleteAnnouncement(announcementId: string) {
+  await requireStaff();
+  const admin = createAdminClient();
+  await admin.from("announcements").delete().eq("id", announcementId);
+  updateTag("announcements");
+  revalidatePath(`${ROUTES.admin}/announcements`);
+  revalidatePath(ROUTES.home);
+}
+
 // Replace-all, same pattern as updateCollectionAdmin's collection_items —
 // simplest correct way to sync a set from a checkbox list with no ordering.
 export async function updateUserAchievements(userId: string, achievementIds: string[]) {

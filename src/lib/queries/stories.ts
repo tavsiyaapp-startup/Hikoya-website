@@ -6,7 +6,7 @@ import { createPublicClient } from "@/lib/supabase/public";
 import { getCurrentUser } from "@/lib/current-user";
 import { genreVariants } from "@/lib/genre";
 import type { HomeTab } from "@/lib/homeTabs";
-import type { Story, Chapter, Collection, Profile, StoryTopTier, HeroSlide } from "@/types/database";
+import type { Story, Chapter, Collection, Profile, StoryTopTier, HeroSlide, Announcement } from "@/types/database";
 
 // Every query here tolerates an unreachable Supabase project (placeholder
 // .env.local before a real project is wired up) by returning an empty
@@ -224,6 +224,27 @@ export const getHeroSlides = unstable_cache(
   },
   ["hero-slides"],
   { revalidate: CACHE_SECONDS, tags: ["hero-slides"] }
+);
+
+// Small announcement cards next to the hero, managed from
+// /admin/announcements — newest first (unlike hero slides, recency is the
+// point), capped by the caller (the home page only shows 2).
+export const getAnnouncements = unstable_cache(
+  async (limit = 2): Promise<Announcement[]> => {
+    try {
+      const supabase = createPublicClient();
+      const { data } = await supabase
+        .from("announcements")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(limit);
+      return (data as Announcement[]) ?? [];
+    } catch {
+      return [];
+    }
+  },
+  ["announcements"],
+  { revalidate: CACHE_SECONDS, tags: ["announcements"] }
 );
 
 // Staff-pinned stories for the homepage's Топ дня/недели/месяца section

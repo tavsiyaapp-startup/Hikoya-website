@@ -213,6 +213,14 @@ export interface HeroSlide {
   created_at: string;
 }
 
+export interface Announcement {
+  id: string;
+  image_url: string | null;
+  text_ru: string | null;
+  text_uz: string | null;
+  created_at: string;
+}
+
 export interface Request {
   id: string;
   target_author_id: string | null;

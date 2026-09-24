@@ -386,6 +386,19 @@ create table hero_slides (
   created_at timestamptz not null default now()
 );
 
+-- ── карточки объявлений рядом с баннером на главной ─────────────────────────
+-- добавлено в 0048, /admin/announcements. Проще hero_slides: одна картинка,
+-- без CTA. На главной показываются только 2 самых новых (created_at desc) —
+-- сколько угодно можно хранить, старые просто не попадают в выдачу.
+
+create table announcements (
+  id uuid primary key default gen_random_uuid(),
+  image_url text,
+  text_ru text,
+  text_uz text,
+  created_at timestamptz not null default now()
+);
+
 -- ── настройки платформы (одна строка на весь проект) ────────────────────────
 
 create table platform_settings (
@@ -868,6 +881,11 @@ alter table hero_slides enable row level security;
 create policy "hero_slides are publicly readable" on hero_slides for select using (true);
 create policy "staff manage hero_slides" on hero_slides for all using (is_staff()) with check (is_staff());
 
+-- announcements
+alter table announcements enable row level security;
+create policy "announcements are publicly readable" on announcements for select using (true);
+create policy "staff manage announcements" on announcements for all using (is_staff()) with check (is_staff());
+
 -- =============================================================================
 -- STORAGE (файловое хранилище)
 -- =============================================================================
@@ -929,6 +947,22 @@ create policy "staff upload hero slide images" on storage.objects for insert wit
 );
 create policy "staff delete hero slide images" on storage.objects for delete using (
   bucket_id = 'hero-slides' and is_staff()
+);
+
+-- добавлено в 0048: изображения для карточек объявлений рядом с баннером
+-- (announcements, /admin/announcements) — тот же сайтовый-ресурс паттерн,
+-- что и hero-slides выше.
+insert into storage.buckets (id, name, public) values ('announcements', 'announcements', true)
+on conflict (id) do nothing;
+
+create policy "announcement images are publicly readable" on storage.objects for select using (
+  bucket_id = 'announcements'
+);
+create policy "staff upload announcement images" on storage.objects for insert with check (
+  bucket_id = 'announcements' and is_staff()
+);
+create policy "staff delete announcement images" on storage.objects for delete using (
+  bucket_id = 'announcements' and is_staff()
 );
 
 -- =============================================================================
@@ -1427,3 +1461,11 @@ on conflict (code) do nothing;
 --   отдельно, а не выводится из identities. Существующие аккаунты
 --   бэкафилены как false: ложноположительный повторный запрос пароля у
 --   тех, кто его уже ставил, безвреден, а надёжно отличить их нельзя.
+-- [2026-09-24] Таблица announcements + бакет announcements (миграция 0048,
+--   /admin/announcements). Небольшие карточки (картинка и/или текст,
+--   ru/uz, без CTA) рядом с баннером на главной — на публичной странице
+--   показываются только 2 самых новых (created_at desc), баннер под них
+--   стал уже (src/app/(site)/page.tsx оборачивает HeroCarousel и новый
+--   AnnouncementBoard в общий flex-ряд; HeroCarousel больше не задаёт
+--   себе mb-9.5 сам — теперь это на обёртке). Та же схема RLS/бакета, что
+--   у hero_slides (0023), просто без title/CTA полей.

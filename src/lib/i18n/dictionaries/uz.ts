@@ -634,7 +634,7 @@ const uz: typeof ru = {
     title: "Biz cookie fayllaridan foydalanamiz",
     body: "Cookie saytning ishlashiga yordam beradi: akkauntga kirishni, interfeys tilini saqlaydi va tashriflar statistikasini toʻplaydi.",
     learnMore: "Batafsil",
-    accept: "Tushunarli, rozi",
+    accept: "Tushunarli, roziman",
   },
   genres: [
     "Romantika",

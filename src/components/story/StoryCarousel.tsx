@@ -23,8 +23,10 @@ export function StoryCarousel({ children }: { children: React.ReactNode }) {
           (-top-3.5). Setting overflow-x without an explicit overflow-y makes
           the browser treat overflow-y as auto too (CSS overflow spec), which
           was clipping that ribbon against the track's own top edge — this
-          padding gives it room to render instead of being cut off. */}
-      <div ref={trackRef} className="no-scrollbar flex gap-4 overflow-x-auto scroll-smooth pt-4 sm:gap-5.5">
+          padding gives it room to render instead of being cut off. pl-2: the
+          same ribbon also pokes 4px left of the first card (-left-1) — with
+          no left padding that got clipped by the track's own left edge too. */}
+      <div ref={trackRef} className="no-scrollbar flex gap-4 overflow-x-auto scroll-smooth pl-2 pt-4 sm:gap-5.5">
         {items.map((child, i) => (
           <div key={i} className="w-[118px] shrink-0 xs:w-[138px] sm:w-[158px] lg:w-[172px]">
             {child}

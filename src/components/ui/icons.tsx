@@ -210,6 +210,14 @@ export function SparkleIcon(props: IconProps) {
   );
 }
 
+export function MenuIcon(props: IconProps) {
+  return (
+    <svg {...base(22)} {...props}>
+      <path d="M4 6h16M4 12h16M4 18h16" />
+    </svg>
+  );
+}
+
 export function AlignLeftIcon(props: IconProps) {
   return (
     <svg {...base(16)} {...props}>

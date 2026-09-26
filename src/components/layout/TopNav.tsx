@@ -113,87 +113,60 @@ export function TopNav({ user }: { user: CurrentUser | null }) {
         </div>
       </nav>
 
-      {!mobileOpen && (
-        <button
-          type="button"
-          onClick={() => setMobileOpen(true)}
-          aria-label={t.nav.home}
-          className="fixed bottom-5 right-4 z-30 flex h-13 w-13 cursor-pointer items-center justify-center rounded-full bg-linear-to-br from-[#6D28D9] to-[#9333EA] text-white shadow-[0_10px_24px_rgba(109,40,217,0.35)] transition hover:brightness-110 sm:hidden"
-        >
-          <MenuIcon />
-        </button>
-      )}
-
       {mobileOpen && (
         <div
           onClick={() => setMobileOpen(false)}
-          className="fixed inset-0 z-30 bg-black/40 sm:hidden"
+          className="fixed inset-0 z-30 bg-black/30 sm:hidden"
           aria-hidden
         />
       )}
 
-      <aside
-        className={clsx(
-          "fixed inset-y-0 left-0 z-40 flex w-[248px] flex-col overflow-y-auto border-r border-border bg-card px-3.5 py-5 transition-transform duration-200 sm:hidden",
-          mobileOpen ? "translate-x-0" : "-translate-x-full"
-        )}
+      {/* Speed-dial style: items pop up directly above the FAB itself
+          instead of a side drawer. Always rendered (not conditionally
+          mounted) so the closed state can transition out instead of
+          just vanishing; bottom offset is per-item math (FAB height +
+          gap, then each pill's own height + gap), closest item first. */}
+      {items.map((item, i) => {
+        const active = pathname === item.href.split("?")[0];
+        return (
+          <Link
+            key={item.label}
+            href={item.href}
+            onClick={() => setMobileOpen(false)}
+            title={item.locked ? t.common.guestLockedTitle : undefined}
+            style={{ bottom: `${86 + i * 54}px` }}
+            className={clsx(
+              "fixed right-4 z-30 flex h-11 shrink-0 items-center gap-2.5 whitespace-nowrap rounded-full border border-border bg-card py-0 pl-3 pr-4.5 text-[13.5px] font-bold shadow-[0_8px_20px_rgba(30,20,60,0.18)] transition-all duration-200 sm:hidden",
+              active ? "text-primary-900" : "text-ink-soft",
+              mobileOpen ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-2.5 opacity-0"
+            )}
+          >
+            <span
+              className={clsx(
+                "flex h-7 w-7 shrink-0 items-center justify-center rounded-full",
+                active ? "bg-primary-100 text-primary-800" : "bg-surface text-ink-soft"
+              )}
+            >
+              <item.icon width={15} height={15} />
+            </span>
+            {item.label}
+            {item.locked && (
+              <span className="flex items-center text-muted-3">
+                <LockIcon />
+              </span>
+            )}
+          </Link>
+        );
+      })}
+
+      <button
+        type="button"
+        onClick={() => setMobileOpen((v) => !v)}
+        aria-label={t.nav.home}
+        className="fixed bottom-5 right-4 z-30 flex h-13 w-13 cursor-pointer items-center justify-center rounded-full bg-linear-to-br from-[#6D28D9] to-[#9333EA] text-white shadow-[0_10px_24px_rgba(109,40,217,0.35)] transition hover:brightness-110 sm:hidden"
       >
-        <button
-          onClick={() => setMobileOpen(false)}
-          className="mb-4.5 flex h-10 w-full cursor-pointer items-center justify-center gap-2 rounded-[11px] border border-border bg-surface text-ink-soft transition hover:bg-primary-50"
-        >
-          <CloseIcon />
-        </button>
-
-        <nav className="flex flex-col gap-1">
-          {items.map((item) => {
-            const active = pathname === item.href.split("?")[0];
-            return (
-              <Link
-                key={item.label}
-                href={item.href}
-                onClick={() => setMobileOpen(false)}
-                title={item.locked ? t.common.guestLockedTitle : undefined}
-                className={clsx(
-                  "flex h-11 items-center gap-3 rounded-[12px] px-3 text-[14px] font-semibold transition",
-                  active ? "bg-primary-50 text-primary-900" : "text-ink-soft hover:bg-surface"
-                )}
-              >
-                <span className="flex h-[22px] w-[22px] shrink-0 items-center justify-center">
-                  <item.icon />
-                </span>
-                <span className="overflow-hidden whitespace-nowrap">{item.label}</span>
-                {item.locked && (
-                  <span className="ml-auto flex items-center text-muted-3">
-                    <LockIcon />
-                  </span>
-                )}
-              </Link>
-            );
-          })}
-        </nav>
-
-        <div className="mt-4 flex items-center gap-1.5 border-t border-border-soft pt-4">
-          <a
-            href={INSTAGRAM_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label="Instagram"
-            className="flex h-9 w-9 items-center justify-center rounded-[11px] text-ink-soft transition hover:bg-surface"
-          >
-            <InstagramIcon width={17} height={17} />
-          </a>
-          <a
-            href={TELEGRAM_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label="Telegram"
-            className="flex h-9 w-9 items-center justify-center rounded-[11px] text-ink-soft transition hover:bg-surface"
-          >
-            <SendIcon width={17} height={17} />
-          </a>
-        </div>
-      </aside>
+        {mobileOpen ? <CloseIcon /> : <MenuIcon />}
+      </button>
     </>
   );
 }

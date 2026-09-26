@@ -11,14 +11,21 @@ import {
   CloseIcon,
   CollectionsIcon,
   HomeIcon,
+  InstagramIcon,
   LibraryIcon,
   LockIcon,
   MenuIcon,
   PlusIcon,
   SearchIcon,
+  SendIcon,
   UserIcon,
 } from "@/components/ui/icons";
 import type { CurrentUser } from "@/lib/current-user";
+
+// Same site accounts already linked from the Footer — icon-only here, no
+// label, since this bar is otherwise all primary site navigation.
+const INSTAGRAM_URL = "https://www.instagram.com/hikoya.yoz?stkn=Z2ZweDlvNjVvb2Nm";
+const TELEGRAM_URL = "https://t.me/hikoya_yoz";
 
 export function TopNav({ user }: { user: CurrentUser | null }) {
   const { t } = useLocale();
@@ -61,36 +68,59 @@ export function TopNav({ user }: { user: CurrentUser | null }) {
           </button>
         </div>
 
-        <div className="hidden overflow-x-auto px-5 sm:block lg:px-8">
+        <div className="hidden items-center px-5 sm:flex lg:px-8">
           {/* w-fit + mx-auto (not justify-center) so the item group stays
               centered when it fits, but on narrow screens where it overflows,
               auto margins collapse to 0 and both ends stay reachable by
               scroll — justify-center would clip the start on overflow. */}
-          <div className="mx-auto flex w-fit gap-1 py-2">
-            {items.map((item) => {
-              const active = pathname === item.href.split("?")[0];
-              return (
-                <Link
-                  key={item.label}
-                  href={item.href}
-                  title={item.locked ? t.common.guestLockedTitle : undefined}
-                  className={clsx(
-                    "flex h-11 shrink-0 items-center gap-2 whitespace-nowrap rounded-[12px] px-3.5 text-[14px] font-semibold transition",
-                    active ? "bg-primary-50 text-primary-900" : "text-ink-soft hover:bg-surface"
-                  )}
-                >
-                  <span className="flex h-[20px] w-[20px] shrink-0 items-center justify-center">
-                    <item.icon />
-                  </span>
-                  <span>{item.label}</span>
-                  {item.locked && (
-                    <span className="flex items-center text-muted-3">
-                      <LockIcon />
+          <div className="min-w-0 flex-1 overflow-x-auto">
+            <div className="mx-auto flex w-fit gap-1 py-2">
+              {items.map((item) => {
+                const active = pathname === item.href.split("?")[0];
+                return (
+                  <Link
+                    key={item.label}
+                    href={item.href}
+                    title={item.locked ? t.common.guestLockedTitle : undefined}
+                    className={clsx(
+                      "flex h-11 shrink-0 items-center gap-2 whitespace-nowrap rounded-[12px] px-3.5 text-[14px] font-semibold transition",
+                      active ? "bg-primary-50 text-primary-900" : "text-ink-soft hover:bg-surface"
+                    )}
+                  >
+                    <span className="flex h-[20px] w-[20px] shrink-0 items-center justify-center">
+                      <item.icon />
                     </span>
-                  )}
-                </Link>
-              );
-            })}
+                    <span>{item.label}</span>
+                    {item.locked && (
+                      <span className="flex items-center text-muted-3">
+                        <LockIcon />
+                      </span>
+                    )}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="ml-2 flex shrink-0 items-center gap-1.5 border-l border-border-soft pl-3">
+            <a
+              href={INSTAGRAM_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Instagram"
+              className="flex h-9 w-9 items-center justify-center rounded-[11px] text-ink-soft transition hover:bg-surface"
+            >
+              <InstagramIcon width={17} height={17} />
+            </a>
+            <a
+              href={TELEGRAM_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Telegram"
+              className="flex h-9 w-9 items-center justify-center rounded-[11px] text-ink-soft transition hover:bg-surface"
+            >
+              <SendIcon width={17} height={17} />
+            </a>
           </div>
         </div>
       </nav>
@@ -143,6 +173,27 @@ export function TopNav({ user }: { user: CurrentUser | null }) {
             );
           })}
         </nav>
+
+        <div className="mt-4 flex items-center gap-1.5 border-t border-border-soft pt-4">
+          <a
+            href={INSTAGRAM_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Instagram"
+            className="flex h-9 w-9 items-center justify-center rounded-[11px] text-ink-soft transition hover:bg-surface"
+          >
+            <InstagramIcon width={17} height={17} />
+          </a>
+          <a
+            href={TELEGRAM_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Telegram"
+            className="flex h-9 w-9 items-center justify-center rounded-[11px] text-ink-soft transition hover:bg-surface"
+          >
+            <SendIcon width={17} height={17} />
+          </a>
+        </div>
       </aside>
     </>
   );

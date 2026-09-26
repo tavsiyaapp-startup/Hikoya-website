@@ -22,7 +22,7 @@ import { NotificationList } from "@/components/notifications/NotificationList";
 import { CloseRequestButton } from "@/components/board/CloseRequestButton";
 import { CollectionCard } from "@/components/collections/CollectionCard";
 import { ChatWithAdminButton } from "@/components/chat/ChatWithAdminButton";
-import { VerifiedIcon, SparkleIcon } from "@/components/ui/icons";
+import { VerifiedIcon, SparkleIcon, InstagramIcon, SendIcon } from "@/components/ui/icons";
 
 const TABS = ["stories", "collections", "myRequests", "notifications"] as const;
 type Tab = (typeof TABS)[number];
@@ -78,6 +78,32 @@ export default async function AuthorPage({
             )}
           </h1>
           {profile.bio && <p className="mb-4 max-w-155 text-[15px] leading-relaxed text-ink-soft">{profile.bio}</p>}
+          {(profile.instagram_handle || profile.telegram_handle) && (
+            <div className="mb-4.5 flex items-center gap-2.5">
+              {profile.instagram_handle && (
+                <a
+                  href={`https://instagram.com/${profile.instagram_handle}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title={`Instagram: @${profile.instagram_handle}`}
+                  className="flex h-9 w-9 items-center justify-center rounded-[11px] border border-border bg-surface text-ink-soft transition hover:border-primary-300 hover:text-primary-800"
+                >
+                  <InstagramIcon width={17} height={17} />
+                </a>
+              )}
+              {profile.telegram_handle && (
+                <a
+                  href={`https://t.me/${profile.telegram_handle}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title={`Telegram: @${profile.telegram_handle}`}
+                  className="flex h-9 w-9 items-center justify-center rounded-[11px] border border-border bg-surface text-ink-soft transition hover:border-primary-300 hover:text-primary-800"
+                >
+                  <SendIcon width={17} height={17} />
+                </a>
+              )}
+            </div>
+          )}
           <div className="mb-4.5 flex flex-wrap gap-6 sm:gap-8.5">
             {stats.map((s) => (
               <div key={s.label}>
@@ -133,6 +159,8 @@ export default async function AuthorPage({
             avatarUrl={profile.avatar_url}
             email={user?.email ?? null}
             bio={profile.bio}
+            instagramHandle={profile.instagram_handle}
+            telegramHandle={profile.telegram_handle}
           />
         </div>
       )}

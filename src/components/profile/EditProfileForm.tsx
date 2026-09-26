@@ -24,6 +24,8 @@ export function EditProfileForm({
   avatarUrl,
   email,
   bio,
+  instagramHandle,
+  telegramHandle,
 }: {
   userId: string;
   username: string;
@@ -31,6 +33,8 @@ export function EditProfileForm({
   avatarUrl: string | null;
   email: string | null;
   bio: string | null;
+  instagramHandle: string | null;
+  telegramHandle: string | null;
 }) {
   const { t } = useLocale();
   const { theme, setTheme } = useTheme();
@@ -162,6 +166,27 @@ export function EditProfileForm({
       <div>
         <label className="mb-1.5 block text-[13px] font-bold">{t.profile.bioLabel}</label>
         <Textarea name="bio" defaultValue={bio ?? ""} placeholder={t.profile.bioPlaceholder} rows={3} />
+      </div>
+
+      <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
+        <div>
+          <label className="mb-1.5 block text-[13px] font-bold">
+            {t.profile.instagramLabel} <span className="font-medium text-muted-2">{t.common.optional}</span>
+          </label>
+          <div className="relative">
+            <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[15px] text-muted-2">@</span>
+            <Input name="instagramHandle" defaultValue={instagramHandle ?? ""} placeholder="username" className="pl-8" />
+          </div>
+        </div>
+        <div>
+          <label className="mb-1.5 block text-[13px] font-bold">
+            {t.profile.telegramLabel} <span className="font-medium text-muted-2">{t.common.optional}</span>
+          </label>
+          <div className="relative">
+            <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[15px] text-muted-2">@</span>
+            <Input name="telegramHandle" defaultValue={telegramHandle ?? ""} placeholder="username" className="pl-8" />
+          </div>
+        </div>
       </div>
 
       <div>

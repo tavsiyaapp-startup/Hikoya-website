@@ -43,6 +43,8 @@ export interface Profile {
   onboarded_at: string | null;
   is_verified: boolean;
   has_password: boolean;
+  instagram_handle: string | null;
+  telegram_handle: string | null;
   created_at: string;
 }
 

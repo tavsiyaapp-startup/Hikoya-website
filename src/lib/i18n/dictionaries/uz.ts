@@ -3,6 +3,7 @@ import type ru from "./ru";
 const uz: typeof ru = {
   common: {
     brand: "Hikoya",
+    optional: "(ixtiyoriy)",
     search: "Qidiruv",
     searchPlaceholder: "Nom, muallif, teglar boʻyicha qidiruv…",
     login: "Kirish",
@@ -282,6 +283,8 @@ const uz: typeof ru = {
     displayNameLabel: "Koʻrsatiladigan ism",
     bioLabel: "Oʻzim haqimda",
     bioPlaceholder: "Oʻzingiz va hikoyalaringiz haqida qisqacha yozing…",
+    instagramLabel: "Instagram",
+    telegramLabel: "Telegram",
     avatarError: "Rasmni yuklab boʻlmadi. Qaytadan urinib koʻring.",
     emailLabel: "Email",
     emailHint: "Akkauntga kirish uchun ishlatiladi.",

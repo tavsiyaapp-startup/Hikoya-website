@@ -54,6 +54,8 @@ create table profiles (
   onboarded_at timestamptz,         -- добавлено в 0006: отметка "прошёл онбординг"
   is_verified boolean not null default false,   -- добавлено в 0021: галочка "Верифицирован", ставит staff вручную
   has_password boolean not null default false,  -- добавлено в 0047: пароль реально установлен (не только email/OAuth), см. changelog
+  instagram_handle text,   -- добавлено в 0049: необязательный юзернейм, не полная ссылка
+  telegram_handle text,    -- добавлено в 0049: необязательный юзернейм, не полная ссылка
   created_at timestamptz not null default now()
 );
 
@@ -1469,3 +1471,10 @@ on conflict (code) do nothing;
 --   AnnouncementBoard в общий flex-ряд; HeroCarousel больше не задаёт
 --   себе mb-9.5 сам — теперь это на обёртке). Та же схема RLS/бакета, что
 --   у hero_slides (0023), просто без title/CTA полей.
+-- [2026-09-26] profiles.instagram_handle / telegram_handle (миграция 0049)
+--   — пользователь по желанию указывает свои соцсети в EditProfileForm
+--   (просто юзернейм, не ссылку целиком — ссылка собирается на странице
+--   автора: instagram.com/{handle}, t.me/{handle}). Иконка на странице
+--   автора рендерится только если поле заполнено. Отдельно от этого,
+--   TopNav теперь несёт две иконки-ссылки (без подписи) на соцсети самого
+--   сайта (Instagram/Telegram), те же адреса, что уже в Footer.

@@ -1,6 +1,7 @@
 const ru = {
   common: {
     brand: "Hikoya",
+    optional: "(необязательно)",
     search: "Поиск",
     searchPlaceholder: "Поиск по названию, автору, тегам…",
     login: "Войти",
@@ -280,6 +281,8 @@ const ru = {
     displayNameLabel: "Отображаемое имя",
     bioLabel: "О себе",
     bioPlaceholder: "Расскажите немного о себе и своих историях…",
+    instagramLabel: "Instagram",
+    telegramLabel: "Telegram",
     avatarError: "Не удалось загрузить фото. Попробуйте ещё раз.",
     emailLabel: "Email",
     emailHint: "Используется для входа в аккаунт.",

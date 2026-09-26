@@ -81,14 +81,15 @@ export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
 
 // Every slide shares this exact layout so the carousel never changes size
 // between slides — only the fixed h-[...] values below vary by breakpoint.
-// h-[128px] below sm and sm:h-[300px] both match AnnouncementBoard's own
-// fixed heights at the same breakpoints (2 stacked/side-by-side cards +
-// the gap between them) — keep these in sync if either ever changes, so
-// the hero and the board stay the same height as each other, stacked or
-// side by side. The mobile height is tight for a hasText && hasImage
-// slide (title/body text panels already scroll internally via
-// overflow-y-auto if they don't fit; the image height below is shrunk to
-// leave it room).
+// sm:h-[300px] matches AnnouncementBoard's own fixed sm:h-[300px] (2
+// stacked cards + the gap between them) — keep these two in sync if either
+// ever changes, so the hero and the board stay level side by side. Below
+// sm the hero and board aren't side by side (board moves below it), so
+// h-[192px] is deliberately not a 1:1 match to the board's own h-[128px]
+// mobile height — it's 1.5x that on purpose. The mobile height is still
+// tight for a hasText && hasImage slide (title/body text panels already
+// scroll internally via overflow-y-auto if they don't fit; the image
+// height below is shrunk to leave it room).
 // Title/body are optional: with neither set, the image fills the whole
 // banner instead of sharing it with a text panel. image_url is optional
 // too: without one, the text panel fills the whole banner on the shared
@@ -103,7 +104,7 @@ function Slide({ slide, locale, isFirst }: { slide: HeroSlide; locale: "ru" | "u
   const hasImage = Boolean(slide.image_url);
 
   return (
-    <div className="flex h-[128px] flex-col border border-primary-100 bg-linear-to-br from-primary-50 via-[#F6ECFB] to-pink-bg dark:via-[#2A2044] sm:h-[300px] sm:flex-row">
+    <div className="flex h-[192px] flex-col border border-primary-100 bg-linear-to-br from-primary-50 via-[#F6ECFB] to-pink-bg dark:via-[#2A2044] sm:h-[300px] sm:flex-row">
       {hasText && !hasImage && (
         // Photo-less slide = a personal note, not a promo blurb — dressed up
         // like an actual letter: a soft floating card instead of bare text
@@ -162,7 +163,7 @@ function Slide({ slide, locale, isFirst }: { slide: HeroSlide; locale: "ru" | "u
         <div
           className={clsx(
             "relative w-full",
-            hasText ? "h-14 sm:h-full sm:w-[46%]" : "h-full w-full"
+            hasText ? "h-20 sm:h-full sm:w-[46%]" : "h-full w-full"
           )}
         >
           {/* Separate mobile/desktop sources, swapped by breakpoint (same sm

@@ -51,24 +51,12 @@ export function TopNav({ user }: { user: CurrentUser | null }) {
     <>
       {/* z-20, same tier as Header: in-page content (e.g. StoryCard's status
           ribbon) uses z-10, and with equal z-index the later-in-DOM content
-          would paint over this sticky bar once it scrolls underneath it. */}
-      <nav className="sticky top-[64px] z-20 border-b border-border bg-card/92 backdrop-blur-md sm:top-[76px]">
-        {/* Below sm, a horizontally-scrolled row of 7 labeled items was too
-            cramped — a hamburger opening the same items as a vertical list
-            reads better at phone width. From sm up, screen is wide enough
-            for the row itself, no drawer needed. */}
-        <div className="flex h-13 items-center px-3 sm:hidden">
-          <button
-            type="button"
-            onClick={() => setMobileOpen(true)}
-            aria-label={t.nav.home}
-            className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-[12px] text-ink-soft transition hover:bg-surface"
-          >
-            <MenuIcon />
-          </button>
-        </div>
-
-        <div className="hidden items-center px-5 sm:flex lg:px-8">
+          would paint over this sticky bar once it scrolls underneath it.
+          Below sm this bar doesn't render at all (hidden sm:block) — the
+          drawer opens from the floating button instead, so there's nothing
+          left to put in a mobile-width row here. */}
+      <nav className="sticky top-[76px] z-20 hidden border-b border-border bg-card/92 backdrop-blur-md sm:block">
+        <div className="flex items-center px-5 lg:px-8">
           {/* w-fit + mx-auto (not justify-center) so the item group stays
               centered when it fits, but on narrow screens where it overflows,
               auto margins collapse to 0 and both ends stay reachable by
@@ -124,6 +112,17 @@ export function TopNav({ user }: { user: CurrentUser | null }) {
           </div>
         </div>
       </nav>
+
+      {!mobileOpen && (
+        <button
+          type="button"
+          onClick={() => setMobileOpen(true)}
+          aria-label={t.nav.home}
+          className="fixed bottom-5 right-4 z-30 flex h-13 w-13 cursor-pointer items-center justify-center rounded-full bg-linear-to-br from-[#6D28D9] to-[#9333EA] text-white shadow-[0_10px_24px_rgba(109,40,217,0.35)] transition hover:brightness-110 sm:hidden"
+        >
+          <MenuIcon />
+        </button>
+      )}
 
       {mobileOpen && (
         <div

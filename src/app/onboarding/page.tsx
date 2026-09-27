@@ -5,9 +5,9 @@ import { OnboardingWizard } from "./OnboardingWizard";
 export default async function OnboardingPage({
   searchParams,
 }: {
-  searchParams: Promise<{ next?: string }>;
+  searchParams: Promise<{ next?: string; error?: string }>;
 }) {
-  const { next = "/" } = await searchParams;
+  const { next = "/", error } = await searchParams;
   const user = await getCurrentUser();
 
   if (user?.profile?.onboarded_at) {
@@ -22,6 +22,7 @@ export default async function OnboardingPage({
       initialDisplayName={user?.profile?.display_name ?? ""}
       initialAvatarUrl={user?.profile?.avatar_url ?? null}
       initialBio={user?.profile?.bio ?? ""}
+      error={error === "save" || error === "auth" ? error : null}
     />
   );
 }

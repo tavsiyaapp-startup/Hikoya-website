@@ -24,6 +24,7 @@ export function OnboardingWizard({
   initialDisplayName,
   initialAvatarUrl,
   initialBio,
+  error,
 }: {
   initialStep: 1 | 3;
   next: string;
@@ -31,9 +32,15 @@ export function OnboardingWizard({
   initialDisplayName: string;
   initialAvatarUrl: string | null;
   initialBio: string;
+  error: "save" | "auth" | null;
 }) {
   const { t, locale, setLocale } = useLocale();
   const [step, setStep] = useState<1 | 2 | 3 | 4>(initialStep);
+  // Only shown on the exact step this error redirected to (auth errors land
+  // on step 1, save errors on step 3) — step === initialStep naturally stops
+  // holding the moment the person navigates anywhere, no separate
+  // dismiss/clear handling needed.
+  const showError = step === initialStep ? error : null;
   const [role, setRole] = useState<"reader" | "author">("reader");
   const [displayName, setDisplayName] = useState(initialDisplayName);
   const [avatarUrl, setAvatarUrl] = useState(initialAvatarUrl);
@@ -109,6 +116,11 @@ export function OnboardingWizard({
 
         {step === 1 && (
           <div className="px-5 pb-8 pt-6 sm:px-11.5 sm:pb-11.5 sm:pt-10">
+            {showError === "auth" && (
+              <p className="mb-5 rounded-[12px] border border-danger/30 bg-danger-bg px-4 py-3 text-[13.5px] text-danger">
+                {t.onboarding.authError}
+              </p>
+            )}
             <h2 className="mb-2 text-[22px] font-extrabold tracking-tight sm:text-[30px]">{t.onboarding.langTitle}</h2>
             <p className="mb-6.5 text-[15px] leading-relaxed text-muted">{t.onboarding.langBody}</p>
 
@@ -204,6 +216,11 @@ export function OnboardingWizard({
 
         {step === 3 && (
           <div className="px-5 pb-8 pt-6 sm:px-11.5 sm:pb-11.5 sm:pt-10">
+            {showError === "save" && (
+              <p className="mb-5 rounded-[12px] border border-danger/30 bg-danger-bg px-4 py-3 text-[13.5px] text-danger">
+                {t.onboarding.saveError}
+              </p>
+            )}
             <h2 className="mb-2 text-[22px] font-extrabold tracking-tight sm:text-[30px]">
               {t.onboarding.nameTitle}
             </h2>

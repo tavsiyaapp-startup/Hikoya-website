@@ -434,6 +434,8 @@ const uz: typeof ru = {
     langBody: "Lentalar va qidiruvda hikoyalar qaysi tilda koʻrsatilsin.",
     startReading: "Oʻqishni boshlash",
     continueCta: "Davom etish →",
+    authError: "Kirishni tasdiqlab boʻlmadi. Qaytadan urinib koʻring.",
+    saveError: "Profilni saqlab boʻlmadi. Qaytadan urinib koʻring.",
   },
   admin: {
     dashboard: "Boshqaruv paneli",

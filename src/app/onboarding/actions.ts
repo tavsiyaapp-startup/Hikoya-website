@@ -15,6 +15,7 @@ export async function completeOnboarding(formData: FormData) {
 
   const next = (formData.get("next") as string) || "/";
   if (!user) redirect(`/onboarding?next=${encodeURIComponent(next)}`);
+  const userId = user.id;
 
   const interests = formData.getAll("interests").map(String);
   const localeValue = formData.get("locale");
@@ -42,19 +43,48 @@ export async function completeOnboarding(formData: FormData) {
     redirect(`/onboarding?next=${encodeURIComponent(next)}`);
   }
 
-  await supabase
-    .from("profiles")
-    .update({
-      role,
-      interests,
-      locale_pref: locale,
-      onboarded_at: new Date().toISOString(),
-      has_password: true,
-      ...(displayName ? { display_name: displayName } : {}),
-      ...(avatarUrl ? { avatar_url: avatarUrl } : {}),
-      ...(bio ? { bio } : {}),
-    })
-    .eq("id", user.id);
+  const profileFields = {
+    role,
+    interests,
+    locale_pref: locale,
+    onboarded_at: new Date().toISOString(),
+    has_password: true,
+    ...(displayName ? { display_name: displayName } : {}),
+    ...(avatarUrl ? { avatar_url: avatarUrl } : {}),
+    ...(bio ? { bio } : {}),
+  };
+
+  // This was previously a fire-and-forget update with no error handling —
+  // if it silently failed (or RLS silently matched 0 rows, which Postgrest
+  // reports as a normal empty result, not an error), the password above
+  // had already been set in Supabase Auth, but onboarded_at/has_password
+  // never got flipped in profiles. Every subsequent visit would then bounce
+  // the user straight back to onboarding via redirectAfterAuth, which reset
+  // the wizard to step 3 and asked for a password again — a real loop for
+  // real users, found via profiles with has_password=false long after
+  // their created_at. .select().single() (not just checking `error`) is
+  // what actually catches the RLS-silent-no-op case; a plain error check
+  // alone would have missed it. One retry covers a transient blip; a
+  // second failure is logged so it's visible in server logs, and this
+  // redirects with a real error flag instead of pretending it worked.
+  async function applyProfileUpdate() {
+    const { data, error } = await supabase
+      .from("profiles")
+      .update(profileFields)
+      .eq("id", userId)
+      .select("id")
+      .single();
+    return { ok: !error && Boolean(data) };
+  }
+
+  let { ok } = await applyProfileUpdate();
+  if (!ok) {
+    ({ ok } = await applyProfileUpdate());
+  }
+  if (!ok) {
+    console.error(`completeOnboarding: profiles update failed to persist for user ${userId} after retry`);
+    redirect(`/onboarding?next=${encodeURIComponent(next)}&error=save`);
+  }
 
   cookieStore.delete("hikoya_pending_role");
   cookieStore.set(LOCALE_COOKIE, locale, { path: "/", maxAge: 31536000 });

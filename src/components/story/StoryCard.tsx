@@ -4,7 +4,7 @@ import { getServerLocale } from "@/lib/i18n/locale-server";
 import { getDictionary } from "@/lib/i18n";
 import { formatCompactCount } from "@/lib/format";
 import { ROUTES } from "@/lib/constants";
-import { HeartIcon, EyeIcon } from "@/components/ui/icons";
+import { HeartIcon, EyeIcon, CommentsIcon } from "@/components/ui/icons";
 import { Badge } from "@/components/ui/Chip";
 import { storyProgressLabel } from "@/lib/storyProgress";
 import type { StoryCard as StoryCardData } from "@/lib/queries/stories";
@@ -130,6 +130,10 @@ export async function StoryCard({
             <span className="flex items-center gap-1">
               <EyeIcon width={12} height={12} />
               {formatCompactCount(story.view_count)}
+            </span>
+            <span className="flex items-center gap-1">
+              <CommentsIcon width={12} height={12} />
+              {formatCompactCount(story.comment_count)}
             </span>
           </div>
         </div>

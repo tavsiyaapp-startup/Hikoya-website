@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 import type { Announcement } from "@/types/database";
 
@@ -39,11 +40,10 @@ export function AnnouncementBoard({ announcements }: { announcements: Announceme
       >
         {announcements.map((announcement) => {
           const text = locale === "uz" ? announcement.text_uz : announcement.text_ru;
-          return (
-            <div
-              key={announcement.id}
-              className="relative h-full shrink-0 overflow-hidden rounded-[18px] border border-primary-100 bg-linear-to-br from-primary-50 via-[#F6ECFB] to-pink-bg dark:via-[#2A2044]"
-            >
+          const cardClassName =
+            "relative h-full shrink-0 overflow-hidden rounded-[18px] border border-primary-100 bg-linear-to-br from-primary-50 via-[#F6ECFB] to-pink-bg dark:via-[#2A2044]";
+          const cardContent = (
+            <>
               {announcement.image_url && (
                 <Image
                   src={announcement.image_url}
@@ -72,6 +72,18 @@ export function AnnouncementBoard({ announcements }: { announcements: Announceme
                   </p>
                 </div>
               )}
+            </>
+          );
+          // The whole card becomes a link when staff set one, same as
+          // hero_slides' cta_url — no separate button, since a small
+          // announcement card has no room for one.
+          return announcement.link_url ? (
+            <Link key={announcement.id} href={announcement.link_url} className={cardClassName}>
+              {cardContent}
+            </Link>
+          ) : (
+            <div key={announcement.id} className={cardClassName}>
+              {cardContent}
             </div>
           );
         })}

@@ -5,6 +5,7 @@ import Image from "next/image";
 import { createAnnouncement, updateAnnouncement } from "@/lib/actions/admin";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 import { createClient } from "@/lib/supabase/client";
+import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { Button } from "@/components/ui/Button";
 import type { Announcement } from "@/types/database";
@@ -97,6 +98,11 @@ export function AnnouncementForm({ announcement, onDone }: { announcement?: Anno
           <label className="mb-1.5 block text-[13px] font-bold">{t.admin.announcementTextUz}</label>
           <Textarea name="textUz" rows={2} defaultValue={announcement?.text_uz ?? ""} />
         </div>
+      </div>
+
+      <div>
+        <label className="mb-1.5 block text-[13px] font-bold">{t.admin.announcementLinkLabel}</label>
+        <Input name="linkUrl" placeholder="https://..." defaultValue={announcement?.link_url ?? ""} />
       </div>
 
       <input type="hidden" name="imageUrl" value={imageUrl ?? ""} />

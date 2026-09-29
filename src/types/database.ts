@@ -220,6 +220,7 @@ export interface Announcement {
   image_url: string | null;
   text_ru: string | null;
   text_uz: string | null;
+  link_url: string | null;
   created_at: string;
 }
 

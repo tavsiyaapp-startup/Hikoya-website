@@ -326,10 +326,12 @@ function readAnnouncementFields(formData: FormData) {
   const textRu = String(formData.get("textRu") ?? "").trim();
   const textUz = String(formData.get("textUz") ?? "").trim();
   const imageUrl = String(formData.get("imageUrl") ?? "").trim();
+  const linkUrl = String(formData.get("linkUrl") ?? "").trim();
   return {
     text_ru: textRu || null,
     text_uz: textUz || null,
     image_url: imageUrl || null,
+    link_url: linkUrl || null,
   };
 }
 

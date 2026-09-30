@@ -9,12 +9,13 @@ import {
   getChapter,
   getGuestFreeChapterCount,
 } from "@/lib/queries/stories";
-import { getChapterComments, getLikedCommentIds } from "@/lib/queries/social";
+import { getChapterComments, getLikedCommentIds, isFollowingAuthor, getFollowerCount } from "@/lib/queries/social";
 import { sanitizeHtml } from "@/lib/sanitize";
 import { ROUTES } from "@/lib/constants";
 import { ChevronLeftIcon, LockIcon } from "@/components/ui/icons";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
+import { FollowButton } from "@/components/story/StoryActions";
 import { ChapterReadingRecorder } from "@/components/story/ChapterReadingRecorder";
 import { CommentGuidelines } from "@/components/story/CommentGuidelines";
 import { CommentForm } from "@/components/story/CommentForm";
@@ -36,10 +37,12 @@ export default async function ReaderPage({
   const story = await getStoryBySlug(slug);
   if (!story) notFound();
 
-  const [ch, allChapters, freeLimit] = await Promise.all([
+  const [ch, allChapters, freeLimit, following, followerCount] = await Promise.all([
     getChapter(story.id, orderIndex),
     getChaptersForStory(story.id),
     getGuestFreeChapterCount(),
+    isFollowingAuthor(user?.id, story.author.id),
+    getFollowerCount(story.author.id),
   ]);
   if (!ch) notFound();
 
@@ -146,6 +149,26 @@ export default async function ReaderPage({
           </div>
         )}
 
+        <div className="mt-9 flex items-center gap-3.5 rounded-[14px] border border-border bg-card p-4.5">
+          <Link href={ROUTES.author(story.author.username)} className="flex min-w-0 flex-1 items-center gap-3">
+            <Avatar name={story.author.display_name} src={story.author.avatar_url} />
+            <div className="min-w-0">
+              <div className="truncate text-[14.5px] font-bold">{story.author.display_name}</div>
+              <div className="text-[12.5px] text-muted-2">
+                {followerCount} {t.author.subscribers}
+              </div>
+            </div>
+          </Link>
+          <div className="w-32 shrink-0">
+            <FollowButton
+              authorId={story.author.id}
+              isAuthenticated={Boolean(user)}
+              initialFollowing={following}
+              path={ROUTES.chapter(slug, orderIndex)}
+            />
+          </div>
+        </div>
+
         {isUnlocked && (
           <div className="mt-11">
             <div className="mb-5 flex items-center gap-3.5">
@@ -184,27 +207,6 @@ export default async function ReaderPage({
               ))}
             </div>
           </div>
-        )}
-      </div>
-
-      <div className="flex w-full flex-col gap-4 lg:sticky lg:top-26 lg:w-74 lg:shrink-0">
-        <div className="rounded-[14px] border border-border bg-card p-4.5">
-          <Link href={ROUTES.author(story.author.username)} className="flex items-center gap-3">
-            <Avatar name={story.author.display_name} src={story.author.avatar_url} />
-            <div>
-              <div className="text-[14.5px] font-bold">{story.author.display_name}</div>
-              <div className="text-[12.5px] text-muted-2">{t.story.authorLabel}</div>
-            </div>
-          </Link>
-        </div>
-
-        {prevChapter && (
-          <Link
-            href={ROUTES.chapter(slug, prevChapter.order_index)}
-            className="rounded-[14px] border border-border bg-card p-4.5 text-[13.5px] font-semibold text-ink-soft"
-          >
-            ← {prevChapter.title}
-          </Link>
         )}
       </div>
     </div>

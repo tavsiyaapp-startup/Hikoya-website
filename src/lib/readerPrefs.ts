@@ -48,7 +48,7 @@ export const READER_FONT_SIZES: Record<ReaderFontSize, { fontSize: string; lineH
 // reuses the site's own card/ink-soft tokens so it still follows the
 // site-wide dark-mode toggle exactly like before this feature existed.
 export const READER_THEMES: Record<ReaderTheme, { bg: string; text: string }> = {
-  light: { bg: "var(--card)", text: "var(--ink-soft)" },
+  light: { bg: "var(--color-card)", text: "var(--color-ink-soft)" },
   sepia: { bg: "#F4ECD8", text: "#3B2F22" },
   dark: { bg: "#1E1E22", text: "#E4E4E7" },
   green: { bg: "#E7F2E7", text: "#20361F" },

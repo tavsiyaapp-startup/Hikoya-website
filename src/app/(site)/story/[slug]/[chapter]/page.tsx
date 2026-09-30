@@ -70,7 +70,7 @@ export default async function ReaderPage({
         />
       )}
 
-      <div className="min-w-0 w-full lg:max-w-190 lg:flex-1">
+      <div className="min-w-0 w-full lg:max-w-[80vw] lg:flex-1">
         <Link
           href={ROUTES.story(slug)}
           className="mb-5 inline-flex items-center gap-2 text-[14px] font-semibold"

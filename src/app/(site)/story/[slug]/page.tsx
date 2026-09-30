@@ -95,7 +95,16 @@ export default async function StoryPage({
             <Image src={story.cover_url} alt="" fill className="object-cover" />
           </ImageZoom>
         ) : (
-          <div className="relative mx-auto mb-4.5 aspect-[3/4] w-full max-w-60 overflow-hidden rounded-[14px] bg-primary-200 shadow-[0_18px_40px_rgba(60,40,120,0.18)] sm:max-w-70 lg:mx-0 lg:max-w-none" />
+          <div className="relative mx-auto mb-4.5 flex aspect-[3/4] w-full max-w-60 items-center justify-center overflow-hidden rounded-[14px] bg-primary-200 p-5 shadow-[0_18px_40px_rgba(60,40,120,0.18)] sm:max-w-70 lg:mx-0 lg:max-w-none">
+            <div className="text-center">
+              <div className="line-clamp-6 text-[18px] font-extrabold leading-snug text-primary-900">
+                {story.title}
+              </div>
+              <div className="mt-2 truncate text-[13px] font-semibold text-primary-800/80">
+                {story.author?.display_name}
+              </div>
+            </div>
+          </div>
         )}
 
         <div className="lg:hidden">

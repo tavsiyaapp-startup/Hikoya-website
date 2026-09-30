@@ -11,11 +11,13 @@ import {
 } from "@/lib/queries/stories";
 import { getChapterComments, getLikedCommentIds, isFollowingAuthor, getFollowerCount } from "@/lib/queries/social";
 import { sanitizeHtml } from "@/lib/sanitize";
+import { getServerReaderPrefs } from "@/lib/readerPrefs-server";
 import { ROUTES } from "@/lib/constants";
 import { ChevronLeftIcon, LockIcon } from "@/components/ui/icons";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { FollowButton } from "@/components/story/StoryActions";
+import { ReaderContent } from "@/components/story/ReaderContent";
 import { ChapterReadingRecorder } from "@/components/story/ChapterReadingRecorder";
 import { CommentGuidelines } from "@/components/story/CommentGuidelines";
 import { CommentForm } from "@/components/story/CommentForm";
@@ -37,12 +39,13 @@ export default async function ReaderPage({
   const story = await getStoryBySlug(slug);
   if (!story) notFound();
 
-  const [ch, allChapters, freeLimit, following, followerCount] = await Promise.all([
+  const [ch, allChapters, freeLimit, following, followerCount, readerPrefs] = await Promise.all([
     getChapter(story.id, orderIndex),
     getChaptersForStory(story.id),
     getGuestFreeChapterCount(),
     isFollowingAuthor(user?.id, story.author.id),
     getFollowerCount(story.author.id),
+    getServerReaderPrefs(),
   ]);
   if (!ch) notFound();
 
@@ -70,7 +73,7 @@ export default async function ReaderPage({
         />
       )}
 
-      <div className="min-w-0 w-full lg:max-w-[80vw] lg:flex-1">
+      <div className="min-w-0 w-full lg:max-w-[70vw] lg:flex-1">
         <Link
           href={ROUTES.story(slug)}
           className="mb-5 inline-flex items-center gap-2 text-[14px] font-semibold"
@@ -92,22 +95,11 @@ export default async function ReaderPage({
         </div>
 
         {isUnlocked ? (
-          <div className="rounded-[16px] border border-border bg-card p-5 sm:p-8">
-            {isRichContent ? (
-              <div
-                className="rich-content text-[17px] leading-8 text-ink-soft"
-                dangerouslySetInnerHTML={{ __html: sanitizeHtml(ch.content) }}
-              />
-            ) : (
-              <div className="text-[17px] leading-8 text-ink-soft">
-                {paragraphs.map((p, i) => (
-                  <p key={i} className="mb-4.5">
-                    {p}
-                  </p>
-                ))}
-              </div>
-            )}
-          </div>
+          <ReaderContent
+            initialPrefs={readerPrefs}
+            htmlContent={isRichContent ? sanitizeHtml(ch.content) : null}
+            paragraphs={isRichContent ? null : paragraphs}
+          />
         ) : (
           <div className="rounded-[16px] bg-linear-to-br from-ink-dark to-primary-950 px-5 py-6 text-white sm:px-9 sm:py-8.5">
             <div className="mb-3.5 flex items-center gap-3">

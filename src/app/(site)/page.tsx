@@ -1,4 +1,4 @@
-import { Suspense } from "react";
+import { Fragment, Suspense } from "react";
 import Link from "next/link";
 import { getServerLocale } from "@/lib/i18n/locale-server";
 import { getDictionary } from "@/lib/i18n";
@@ -12,6 +12,7 @@ import {
   getRecentPublishedChapters,
   getHeroSlides,
   getAnnouncements,
+  getFinishedStories,
   // getTopStories, // TODO: re-enable along with the "Топ" section below
 } from "@/lib/queries/stories";
 import { StoryCard } from "@/components/story/StoryCard";
@@ -105,14 +106,16 @@ async function HomeSections({
   // are genuinely public.
   const feedTabs: readonly HomeTab[] = user ? HOME_TABS : HOME_TABS.filter((k) => k === "popular" || k === "new");
 
-  const [feedResults, weeklyResult, collectionsResult] = await Promise.all([
+  const [feedResults, weeklyResult, finishedResult, collectionsResult] = await Promise.all([
     Promise.all(feedTabs.map((key) => getFeedForTab(key, user?.id, PAGE_SIZE_FEED, 0))),
     getRecentPublishedChapters(PAGE_SIZE_WEEK, 0),
+    getFinishedStories(PAGE_SIZE_FEED, 0),
     getFeaturedCollections(PAGE_SIZE_COLLECTIONS, (collectionsPage - 1) * PAGE_SIZE_COLLECTIONS),
     // getTopStories(topTier, 8),
   ]);
 
   const weeklyGroups = weeklyResult.items;
+  const finishedStories = finishedResult.items;
   const collections = collectionsResult.items;
 
   const collectionsTotalPages = Math.max(1, Math.ceil(collectionsResult.total / PAGE_SIZE_COLLECTIONS));
@@ -161,25 +164,51 @@ async function HomeSections({
       {feedTabs.map((key, i) => {
         const items = feedResults[i].items;
         return (
-          <div key={key}>
-            <div className="mb-4.5 flex items-baseline gap-3.5">
-              <h2 className="text-2xl font-extrabold tracking-tight">{t.home.tabs[key]}</h2>
-              <Link href={ROUTES.allStories(key)} className="ml-auto text-[14px] font-semibold">
-                {t.common.all}
-              </Link>
-            </div>
-            {items.length > 0 ? (
-              <div className="mb-11">
-                <StoryCarousel>
-                  {items.map((story) => (
-                    <StoryCard key={story.id} story={story} />
-                  ))}
-                </StoryCarousel>
+          <Fragment key={key}>
+            <div>
+              <div className="mb-4.5 flex items-baseline gap-3.5">
+                <h2 className="text-2xl font-extrabold tracking-tight">{t.home.tabs[key]}</h2>
+                <Link href={ROUTES.allStories(key)} className="ml-auto text-[14px] font-semibold">
+                  {t.common.all}
+                </Link>
               </div>
-            ) : (
-              <EmptyRow className="mb-11" />
+              {items.length > 0 ? (
+                <div className="mb-11">
+                  <StoryCarousel>
+                    {items.map((story) => (
+                      <StoryCard key={story.id} story={story} />
+                    ))}
+                  </StoryCarousel>
+                </div>
+              ) : (
+                <EmptyRow className="mb-11" />
+              )}
+            </div>
+
+            {/* Right after "Новинки" — readers who want a complete story to
+                binge, not an ongoing one they'd have to wait on. */}
+            {key === "new" && (
+              <div>
+                <div className="mb-4.5 flex items-baseline gap-3.5">
+                  <h2 className="text-2xl font-extrabold tracking-tight">{t.home.finishedTitle}</h2>
+                  <Link href={`${ROUTES.search}?progress=finished`} className="ml-auto text-[14px] font-semibold">
+                    {t.common.all}
+                  </Link>
+                </div>
+                {finishedStories.length > 0 ? (
+                  <div className="mb-11">
+                    <StoryCarousel>
+                      {finishedStories.map((story) => (
+                        <StoryCard key={story.id} story={story} />
+                      ))}
+                    </StoryCarousel>
+                  </div>
+                ) : (
+                  <EmptyRow className="mb-11" />
+                )}
+              </div>
             )}
-          </div>
+          </Fragment>
         );
       })}
 

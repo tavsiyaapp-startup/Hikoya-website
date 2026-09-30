@@ -71,6 +71,7 @@ const ru = {
     },
     weekTitle: "Новые главы за неделю",
     weekChaptersAddedN: "Добавлено {n} глав(ы)",
+    finishedTitle: "Завершённые истории",
     editorialTitle: "Подборки",
     editorialBadge: "Выбор редакции",
     gateTitle: "Читайте первые главы без аккаунта",

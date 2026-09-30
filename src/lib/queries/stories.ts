@@ -45,6 +45,27 @@ export const getPopularStories = unstable_cache(
   { revalidate: CACHE_SECONDS, tags: ["stories"] }
 );
 
+export const getFinishedStories = unstable_cache(
+  async (limit = 8, offset = 0): Promise<Paginated<StoryCard>> => {
+    try {
+      const supabase = createPublicClient();
+      const { data, count } = await supabase
+        .from("stories")
+        .select("*, author:profiles!stories_author_id_fkey(username, display_name)", { count: "exact" })
+        .eq("status", "published")
+        .eq("visibility", "public")
+        .eq("progress_status", "finished")
+        .order("like_count", { ascending: false })
+        .range(offset, offset + limit - 1);
+      return { items: (data as StoryCard[]) ?? [], total: count ?? 0 };
+    } catch {
+      return { items: [], total: 0 };
+    }
+  },
+  ["finished-stories"],
+  { revalidate: CACHE_SECONDS, tags: ["stories"] }
+);
+
 export const getNewestStories = unstable_cache(
   async (limit = 8, offset = 0): Promise<Paginated<StoryCard>> => {
     try {

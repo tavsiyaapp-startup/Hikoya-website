@@ -73,6 +73,7 @@ const uz: typeof ru = {
     },
     weekTitle: "Hafta yangi boblari",
     weekChaptersAddedN: "{n} ta bob qoʻshildi",
+    finishedTitle: "Yakunlangan hikoyalar",
     editorialTitle: "Tanlanmalar",
     editorialBadge: "Tahririyat tanlovi",
     gateTitle: "Birinchi boblarni akkauntsiz oʻqing",

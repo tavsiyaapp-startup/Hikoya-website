@@ -74,6 +74,15 @@ jobs:
       # an older page open (or a bfcache/back-forward restore) referencing
       # the now-removed old hash — the actual cause of "some users get the
       # site with no styling at all" after a run of frequent deploys.
+      #
+      # run_id-run_attempt (not just github.sha) — an FTP ECONNRESET mid-
+      # upload happens often on this host, and `gh run rerun --failed`
+      # reruns the same commit, so a sha-only key would make the retry
+      # reuse the previous attempt's state file and trust it as already
+      # uploaded for files whose transfer never actually completed,
+      # silently leaving them missing on the server (found live: several
+      # chunks 404ing after a run of retried deploys). Keying by attempt
+      # too means every retry starts with a clean slate.
       - name: Upload static assets via FTP (additive only, never deletes)
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
@@ -82,7 +91,7 @@ jobs:
           password: ${{ secrets.FTP_PASSWORD }}
           local-dir: ./deploy-stage/.next/static/
           server-dir: /www/hikoya.org/.next/static/
-          state-name: .ftp-deploy-static-state-${{ github.sha }}.json
+          state-name: .ftp-deploy-static-state-${{ github.run_id }}-${{ github.run_attempt }}.json
 
       - name: Upload via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5

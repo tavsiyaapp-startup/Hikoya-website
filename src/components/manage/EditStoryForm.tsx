@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import Image from "next/image";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 import { createClient } from "@/lib/supabase/client";
+import { resizeImageFile } from "@/lib/image-resize";
 import { updateStory } from "@/lib/actions/stories";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
@@ -71,9 +72,10 @@ export function EditStoryForm({
     setCoverUploading(true);
     setCoverError(null);
     try {
+      const resized = await resizeImageFile(file, { maxWidth: 1080, maxHeight: 1440 });
       const supabase = createClient();
-      const path = `${authorId}/${Date.now()}-${file.name}`;
-      const { error } = await supabase.storage.from("covers").upload(path, file, { upsert: true });
+      const path = `${authorId}/${Date.now()}-${resized.name}`;
+      const { error } = await supabase.storage.from("covers").upload(path, resized, { upsert: true });
       if (error) throw error;
       const { data } = supabase.storage.from("covers").getPublicUrl(path);
       setCoverUrl(data.publicUrl);

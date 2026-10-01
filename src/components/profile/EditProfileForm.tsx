@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 import { useTheme } from "@/lib/ThemeProvider";
 import { createClient } from "@/lib/supabase/client";
+import { resizeImageFile } from "@/lib/image-resize";
 import { updateProfile } from "@/lib/actions/profile";
 import { ROUTES } from "@/lib/constants";
 import { Avatar } from "@/components/ui/Avatar";
@@ -70,11 +71,12 @@ export function EditProfileForm({
     setUploading(true);
     setError(null);
     try {
+      const resized = await resizeImageFile(file, { maxWidth: 512, maxHeight: 512 });
       const supabase = createClient();
-      const path = `${userId}/${Date.now()}-${file.name}`;
+      const path = `${userId}/${Date.now()}-${resized.name}`;
       const { error: uploadError } = await supabase.storage
         .from("avatars")
-        .upload(path, file, { upsert: true });
+        .upload(path, resized, { upsert: true });
       if (uploadError) throw uploadError;
       const { data } = supabase.storage.from("avatars").getPublicUrl(path);
       setPreview(data.publicUrl);

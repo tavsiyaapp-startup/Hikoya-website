@@ -6,6 +6,7 @@ import { clsx } from "clsx";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 import { ROUTES } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/client";
+import { resizeImageFile } from "@/lib/image-resize";
 import { GoogleButton, EmailLoginToggle } from "@/components/auth/AuthButtons";
 import { CloseIcon } from "@/components/ui/icons";
 import { Avatar } from "@/components/ui/Avatar";
@@ -67,9 +68,10 @@ export function OnboardingWizard({
     setAvatarUploading(true);
     setAvatarError(false);
     try {
+      const resized = await resizeImageFile(file, { maxWidth: 512, maxHeight: 512 });
       const supabase = createClient();
-      const path = `${userId}/${Date.now()}-${file.name}`;
-      const { error } = await supabase.storage.from("avatars").upload(path, file, { upsert: true });
+      const path = `${userId}/${Date.now()}-${resized.name}`;
+      const { error } = await supabase.storage.from("avatars").upload(path, resized, { upsert: true });
       if (error) throw error;
       const { data } = supabase.storage.from("avatars").getPublicUrl(path);
       setAvatarUrl(data.publicUrl);

@@ -5,6 +5,7 @@ import Image from "next/image";
 import { createHeroSlide, updateHeroSlide } from "@/lib/actions/admin";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 import { createClient } from "@/lib/supabase/client";
+import { resizeImageFile } from "@/lib/image-resize";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { Button } from "@/components/ui/Button";
@@ -20,10 +21,11 @@ export function HeroSlideForm({ slide, onDone }: { slide?: HeroSlide; onDone?: (
   const [pending, startTransition] = useTransition();
   const [formKey, setFormKey] = useState(0);
 
-  async function uploadSlideImage(file: File): Promise<string> {
+  async function uploadSlideImage(file: File, maxWidth: number, maxHeight: number): Promise<string> {
+    const resized = await resizeImageFile(file, { maxWidth, maxHeight });
     const supabase = createClient();
-    const path = `${Date.now()}-${file.name}`;
-    const { error } = await supabase.storage.from("hero-slides").upload(path, file, { upsert: true });
+    const path = `${Date.now()}-${resized.name}`;
+    const { error } = await supabase.storage.from("hero-slides").upload(path, resized, { upsert: true });
     if (error) throw error;
     const { data } = supabase.storage.from("hero-slides").getPublicUrl(path);
     return data.publicUrl;
@@ -35,7 +37,7 @@ export function HeroSlideForm({ slide, onDone }: { slide?: HeroSlide; onDone?: (
     setUploading(true);
     setError(null);
     try {
-      setImageUrl(await uploadSlideImage(file));
+      setImageUrl(await uploadSlideImage(file, 1600, 1000));
     } catch (err) {
       console.error("hero slide upload failed:", err);
       const detail = err instanceof Error ? err.message : String(err);
@@ -51,7 +53,7 @@ export function HeroSlideForm({ slide, onDone }: { slide?: HeroSlide; onDone?: (
     setUploadingMobile(true);
     setError(null);
     try {
-      setImageUrlMobile(await uploadSlideImage(file));
+      setImageUrlMobile(await uploadSlideImage(file, 900, 700));
     } catch (err) {
       console.error("hero slide mobile upload failed:", err);
       const detail = err instanceof Error ? err.message : String(err);

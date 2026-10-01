@@ -5,6 +5,7 @@ import Image from "next/image";
 import { createAnnouncement, updateAnnouncement } from "@/lib/actions/admin";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 import { createClient } from "@/lib/supabase/client";
+import { resizeImageFile } from "@/lib/image-resize";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { Button } from "@/components/ui/Button";
@@ -24,9 +25,10 @@ export function AnnouncementForm({ announcement, onDone }: { announcement?: Anno
     setUploading(true);
     setError(null);
     try {
+      const resized = await resizeImageFile(file, { maxWidth: 900, maxHeight: 900 });
       const supabase = createClient();
-      const path = `${Date.now()}-${file.name}`;
-      const { error } = await supabase.storage.from("announcements").upload(path, file, { upsert: true });
+      const path = `${Date.now()}-${resized.name}`;
+      const { error } = await supabase.storage.from("announcements").upload(path, resized, { upsert: true });
       if (error) throw error;
       const { data } = supabase.storage.from("announcements").getPublicUrl(path);
       setImageUrl(data.publicUrl);

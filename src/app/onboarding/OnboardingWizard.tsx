@@ -7,6 +7,7 @@ import { useLocale } from "@/lib/i18n/LocaleProvider";
 import { ROUTES } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/client";
 import { resizeImageFile } from "@/lib/image-resize";
+import { deleteOldStorageFile } from "@/lib/storage-cleanup";
 import { GoogleButton, EmailLoginToggle } from "@/components/auth/AuthButtons";
 import { CloseIcon } from "@/components/ui/icons";
 import { Avatar } from "@/components/ui/Avatar";
@@ -74,6 +75,7 @@ export function OnboardingWizard({
       const { error } = await supabase.storage.from("avatars").upload(path, resized, { upsert: true });
       if (error) throw error;
       const { data } = supabase.storage.from("avatars").getPublicUrl(path);
+      await deleteOldStorageFile(supabase, "avatars", avatarUrl);
       setAvatarUrl(data.publicUrl);
     } catch {
       setAvatarError(true);

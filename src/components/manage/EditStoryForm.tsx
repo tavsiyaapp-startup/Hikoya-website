@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 import { createClient } from "@/lib/supabase/client";
 import { resizeImageFile } from "@/lib/image-resize";
+import { deleteOldStorageFile } from "@/lib/storage-cleanup";
 import { updateStory } from "@/lib/actions/stories";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
@@ -78,6 +79,15 @@ export function EditStoryForm({
       const { error } = await supabase.storage.from("covers").upload(path, resized, { upsert: true });
       if (error) throw error;
       const { data } = supabase.storage.from("covers").getPublicUrl(path);
+      // Only safe to clean up immediately when replacing an upload from
+      // earlier in this same editing session — initialCoverUrl is still
+      // what the story's cover_url points to in the DB until handleSave
+      // actually persists the change, so that one's cleanup is deferred to
+      // there instead (otherwise navigating away without saving would
+      // delete the live cover out from under the still-unchanged DB row).
+      if (coverUrl && coverUrl !== initialCoverUrl) {
+        await deleteOldStorageFile(supabase, "covers", coverUrl);
+      }
       setCoverUrl(data.publicUrl);
     } catch {
       setCoverError(t.create.coverError);
@@ -87,8 +97,8 @@ export function EditStoryForm({
   }
 
   function handleSave() {
-    startTransition(() => {
-      updateStory(storyId, storySlug, {
+    startTransition(async () => {
+      await updateStory(storyId, storySlug, {
         title,
         description,
         coverUrl,
@@ -98,6 +108,9 @@ export function EditStoryForm({
         progressStatus,
         isTranslation,
       });
+      if (initialCoverUrl && coverUrl !== initialCoverUrl) {
+        await deleteOldStorageFile(createClient(), "covers", initialCoverUrl);
+      }
     });
   }
 

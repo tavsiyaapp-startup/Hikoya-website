@@ -6,6 +6,7 @@ import { createHeroSlide, updateHeroSlide } from "@/lib/actions/admin";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 import { createClient } from "@/lib/supabase/client";
 import { resizeImageFile } from "@/lib/image-resize";
+import { deleteOldStorageFile } from "@/lib/storage-cleanup";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { Button } from "@/components/ui/Button";
@@ -21,13 +22,29 @@ export function HeroSlideForm({ slide, onDone }: { slide?: HeroSlide; onDone?: (
   const [pending, startTransition] = useTransition();
   const [formKey, setFormKey] = useState(0);
 
-  async function uploadSlideImage(file: File, maxWidth: number, maxHeight: number): Promise<string> {
+  // persistedUrl is the slide's own saved value for this field (undefined
+  // when creating a new slide) — only safe to delete oldUrl immediately
+  // when it's *not* that persisted value, i.e. it was itself an unsaved
+  // upload from earlier in this same editing session. Deleting the
+  // persisted value before the admin actually saves (they might cancel)
+  // would break the still-live slide; that cleanup happens in handleSubmit
+  // instead, once updateHeroSlide has actually persisted the change.
+  async function uploadSlideImage(
+    file: File,
+    maxWidth: number,
+    maxHeight: number,
+    oldUrl: string | null,
+    persistedUrl: string | null | undefined
+  ): Promise<string> {
     const resized = await resizeImageFile(file, { maxWidth, maxHeight });
     const supabase = createClient();
     const path = `${Date.now()}-${resized.name}`;
     const { error } = await supabase.storage.from("hero-slides").upload(path, resized, { upsert: true });
     if (error) throw error;
     const { data } = supabase.storage.from("hero-slides").getPublicUrl(path);
+    if (oldUrl && oldUrl !== persistedUrl) {
+      await deleteOldStorageFile(supabase, "hero-slides", oldUrl);
+    }
     return data.publicUrl;
   }
 
@@ -37,7 +54,7 @@ export function HeroSlideForm({ slide, onDone }: { slide?: HeroSlide; onDone?: (
     setUploading(true);
     setError(null);
     try {
-      setImageUrl(await uploadSlideImage(file, 1600, 1000));
+      setImageUrl(await uploadSlideImage(file, 1600, 1000, imageUrl, slide?.image_url));
     } catch (err) {
       console.error("hero slide upload failed:", err);
       const detail = err instanceof Error ? err.message : String(err);
@@ -53,7 +70,7 @@ export function HeroSlideForm({ slide, onDone }: { slide?: HeroSlide; onDone?: (
     setUploadingMobile(true);
     setError(null);
     try {
-      setImageUrlMobile(await uploadSlideImage(file, 900, 700));
+      setImageUrlMobile(await uploadSlideImage(file, 900, 700, imageUrlMobile, slide?.image_url_mobile));
     } catch (err) {
       console.error("hero slide mobile upload failed:", err);
       const detail = err instanceof Error ? err.message : String(err);
@@ -72,6 +89,13 @@ export function HeroSlideForm({ slide, onDone }: { slide?: HeroSlide; onDone?: (
     startTransition(async () => {
       if (slide) {
         await updateHeroSlide(slide.id, formData);
+        const supabase = createClient();
+        if (slide.image_url && imageUrl !== slide.image_url) {
+          await deleteOldStorageFile(supabase, "hero-slides", slide.image_url);
+        }
+        if (slide.image_url_mobile && imageUrlMobile !== slide.image_url_mobile) {
+          await deleteOldStorageFile(supabase, "hero-slides", slide.image_url_mobile);
+        }
         onDone?.();
       } else {
         await createHeroSlide(formData);

@@ -5,6 +5,7 @@ import { useLocale } from "@/lib/i18n/LocaleProvider";
 import { useTheme } from "@/lib/ThemeProvider";
 import { createClient } from "@/lib/supabase/client";
 import { resizeImageFile } from "@/lib/image-resize";
+import { deleteOldStorageFile } from "@/lib/storage-cleanup";
 import { updateProfile } from "@/lib/actions/profile";
 import { ROUTES } from "@/lib/constants";
 import { Avatar } from "@/components/ui/Avatar";
@@ -79,6 +80,15 @@ export function EditProfileForm({
         .upload(path, resized, { upsert: true });
       if (uploadError) throw uploadError;
       const { data } = supabase.storage.from("avatars").getPublicUrl(path);
+      // Only safe to clean up immediately when replacing an upload from
+      // earlier in this same editing session — the avatarUrl prop is still
+      // what's persisted until handleSubmit saves the change, and clicking
+      // outside this panel discards the edit without saving (see the
+      // outside-click effect above), so deleting that one here would break
+      // the still-live avatar.
+      if (preview && preview !== avatarUrl) {
+        await deleteOldStorageFile(supabase, "avatars", preview);
+      }
       setPreview(data.publicUrl);
     } catch {
       setError(t.profile.avatarError);
@@ -90,6 +100,9 @@ export function EditProfileForm({
   function handleSubmit(formData: FormData) {
     startTransition(async () => {
       await updateProfile(username, formData);
+      if (avatarUrl && preview !== avatarUrl) {
+        await deleteOldStorageFile(createClient(), "avatars", avatarUrl);
+      }
 
       const messages: string[] = [];
       const errors: string[] = [];

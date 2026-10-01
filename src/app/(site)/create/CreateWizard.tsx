@@ -7,6 +7,7 @@ import { clsx } from "clsx";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 import { createClient } from "@/lib/supabase/client";
 import { resizeImageFile } from "@/lib/image-resize";
+import { deleteOldStorageFile } from "@/lib/storage-cleanup";
 import { createStory, addChapter } from "@/lib/actions/stories";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
@@ -77,6 +78,7 @@ export function CreateWizard({
       const { error } = await supabase.storage.from("covers").upload(path, resized, { upsert: true });
       if (error) throw error;
       const { data } = supabase.storage.from("covers").getPublicUrl(path);
+      await deleteOldStorageFile(supabase, "covers", coverUrl);
       setCoverUrl(data.publicUrl);
     } catch {
       setCoverError(t.create.coverError);

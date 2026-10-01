@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createNotification } from "@/lib/actions/create-notification";
+import { deleteOldStorageFile } from "@/lib/storage-cleanup";
 import { ROUTES } from "@/lib/constants";
 
 async function requireStaff() {
@@ -316,7 +317,14 @@ export async function deleteHeroSlide(slideId: string) {
   const admin = createAdminClient();
   const { count } = await admin.from("hero_slides").select("*", { count: "exact", head: true });
   if ((count ?? 0) <= 1) return;
-  await admin.from("hero_slides").delete().eq("id", slideId);
+  const { data: deleted } = await admin
+    .from("hero_slides")
+    .delete()
+    .eq("id", slideId)
+    .select("image_url, image_url_mobile")
+    .single();
+  if (deleted?.image_url) await deleteOldStorageFile(admin, "hero-slides", deleted.image_url);
+  if (deleted?.image_url_mobile) await deleteOldStorageFile(admin, "hero-slides", deleted.image_url_mobile);
   updateTag("hero-slides");
   revalidatePath(`${ROUTES.admin}/banner`);
   revalidatePath(ROUTES.home);
@@ -364,7 +372,13 @@ export async function updateAnnouncement(announcementId: string, formData: FormD
 export async function deleteAnnouncement(announcementId: string) {
   await requireStaff();
   const admin = createAdminClient();
-  await admin.from("announcements").delete().eq("id", announcementId);
+  const { data: deleted } = await admin
+    .from("announcements")
+    .delete()
+    .eq("id", announcementId)
+    .select("image_url")
+    .single();
+  if (deleted?.image_url) await deleteOldStorageFile(admin, "announcements", deleted.image_url);
   updateTag("announcements");
   revalidatePath(`${ROUTES.admin}/announcements`);
   revalidatePath(ROUTES.home);

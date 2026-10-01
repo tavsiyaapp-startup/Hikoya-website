@@ -6,6 +6,7 @@ import { createAnnouncement, updateAnnouncement } from "@/lib/actions/admin";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 import { createClient } from "@/lib/supabase/client";
 import { resizeImageFile } from "@/lib/image-resize";
+import { deleteOldStorageFile } from "@/lib/storage-cleanup";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { Button } from "@/components/ui/Button";
@@ -31,6 +32,7 @@ export function AnnouncementForm({ announcement, onDone }: { announcement?: Anno
       const { error } = await supabase.storage.from("announcements").upload(path, resized, { upsert: true });
       if (error) throw error;
       const { data } = supabase.storage.from("announcements").getPublicUrl(path);
+      await deleteOldStorageFile(supabase, "announcements", imageUrl);
       setImageUrl(data.publicUrl);
     } catch (err) {
       console.error("announcement image upload failed:", err);

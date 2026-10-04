@@ -3,6 +3,7 @@ import { unstable_cache } from "next/cache";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { createPublicClient } from "@/lib/supabase/public";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentUser } from "@/lib/current-user";
 import { genreVariants } from "@/lib/genre";
 import type { HomeTab } from "@/lib/homeTabs";
@@ -23,7 +24,7 @@ export type Paginated<T> = { items: T[]; total: number };
 // leak anything RLS would otherwise hide. Anything with an includeDrafts-
 // style parameter (getStoryBySlug, getChaptersForStory, getAuthorStories...)
 // is intentionally left uncached and on the per-request RLS-scoped client.
-const CACHE_SECONDS = 60;
+const CACHE_SECONDS = 300;
 
 export const getPopularStories = unstable_cache(
   async (limit = 8, offset = 0): Promise<Paginated<StoryCard>> => {
@@ -86,75 +87,89 @@ export const getNewestStories = unstable_cache(
   { revalidate: CACHE_SECONDS, tags: ["stories"] }
 );
 
-// "Подписки" home tab. Not unstable_cache'd like the functions above —
-// this result is different per viewer, so caching it under a shared key
-// would leak one user's feed to another. Uses the session-scoped client
-// (RLS: follows is only readable by the follower themself anyway).
-export async function getFollowingStories(userId: string, limit = 8, offset = 0): Promise<Paginated<StoryCard>> {
-  try {
-    const supabase = await createClient();
-    const { data: followedRows } = await supabase.from("follows").select("author_id").eq("follower_id", userId);
-    const authorIds = (followedRows ?? []).map((f) => f.author_id as string);
-    if (authorIds.length === 0) return { items: [], total: 0 };
+// "Подписки" home tab. unstable_cache'd per-viewer — userId is part of the
+// function's arguments, which Next.js folds into the cache key alongside
+// the keyParts below, so each user gets their own cache entry (no leaking
+// one user's feed to another). Needs the admin client, not the session-
+// scoped one: unstable_cache callbacks can't read cookies() (which the
+// session client depends on) — every query here is already explicitly
+// scoped with .eq(..., userId) regardless of which client runs it, so
+// bypassing RLS this way doesn't change which rows come back.
+export const getFollowingStories = unstable_cache(
+  async (userId: string, limit = 8, offset = 0): Promise<Paginated<StoryCard>> => {
+    try {
+      const supabase = createAdminClient();
+      const { data: followedRows } = await supabase.from("follows").select("author_id").eq("follower_id", userId);
+      const authorIds = (followedRows ?? []).map((f) => f.author_id as string);
+      if (authorIds.length === 0) return { items: [], total: 0 };
 
-    const { data, count } = await supabase
-      .from("stories")
-      .select("*, author:profiles!stories_author_id_fkey(username, display_name)", { count: "exact" })
-      .eq("status", "published")
-      .eq("visibility", "public")
-      .in("author_id", authorIds)
-      .order("published_at", { ascending: false })
-      .range(offset, offset + limit - 1);
-    return { items: (data as StoryCard[]) ?? [], total: count ?? 0 };
-  } catch {
-    return { items: [], total: 0 };
-  }
-}
-
-// "Для вас" home tab — same not-cached reasoning as getFollowingStories
-// above. Preference signal is the union of the genres picked at onboarding
-// (profiles.interests) and the genres of everything the user has liked so
-// far, each expanded to every locale's label via genreVariants() (both
-// interests and stories.genres are stored in whatever locale was active
-// when they were picked/created — see src/lib/genre.ts). A brand new
-// account has neither yet, so this naturally falls back to the same
-// popular feed as everyone else until they pick interests or like
-// something — existing accounts from before this feature already have
-// likes but mostly no interests, so they're effectively ranked by likes
-// alone, which is exactly the intended behavior for them.
-export async function getForYouStories(userId: string, limit = 8, offset = 0): Promise<Paginated<StoryCard>> {
-  try {
-    const supabase = await createClient();
-    const [{ data: profile }, { data: likedRows }] = await Promise.all([
-      supabase.from("profiles").select("interests").eq("id", userId).single(),
-      supabase.from("likes").select("target_id").eq("user_id", userId).eq("target_type", "story"),
-    ]);
-
-    const likedStoryIds = (likedRows ?? []).map((r) => r.target_id as string);
-    let likedGenres: string[] = [];
-    if (likedStoryIds.length > 0) {
-      const { data: likedStories } = await supabase.from("stories").select("genres").in("id", likedStoryIds);
-      likedGenres = (likedStories ?? []).flatMap((s) => (s.genres as string[]) ?? []);
+      const { data, count } = await supabase
+        .from("stories")
+        .select("*, author:profiles!stories_author_id_fkey(username, display_name)", { count: "exact" })
+        .eq("status", "published")
+        .eq("visibility", "public")
+        .in("author_id", authorIds)
+        .order("published_at", { ascending: false })
+        .range(offset, offset + limit - 1);
+      return { items: (data as StoryCard[]) ?? [], total: count ?? 0 };
+    } catch {
+      return { items: [], total: 0 };
     }
+  },
+  ["following-stories"],
+  { revalidate: CACHE_SECONDS, tags: ["stories"] }
+);
 
-    const rawGenres = [...new Set([...(profile?.interests ?? []), ...likedGenres])];
-    const preferredGenres = [...new Set(rawGenres.flatMap((g) => genreVariants(g)))];
+// "Для вас" home tab — same per-viewer caching as getFollowingStories
+// above (and the same reason it needs the admin client instead of the
+// session-scoped one). Preference signal is the union of the genres picked
+// at onboarding (profiles.interests) and the genres of everything the user
+// has liked so far, each expanded to every locale's label via
+// genreVariants() (both interests and stories.genres are stored in
+// whatever locale was active when they were picked/created — see
+// src/lib/genre.ts). A brand new account has neither yet, so this
+// naturally falls back to the same popular feed as everyone else until
+// they pick interests or like something — existing accounts from before
+// this feature already have likes but mostly no interests, so they're
+// effectively ranked by likes alone, which is exactly the intended
+// behavior for them.
+export const getForYouStories = unstable_cache(
+  async (userId: string, limit = 8, offset = 0): Promise<Paginated<StoryCard>> => {
+    try {
+      const supabase = createAdminClient();
+      const [{ data: profile }, { data: likedRows }] = await Promise.all([
+        supabase.from("profiles").select("interests").eq("id", userId).single(),
+        supabase.from("likes").select("target_id").eq("user_id", userId).eq("target_type", "story"),
+      ]);
 
-    if (preferredGenres.length === 0) return getPopularStories(limit, offset);
+      const likedStoryIds = (likedRows ?? []).map((r) => r.target_id as string);
+      let likedGenres: string[] = [];
+      if (likedStoryIds.length > 0) {
+        const { data: likedStories } = await supabase.from("stories").select("genres").in("id", likedStoryIds);
+        likedGenres = (likedStories ?? []).flatMap((s) => (s.genres as string[]) ?? []);
+      }
 
-    const { data, count } = await supabase
-      .from("stories")
-      .select("*, author:profiles!stories_author_id_fkey(username, display_name)", { count: "exact" })
-      .eq("status", "published")
-      .eq("visibility", "public")
-      .overlaps("genres", preferredGenres)
-      .order("like_count", { ascending: false })
-      .range(offset, offset + limit - 1);
-    return { items: (data as StoryCard[]) ?? [], total: count ?? 0 };
-  } catch {
-    return { items: [], total: 0 };
-  }
-}
+      const rawGenres = [...new Set([...(profile?.interests ?? []), ...likedGenres])];
+      const preferredGenres = [...new Set(rawGenres.flatMap((g) => genreVariants(g)))];
+
+      if (preferredGenres.length === 0) return getPopularStories(limit, offset);
+
+      const { data, count } = await supabase
+        .from("stories")
+        .select("*, author:profiles!stories_author_id_fkey(username, display_name)", { count: "exact" })
+        .eq("status", "published")
+        .eq("visibility", "public")
+        .overlaps("genres", preferredGenres)
+        .order("like_count", { ascending: false })
+        .range(offset, offset + limit - 1);
+      return { items: (data as StoryCard[]) ?? [], total: count ?? 0 };
+    } catch {
+      return { items: [], total: 0 };
+    }
+  },
+  ["for-you-stories"],
+  { revalidate: CACHE_SECONDS, tags: ["stories"] }
+);
 
 // Same tab -> query dispatch the home page's feed section uses, shared with
 // the /all "все истории" page so both list identical content for a tab —

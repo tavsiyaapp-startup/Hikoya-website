@@ -1,6 +1,6 @@
 "use client";
 
-import { forwardRef, useEffect, useImperativeHandle, useState } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { useEditor, EditorContent, type Editor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { TextStyle, FontFamily, FontSize } from "@tiptap/extension-text-style";
@@ -8,8 +8,10 @@ import TextAlign from "@tiptap/extension-text-align";
 import Image from "@tiptap/extension-image";
 import { Placeholder } from "@tiptap/extensions";
 import { clsx } from "clsx";
-import { AlignLeftIcon, AlignCenterIcon } from "@/components/ui/icons";
+import { AlignLeftIcon, AlignCenterIcon, ImageIcon } from "@/components/ui/icons";
 import { ChapterMarker } from "@/lib/editor/chapterMarkerNode";
+import { createClient } from "@/lib/supabase/client";
+import { resizeImageFile } from "@/lib/image-resize";
 
 export interface RichTextEditorHandle {
   insertChapterMarker: () => void;
@@ -99,6 +101,35 @@ function ToolbarButton({
 }
 
 function Toolbar({ editor }: { editor: Editor }) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [imageUploading, setImageUploading] = useState(false);
+  const [imageError, setImageError] = useState<string | null>(null);
+
+  async function handleImageFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setImageUploading(true);
+    setImageError(null);
+    try {
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) throw new Error("unauthorized");
+      const resized = await resizeImageFile(file, { maxWidth: 1200, maxHeight: 1600 });
+      const path = `${user.id}/${Date.now()}-${resized.name}`;
+      const { error } = await supabase.storage.from("chapter-images").upload(path, resized, { upsert: true });
+      if (error) throw error;
+      const { data } = supabase.storage.from("chapter-images").getPublicUrl(path);
+      editor.chain().focus().setImage({ src: data.publicUrl }).run();
+    } catch {
+      setImageError("Не удалось загрузить картинку");
+    } finally {
+      setImageUploading(false);
+    }
+  }
+
   const currentFontSize = FONT_SIZES.find(
     (f) => f.value === (editor.getAttributes("textStyle").fontSize ?? "")
   );
@@ -195,6 +226,19 @@ function Toolbar({ editor }: { editor: Editor }) {
         onClick={() => editor.chain().focus().setTextAlign("center").run()}
         label={<AlignCenterIcon />}
       />
+
+      <span className="mx-1 h-5 w-px bg-border" />
+
+      <ToolbarButton
+        title="Вставить картинку"
+        active={false}
+        onClick={() => {
+          if (!imageUploading) fileInputRef.current?.click();
+        }}
+        label={imageUploading ? "…" : <ImageIcon width={16} height={16} />}
+      />
+      <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageFile} className="hidden" />
+      {imageError && <span className="px-1 text-[12px] text-danger">{imageError}</span>}
 
       <span className="mx-1 h-5 w-px bg-border" />
 

@@ -20,7 +20,10 @@ export interface StoryRecord {
   author_id: string;
   status: StoryStatus;
   visibility: StoryVisibility;
-  deleted_at?: string | null;
+  // Drizzle returns a Date; callers building a plain object by hand (tests,
+  // RSC props) commonly have a string. Either works: isStoryPubliclyVisible
+  // only checks truthiness.
+  deleted_at?: string | Date | null;
 }
 
 export interface ChapterRecord {

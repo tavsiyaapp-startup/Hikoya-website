@@ -1,6 +1,7 @@
 import "server-only";
 import { Pool } from "pg";
-import { drizzle, type NodePgDatabase } from "drizzle-orm/node-postgres";
+import { drizzle, type NodePgDatabase, type NodePgTransaction } from "drizzle-orm/node-postgres";
+import type { ExtractTablesWithRelations } from "drizzle-orm";
 import * as schema from "./schema";
 
 // One pool per process. The connection string comes from DATABASE_URL (set in
@@ -9,6 +10,12 @@ import * as schema from "./schema";
 // Max 10 connections: the host has 4 GB RAM and one Node process.
 
 export type Db = NodePgDatabase<typeof schema>;
+
+// What db.transaction()'s callback receives. The data-access layer accepts
+// `DbOrTx` wherever a function may run either standalone or inside someone
+// else's transaction (e.g. addChapter locking the story row).
+export type Tx = NodePgTransaction<typeof schema, ExtractTablesWithRelations<typeof schema>>;
+export type DbOrTx = Db | Tx;
 
 declare global {
   // Kept on globalThis so dev hot reloads reuse the pool instead of opening a new one.

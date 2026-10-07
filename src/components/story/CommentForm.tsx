@@ -6,6 +6,7 @@ import { useLocale } from "@/lib/i18n/LocaleProvider";
 import { Button } from "@/components/ui/Button";
 import { Textarea } from "@/components/ui/Textarea";
 import { EmojiPickerButton } from "@/components/story/EmojiPickerButton";
+import { CommentBlockedNotice } from "@/components/story/CommentBlockedNotice";
 
 export function CommentForm({
   storyId,
@@ -14,6 +15,7 @@ export function CommentForm({
   parentId,
   onSuccess,
   autoFocus,
+  blocked,
 }: {
   storyId: string;
   // null when posting from the story page's own "Комментарии" tab (all
@@ -23,6 +25,8 @@ export function CommentForm({
   parentId?: string;
   onSuccess?: () => void;
   autoFocus?: boolean;
+  // Blocked accounts see a notice instead of the form.
+  blocked?: boolean;
 }) {
   const { t } = useLocale();
   const [text, setText] = useState("");
@@ -57,6 +61,8 @@ export function CommentForm({
       el.setSelectionRange(pos, pos);
     });
   }
+
+  if (blocked) return <CommentBlockedNotice />;
 
   return (
     <form ref={formRef} onSubmit={handleSubmit} className="flex flex-col gap-2.5">

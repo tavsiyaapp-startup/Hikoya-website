@@ -258,7 +258,7 @@ export default async function StoryPage({
             {user ? (
               <div className="mb-1.5">
                 <CommentGuidelines />
-                <CommentForm storyId={story.id} chapterId={null} path={path} />
+                <CommentForm storyId={story.id} chapterId={null} path={path} blocked={user?.profile?.status === "blocked"} />
               </div>
             ) : (
               <div className="mb-1.5 flex flex-wrap items-center gap-3 rounded-[12px] border border-dashed border-primary-300 bg-card px-5 py-4">

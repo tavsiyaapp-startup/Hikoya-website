@@ -168,6 +168,8 @@ const uz: typeof ru = {
     guestProgressHint: "mehmon uchun progress saqlanmaydi",
     commentPlaceholder: "Izohingiz…",
     commentSubmit: "Yuborish",
+    commentsBlocked: "Hisobingiz bloklangan. Iltimos, sayt administratori bilan bog'laning.",
+    contactAdmin: "Administratorga yozish",
     spoilerCheckboxLabel: "Spoyler bor",
     spoilerBadge: "Spoyler",
     showSpoiler: "Spoylerni koʻrsatish",

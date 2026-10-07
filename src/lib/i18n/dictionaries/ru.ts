@@ -166,6 +166,8 @@ const ru = {
     guestProgressHint: "прогресс не сохраняется для гостя",
     commentPlaceholder: "Ваш комментарий…",
     commentSubmit: "Отправить",
+    commentsBlocked: "Ваш аккаунт заблокирован, пожалуйста, обратитесь к администратору сайта.",
+    contactAdmin: "Написать администратору",
     spoilerCheckboxLabel: "Содержит спойлер",
     spoilerBadge: "Спойлер",
     showSpoiler: "Показать спойлер",

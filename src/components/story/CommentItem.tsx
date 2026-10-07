@@ -20,6 +20,7 @@ export function CommentItem({
   likedByMe,
   likedReplyIds,
   isReply,
+  blocked,
 }: {
   comment: CommentRow;
   replies?: CommentRow[];
@@ -30,6 +31,7 @@ export function CommentItem({
   likedByMe: boolean;
   likedReplyIds?: Set<string>;
   isReply?: boolean;
+  blocked?: boolean;
 }) {
   const { t } = useLocale();
   const [liked, setLiked] = useState(likedByMe);
@@ -114,7 +116,7 @@ export function CommentItem({
 
       {replying && (
         <div className="ml-10.5 mt-2.5">
-          <CommentForm storyId={storyId} chapterId={chapterId} path={path} parentId={comment.id} onSuccess={() => setReplying(false)} autoFocus />
+          <CommentForm storyId={storyId} chapterId={chapterId} path={path} parentId={comment.id} onSuccess={() => setReplying(false)} autoFocus blocked={blocked} />
         </div>
       )}
 
@@ -130,6 +132,7 @@ export function CommentItem({
               locale={locale}
               likedByMe={likedReplyIds?.has(r.id) ?? false}
               isReply
+              blocked={blocked}
             />
           ))}
         </div>

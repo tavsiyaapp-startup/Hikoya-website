@@ -46,3 +46,7 @@ admin-credentials.txt
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Local data exports — contain user emails and password hashes, never commit
+full_backup.sql
+storage files.csv

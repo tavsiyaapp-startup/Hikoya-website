@@ -105,9 +105,13 @@ export const profiles = pgTable("profiles", {
   has_password: boolean("has_password").default(false).notNull(),
   instagram_handle: text("instagram_handle"),
   telegram_handle: text("telegram_handle"),
+  email: text("email"),
+  email_verified: boolean("email_verified").default(false).notNull(),
+  updated_at: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 }, (table) => [
   unique("profiles_telegram_id_key").on(table.telegram_id),
   unique("profiles_username_key").on(table.username),
+  uniqueIndex("profiles_email_key").on(table.email),
 ]);
 
 export const adminChatMessages = pgTable("admin_chat_messages", {
@@ -437,5 +441,49 @@ export const commentReports = pgTable("comment_reports", {
   unique("comment_reports_comment_reporter_key").on(table.comment_id, table.reporter_id),
   index("comment_reports_status_idx").on(table.status, table.created_at),
   index("comment_reports_comment_idx").on(table.comment_id),
+]);
+
+export const baAccounts = pgTable("ba_accounts", {
+  id: text("id").notNull().primaryKey(),
+  user_id: uuid("user_id").notNull().references(() => profiles.id, { onDelete: "cascade" }),
+  provider_id: text("provider_id").notNull(),
+  account_id: text("account_id").notNull(),
+  password: text("password"),
+  access_token: text("access_token"),
+  refresh_token: text("refresh_token"),
+  id_token: text("id_token"),
+  access_token_expires_at: timestamp("access_token_expires_at", { withTimezone: true }),
+  refresh_token_expires_at: timestamp("refresh_token_expires_at", { withTimezone: true }),
+  scope: text("scope"),
+  created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updated_at: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  unique("ba_accounts_provider_account_key").on(table.provider_id, table.account_id),
+  index("ba_accounts_user_id_idx").on(table.user_id),
+]);
+
+export const baSessions = pgTable("ba_sessions", {
+  id: text("id").notNull().primaryKey(),
+  user_id: uuid("user_id").notNull().references(() => profiles.id, { onDelete: "cascade" }),
+  token: text("token").notNull(),
+  expires_at: timestamp("expires_at", { withTimezone: true }).notNull(),
+  ip_address: text("ip_address"),
+  user_agent: text("user_agent"),
+  created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updated_at: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  unique("ba_sessions_token_key").on(table.token),
+  index("ba_sessions_user_id_idx").on(table.user_id),
+]);
+
+export const baVerifications = pgTable("ba_verifications", {
+  id: text("id").notNull().primaryKey(),
+  identifier: text("identifier").notNull(),
+  value: text("value").notNull(),
+  expires_at: timestamp("expires_at", { withTimezone: true }).notNull(),
+  created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updated_at: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  index("ba_verifications_identifier_idx").on(table.identifier),
 ]);
 

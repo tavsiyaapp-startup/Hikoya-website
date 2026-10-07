@@ -2,6 +2,7 @@ import "server-only";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "@better-auth/drizzle-adapter";
 import { emailOTP } from "better-auth/plugins";
+import { nextCookies } from "better-auth/next-js";
 import { getDb } from "@/server/db/client";
 import * as schema from "@/server/db/schema";
 import { hashPassword, verifyPassword } from "@/server/auth/password";
@@ -27,81 +28,109 @@ import { sendMail } from "@/server/auth/mailer";
 // a second, separately-documented way to do the same thing; mixing both
 // on the same model is unverified and risks the two disagreeing about
 // which table backs it, so this uses the schema-key method alone.
-export const auth = betterAuth({
-  database: drizzleAdapter(getDb(), {
-    provider: "pg",
-    schema: {
-      ...schema,
-      user: schema.profiles,
-      account: schema.baAccounts,
-      session: schema.baSessions,
-      verification: schema.baVerifications,
-    },
-  }),
-  user: {
-    fields: {
-      email: "email",
-      emailVerified: "email_verified",
-      name: "display_name",
-      image: "avatar_url",
-      createdAt: "created_at",
-      updatedAt: "updated_at",
-    },
-  },
-  account: {
-    fields: {
-      userId: "user_id",
-      providerId: "provider_id",
-      accountId: "account_id",
-      accessToken: "access_token",
-      refreshToken: "refresh_token",
-      idToken: "id_token",
-      accessTokenExpiresAt: "access_token_expires_at",
-      refreshTokenExpiresAt: "refresh_token_expires_at",
-      createdAt: "created_at",
-      updatedAt: "updated_at",
-    },
-  },
-  session: {
-    fields: {
-      userId: "user_id",
-      expiresAt: "expires_at",
-      ipAddress: "ip_address",
-      userAgent: "user_agent",
-      createdAt: "created_at",
-      updatedAt: "updated_at",
-    },
-    // Avoids a database read on every request for an already-valid session —
-    // see backend_reads.md's note on middleware running on every request.
-    cookieCache: { enabled: true, maxAge: 5 * 60 },
-  },
-  verification: {
-    fields: {
-      expiresAt: "expires_at",
-      createdAt: "created_at",
-      updatedAt: "updated_at",
-    },
-  },
-  emailAndPassword: {
-    enabled: true,
-    // Supabase's bcrypt hashes keep working; see src/server/auth/password.ts.
-    password: { hash: hashPassword, verify: verifyPassword },
-  },
-  socialProviders: {
-    google: {
-      clientId: process.env.GOOGLE_CLIENT_ID ?? "",
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? "",
-    },
-  },
-  plugins: [
-    emailOTP({
-      async sendVerificationOTP({ email, otp }) {
-        await sendMail(
-          email,
-          "Код для входа на Hikoya",
-          `Ваш код для входа: ${otp}\n\nКод действует 5 минут. Если вы не запрашивали вход, просто проигнорируйте это письмо.`
-        );
+//
+// Built lazily (first call to getAuth(), not at module load) and cached on
+// globalThis the same way src/server/db/client.ts caches its pool: `next
+// build` imports every route to collect its metadata, and betterAuth()
+// calls getDb() eagerly inside this function — building it at module scope
+// made `next build` fail outright without a reachable DATABASE_URL, both
+// locally and, worse, as a real risk in CI if the database were ever
+// briefly unreachable during a deploy's build step.
+function buildAuth() {
+  return betterAuth({
+    database: drizzleAdapter(getDb(), {
+      provider: "pg",
+      schema: {
+        ...schema,
+        user: schema.profiles,
+        account: schema.baAccounts,
+        session: schema.baSessions,
+        verification: schema.baVerifications,
       },
     }),
-  ],
-});
+    user: {
+      fields: {
+        email: "email",
+        emailVerified: "email_verified",
+        name: "display_name",
+        image: "avatar_url",
+        createdAt: "created_at",
+        updatedAt: "updated_at",
+      },
+    },
+    account: {
+      fields: {
+        userId: "user_id",
+        providerId: "provider_id",
+        accountId: "account_id",
+        accessToken: "access_token",
+        refreshToken: "refresh_token",
+        idToken: "id_token",
+        accessTokenExpiresAt: "access_token_expires_at",
+        refreshTokenExpiresAt: "refresh_token_expires_at",
+        createdAt: "created_at",
+        updatedAt: "updated_at",
+      },
+    },
+    session: {
+      fields: {
+        userId: "user_id",
+        expiresAt: "expires_at",
+        ipAddress: "ip_address",
+        userAgent: "user_agent",
+        createdAt: "created_at",
+        updatedAt: "updated_at",
+      },
+      // Avoids a database read on every request for an already-valid
+      // session — see backend_reads.md's note on middleware running on
+      // every request.
+      cookieCache: { enabled: true, maxAge: 5 * 60 },
+    },
+    verification: {
+      fields: {
+        expiresAt: "expires_at",
+        createdAt: "created_at",
+        updatedAt: "updated_at",
+      },
+    },
+    emailAndPassword: {
+      enabled: true,
+      // Supabase's bcrypt hashes keep working; see src/server/auth/password.ts.
+      password: { hash: hashPassword, verify: verifyPassword },
+    },
+    socialProviders: {
+      google: {
+        clientId: process.env.GOOGLE_CLIENT_ID ?? "",
+        clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? "",
+      },
+    },
+    plugins: [
+      emailOTP({
+        async sendVerificationOTP({ email, otp }) {
+          await sendMail(
+            email,
+            "Код для входа на Hikoya",
+            `Ваш код для входа: ${otp}\n\nКод действует 5 минут. Если вы не запрашивали вход, просто проигнорируйте это письмо.`
+          );
+        },
+      }),
+      // Must be last — it hooks "after" every endpoint to write the session
+      // cookie via Next.js's own cookies() API, which only works from a
+      // Server Action or Route Handler. Earlier plugins' after-hooks still
+      // run first either way; this is about where in Better Auth's own
+      // plugin list it sits, not request order.
+      nextCookies(),
+    ],
+  });
+}
+
+declare global {
+  var __hikoyaAuth: ReturnType<typeof buildAuth> | undefined;
+}
+
+export function getAuth() {
+  if (!globalThis.__hikoyaAuth) {
+    globalThis.__hikoyaAuth = buildAuth();
+  }
+  return globalThis.__hikoyaAuth;
+}

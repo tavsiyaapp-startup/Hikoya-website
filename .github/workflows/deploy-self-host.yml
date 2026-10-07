@@ -84,9 +84,21 @@ jobs:
       # silently leaving them missing on the server (found live: several
       # chunks 404ing after a run of retried deploys). Keying by attempt
       # too means every retry starts with a clean slate.
+      #
+      # Both FTP steps below retry themselves up to 3 times in-job: the
+      # host's FTP server resets the data socket (ECONNRESET) often enough
+      # that nearly every deploy this project has done needed at least one
+      # manual `gh run rerun --failed`. continue-on-error on the first two
+      # attempts means a transient reset doesn't fail the job outright; the
+      # final attempt has no continue-on-error, so three resets in a row
+      # still fails the job loudly instead of silently leaving files
+      # unuploaded. YAML anchors (&/*) keep the `with:` block defined once —
+      # GitHub Actions has supported them since September 2025.
       - name: Upload static assets via FTP (additive only, never deletes)
+        id: ftp-static-1
+        continue-on-error: true
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
-        with:
+        with: &ftp-static-config
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
@@ -94,9 +106,23 @@ jobs:
           server-dir: /www/hikoya.org/.next/static/
           state-name: .ftp-deploy-static-state-${{ github.run_id }}-${{ github.run_attempt }}.json
 
-      - name: Upload via FTP
+      - name: Retry static assets upload (attempt 2/3)
+        id: ftp-static-2
+        if: steps.ftp-static-1.outcome == 'failure'
+        continue-on-error: true
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
-        with:
+        with: *ftp-static-config
+
+      - name: Retry static assets upload (attempt 3/3)
+        if: steps.ftp-static-1.outcome == 'failure' && steps.ftp-static-2.outcome == 'failure'
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with: *ftp-static-config
+
+      - name: Upload via FTP
+        id: ftp-main-1
+        continue-on-error: true
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with: &ftp-main-config
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
@@ -105,3 +131,15 @@ jobs:
           exclude: |
             **/node_modules/**
             .next/static/**
+
+      - name: Retry main upload (attempt 2/3)
+        id: ftp-main-2
+        if: steps.ftp-main-1.outcome == 'failure'
+        continue-on-error: true
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with: *ftp-main-config
+
+      - name: Retry main upload (attempt 3/3)
+        if: steps.ftp-main-1.outcome == 'failure' && steps.ftp-main-2.outcome == 'failure'
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with: *ftp-main-config

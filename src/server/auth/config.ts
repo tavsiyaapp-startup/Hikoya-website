@@ -38,6 +38,12 @@ import { sendMail } from "@/server/auth/mailer";
 // briefly unreachable during a deploy's build step.
 function buildAuth() {
   return betterAuth({
+    // Without this, Better Auth has no trusted origin to compare the
+    // request's Origin header against, and its CSRF check rejects every
+    // sign-in with FORBIDDEN/INVALID_ORIGIN — trustedOrigins defaults to
+    // just this value. NEXT_PUBLIC_SITE_URL is already set to
+    // https://hikoya.org in deploy-self-host.yml's production env.
+    baseURL: process.env.NEXT_PUBLIC_SITE_URL ?? "https://hikoya.org",
     database: drizzleAdapter(getDb(), {
       provider: "pg",
       schema: {

@@ -41,7 +41,19 @@ export default function AuthTestPage() {
   }
 
   return (
-    <div style={{ maxWidth: 480, margin: "40px auto", padding: 16, fontFamily: "monospace" }}>
+    <div
+      style={{
+        maxWidth: 480,
+        margin: "40px auto",
+        padding: 16,
+        fontFamily: "monospace",
+        // The site's dark theme leaks in here otherwise (light text on a
+        // light <pre> background, unreadable) — force plain light-mode
+        // colors regardless of it, this page doesn't need to match.
+        background: "#fff",
+        color: "#111",
+      }}
+    >
       <h1>Better Auth — тестовый вход (временная страница)</h1>
       <form onSubmit={signIn} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         <input
@@ -50,6 +62,7 @@ export default function AuthTestPage() {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
+          style={{ color: "#111", background: "#fff" }}
         />
         <input
           type="password"
@@ -57,12 +70,23 @@ export default function AuthTestPage() {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
+          style={{ color: "#111", background: "#fff" }}
         />
         <button type="submit" disabled={pending}>
           {pending ? "..." : "Войти"}
         </button>
       </form>
-      <pre style={{ whiteSpace: "pre-wrap", marginTop: 16, background: "#eee", padding: 8 }}>{result}</pre>
+      <pre
+        style={{
+          whiteSpace: "pre-wrap",
+          marginTop: 16,
+          background: "#eee",
+          color: "#111",
+          padding: 8,
+        }}
+      >
+        {result}
+      </pre>
     </div>
   );
 }

@@ -63,6 +63,23 @@ function buildAuth() {
         createdAt: "created_at",
         updatedAt: "updated_at",
       },
+      // profiles.username is NOT NULL + UNIQUE and Better Auth never
+      // writes it — without telling Better Auth it exists, its Drizzle
+      // schema check refuses to run at all (SCHEMA_MISMATCH), on every
+      // request, not just sign-up/sign-in. Real registration (email/
+      // password sign-up, first Google sign-in) still goes through
+      // Supabase, not Better Auth, so this is only a placeholder that
+      // keeps an accidental Better Auth-driven insert from crashing on
+      // the constraint — replace with real username assignment before
+      // Better Auth itself ever creates a profiles row.
+      additionalFields: {
+        username: {
+          type: "string",
+          required: true,
+          input: false,
+          defaultValue: () => `user_${crypto.randomUUID().slice(0, 8)}`,
+        },
+      },
     },
     account: {
       fields: {

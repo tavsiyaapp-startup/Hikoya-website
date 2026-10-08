@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 // Throwaway page to confirm Better Auth actually authenticates a real,
 // migrated account end to end — nothing on the live site links here, and
@@ -12,6 +12,45 @@ export default function AuthTestPage() {
   const [password, setPassword] = useState("");
   const [result, setResult] = useState<string>("");
   const [pending, setPending] = useState(false);
+
+  // Google redirects back here after the OAuth dance — show whatever
+  // session (or error) that landed us with, without needing another click.
+  useEffect(() => {
+    const error = new URLSearchParams(window.location.search).get("error");
+    if (error) {
+      setResult(`google sign-in redirected back with an error: ${error}`);
+      return;
+    }
+    fetch("/api/auth/get-session", { credentials: "include" })
+      .then((r) => r.json())
+      .then((body) => {
+        if (body) setResult(JSON.stringify({ session: body }, null, 2));
+      })
+      .catch(() => {});
+  }, []);
+
+  async function signInWithGoogle() {
+    setPending(true);
+    setResult("redirecting to Google...");
+    try {
+      const res = await fetch("/api/auth/sign-in/social", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ provider: "google", callbackURL: "/auth-test" }),
+      });
+      const body = await res.json();
+      if (!res.ok || !body.url) {
+        setResult(`sign-in/social failed (${res.status}): ${JSON.stringify(body)}`);
+        setPending(false);
+        return;
+      }
+      window.location.href = body.url;
+    } catch (err) {
+      setResult(`error: ${err instanceof Error ? err.message : String(err)}`);
+      setPending(false);
+    }
+  }
 
   async function signIn(e: React.FormEvent) {
     e.preventDefault();
@@ -76,6 +115,14 @@ export default function AuthTestPage() {
           {pending ? "..." : "Войти"}
         </button>
       </form>
+      <button
+        type="button"
+        onClick={signInWithGoogle}
+        disabled={pending}
+        style={{ marginTop: 8, width: "100%" }}
+      >
+        Войти через Google
+      </button>
       <pre
         style={{
           whiteSpace: "pre-wrap",

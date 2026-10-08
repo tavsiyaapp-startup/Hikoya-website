@@ -125,6 +125,22 @@ jobs:
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with: *ftp-static-config
 
+      # This step used to reuse one fixed remote state file across every
+      # deploy (incremental diff, deletes files no longer present locally —
+      # safe here, unlike the static step, since nothing holds a reference
+      # to an old server-side chunk by hash). Found live: after the FTP
+      # ECONNRESET retries this project needed around the Better Auth
+      # rollout, two brand-new route files (/auth-test, /api/auth/[...all])
+      # kept 404ing on the live server for several deploys in a row even
+      # though the job reported success and `next build` produced them
+      # locally — the shared state file had desynced from an earlier
+      # interrupted run and the diff logic concluded those files were
+      # already uploaded when they never actually were. Keying it per
+      # run/attempt (like the static step already does) forces a full,
+      # trustworthy reupload every time instead of trusting stale state.
+      # Trade-off: with no prior state file to diff against, this step no
+      # longer deletes server files removed from the repo — they just sit
+      # unused on disk (20GB available, not worth the risk to reinstate).
       - name: Upload via FTP
         id: ftp-main-1
         continue-on-error: true
@@ -135,6 +151,7 @@ jobs:
           password: ${{ secrets.FTP_PASSWORD }}
           local-dir: ./deploy-stage/
           server-dir: /www/hikoya.org/
+          state-name: .ftp-deploy-main-state-${{ github.run_id }}-${{ github.run_attempt }}.json
           exclude: |
             **/node_modules/**
             .next/static/**

@@ -1,13 +1,28 @@
 import "server-only";
 import { unstable_cache } from "next/cache";
-import type { SupabaseClient } from "@supabase/supabase-js";
-import { and, asc, count, desc, eq } from "drizzle-orm";
-import { createClient } from "@/lib/supabase/server";
-import { createPublicClient } from "@/lib/supabase/public";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { and, arrayOverlaps, asc, count, desc, eq, gte, ilike, inArray, isNull, sql } from "drizzle-orm";
 import { getCurrentUser } from "@/lib/current-user";
 import { getDb } from "@/server/db/client";
-import { bookmarks, chapters, profiles, readingStatuses, stories } from "@/server/db/schema";
+import {
+  bookmarks,
+  chapters,
+  collectionItems,
+  collections,
+  customLanguages,
+  featuredStories,
+  follows,
+  heroSlides,
+  announcements,
+  likes,
+  platformSettings,
+  profiles,
+  readingProgress,
+  readingStatuses,
+  savedCollections,
+  stories,
+  storyTags,
+  tags,
+} from "@/server/db/schema";
 import { genreVariants } from "@/lib/genre";
 import type { HomeTab } from "@/lib/homeTabs";
 import type { Story, Chapter, Collection, Profile, StoryTopTier, HeroSlide, Announcement } from "@/types/database";
@@ -30,9 +45,12 @@ export function toStoryCard(
   };
 }
 
-// Every query here tolerates an unreachable Supabase project (placeholder
-// .env.local before a real project is wired up) by returning an empty
-// result instead of throwing, so pages render their empty states.
+function toCollection(row: typeof collections.$inferSelect): Collection {
+  return { ...row, created_at: row.created_at.toISOString() };
+}
+
+// Every query here returns an empty result instead of throwing if the
+// database is unreachable, so pages render their empty states.
 
 export type StoryCard = Story & { author: Pick<Profile, "username" | "display_name"> };
 
@@ -41,26 +59,18 @@ export type Paginated<T> = { items: T[]; total: number };
 // Functions below wrapped in unstable_cache are the ones that filter to
 // status = 'published' (and visibility/is_private where relevant)
 // unconditionally, with no author/staff branch — their result is byte-for-
-// byte the same for every viewer, so caching them for a short window can't
-// leak anything RLS would otherwise hide. Anything with an includeDrafts-
-// style parameter (getStoryBySlug, getChaptersForStory, getAuthorStories...)
-// is intentionally left uncached and on the per-request RLS-scoped client.
+// byte the same for every viewer (or, for the per-user feeds, keyed by
+// userId), so caching them for a short window can't leak anything.
 const CACHE_SECONDS = 300;
 
-// Supabase is currently unusable for this project (egress quota exceeded,
-// blocking every service including reads) — these three, the home page's
-// Популярное/Завершено/Новое tabs plus /all and /search, are the first
-// moved to the Drizzle/pg connection directly (src/server/db/client.ts),
-// which never goes through Supabase at all. Same filter (published, public
-// visibility), same order, same shape — only the backend underneath
-// changed, so every caller/component stays untouched.
 const PUBLIC_STORY_FILTER = and(eq(stories.status, "published"), eq(stories.visibility, "public"));
+const AUTHOR_COLUMNS = { username: profiles.username, display_name: profiles.display_name };
 
 async function queryPublicStories(
   orderBy: ReturnType<typeof desc>,
   limit: number,
   offset: number,
-  extraFilter?: ReturnType<typeof eq>
+  extraFilter?: ReturnType<typeof and>
 ): Promise<Paginated<StoryCard>> {
   try {
     const db = getDb();
@@ -68,7 +78,7 @@ async function queryPublicStories(
 
     const [rows, [{ total }]] = await Promise.all([
       db
-        .select({ story: stories, author: { username: profiles.username, display_name: profiles.display_name } })
+        .select({ story: stories, author: AUTHOR_COLUMNS })
         .from(stories)
         .innerJoin(profiles, eq(stories.author_id, profiles.id))
         .where(where)
@@ -106,28 +116,18 @@ export const getNewestStories = unstable_cache(
 // "Подписки" home tab. unstable_cache'd per-viewer — userId is part of the
 // function's arguments, which Next.js folds into the cache key alongside
 // the keyParts below, so each user gets their own cache entry (no leaking
-// one user's feed to another). Needs the admin client, not the session-
-// scoped one: unstable_cache callbacks can't read cookies() (which the
-// session client depends on) — every query here is already explicitly
-// scoped with .eq(..., userId) regardless of which client runs it, so
-// bypassing RLS this way doesn't change which rows come back.
+// one user's feed to another).
 export const getFollowingStories = unstable_cache(
   async (userId: string, limit = 8, offset = 0): Promise<Paginated<StoryCard>> => {
     try {
-      const supabase = createAdminClient();
-      const { data: followedRows } = await supabase.from("follows").select("author_id").eq("follower_id", userId);
-      const authorIds = (followedRows ?? []).map((f) => f.author_id as string);
+      const db = getDb();
+      const followedRows = await db
+        .select({ author_id: follows.author_id })
+        .from(follows)
+        .where(eq(follows.follower_id, userId));
+      const authorIds = followedRows.map((f) => f.author_id);
       if (authorIds.length === 0) return { items: [], total: 0 };
-
-      const { data, count } = await supabase
-        .from("stories")
-        .select("*, author:profiles!stories_author_id_fkey(username, display_name)", { count: "exact" })
-        .eq("status", "published")
-        .eq("visibility", "public")
-        .in("author_id", authorIds)
-        .order("published_at", { ascending: false })
-        .range(offset, offset + limit - 1);
-      return { items: (data as StoryCard[]) ?? [], total: count ?? 0 };
+      return queryPublicStories(desc(stories.published_at), limit, offset, and(inArray(stories.author_id, authorIds)));
     } catch {
       return { items: [], total: 0 };
     }
@@ -137,32 +137,31 @@ export const getFollowingStories = unstable_cache(
 );
 
 // "Для вас" home tab — same per-viewer caching as getFollowingStories
-// above (and the same reason it needs the admin client instead of the
-// session-scoped one). Preference signal is the union of the genres picked
-// at onboarding (profiles.interests) and the genres of everything the user
-// has liked so far, each expanded to every locale's label via
-// genreVariants() (both interests and stories.genres are stored in
-// whatever locale was active when they were picked/created — see
-// src/lib/genre.ts). A brand new account has neither yet, so this
-// naturally falls back to the same popular feed as everyone else until
-// they pick interests or like something — existing accounts from before
-// this feature already have likes but mostly no interests, so they're
-// effectively ranked by likes alone, which is exactly the intended
-// behavior for them.
+// above. Preference signal is the union of the genres picked at onboarding
+// (profiles.interests) and the genres of everything the user has liked so
+// far, each expanded to every locale's label via genreVariants() (both
+// interests and stories.genres are stored in whatever locale was active
+// when they were picked/created — see src/lib/genre.ts). A brand new
+// account has neither yet, so this naturally falls back to the same
+// popular feed as everyone else until they pick interests or like
+// something.
 export const getForYouStories = unstable_cache(
   async (userId: string, limit = 8, offset = 0): Promise<Paginated<StoryCard>> => {
     try {
-      const supabase = createAdminClient();
-      const [{ data: profile }, { data: likedRows }] = await Promise.all([
-        supabase.from("profiles").select("interests").eq("id", userId).single(),
-        supabase.from("likes").select("target_id").eq("user_id", userId).eq("target_type", "story"),
+      const db = getDb();
+      const [[profile], likedRows] = await Promise.all([
+        db.select({ interests: profiles.interests }).from(profiles).where(eq(profiles.id, userId)).limit(1),
+        db
+          .select({ target_id: likes.target_id })
+          .from(likes)
+          .where(and(eq(likes.user_id, userId), eq(likes.target_type, "story"))),
       ]);
 
-      const likedStoryIds = (likedRows ?? []).map((r) => r.target_id as string);
+      const likedStoryIds = likedRows.map((r) => r.target_id);
       let likedGenres: string[] = [];
       if (likedStoryIds.length > 0) {
-        const { data: likedStories } = await supabase.from("stories").select("genres").in("id", likedStoryIds);
-        likedGenres = (likedStories ?? []).flatMap((s) => (s.genres as string[]) ?? []);
+        const likedStories = await db.select({ genres: stories.genres }).from(stories).where(inArray(stories.id, likedStoryIds));
+        likedGenres = likedStories.flatMap((s) => s.genres ?? []);
       }
 
       const rawGenres = [...new Set([...(profile?.interests ?? []), ...likedGenres])];
@@ -170,15 +169,7 @@ export const getForYouStories = unstable_cache(
 
       if (preferredGenres.length === 0) return getPopularStories(limit, offset);
 
-      const { data, count } = await supabase
-        .from("stories")
-        .select("*, author:profiles!stories_author_id_fkey(username, display_name)", { count: "exact" })
-        .eq("status", "published")
-        .eq("visibility", "public")
-        .overlaps("genres", preferredGenres)
-        .order("like_count", { ascending: false })
-        .range(offset, offset + limit - 1);
-      return { items: (data as StoryCard[]) ?? [], total: count ?? 0 };
+      return queryPublicStories(desc(stories.like_count), limit, offset, and(arrayOverlaps(stories.genres, preferredGenres)));
     } catch {
       return { items: [], total: 0 };
     }
@@ -208,33 +199,44 @@ export type CollectionCardData = Collection & {
   storyCount: number;
 };
 
+type CollectionWithOwner = Collection & { owner: Pick<Profile, "display_name"> | null };
+
+const COLLECTION_WITH_OWNER = { collection: collections, owner: { display_name: profiles.display_name } };
+
+function toCollectionWithOwner(row: {
+  collection: typeof collections.$inferSelect;
+  owner: { display_name: string } | null;
+}): CollectionWithOwner {
+  return { ...toCollection(row.collection), owner: row.owner };
+}
+
 // Cover art for a collection card is a collage of its first 3 stories'
 // covers — there's no separate uploaded image, this is derived from
 // collection_items so it always reflects what's actually inside.
-export async function attachCollectionCovers(
-  supabase: SupabaseClient,
-  collections: Collection[]
-): Promise<CollectionCardData[]> {
-  if (collections.length === 0) return [];
-  const { data: items } = await supabase
-    .from("collection_items")
-    .select("collection_id, story:stories(cover_url)")
-    .in(
-      "collection_id",
-      collections.map((c) => c.id)
+export async function attachCollectionCovers(list: CollectionWithOwner[]): Promise<CollectionCardData[]> {
+  if (list.length === 0) return [];
+  const db = getDb();
+  const items = await db
+    .select({ collection_id: collectionItems.collection_id, cover_url: stories.cover_url })
+    .from(collectionItems)
+    .innerJoin(stories, eq(collectionItems.story_id, stories.id))
+    .where(
+      inArray(
+        collectionItems.collection_id,
+        list.map((c) => c.id)
+      )
     )
-    .order("position", { ascending: true });
+    .orderBy(asc(collectionItems.position));
   const covers = new Map<string, string[]>();
   const counts = new Map<string, number>();
-  for (const item of items ?? []) {
+  for (const item of items) {
     counts.set(item.collection_id, (counts.get(item.collection_id) ?? 0) + 1);
-    const coverUrl = (item.story as unknown as { cover_url: string | null } | null)?.cover_url;
-    if (!coverUrl) continue;
+    if (!item.cover_url) continue;
     const arr = covers.get(item.collection_id) ?? [];
-    if (arr.length < 3) arr.push(coverUrl);
+    if (arr.length < 3) arr.push(item.cover_url);
     covers.set(item.collection_id, arr);
   }
-  return (collections as CollectionCardData[]).map((c) => ({
+  return list.map((c) => ({
     ...c,
     coverUrls: covers.get(c.id) ?? [],
     storyCount: counts.get(c.id) ?? 0,
@@ -244,16 +246,21 @@ export async function attachCollectionCovers(
 export const getFeaturedCollections = unstable_cache(
   async (limit = 3, offset = 0): Promise<Paginated<CollectionCardData>> => {
     try {
-      const supabase = createPublicClient();
-      const { data, count } = await supabase
-        .from("collections")
-        .select("*, owner:profiles!collections_owner_id_fkey(display_name)", { count: "exact" })
-        .eq("is_featured", true)
-        .eq("is_private", false)
-        .order("created_at", { ascending: false })
-        .range(offset, offset + limit - 1);
-      const items = await attachCollectionCovers(supabase, (data as Collection[]) ?? []);
-      return { items, total: count ?? 0 };
+      const db = getDb();
+      const where = and(eq(collections.is_featured, true), eq(collections.is_private, false));
+      const [rows, [{ total }]] = await Promise.all([
+        db
+          .select(COLLECTION_WITH_OWNER)
+          .from(collections)
+          .leftJoin(profiles, eq(collections.owner_id, profiles.id))
+          .where(where)
+          .orderBy(desc(collections.created_at))
+          .limit(limit)
+          .offset(offset),
+        db.select({ total: count() }).from(collections).where(where),
+      ]);
+      const items = await attachCollectionCovers(rows.map(toCollectionWithOwner));
+      return { items, total };
     } catch {
       return { items: [], total: 0 };
     }
@@ -267,9 +274,9 @@ export const getFeaturedCollections = unstable_cache(
 export const getHeroSlides = unstable_cache(
   async (): Promise<HeroSlide[]> => {
     try {
-      const supabase = createPublicClient();
-      const { data } = await supabase.from("hero_slides").select("*").order("created_at", { ascending: true });
-      return (data as HeroSlide[]) ?? [];
+      const db = getDb();
+      const rows = await db.select().from(heroSlides).orderBy(asc(heroSlides.created_at));
+      return rows.map((r) => ({ ...r, created_at: r.created_at.toISOString() }));
     } catch {
       return [];
     }
@@ -285,13 +292,9 @@ export const getHeroSlides = unstable_cache(
 export const getAnnouncements = unstable_cache(
   async (limit = 12): Promise<Announcement[]> => {
     try {
-      const supabase = createPublicClient();
-      const { data } = await supabase
-        .from("announcements")
-        .select("*")
-        .order("created_at", { ascending: false })
-        .limit(limit);
-      return (data as Announcement[]) ?? [];
+      const db = getDb();
+      const rows = await db.select().from(announcements).orderBy(desc(announcements.created_at)).limit(limit);
+      return rows.map((r) => ({ ...r, created_at: r.created_at.toISOString() }));
     } catch {
       return [];
     }
@@ -306,24 +309,23 @@ export const getAnnouncements = unstable_cache(
 export const getTopStories = unstable_cache(
   async (tier: StoryTopTier, limit = 8): Promise<StoryCard[]> => {
     try {
-      const supabase = createPublicClient();
-      const { data: pins } = await supabase
-        .from("featured_stories")
-        .select("story_id")
-        .eq("tier", tier)
-        .order("featured_at", { ascending: true })
+      const db = getDb();
+      const pins = await db
+        .select({ story_id: featuredStories.story_id })
+        .from(featuredStories)
+        .where(eq(featuredStories.tier, tier))
+        .orderBy(asc(featuredStories.featured_at))
         .limit(limit);
-      const ids = (pins ?? []).map((p) => p.story_id as string);
+      const ids = pins.map((p) => p.story_id);
       if (ids.length === 0) return [];
 
-      const { data: stories } = await supabase
-        .from("stories")
-        .select("*, author:profiles!stories_author_id_fkey(username, display_name)")
-        .in("id", ids)
-        .eq("status", "published")
-        .eq("visibility", "public");
-      const byId = new Map((stories ?? []).map((s) => [s.id as string, s]));
-      return ids.map((id) => byId.get(id)).filter(Boolean) as StoryCard[];
+      const rows = await db
+        .select({ story: stories, author: AUTHOR_COLUMNS })
+        .from(stories)
+        .innerJoin(profiles, eq(stories.author_id, profiles.id))
+        .where(and(inArray(stories.id, ids), PUBLIC_STORY_FILTER));
+      const byId = new Map(rows.map((r) => [r.story.id, toStoryCard(r.story, r.author)]));
+      return ids.map((id) => byId.get(id)).filter((s): s is StoryCard => Boolean(s));
     } catch {
       return [];
     }
@@ -334,34 +336,26 @@ export const getTopStories = unstable_cache(
 
 // Collections that include at least one of this author's published stories —
 // "recommended" in the sense of "readers of this author might like these",
-// not a staff curation (that's the author_of_month-style achievement badges
-// instead, assigned from /admin/users).
+// not a staff curation.
 export async function getCollectionsFeaturingAuthor(authorId: string, limit = 6): Promise<CollectionCardData[]> {
   try {
-    const supabase = await createClient();
-    const { data: authorStories } = await supabase
-      .from("stories")
-      .select("id")
-      .eq("author_id", authorId)
-      .eq("status", "published");
-    const storyIds = (authorStories ?? []).map((s) => s.id);
-    if (storyIds.length === 0) return [];
-
-    const { data: items } = await supabase
-      .from("collection_items")
-      .select("collection_id")
-      .in("story_id", storyIds);
-    const collectionIds = [...new Set((items ?? []).map((i) => i.collection_id))];
+    const db = getDb();
+    const items = await db
+      .selectDistinct({ collection_id: collectionItems.collection_id })
+      .from(collectionItems)
+      .innerJoin(stories, eq(collectionItems.story_id, stories.id))
+      .where(and(eq(stories.author_id, authorId), eq(stories.status, "published")));
+    const collectionIds = items.map((i) => i.collection_id);
     if (collectionIds.length === 0) return [];
 
-    const { data: collections } = await supabase
-      .from("collections")
-      .select("*, owner:profiles!collections_owner_id_fkey(display_name)")
-      .in("id", collectionIds)
-      .eq("is_private", false)
-      .order("created_at", { ascending: false })
+    const rows = await db
+      .select(COLLECTION_WITH_OWNER)
+      .from(collections)
+      .leftJoin(profiles, eq(collections.owner_id, profiles.id))
+      .where(and(inArray(collections.id, collectionIds), eq(collections.is_private, false)))
+      .orderBy(desc(collections.created_at))
       .limit(limit);
-    return attachCollectionCovers(supabase, (collections as Collection[]) ?? []);
+    return attachCollectionCovers(rows.map(toCollectionWithOwner));
   } catch {
     return [];
   }
@@ -378,56 +372,72 @@ export type WeeklyStoryGroup = {
   singleChapter: { id: string; title: string; order_index: number } | null;
 };
 
-// One row per story (not per chapter) — recent_chapter_stories() does the
-// grouping/windowing/pagination in SQL so total_count already matches what
-// gets rendered (one card per story), see migration 0036's comment for why
-// this moved out of a plain paginated chapters query.
+const RECENT_DAYS = 7;
+
+// One row per story (not per chapter) — the grouping/windowing/pagination
+// happens in SQL so total already matches what gets rendered (one card per
+// story). Same query the recent_chapter_stories() Postgres function (migration
+// 0036) ran, inlined here so it doesn't depend on that function existing.
 export const getRecentPublishedChapters = unstable_cache(
   async (limit = 3, offset = 0): Promise<Paginated<WeeklyStoryGroup>> => {
     try {
-      const supabase = createPublicClient();
-      const { data: groups } = (await supabase.rpc("recent_chapter_stories", {
-        days_back: 7,
-        page_limit: limit,
-        page_offset: offset,
-      })) as {
-        data: { story_id: string; chapter_count: number; total_count: number }[] | null;
-      };
-      if (!groups || groups.length === 0) return { items: [], total: 0 };
+      const db = getDb();
+      const result = await db.execute<{ story_id: string; chapter_count: number; total_count: number }>(sql`
+        select c.story_id,
+               count(*)::int as chapter_count,
+               (count(*) over ())::int as total_count
+        from chapters c
+        join stories s on s.id = c.story_id
+        where c.status = 'published'
+          and c.published_at >= now() - (${RECENT_DAYS} || ' days')::interval
+          and s.status = 'published'
+        group by c.story_id
+        order by max(c.published_at) desc
+        limit ${limit} offset ${offset}
+      `);
+      const groups = result.rows;
+      if (groups.length === 0) return { items: [], total: 0 };
 
       const total = Number(groups[0].total_count ?? 0);
       const storyIds = groups.map((g) => g.story_id);
-      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+      const singleStoryIds = groups.filter((g) => Number(g.chapter_count) === 1).map((g) => g.story_id);
+      const since = new Date(Date.now() - RECENT_DAYS * 24 * 60 * 60 * 1000);
 
-      const [{ data: stories }, { data: singleChapters }] = await Promise.all([
-        supabase
-          .from("stories")
-          .select("*, author:profiles!stories_author_id_fkey(username, display_name)")
-          .in("id", storyIds),
-        supabase
-          .from("chapters")
-          .select("id, story_id, title, order_index")
-          .in(
-            "story_id",
-            groups.filter((g) => Number(g.chapter_count) === 1).map((g) => g.story_id as string)
-          )
-          .eq("status", "published")
-          // Matches the RPC's own window — without it a story that also has
-          // older published chapters (outside the 7-day window) could pick
-          // up one of those instead of its one genuinely recent chapter.
-          .gte("published_at", sevenDaysAgo),
+      const [storyRows, singleChapters] = await Promise.all([
+        db
+          .select({ story: stories, author: AUTHOR_COLUMNS })
+          .from(stories)
+          .innerJoin(profiles, eq(stories.author_id, profiles.id))
+          .where(inArray(stories.id, storyIds)),
+        singleStoryIds.length === 0
+          ? Promise.resolve([])
+          : db
+              .select({ id: chapters.id, story_id: chapters.story_id, title: chapters.title, order_index: chapters.order_index })
+              .from(chapters)
+              .where(
+                and(
+                  inArray(chapters.story_id, singleStoryIds),
+                  eq(chapters.status, "published"),
+                  // Matches the window above — without it a story that also
+                  // has older published chapters could pick up one of those
+                  // instead of its one genuinely recent chapter.
+                  gte(chapters.published_at, since)
+                )
+              ),
       ]);
-      const storyById = new Map((stories as StoryCard[] | null ?? []).map((s) => [s.id, s]));
-      const singleChapterByStory = new Map((singleChapters ?? []).map((c) => [c.story_id as string, c]));
+      const storyById = new Map(storyRows.map((r) => [r.story.id, toStoryCard(r.story, r.author)]));
+      const singleChapterByStory = new Map(
+        singleChapters.map((c) => [c.story_id, { id: c.id, title: c.title, order_index: c.order_index }])
+      );
 
       const items: WeeklyStoryGroup[] = [];
       for (const g of groups) {
-        const story = storyById.get(g.story_id as string);
+        const story = storyById.get(g.story_id);
         if (!story) continue;
         items.push({
           story,
           chapterCount: Number(g.chapter_count),
-          singleChapter: singleChapterByStory.get(g.story_id as string) ?? null,
+          singleChapter: singleChapterByStory.get(g.story_id) ?? null,
         });
       }
 
@@ -447,10 +457,7 @@ export type StoryDetail = Story & {
 // Treats a soft-deleted story as not-found for everyone, including its own
 // author — this is the single choke point both the public story page and
 // the author's own /manage page read through, so it's what actually keeps a
-// deleted story out of the author's hands until staff restores it (RLS
-// itself still lets the row be *read*, see migration 0032, so the
-// placeholder in collections/library can show its title — this is the app-
-// level rule that nothing renders a full page for it regardless).
+// deleted story out of the author's hands until staff restores it.
 export async function getStoryBySlug(slug: string): Promise<StoryDetail | null> {
   try {
     const db = getDb();
@@ -469,12 +476,7 @@ export async function getStoryBySlug(slug: string): Promise<StoryDetail | null> 
       .where(eq(stories.slug, slug))
       .limit(1);
     if (!row || row.story.deleted_at) return null;
-    // RLS used to let everyone SELECT a non-published story too (0040, so
-    // stale collection/library references can render a "черновик"
-    // placeholder instead of silently vanishing) — the actual story page
-    // still needs to stay off-limits to anyone but the author/staff. This
-    // app-level check replaces that now that the read doesn't go through
-    // RLS at all.
+    // A non-published story stays off-limits to anyone but the author/staff.
     if (row.story.status !== "published") {
       const viewer = await getCurrentUser();
       const isOwner = viewer?.id === row.story.author_id;
@@ -537,36 +539,43 @@ export async function getChapter(storyId: string, orderIndex: number): Promise<C
   }
 }
 
-export async function getContinueReading(userId: string, limit = 3) {
+export type ContinueReadingItem = {
+  story_id: string;
+  percent: number;
+  updated_at: string;
+  story: { id: string; title: string; slug: string; cover_url: string | null };
+};
+
+// A deleted or unpublished story's progress row is stale — nothing to
+// resume — so it's dropped rather than shown as a dead link. Once the
+// reader explicitly marks a story's reading status (want to read/read/
+// dropped), it moves out of "Читаю" into that status's own tab instead of
+// lingering in both.
+export async function getContinueReading(userId: string, limit = 3): Promise<ContinueReadingItem[]> {
   try {
-    const supabase = await createClient();
-    const [{ data }, { data: statusRows }] = await Promise.all([
-      supabase
-        .from("reading_progress")
-        .select("story_id, percent, updated_at, story:stories(id, title, slug, cover_url, deleted_at, status)")
-        .eq("user_id", userId)
-        .order("updated_at", { ascending: false })
+    const db = getDb();
+    const [rows, statusRows] = await Promise.all([
+      db
+        .select({
+          story_id: readingProgress.story_id,
+          percent: readingProgress.percent,
+          updated_at: readingProgress.updated_at,
+          story: { id: stories.id, title: stories.title, slug: stories.slug, cover_url: stories.cover_url },
+        })
+        .from(readingProgress)
+        .innerJoin(stories, eq(readingProgress.story_id, stories.id))
+        .where(
+          and(eq(readingProgress.user_id, userId), isNull(stories.deleted_at), eq(stories.status, "published"))
+        )
+        .orderBy(desc(readingProgress.updated_at))
         .limit(limit * 3),
-      supabase.from("reading_statuses").select("story_id").eq("user_id", userId),
+      db.select({ story_id: readingStatuses.story_id }).from(readingStatuses).where(eq(readingStatuses.user_id, userId)),
     ]);
-    const statusedStoryIds = new Set((statusRows ?? []).map((r) => r.story_id as string));
-    // A deleted or unpublished (draft/unlisted/pending_review) story's
-    // progress row is stale — nothing to resume, and there's no "continue
-    // reading" placeholder like collections/library get (0040), so it's
-    // simplest to just drop it rather than show a dead link. RLS lets a
-    // non-published story's row through now too (for those other
-    // placeholders), so this has to filter status explicitly instead of
-    // relying on the join silently returning null the way it used to.
-    // Once the reader explicitly marks a story's reading status (want to
-    // read/read/dropped), it should move out of "Читаю" into that status's
-    // own tab instead of lingering in both.
-    return (data ?? [])
-      .filter((row) => {
-        const story = row.story as unknown as { deleted_at: string | null; status: string } | null;
-        return Boolean(story) && !story!.deleted_at && story!.status === "published";
-      })
-      .filter((row) => !statusedStoryIds.has(row.story_id as string))
-      .slice(0, limit);
+    const statusedStoryIds = new Set(statusRows.map((r) => r.story_id));
+    return rows
+      .filter((row) => !statusedStoryIds.has(row.story_id))
+      .slice(0, limit)
+      .map((row) => ({ ...row, percent: Number(row.percent), updated_at: row.updated_at.toISOString() }));
   } catch {
     return [];
   }
@@ -584,65 +593,74 @@ export interface SearchFilters {
   sort?: "popular" | "newest" | "views";
 }
 
-async function storyIdsForTag(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  category: string,
-  label: string
-): Promise<string[] | null> {
-  const { data: tag } = await supabase
-    .from("tags")
-    .select("id")
-    .eq("category", category)
-    .eq("label_ru", label)
-    .maybeSingle();
-  if (!tag) return [];
-  const { data: rows } = await supabase.from("story_tags").select("story_id").eq("tag_id", tag.id);
-  return (rows ?? []).map((r) => r.story_id as string);
+async function storyIdsForTag(category: "style" | "warning", label: string): Promise<string[]> {
+  const db = getDb();
+  const rows = await db
+    .select({ story_id: storyTags.story_id })
+    .from(storyTags)
+    .innerJoin(tags, eq(storyTags.tag_id, tags.id))
+    .where(and(eq(tags.category, category), eq(tags.label_ru, label)));
+  return rows.map((r) => r.story_id);
+}
+
+// LIKE wildcards in the user's own search text are matched literally.
+function escapeLike(value: string): string {
+  return value.replace(/[\\%_]/g, (c) => `\\${c}`);
 }
 
 export const searchStories = unstable_cache(
   async (filters: SearchFilters): Promise<StoryCard[]> => {
     try {
-      const supabase = createPublicClient();
-      let query = supabase
-        .from("stories")
-        .select("*, author:profiles!stories_author_id_fkey(username, display_name)")
-        .eq("status", "published")
-        .eq("visibility", "public");
+      const db = getDb();
+      const conditions = [PUBLIC_STORY_FILTER];
 
-      if (filters.q) query = query.ilike("title", `%${filters.q}%`);
-      if (filters.language) query = query.eq("language", filters.language);
-      if (filters.genre) query = query.overlaps("genres", genreVariants(filters.genre));
-      if (filters.progressStatus) query = query.eq("progress_status", filters.progressStatus);
-      if (filters.age) query = query.eq("age_rating", filters.age);
-      if (filters.relationship) query = query.eq("relationship_type", filters.relationship);
+      if (filters.q) conditions.push(ilike(stories.title, `%${escapeLike(filters.q)}%`));
+      if (filters.language) conditions.push(eq(stories.language, filters.language));
+      if (filters.genre) conditions.push(arrayOverlaps(stories.genres, genreVariants(filters.genre)));
+      if (filters.progressStatus)
+        conditions.push(eq(stories.progress_status, filters.progressStatus as typeof stories.$inferSelect.progress_status));
+      if (filters.age) conditions.push(eq(stories.age_rating, filters.age as typeof stories.$inferSelect.age_rating));
+      if (filters.relationship) conditions.push(eq(stories.relationship_type, filters.relationship));
 
       if (filters.style) {
-        const ids = await storyIdsForTag(supabase, "style", filters.style);
-        query = query.in("id", ids && ids.length > 0 ? ids : ["00000000-0000-0000-0000-000000000000"]);
+        const ids = await storyIdsForTag("style", filters.style);
+        if (ids.length === 0) return [];
+        conditions.push(inArray(stories.id, ids));
       }
 
       for (const warning of filters.warnings ?? []) {
-        const ids = await storyIdsForTag(supabase, "warning", warning);
-        query = query.in("id", ids && ids.length > 0 ? ids : ["00000000-0000-0000-0000-000000000000"]);
+        const ids = await storyIdsForTag("warning", warning);
+        if (ids.length === 0) return [];
+        conditions.push(inArray(stories.id, ids));
       }
 
-      if (filters.sort === "newest") query = query.order("published_at", { ascending: false });
-      else if (filters.sort === "views") query = query.order("view_count", { ascending: false });
-      else query = query.order("like_count", { ascending: false });
+      const orderBy =
+        filters.sort === "newest"
+          ? desc(stories.published_at)
+          : filters.sort === "views"
+            ? desc(stories.view_count)
+            : desc(stories.like_count);
 
-      const { data } = await query.limit(40);
-      const results = (data as StoryCard[]) ?? [];
+      const rows = await db
+        .select({ story: stories, author: AUTHOR_COLUMNS })
+        .from(stories)
+        .innerJoin(profiles, eq(stories.author_id, profiles.id))
+        .where(and(...conditions))
+        .orderBy(orderBy)
+        .limit(40);
+      const results = rows.map((r) => toStoryCard(r.story, r.author));
       if (results.length === 0) return results;
 
       // Staff-pinned stories (any tier — featured_stories, /admin/featured)
       // that appear in the results move to the front, earliest-pinned first;
       // everything else keeps its existing relative order (stable sort).
-      const { data: pins } = await supabase.from("featured_stories").select("story_id, featured_at");
-      if (!pins || pins.length === 0) return results;
+      const pins = await db
+        .select({ story_id: featuredStories.story_id, featured_at: featuredStories.featured_at })
+        .from(featuredStories);
+      if (pins.length === 0) return results;
       const ranks = new Map<string, number>();
       for (const pin of pins) {
-        const ts = new Date(pin.featured_at).getTime();
+        const ts = pin.featured_at.getTime();
         const existing = ranks.get(pin.story_id);
         if (existing === undefined || ts < existing) ranks.set(pin.story_id, ts);
       }
@@ -668,7 +686,7 @@ export async function getBookmarkedStories(userId: string): Promise<StoryCard[]>
   try {
     const db = getDb();
     const rows = await db
-      .select({ story: stories, author: { username: profiles.username, display_name: profiles.display_name } })
+      .select({ story: stories, author: AUTHOR_COLUMNS })
       .from(bookmarks)
       .innerJoin(stories, eq(bookmarks.story_id, stories.id))
       .innerJoin(profiles, eq(stories.author_id, profiles.id))
@@ -682,13 +700,14 @@ export async function getBookmarkedStories(userId: string): Promise<StoryCard[]>
 
 export async function getMyCollections(userId: string): Promise<CollectionCardData[]> {
   try {
-    const supabase = await createClient();
-    const { data } = await supabase
-      .from("collections")
-      .select("*, owner:profiles!collections_owner_id_fkey(display_name)")
-      .eq("owner_id", userId)
-      .order("created_at", { ascending: false });
-    return attachCollectionCovers(supabase, (data as Collection[]) ?? []);
+    const db = getDb();
+    const rows = await db
+      .select(COLLECTION_WITH_OWNER)
+      .from(collections)
+      .leftJoin(profiles, eq(collections.owner_id, profiles.id))
+      .where(eq(collections.owner_id, userId))
+      .orderBy(desc(collections.created_at));
+    return attachCollectionCovers(rows.map(toCollectionWithOwner));
   } catch {
     return [];
   }
@@ -700,17 +719,20 @@ export type CollectionPickerItem = { id: string; title: string; hasStory: boolea
 // viewer owns, flagged with whether this particular story is already in it.
 export async function getMyCollectionsWithStory(userId: string, storyId: string): Promise<CollectionPickerItem[]> {
   try {
-    const supabase = await createClient();
-    const [{ data: collections }, { data: items }] = await Promise.all([
-      supabase
-        .from("collections")
-        .select("id, title")
-        .eq("owner_id", userId)
-        .order("created_at", { ascending: false }),
-      supabase.from("collection_items").select("collection_id").eq("story_id", storyId),
+    const db = getDb();
+    const [owned, items] = await Promise.all([
+      db
+        .select({ id: collections.id, title: collections.title })
+        .from(collections)
+        .where(eq(collections.owner_id, userId))
+        .orderBy(desc(collections.created_at)),
+      db
+        .select({ collection_id: collectionItems.collection_id })
+        .from(collectionItems)
+        .where(eq(collectionItems.story_id, storyId)),
     ]);
-    const inCollectionIds = new Set((items ?? []).map((i) => i.collection_id));
-    return (collections ?? []).map((c) => ({ id: c.id, title: c.title, hasStory: inCollectionIds.has(c.id) }));
+    const inCollectionIds = new Set(items.map((i) => i.collection_id));
+    return owned.map((c) => ({ id: c.id, title: c.title, hasStory: inCollectionIds.has(c.id) }));
   } catch {
     return [];
   }
@@ -720,7 +742,7 @@ export async function getStoriesByReadingStatus(userId: string, status: string):
   try {
     const db = getDb();
     const rows = await db
-      .select({ story: stories, author: { username: profiles.username, display_name: profiles.display_name } })
+      .select({ story: stories, author: AUTHOR_COLUMNS })
       .from(readingStatuses)
       .innerJoin(stories, eq(readingStatuses.story_id, stories.id))
       .innerJoin(profiles, eq(stories.author_id, profiles.id))
@@ -739,15 +761,15 @@ export async function getStoriesByReadingStatus(userId: string, status: string):
 // actually keep it out of the author's hands.
 export async function getAuthorStories(authorId: string, includeDrafts: boolean): Promise<StoryCard[]> {
   try {
-    const supabase = await createClient();
-    let query = supabase
-      .from("stories")
-      .select("*, author:profiles!stories_author_id_fkey(username, display_name)")
-      .eq("author_id", authorId)
-      .is("deleted_at", null);
-    if (!includeDrafts) query = query.eq("status", "published").eq("visibility", "public");
-    const { data } = await query.order("created_at", { ascending: false });
-    return (data as StoryCard[]) ?? [];
+    const db = getDb();
+    const base = and(eq(stories.author_id, authorId), isNull(stories.deleted_at));
+    const rows = await db
+      .select({ story: stories, author: AUTHOR_COLUMNS })
+      .from(stories)
+      .innerJoin(profiles, eq(stories.author_id, profiles.id))
+      .where(includeDrafts ? base : and(base, PUBLIC_STORY_FILTER))
+      .orderBy(desc(stories.created_at));
+    return rows.map((r) => toStoryCard(r.story, r.author));
   } catch {
     return [];
   }
@@ -756,17 +778,20 @@ export async function getAuthorStories(authorId: string, includeDrafts: boolean)
 export const getPublicCollections = unstable_cache(
   async (ownerType?: string | string[]): Promise<CollectionCardData[]> => {
     try {
-      const supabase = createPublicClient();
-      let query = supabase
-        .from("collections")
-        .select("*, owner:profiles!collections_owner_id_fkey(display_name)")
-        .eq("is_private", false);
-      if (Array.isArray(ownerType)) query = query.in("owner_type", ownerType);
-      else if (ownerType) query = query.eq("owner_type", ownerType);
-      const { data } = await query
-        .order("is_featured", { ascending: false })
-        .order("created_at", { ascending: false });
-      return attachCollectionCovers(supabase, (data as Collection[]) ?? []);
+      const db = getDb();
+      type OwnerType = typeof collections.$inferSelect.owner_type;
+      const ownerFilter = Array.isArray(ownerType)
+        ? inArray(collections.owner_type, ownerType as OwnerType[])
+        : ownerType
+          ? eq(collections.owner_type, ownerType as OwnerType)
+          : undefined;
+      const rows = await db
+        .select(COLLECTION_WITH_OWNER)
+        .from(collections)
+        .leftJoin(profiles, eq(collections.owner_id, profiles.id))
+        .where(and(eq(collections.is_private, false), ownerFilter))
+        .orderBy(desc(collections.is_featured), desc(collections.created_at));
+      return attachCollectionCovers(rows.map(toCollectionWithOwner));
     } catch {
       return [];
     }
@@ -775,16 +800,20 @@ export const getPublicCollections = unstable_cache(
   { revalidate: CACHE_SECONDS, tags: ["collections"] }
 );
 
+// A saved collection its owner has since made private disappears from
+// everyone else's saved list — same thing RLS used to do.
 export async function getSavedCollections(userId: string): Promise<CollectionCardData[]> {
   try {
-    const supabase = await createClient();
-    const { data } = await supabase
-      .from("saved_collections")
-      .select("collection:collections(*, owner:profiles!collections_owner_id_fkey(display_name))")
-      .eq("user_id", userId)
-      .order("created_at", { ascending: false });
-    const collections = ((data ?? []).map((row) => row.collection).filter(Boolean) as unknown) as Collection[];
-    return attachCollectionCovers(supabase, collections);
+    const db = getDb();
+    const rows = await db
+      .select(COLLECTION_WITH_OWNER)
+      .from(savedCollections)
+      .innerJoin(collections, eq(savedCollections.collection_id, collections.id))
+      .leftJoin(profiles, eq(collections.owner_id, profiles.id))
+      .where(eq(savedCollections.user_id, userId))
+      .orderBy(desc(savedCollections.created_at));
+    const visible = rows.filter((r) => !r.collection.is_private || r.collection.owner_id === userId);
+    return attachCollectionCovers(visible.map(toCollectionWithOwner));
   } catch {
     return [];
   }
@@ -793,30 +822,39 @@ export async function getSavedCollections(userId: string): Promise<CollectionCar
 export async function isCollectionSaved(userId: string | undefined, collectionId: string): Promise<boolean> {
   if (!userId) return false;
   try {
-    const supabase = await createClient();
-    const { data } = await supabase
-      .from("saved_collections")
-      .select("collection_id")
-      .eq("user_id", userId)
-      .eq("collection_id", collectionId)
-      .maybeSingle();
-    return Boolean(data);
+    const db = getDb();
+    const [row] = await db
+      .select({ collection_id: savedCollections.collection_id })
+      .from(savedCollections)
+      .where(and(eq(savedCollections.user_id, userId), eq(savedCollections.collection_id, collectionId)))
+      .limit(1);
+    return Boolean(row);
   } catch {
     return false;
   }
 }
 
+// A private collection is only visible to its owner and staff — this used
+// to be enforced by RLS, so it's an explicit check now.
 export async function getCollectionWithStories(id: string) {
   try {
-    const supabase = await createClient();
-    const { data: collection } = await supabase.from("collections").select("*").eq("id", id).single();
-    if (!collection) return null;
-    const { data: items } = await supabase
-      .from("collection_items")
-      .select("position, story:stories(*, author:profiles!stories_author_id_fkey(username, display_name))")
-      .eq("collection_id", id)
-      .order("position", { ascending: true });
-    return { collection, stories: (items ?? []).map((i) => i.story).filter(Boolean) as unknown as StoryCard[] };
+    const db = getDb();
+    const [row] = await db.select().from(collections).where(eq(collections.id, id)).limit(1);
+    if (!row) return null;
+    if (row.is_private) {
+      const viewer = await getCurrentUser();
+      const isOwner = viewer?.id === row.owner_id;
+      const isStaff = viewer?.profile?.role === "admin" || viewer?.profile?.role === "moderator";
+      if (!isOwner && !isStaff) return null;
+    }
+    const items = await db
+      .select({ story: stories, author: AUTHOR_COLUMNS })
+      .from(collectionItems)
+      .innerJoin(stories, eq(collectionItems.story_id, stories.id))
+      .innerJoin(profiles, eq(stories.author_id, profiles.id))
+      .where(eq(collectionItems.collection_id, id))
+      .orderBy(asc(collectionItems.position));
+    return { collection: toCollection(row), stories: items.map((i) => toStoryCard(i.story, i.author)) };
   } catch {
     return null;
   }
@@ -829,13 +867,13 @@ export async function getCollectionWithStories(id: string) {
 export const getAllTags = unstable_cache(
   async (): Promise<string[]> => {
     try {
-      const supabase = createPublicClient();
-      const { data } = await supabase
-        .from("tags")
-        .select("label_ru")
-        .in("category", ["warning", "style"])
-        .order("label_ru", { ascending: true });
-      return Array.from(new Set((data ?? []).map((t) => t.label_ru)));
+      const db = getDb();
+      const rows = await db
+        .select({ label_ru: tags.label_ru })
+        .from(tags)
+        .where(inArray(tags.category, ["warning", "style"]))
+        .orderBy(asc(tags.label_ru));
+      return Array.from(new Set(rows.map((t) => t.label_ru)));
     } catch {
       return [];
     }
@@ -850,9 +888,9 @@ export const getAllTags = unstable_cache(
 export const getCustomLanguages = unstable_cache(
   async (): Promise<string[]> => {
     try {
-      const supabase = createPublicClient();
-      const { data } = await supabase.from("custom_languages").select("label").order("label", { ascending: true });
-      return (data ?? []).map((l) => l.label as string);
+      const db = getDb();
+      const rows = await db.select({ label: customLanguages.label }).from(customLanguages).orderBy(asc(customLanguages.label));
+      return rows.map((l) => l.label);
     } catch {
       return [];
     }
@@ -863,14 +901,13 @@ export const getCustomLanguages = unstable_cache(
 
 export async function getTagsForStory(storyId: string): Promise<string[]> {
   try {
-    const supabase = await createClient();
-    const { data } = await supabase
-      .from("story_tags")
-      .select("tag:tags(label_ru)")
-      .eq("story_id", storyId);
-    return (data ?? [])
-      .map((row) => (row.tag as unknown as { label_ru: string } | null)?.label_ru)
-      .filter((label): label is string => Boolean(label));
+    const db = getDb();
+    const rows = await db
+      .select({ label_ru: tags.label_ru })
+      .from(storyTags)
+      .innerJoin(tags, eq(storyTags.tag_id, tags.id))
+      .where(eq(storyTags.story_id, storyId));
+    return rows.map((r) => r.label_ru);
   } catch {
     return [];
   }
@@ -879,13 +916,13 @@ export async function getTagsForStory(storyId: string): Promise<string[]> {
 export const getGuestFreeChapterCount = unstable_cache(
   async (): Promise<number> => {
     try {
-      const supabase = createPublicClient();
-      const { data } = await supabase
-        .from("platform_settings")
-        .select("guest_free_chapters")
-        .eq("id", 1)
-        .single();
-      return data?.guest_free_chapters ?? 1;
+      const db = getDb();
+      const [row] = await db
+        .select({ guest_free_chapters: platformSettings.guest_free_chapters })
+        .from(platformSettings)
+        .where(eq(platformSettings.id, 1))
+        .limit(1);
+      return row?.guest_free_chapters ?? 1;
     } catch {
       return 1;
     }

@@ -55,6 +55,11 @@ function buildAuth() {
       },
     }),
     user: {
+      // Profile settings' "change email" (EditProfileForm.tsx) — the change
+      // only takes effect once the link mailed to the NEW address is opened
+      // (sendVerificationEmail below), same as Supabase's updateUser({email})
+      // flow it replaces.
+      changeEmail: { enabled: true },
       fields: {
         email: "email",
         emailVerified: "email_verified",
@@ -123,6 +128,19 @@ function buildAuth() {
         expiresAt: "expires_at",
         createdAt: "created_at",
         updatedAt: "updated_at",
+      },
+    },
+    emailVerification: {
+      async sendVerificationEmail({ user, url }) {
+        await sendMail(
+          user.email,
+          "Подтвердите e-mail на Hikoya",
+          `Чтобы подтвердить этот адрес e-mail для вашего аккаунта на Hikoya, перейдите по ссылке:
+
+${url}
+
+Если вы ничего не меняли, просто проигнорируйте это письмо.`
+        );
       },
     },
     emailAndPassword: {

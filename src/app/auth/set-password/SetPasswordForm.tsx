@@ -9,7 +9,7 @@ import { setInitialPassword } from "@/lib/actions/profile";
 
 const MIN_PASSWORD_LENGTH = 6;
 
-// Reached only via redirectAfterAuth, for an already-onboarded account that
+// Reached via /login's post-sign-in routing (src/app/login/page.tsx), for an already-onboarded account that
 // has no password yet — e.g. someone who used /login's "forgot email or
 // password" fallback (Google or a magic link) instead of signing in with
 // one. No skip option: this is the one and only path back to a password,

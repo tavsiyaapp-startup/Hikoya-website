@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { asc, eq } from "drizzle-orm";
+import { getDb, type Db } from "@/server/db/client";
+import { telegramSupportPendingMessages, telegramSupportTickets } from "@/server/db/schema";
 
 // Support/feedback bot, modeled on a reference aiogram bot the user already
 // runs elsewhere (long-polling + in-memory dicts). Vercel has no
@@ -72,7 +74,7 @@ function fullName(user: TelegramUser) {
   return [user.first_name, user.last_name].filter(Boolean).join(" ");
 }
 
-type AdminClient = ReturnType<typeof createAdminClient>;
+type AdminClient = Db;
 
 export async function POST(request: Request) {
   const secret = request.headers.get("x-telegram-bot-api-secret-token");
@@ -81,7 +83,7 @@ export async function POST(request: Request) {
   }
 
   const groupChatId = Number(process.env.TELEGRAM_SUPPORT_GROUP_CHAT_ID);
-  const admin = createAdminClient();
+  const admin = getDb();
 
   try {
     const update = (await request.json()) as TelegramUpdate;
@@ -110,13 +112,13 @@ async function handleMessage(admin: AdminClient, message: TelegramMessage, group
   const userId = message.from.id;
 
   if (message.text === "/start") {
-    await admin.from("telegram_support_pending_messages").delete().eq("telegram_user_id", userId);
+    await admin.delete(telegramSupportPendingMessages).where(eq(telegramSupportPendingMessages.telegram_user_id, userId));
     await callTelegram("sendMessage", { chat_id: chatId, text: WELCOME_TEXT });
     return;
   }
 
   if (message.text || message.photo || message.video) {
-    await admin.from("telegram_support_pending_messages").insert({
+    await admin.insert(telegramSupportPendingMessages).values({
       telegram_user_id: userId,
       chat_id: chatId,
       message_id: message.message_id,
@@ -142,13 +144,13 @@ async function handleCallback(
   if (chatId === groupChatId) return;
   const userId = callback.from.id;
 
-  const { data: pending } = await admin
-    .from("telegram_support_pending_messages")
-    .select("chat_id, message_id")
-    .eq("telegram_user_id", userId)
-    .order("created_at", { ascending: true });
+  const pending = await admin
+    .select({ chat_id: telegramSupportPendingMessages.chat_id, message_id: telegramSupportPendingMessages.message_id })
+    .from(telegramSupportPendingMessages)
+    .where(eq(telegramSupportPendingMessages.telegram_user_id, userId))
+    .orderBy(asc(telegramSupportPendingMessages.created_at));
 
-  if (!pending || pending.length === 0) {
+  if (pending.length === 0) {
     await callTelegram("answerCallbackQuery", {
       callback_query_id: callback.id,
       text: EMPTY_QUEUE_TEXT,
@@ -168,15 +170,14 @@ async function finalizeTicket(
   pending: { chat_id: number; message_id: number }[],
   groupChatId: number
 ) {
-  const { data: ticket } = await admin
-    .from("telegram_support_tickets")
-    .insert({
+  const [ticket] = await admin
+    .insert(telegramSupportTickets)
+    .values({
       telegram_user_id: user.id,
       telegram_username: user.username ?? null,
       telegram_full_name: fullName(user),
     })
-    .select("ticket_number")
-    .single();
+    .returning({ ticket_number: telegramSupportTickets.ticket_number });
 
   const username = user.username ? `@${user.username}` : "без username";
   await callTelegram("sendMessage", {
@@ -194,7 +195,7 @@ async function finalizeTicket(
 
   await callTelegram("sendMessage", { chat_id: groupChatId, text: SEPARATOR });
 
-  await admin.from("telegram_support_pending_messages").delete().eq("telegram_user_id", user.id);
+  await admin.delete(telegramSupportPendingMessages).where(eq(telegramSupportPendingMessages.telegram_user_id, user.id));
 
   await callTelegram("sendMessage", { chat_id: chatId, text: CONFIRMATION_TEXT });
 }
@@ -213,11 +214,11 @@ async function handleReplyCommand(admin: AdminClient, message: TelegramMessage) 
   const ticketNumber = Number(match[1]);
   const replyText = match[2].trim();
 
-  const { data: ticket } = await admin
-    .from("telegram_support_tickets")
-    .select("telegram_user_id")
-    .eq("ticket_number", ticketNumber)
-    .maybeSingle();
+  const [ticket] = await admin
+    .select({ telegram_user_id: telegramSupportTickets.telegram_user_id })
+    .from(telegramSupportTickets)
+    .where(eq(telegramSupportTickets.ticket_number, ticketNumber))
+    .limit(1);
 
   if (!ticket) {
     await callTelegram("sendMessage", {

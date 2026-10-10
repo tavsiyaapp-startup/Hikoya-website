@@ -32,7 +32,7 @@ export async function completeOnboarding(formData: FormData) {
   // The client (OnboardingWizard) already blocks continuing past this step
   // without a valid password, but this is the real trust boundary — a
   // request that skips that restarts the wizard rather than finishing
-  // onboarding without one. redirectAfterAuth would otherwise have to send
+  // onboarding without one. /login's post-sign-in routing would otherwise have to send
   // them to /auth/set-password on their very next visit anyway, since
   // has_password never gets set below without a confirmed password.
   if (password.length < MIN_PASSWORD_LENGTH) {
@@ -57,7 +57,7 @@ export async function completeOnboarding(formData: FormData) {
   // if it silently failed, the password above had already been set, but
   // onboarded_at/has_password never got flipped in profiles. Every
   // subsequent visit would then bounce the user straight back to
-  // onboarding via redirectAfterAuth, a real loop for real users. One
+  // onboarding via /login's post-sign-in routing, a real loop for real users. One
   // retry covers a transient blip; a second failure is logged so it's
   // visible in server logs, and this redirects with a real error flag
   // instead of pretending it worked.

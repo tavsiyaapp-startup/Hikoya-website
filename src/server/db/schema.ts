@@ -409,7 +409,7 @@ export const telegramSupportPendingMessages = pgTable("telegram_support_pending_
 
 export const telegramSupportTickets = pgTable("telegram_support_tickets", {
   id: uuid("id").defaultRandom().notNull().primaryKey(),
-  ticket_number: integer("ticket_number").notNull(),
+  ticket_number: integer("ticket_number").generatedAlwaysAsIdentity().notNull(),
   telegram_user_id: bigint("telegram_user_id", { mode: "number" }).notNull(),
   telegram_username: text("telegram_username"),
   telegram_full_name: text("telegram_full_name"),

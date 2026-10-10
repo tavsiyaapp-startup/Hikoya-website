@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 import { useTheme } from "@/lib/ThemeProvider";
-import { createClient } from "@/lib/supabase/client";
+import { authClient } from "@/lib/auth-client";
 import { resizeImageFile } from "@/lib/image-resize";
 import { uploadUserImage, deleteUserImage } from "@/lib/actions/uploads";
 import { updateProfile } from "@/lib/actions/profile";
@@ -99,8 +99,10 @@ export function EditProfileForm({
       const errors: string[] = [];
 
       if (newEmail && newEmail !== email) {
-        const supabase = createClient();
-        const { error } = await supabase.auth.updateUser({ email: newEmail });
+        // Better Auth emails a confirmation link to the new address; the
+        // email only actually changes once that link is opened (see
+        // emailVerification in src/server/auth/config.ts).
+        const { error } = await authClient.changeEmail({ newEmail, callbackURL: window.location.pathname });
         if (error) errors.push(t.profile.emailChangeError);
         else messages.push(t.profile.emailChangeSent);
       }

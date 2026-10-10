@@ -1,6 +1,6 @@
 // Static, developer-authored content (not user-submitted) — same pattern as
 // src/lib/content/rules.ts and privacy.ts. The cookie categories listed
-// here are grounded in what the app actually sets: Supabase auth session
+// here are grounded in what the app actually sets: Better Auth session
 // cookies, the locale/theme cookies read in src/lib/i18n/locale-server.ts
 // and src/lib/theme-server.ts, GUEST_READ_COOKIE from src/lib/constants.ts,
 // and Google Analytics (wired up in src/app/layout.tsx via

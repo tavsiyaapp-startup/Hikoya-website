@@ -1,16 +1,17 @@
 import "server-only";
-import { createClient } from "@/lib/supabase/server";
+import { and, desc, eq } from "drizzle-orm";
+import { getDb } from "@/server/db/client";
+import { chapters, notifications, profiles, stories } from "@/server/db/schema";
 import type { Notification } from "@/types/database";
 
 export async function getUnreadNotificationCount(userId: string): Promise<number> {
   try {
-    const supabase = await createClient();
-    const { count } = await supabase
-      .from("notifications")
-      .select("id", { count: "exact", head: true })
-      .eq("user_id", userId)
-      .eq("is_read", false);
-    return count ?? 0;
+    const db = getDb();
+    const rows = await db
+      .select({ id: notifications.id })
+      .from(notifications)
+      .where(and(eq(notifications.user_id, userId), eq(notifications.is_read, false)));
+    return rows.length;
   } catch {
     return 0;
   }
@@ -24,16 +25,28 @@ export type NotificationWithContext = Notification & {
 
 export async function getNotifications(userId: string, limit = 40): Promise<NotificationWithContext[]> {
   try {
-    const supabase = await createClient();
-    const { data } = await supabase
-      .from("notifications")
-      .select(
-        "*, actor:profiles!notifications_actor_id_fkey(display_name), story:stories(title, slug), chapter:chapters(order_index, title)"
-      )
-      .eq("user_id", userId)
-      .order("created_at", { ascending: false })
+    const db = getDb();
+    const rows = await db
+      .select({
+        notification: notifications,
+        actor: { display_name: profiles.display_name },
+        story: { title: stories.title, slug: stories.slug },
+        chapter: { order_index: chapters.order_index, title: chapters.title },
+      })
+      .from(notifications)
+      .leftJoin(profiles, eq(notifications.actor_id, profiles.id))
+      .leftJoin(stories, eq(notifications.story_id, stories.id))
+      .leftJoin(chapters, eq(notifications.chapter_id, chapters.id))
+      .where(eq(notifications.user_id, userId))
+      .orderBy(desc(notifications.created_at))
       .limit(limit);
-    return (data as NotificationWithContext[]) ?? [];
+    return rows.map((r) => ({
+      ...r.notification,
+      created_at: r.notification.created_at.toISOString(),
+      actor: r.notification.actor_id ? r.actor : null,
+      story: r.notification.story_id ? r.story : null,
+      chapter: r.notification.chapter_id ? r.chapter : null,
+    }));
   } catch {
     return [];
   }

@@ -2,25 +2,57 @@
 
 import { revalidatePath, updateTag } from "next/cache";
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { headers } from "next/headers";
+import { and, eq } from "drizzle-orm";
+import { getAuth } from "@/server/auth/config";
+import { getDb, type DbOrTx } from "@/server/db/client";
+import { collectionItems, collections, profiles, savedCollections } from "@/server/db/schema";
+import { loadViewer } from "@/server/data/viewer";
+import { canCreateCollection, canManageCollection, canSaveCollection, type CollectionRecord } from "@/server/authz/policy";
 import { ROUTES } from "@/lib/constants";
 
+// Identity comes from Better Auth now, not Supabase. Ownership checks that
+// used to be enforced by RLS (see supabase/schema_reference.sql's
+// collections/collection_items/saved_collections policies) are now explicit
+// here via src/server/authz/policy.ts — toggleStoryInCollection in
+// particular had NO app-level ownership check before (its own comment said
+// so), relying entirely on RLS to silently no-op a foreign collectionId;
+// that check is added below since RLS no longer exists at all.
+async function requireViewer() {
+  const db = getDb();
+  const session = await getAuth().api.getSession({ headers: await headers() });
+  const viewer = await loadViewer(db, session?.user.id);
+  if (!viewer) redirect(ROUTES.onboarding);
+  return { db, viewer };
+}
+
+async function getCollectionRecord(db: DbOrTx, collectionId: string): Promise<CollectionRecord | null> {
+  const [row] = await db
+    .select({ id: collections.id, owner_id: collections.owner_id, is_private: collections.is_private })
+    .from(collections)
+    .where(eq(collections.id, collectionId))
+    .limit(1);
+  return row ?? null;
+}
+
+async function ownerTypeFor(db: DbOrTx, userId: string): Promise<"author" | "user"> {
+  const [row] = await db.select({ role: profiles.role }).from(profiles).where(eq(profiles.id, userId)).limit(1);
+  return row?.role === "author" ? "author" : "user";
+}
+
 export async function createCollection(formData: FormData) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect(ROUTES.onboarding);
+  const { db, viewer } = await requireViewer();
+  if (!canCreateCollection(viewer)) return;
 
   const title = String(formData.get("title") ?? "").trim();
   const description = String(formData.get("description") ?? "").trim();
   const isPrivate = formData.get("isPrivate") === "on";
   if (!title) return;
 
-  const ownerType = user.id && (await isAuthor(user.id)) ? "author" : "user";
+  const ownerType = await ownerTypeFor(db, viewer.id);
 
-  await supabase.from("collections").insert({
-    owner_id: user.id,
+  await db.insert(collections).values({
+    owner_id: viewer.id,
     owner_type: ownerType,
     title,
     description: description || null,
@@ -32,12 +64,6 @@ export async function createCollection(formData: FormData) {
   revalidatePath(ROUTES.library);
 }
 
-async function isAuthor(userId: string) {
-  const supabase = await createClient();
-  const { data } = await supabase.from("profiles").select("role").eq("id", userId).single();
-  return data?.role === "author";
-}
-
 // The "+ Создать подборку" row inside the story card's collection picker —
 // creating a collection there means you obviously want *this* story in it,
 // so it's added in the same round trip instead of dropping the user on
@@ -47,25 +73,21 @@ export async function createCollectionWithStory(
   title: string,
   path: string
 ): Promise<{ id: string; title: string } | { error: string }> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect(ROUTES.onboarding);
+  const { db, viewer } = await requireViewer();
+  if (!canCreateCollection(viewer)) return { error: "failed" };
 
   const trimmed = title.trim();
   if (!trimmed) return { error: "empty_title" };
 
-  const ownerType = (await isAuthor(user.id)) ? "author" : "user";
+  const ownerType = await ownerTypeFor(db, viewer.id);
 
-  const { data: collection, error } = await supabase
-    .from("collections")
-    .insert({ owner_id: user.id, owner_type: ownerType, title: trimmed })
-    .select("id, title")
-    .single();
-  if (error || !collection) return { error: "failed" };
+  const [collection] = await db
+    .insert(collections)
+    .values({ owner_id: viewer.id, owner_type: ownerType, title: trimmed })
+    .returning({ id: collections.id, title: collections.title });
+  if (!collection) return { error: "failed" };
 
-  await supabase.from("collection_items").insert({ collection_id: collection.id, story_id: storyId });
+  await db.insert(collectionItems).values({ collection_id: collection.id, story_id: storyId });
 
   updateTag("collections");
   revalidatePath(path);
@@ -76,22 +98,19 @@ export async function createCollectionWithStory(
 }
 
 export async function updateCollection(collectionId: string, formData: FormData) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect(ROUTES.onboarding);
+  const { db, viewer } = await requireViewer();
+  const collection = await getCollectionRecord(db, collectionId);
+  if (!collection || !canManageCollection(viewer, collection)) return;
 
   const title = String(formData.get("title") ?? "").trim();
   const description = String(formData.get("description") ?? "").trim();
   const isPrivate = formData.get("isPrivate") === "on";
   if (!title) return;
 
-  await supabase
-    .from("collections")
-    .update({ title, description: description || null, is_private: isPrivate })
-    .eq("id", collectionId)
-    .eq("owner_id", user.id);
+  await db
+    .update(collections)
+    .set({ title, description: description || null, is_private: isPrivate })
+    .where(eq(collections.id, collectionId));
 
   updateTag("collections");
   revalidatePath(ROUTES.collection(collectionId));
@@ -100,49 +119,45 @@ export async function updateCollection(collectionId: string, formData: FormData)
 }
 
 export async function toggleSavedCollection(collectionId: string, path: string) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect(ROUTES.onboarding);
+  const { db, viewer } = await requireViewer();
+  const collection = await getCollectionRecord(db, collectionId);
+  if (!collection || !canSaveCollection(viewer, collection)) return;
 
-  const { data: existing } = await supabase
-    .from("saved_collections")
-    .select("collection_id")
-    .eq("user_id", user.id)
-    .eq("collection_id", collectionId)
-    .maybeSingle();
+  const [existing] = await db
+    .select({ collection_id: savedCollections.collection_id })
+    .from(savedCollections)
+    .where(and(eq(savedCollections.user_id, viewer.id), eq(savedCollections.collection_id, collectionId)))
+    .limit(1);
 
   if (existing) {
-    await supabase.from("saved_collections").delete().eq("user_id", user.id).eq("collection_id", collectionId);
+    await db
+      .delete(savedCollections)
+      .where(and(eq(savedCollections.user_id, viewer.id), eq(savedCollections.collection_id, collectionId)));
   } else {
-    await supabase.from("saved_collections").insert({ user_id: user.id, collection_id: collectionId });
+    await db.insert(savedCollections).values({ user_id: viewer.id, collection_id: collectionId });
   }
 
   revalidatePath(path);
   revalidatePath(ROUTES.collections);
 }
 
-// RLS on collection_items already restricts writes to the collection's own
-// owner, so a foreign collectionId just silently affects 0 rows here.
 export async function toggleStoryInCollection(collectionId: string, storyId: string, path: string) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect(ROUTES.onboarding);
+  const { db, viewer } = await requireViewer();
+  const collection = await getCollectionRecord(db, collectionId);
+  if (!collection || !canManageCollection(viewer, collection)) return;
 
-  const { data: existing } = await supabase
-    .from("collection_items")
-    .select("story_id")
-    .eq("collection_id", collectionId)
-    .eq("story_id", storyId)
-    .maybeSingle();
+  const [existing] = await db
+    .select({ story_id: collectionItems.story_id })
+    .from(collectionItems)
+    .where(and(eq(collectionItems.collection_id, collectionId), eq(collectionItems.story_id, storyId)))
+    .limit(1);
 
   if (existing) {
-    await supabase.from("collection_items").delete().eq("collection_id", collectionId).eq("story_id", storyId);
+    await db
+      .delete(collectionItems)
+      .where(and(eq(collectionItems.collection_id, collectionId), eq(collectionItems.story_id, storyId)));
   } else {
-    await supabase.from("collection_items").insert({ collection_id: collectionId, story_id: storyId });
+    await db.insert(collectionItems).values({ collection_id: collectionId, story_id: storyId });
   }
 
   updateTag("collections");

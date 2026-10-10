@@ -2,19 +2,49 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath, updateTag } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
-import { slugify, withRandomSuffix } from "@/lib/slug";
-import { sanitizeHtml } from "@/lib/sanitize";
+import { headers } from "next/headers";
+import { eq } from "drizzle-orm";
+import { getAuth } from "@/server/auth/config";
+import { getDb, type DbOrTx } from "@/server/db/client";
+import { chapters, customLanguages, profiles, stories } from "@/server/db/schema";
+import { loadViewer } from "@/server/data/viewer";
+import { getRequiresReview } from "@/server/data/settings";
+import * as storiesData from "@/server/data/stories";
+import * as chaptersData from "@/server/data/chapters";
 import { notifyPendingReview } from "@/lib/telegram";
 import { ROUTES } from "@/lib/constants";
-import type {
-  AgeRating,
-  ChapterStatus,
-  StoryStatus,
-  StoryVisibility,
-  StoryProgressStatus,
-} from "@/types/database";
+import type { AgeRating, StoryProgressStatus, StoryVisibility } from "@/types/database";
+
+// Identity comes from Better Auth now, not Supabase — the actual authz
+// (who may create/edit/delete what) moved to src/server/authz/policy.ts +
+// src/server/data/stories.ts|chapters.ts, built and tested earlier this
+// migration but never wired to a live caller until now. This file is only
+// the thin "resolve the signed-in viewer, call the data layer, revalidate/
+// notify" wrapper every Server Action below needs — same role
+// requireViewerId() plays in lib/actions/social.ts.
+async function requireViewer() {
+  const db = getDb();
+  const session = await getAuth().api.getSession({ headers: await headers() });
+  const viewer = await loadViewer(db, session?.user.id);
+  if (!viewer) redirect(ROUTES.onboarding);
+  return { db, viewer };
+}
+
+async function getAuthorDisplayName(db: DbOrTx, userId: string): Promise<string> {
+  const [row] = await db.select({ display_name: profiles.display_name }).from(profiles).where(eq(profiles.id, userId)).limit(1);
+  return row?.display_name ?? "Автор";
+}
+
+// stories.language is free text (not limited to ru/uz) — when an author
+// types one that isn't ru/uz, register it here so it shows up as a pickable
+// chip for every author afterwards, and in the search-by-language filter.
+// Purely a UI nice-to-have, which is why it lives here rather than in the
+// data layer itself (server/data/stories.ts's createStory doesn't do this).
+async function registerCustomLanguage(db: DbOrTx, language: string) {
+  if (language === "ru" || language === "uz") return;
+  await db.insert(customLanguages).values({ label: language }).onConflictDoNothing({ target: customLanguages.label });
+  updateTag("custom-languages");
+}
 
 export interface CreateStoryInput {
   title: string;
@@ -32,133 +62,31 @@ export interface CreateStoryInput {
   announce: string | null;
 }
 
-function wordCount(text: string) {
-  return text.trim().split(/\s+/).filter(Boolean).length;
-}
-
-// Chapter content is HTML from RichTextEditor now, not plain text — strip
-// tags before counting words, otherwise every tag gets counted as a "word".
-// A no-op for legacy plain-text content (nothing to strip).
-function stripHtml(html: string) {
-  return html.replace(/<[^>]+>/g, " ");
-}
-
-async function requiresReview(supabase: Awaited<ReturnType<typeof createClient>>) {
-  const { data } = await supabase
-    .from("platform_settings")
-    .select("new_story_requires_review")
-    .eq("id", 1)
-    .single();
-  return data?.new_story_requires_review ?? false;
-}
-
-async function getAuthorDisplayName(supabase: Awaited<ReturnType<typeof createClient>>, userId: string): Promise<string> {
-  const { data } = await supabase.from("profiles").select("display_name").eq("id", userId).single();
-  return data?.display_name ?? "Автор";
-}
-
-// `tags` write access is staff-only via RLS (spam prevention on a shared,
-// site-wide table) — the admin client is what lets an author's freshly
-// typed tag actually get created, gated only by them owning the story
-// they're tagging (checked by the caller's own story_tags RLS policy).
-// New tags default to the 'style' category since this field isn't
-// category-specific from the author's point of view.
-async function resolveTagIds(labels: string[]): Promise<string[]> {
-  if (labels.length === 0) return [];
-  const admin = createAdminClient();
-
-  const { data: existing } = await admin.from("tags").select("id, label_ru").in("label_ru", labels);
-  const foundLabels = new Set((existing ?? []).map((t) => t.label_ru));
-  const ids = (existing ?? []).map((t) => t.id as string);
-
-  const missing = labels.filter((label) => !foundLabels.has(label));
-  if (missing.length > 0) {
-    const { data: created } = await admin
-      .from("tags")
-      .upsert(
-        missing.map((label) => ({ category: "style", label_ru: label, label_uz: label })),
-        { onConflict: "category,label_ru" }
-      )
-      .select("id");
-    ids.push(...(created ?? []).map((t) => t.id as string));
-    updateTag("tags");
-  }
-
-  return ids;
-}
-
-// stories.language is free text (not limited to ru/uz) — when an author
-// types one that isn't ru/uz, register it here so it shows up as a pickable
-// chip for every author afterwards (same admin-client-bypasses-RLS pattern
-// as resolveTagIds above), and in the search-by-language filter.
-async function registerCustomLanguage(language: string) {
-  if (language === "ru" || language === "uz") return;
-  const admin = createAdminClient();
-  await admin.from("custom_languages").upsert({ label: language }, { onConflict: "label", ignoreDuplicates: true });
-  updateTag("custom-languages");
-}
-
 export async function createStory(input: CreateStoryInput) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect(ROUTES.onboarding);
-
-  const status: StoryStatus =
-    input.visibility === "draft" ? "draft" : (await requiresReview(supabase)) ? "pending_review" : "published";
-  const slug = withRandomSuffix(slugify(input.title));
+  const { db, viewer } = await requireViewer();
   const language = input.language.trim() || "ru";
 
-  const { data: story, error } = await supabase
-    .from("stories")
-    .insert({
-      author_id: user.id,
-      title: input.title,
-      slug,
-      description: input.description,
-      cover_url: input.coverUrl,
-      genres: [...new Set(input.genres)],
-      relationship_type: input.relationshipType,
-      language,
-      age_rating: input.ageRating,
-      is_translation: input.isTranslation,
-      status,
-      visibility: input.visibility,
-      announce: input.announce,
-      published_at: status === "published" ? new Date().toISOString() : null,
-    })
-    .select("id, slug")
-    .single();
-
-  if (error || !story) {
-    throw new Error(error?.message ?? "Failed to create story");
-  }
-
-  await registerCustomLanguage(language);
-
-  const chapterContent = sanitizeHtml(input.chapterText);
-  await supabase.from("chapters").insert({
-    story_id: story.id,
-    order_index: 1,
-    title: input.chapterTitle,
-    content: chapterContent,
-    word_count: wordCount(stripHtml(chapterContent)),
-    status,
-    is_free: true,
-    published_at: status === "published" ? new Date().toISOString() : null,
+  const story = await storiesData.createStory(db, viewer, {
+    title: input.title,
+    description: input.description,
+    coverUrl: input.coverUrl,
+    genres: input.genres,
+    relationshipType: input.relationshipType,
+    tagLabels: input.tags,
+    language,
+    ageRating: input.ageRating,
+    isTranslation: input.isTranslation,
+    chapterTitle: input.chapterTitle,
+    chapterText: input.chapterText,
+    visibility: input.visibility,
+    announce: input.announce,
   });
 
-  const tagIds = await resolveTagIds(input.tags);
-  if (tagIds.length > 0) {
-    await supabase.from("story_tags").insert(tagIds.map((tagId) => ({ story_id: story.id, tag_id: tagId })));
-  }
+  await registerCustomLanguage(db, language);
 
-  await supabase.from("profiles").update({ role: "author" }).eq("id", user.id).eq("role", "reader");
-
-  if (status === "pending_review") {
-    const authorName = await getAuthorDisplayName(supabase, user.id);
-    await notifyPendingReview({ kind: "story", authorName, storyTitle: input.title, storyId: story.id as string });
+  if (story.status === "pending_review") {
+    const authorName = await getAuthorDisplayName(db, viewer.id);
+    await notifyPendingReview({ kind: "story", authorName, storyTitle: input.title, storyId: story.id });
   }
 
   updateTag("stories");
@@ -166,7 +94,7 @@ export async function createStory(input: CreateStoryInput) {
   // Doesn't redirect itself — CreateWizard may still need to attach more
   // chapters (docx import produces several) via addChapter before sending
   // the browser to the new story's manage page.
-  return { id: story.id as string, slug: story.slug as string };
+  return { id: story.id, slug: story.slug };
 }
 
 export interface UpdateStoryInput {
@@ -180,39 +108,21 @@ export interface UpdateStoryInput {
   isTranslation: boolean;
 }
 
-export async function updateStory(
-  storyId: string,
-  storySlug: string,
-  input: UpdateStoryInput
-) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect(ROUTES.onboarding);
-
+export async function updateStory(storyId: string, storySlug: string, input: UpdateStoryInput) {
+  const { db, viewer } = await requireViewer();
   const title = input.title.trim();
   if (!title) return;
 
-  await supabase
-    .from("stories")
-    .update({
-      title,
-      description: input.description,
-      cover_url: input.coverUrl,
-      genres: [...new Set(input.genres)],
-      relationship_type: input.relationshipType,
-      progress_status: input.progressStatus,
-      is_translation: input.isTranslation,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", storyId);
-
-  await supabase.from("story_tags").delete().eq("story_id", storyId);
-  const tagIds = await resolveTagIds(input.tags);
-  if (tagIds.length > 0) {
-    await supabase.from("story_tags").insert(tagIds.map((tagId) => ({ story_id: storyId, tag_id: tagId })));
-  }
+  await storiesData.updateStory(db, viewer, storyId, {
+    title,
+    description: input.description,
+    coverUrl: input.coverUrl,
+    genres: input.genres,
+    relationshipType: input.relationshipType,
+    tagLabels: input.tags,
+    progressStatus: input.progressStatus,
+    isTranslation: input.isTranslation,
+  });
 
   updateTag("stories");
   revalidatePath(ROUTES.manage(storySlug));
@@ -220,33 +130,13 @@ export async function updateStory(
   revalidatePath(ROUTES.home);
 }
 
-export async function updateChapter(
-  chapterId: string,
-  storyId: string,
-  storySlug: string,
-  formData: FormData
-) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect(ROUTES.onboarding);
-
+export async function updateChapter(chapterId: string, storyId: string, storySlug: string, formData: FormData) {
+  const { db, viewer } = await requireViewer();
   const title = String(formData.get("title") ?? "").trim();
-  const rawContent = String(formData.get("content") ?? "").trim();
-  if (!title || !rawContent) return;
-  const content = sanitizeHtml(rawContent);
+  const content = String(formData.get("content") ?? "").trim();
+  if (!title || !content) return;
 
-  await supabase
-    .from("chapters")
-    .update({
-      title,
-      content,
-      word_count: wordCount(stripHtml(content)),
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", chapterId)
-    .eq("story_id", storyId);
+  await chaptersData.updateChapter(db, viewer, chapterId, { title, content });
 
   updateTag("stories");
   revalidatePath(ROUTES.manage(storySlug));
@@ -254,43 +144,8 @@ export async function updateChapter(
 }
 
 export async function deleteChapter(chapterId: string, storyId: string, storySlug: string) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect(ROUTES.onboarding);
-
-  const { data: deleted } = await supabase
-    .from("chapters")
-    .delete()
-    .eq("id", chapterId)
-    .eq("story_id", storyId)
-    .select("order_index")
-    .single();
-
-  // Close the gap this left behind — addChapter always appends at
-  // max(order_index) + 1, so without this a chapter written after a
-  // deletion lands past the gap instead of filling it, and its
-  // author-typed "Глава N" title (free text, not derived from order_index)
-  // drifts out of sync with the number readers actually see. Shifted one
-  // row at a time in ascending order so no two chapters ever briefly share
-  // an order_index (the unique(story_id, order_index) constraint isn't
-  // deferrable).
-  if (deleted) {
-    const { data: after } = await supabase
-      .from("chapters")
-      .select("id, order_index")
-      .eq("story_id", storyId)
-      .gt("order_index", deleted.order_index)
-      .order("order_index", { ascending: true });
-
-    for (const chapter of after ?? []) {
-      await supabase
-        .from("chapters")
-        .update({ order_index: chapter.order_index - 1 })
-        .eq("id", chapter.id);
-    }
-  }
+  const { db, viewer } = await requireViewer();
+  await chaptersData.deleteChapter(db, viewer, chapterId);
 
   updateTag("stories");
   revalidatePath(ROUTES.manage(storySlug));
@@ -298,44 +153,16 @@ export async function deleteChapter(chapterId: string, storyId: string, storySlu
 }
 
 export async function addChapter(storyId: string, storySlug: string, formData: FormData) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect(ROUTES.onboarding);
-
+  const { db, viewer } = await requireViewer();
   const title = String(formData.get("title") ?? "").trim();
-  const rawContent = String(formData.get("content") ?? "").trim();
-  if (!title || !rawContent) return;
-  const content = sanitizeHtml(rawContent);
+  const content = String(formData.get("content") ?? "").trim();
+  if (!title || !content) return;
 
-  const { data: last } = await supabase
-    .from("chapters")
-    .select("order_index")
-    .eq("story_id", storyId)
-    .order("order_index", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  const chapter = await chaptersData.addChapter(db, viewer, storyId, { title, content });
 
-  const nextIndex = (last?.order_index ?? 0) + 1;
-  const status: ChapterStatus = (await requiresReview(supabase)) ? "pending_review" : "published";
-
-  await supabase.from("chapters").insert({
-    story_id: storyId,
-    order_index: nextIndex,
-    title,
-    content,
-    word_count: wordCount(stripHtml(content)),
-    status,
-    is_free: false,
-    published_at: status === "published" ? new Date().toISOString() : null,
-  });
-
-  if (status === "pending_review") {
-    const [{ data: storyRow }, authorName] = await Promise.all([
-      supabase.from("stories").select("title").eq("id", storyId).single(),
-      getAuthorDisplayName(supabase, user.id),
-    ]);
+  if (chapter.status === "pending_review") {
+    const [storyRow] = await db.select({ title: stories.title }).from(stories).where(eq(stories.id, storyId)).limit(1);
+    const authorName = await getAuthorDisplayName(db, viewer.id);
     await notifyPendingReview({
       kind: "chapter",
       authorName,
@@ -351,29 +178,17 @@ export async function addChapter(storyId: string, storySlug: string, formData: F
 }
 
 export async function submitStoryForReview(storyId: string, storySlug: string) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect(ROUTES.onboarding);
+  const { db, viewer } = await requireViewer();
+  const requiresReview = await getRequiresReview(db);
 
-  const status: StoryStatus = (await requiresReview(supabase)) ? "pending_review" : "published";
+  await storiesData.submitStoryForReview(db, viewer, storyId);
 
-  const { data: updated } = await supabase
-    .from("stories")
-    .update({
-      status,
-      published_at: status === "published" ? new Date().toISOString() : null,
-      rejection_reason: null,
-    })
-    .eq("id", storyId)
-    .eq("status", "draft")
-    .select("title")
-    .single();
-
-  if (status === "pending_review" && updated) {
-    const authorName = await getAuthorDisplayName(supabase, user.id);
-    await notifyPendingReview({ kind: "story", authorName, storyTitle: updated.title, storyId });
+  if (requiresReview) {
+    const [storyRow] = await db.select({ title: stories.title }).from(stories).where(eq(stories.id, storyId)).limit(1);
+    if (storyRow) {
+      const authorName = await getAuthorDisplayName(db, viewer.id);
+      await notifyPendingReview({ kind: "story", authorName, storyTitle: storyRow.title, storyId });
+    }
   }
 
   updateTag("stories");
@@ -383,28 +198,14 @@ export async function submitStoryForReview(storyId: string, storySlug: string) {
 }
 
 // Author-only soft delete — moves the story to the admin trash instead of
-// removing it outright (see migration 0032: RLS no longer allows a raw
-// client-side DELETE on stories at all, only this UPDATE). Flipping status
-// to 'draft' alongside deleted_at means every existing status='published'
-// filter across the app (home feed, search, the author's own public
-// profile listing, ...) already stops surfacing it for free, and if staff
-// later restores it (deleted_at -> null), it's already sitting in drafts
-// for the author to review and republish themselves — restore doesn't need
-// to touch status at all. getAuthorStories and getRecentPublishedChapters
-// are the only reads that needed an explicit deleted_at/status check, since
-// they don't already filter on status='published'.
+// removing it outright. Flipping status to 'draft' alongside deleted_at
+// means every existing status='published' filter across the app already
+// stops surfacing it for free, and if staff later restores it
+// (deleted_at -> null), it's already sitting in drafts for the author to
+// review and republish themselves.
 export async function deleteStory(storyId: string, storySlug: string) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect(ROUTES.onboarding);
-
-  await supabase
-    .from("stories")
-    .update({ status: "draft", deleted_at: new Date().toISOString() })
-    .eq("id", storyId)
-    .eq("author_id", user.id);
+  const { db, viewer } = await requireViewer();
+  await storiesData.deleteStory(db, viewer, storyId);
 
   updateTag("stories");
   revalidatePath(ROUTES.story(storySlug));
@@ -414,31 +215,24 @@ export async function deleteStory(storyId: string, storySlug: string) {
 }
 
 export async function submitChapterForReview(chapterId: string, storyId: string, storySlug: string) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect(ROUTES.onboarding);
+  const { db, viewer } = await requireViewer();
+  const requiresReview = await getRequiresReview(db);
 
-  const status: ChapterStatus = (await requiresReview(supabase)) ? "pending_review" : "published";
+  await chaptersData.submitChapterForReview(db, viewer, chapterId);
 
-  const { data: updated } = await supabase
-    .from("chapters")
-    .update({
-      status,
-      published_at: status === "published" ? new Date().toISOString() : null,
-      rejection_reason: null,
-    })
-    .eq("id", chapterId)
-    .eq("story_id", storyId)
-    .eq("status", "draft")
-    .select("title, story:stories(title)")
-    .single();
-
-  if (status === "pending_review" && updated) {
-    const authorName = await getAuthorDisplayName(supabase, user.id);
-    const storyTitle = (updated.story as unknown as { title: string } | null)?.title ?? "";
-    await notifyPendingReview({ kind: "chapter", authorName, storyTitle, chapterTitle: updated.title, storyId });
+  if (requiresReview) {
+    const [chapterRow] = await db.select({ title: chapters.title }).from(chapters).where(eq(chapters.id, chapterId)).limit(1);
+    if (chapterRow) {
+      const [storyRow] = await db.select({ title: stories.title }).from(stories).where(eq(stories.id, storyId)).limit(1);
+      const authorName = await getAuthorDisplayName(db, viewer.id);
+      await notifyPendingReview({
+        kind: "chapter",
+        authorName,
+        storyTitle: storyRow?.title ?? "",
+        chapterTitle: chapterRow.title,
+        storyId,
+      });
+    }
   }
 
   updateTag("stories");

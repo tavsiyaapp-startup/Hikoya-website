@@ -3,11 +3,9 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
-import { createClient } from "@/lib/supabase/client";
 import { PasswordInput } from "@/components/ui/PasswordInput";
 import { Button } from "@/components/ui/Button";
-import { markPasswordSet } from "@/lib/actions/profile";
-import { passwordErrorMessage } from "@/lib/password-error";
+import { setInitialPassword } from "@/lib/actions/profile";
 
 const MIN_PASSWORD_LENGTH = 6;
 
@@ -36,18 +34,12 @@ export function SetPasswordForm({ next, email }: { next: string; email: string }
     }
     setPending(true);
     setError(null);
-    const supabase = createClient();
-    const { error: updateError } = await supabase.auth.updateUser({ password });
-    if (updateError) {
+    const { ok } = await setInitialPassword(password);
+    if (!ok) {
       setPending(false);
-      setError(passwordErrorMessage(updateError.code, t, t.auth.setPasswordFailed));
+      setError(t.auth.setPasswordFailed);
       return;
     }
-    await markPasswordSet();
-    // Same reasoning as /auth/reset-password: once a password exists, any
-    // other signed-in device is worth re-verifying rather than trusting
-    // silently — sign out everywhere else, keep this session.
-    await supabase.auth.signOut({ scope: "others" });
     router.push(next);
     router.refresh();
   }

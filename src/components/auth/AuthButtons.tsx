@@ -1,18 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
+import { authClient } from "@/lib/auth-client";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
-import { ROUTES } from "@/lib/constants";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { PasswordInput } from "@/components/ui/PasswordInput";
-
-function siteUrl() {
-  return process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
-}
 
 export function GoogleButton({ next = "/", className }: { next?: string; className?: string }) {
   const { t } = useLocale();
@@ -22,15 +16,12 @@ export function GoogleButton({ next = "/", className }: { next?: string; classNa
   async function handleClick() {
     setPending(true);
     setError(null);
-    const supabase = createClient();
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: { redirectTo: `${siteUrl()}/auth/callback?next=${encodeURIComponent(next)}` },
-    });
+    const { error } = await authClient.signIn.social({ provider: "google", callbackURL: next });
     if (error) {
       setError(t.auth.googleError);
       setPending(false);
     }
+    // On success Better Auth redirects the browser itself — nothing left to do here.
   }
 
   return (
@@ -50,72 +41,77 @@ export function GoogleButton({ next = "/", className }: { next?: string; classNa
   );
 }
 
-// mode="register" (onboarding) additionally checks email_is_registered
-// before sending anything — an already-registered email trying to "sign
-// up" gets steered to /login instead of a fresh magic link under a
-// misleading "you're registering" banner. mode="login" (the /login page)
-// skips that check entirely: there, "already registered" is the whole
-// point, not something to warn about.
-export function EmailForm({ next = "/", mode = "login" }: { next?: string; mode?: "login" | "register" }) {
+// Passwordless fallback, same spirit as the old Supabase magic link but
+// code-based — reuses the emailOTP plugin already wired in
+// src/server/auth/config.ts (the same one the admin forgot-password flow
+// uses) rather than configuring a second, link-based flow for what's
+// explicitly a secondary login path. A code that doesn't match any
+// existing account just creates one on verification, same as the old
+// magic link's implicit sign-up — there's no separate "already
+// registered" pre-check (mode is kept only for copy, not branching logic).
+export function EmailForm({ next = "/" }: { next?: string; mode?: "login" | "register" }) {
   const { t } = useLocale();
+  const router = useRouter();
   const [email, setEmail] = useState("");
+  const [otp, setOtp] = useState("");
+  const [step, setStep] = useState<"email" | "otp">("email");
   const [pending, setPending] = useState(false);
-  const [sent, setSent] = useState(false);
-  const [alreadyRegistered, setAlreadyRegistered] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSendOtp(e: React.FormEvent) {
     e.preventDefault();
     if (!email) return;
     setPending(true);
     setError(null);
-    const supabase = createClient();
-
-    if (mode === "register") {
-      const { data: exists } = await supabase.rpc("email_is_registered", { check_email: email });
-      if (exists) {
-        setPending(false);
-        setAlreadyRegistered(true);
-        return;
-      }
-    }
-
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: { emailRedirectTo: `${siteUrl()}/auth/callback?next=${encodeURIComponent(next)}` },
-    });
+    const { error } = await authClient.emailOtp.sendVerificationOtp({ email, type: "sign-in" });
     setPending(false);
     if (error) {
       setError(t.auth.emailError);
-    } else {
-      setSent(true);
+      return;
     }
+    setStep("otp");
   }
 
-  if (alreadyRegistered) {
-    return (
-      <div className="rounded-[13px] border border-primary-200 bg-primary-50 px-4 py-3.5">
-        <p className="mb-2 text-[14px] text-primary-900">{t.auth.emailAlreadyRegistered}</p>
-        <Link
-          href={`${ROUTES.login}?next=${encodeURIComponent(next)}`}
-          className="text-[13px] font-bold text-primary-800 hover:underline"
-        >
-          {t.auth.goToLoginWithPassword}
-        </Link>
-      </div>
-    );
+  async function handleVerifyOtp(e: React.FormEvent) {
+    e.preventDefault();
+    if (!otp) return;
+    setPending(true);
+    setError(null);
+    const { error } = await authClient.signIn.emailOtp({ email, otp });
+    setPending(false);
+    if (error) {
+      setError(t.auth.emailOtpError);
+      return;
+    }
+    router.push(next);
+    router.refresh();
   }
 
-  if (sent) {
+  if (step === "otp") {
     return (
-      <p className="rounded-[13px] border border-primary-200 bg-primary-50 px-4 py-3.5 text-[14px] text-primary-900">
-        {t.auth.emailSentTo} {email}. {t.auth.checkInbox}
-      </p>
+      <form onSubmit={handleVerifyOtp} className="flex flex-col gap-2">
+        <p className="text-[13px] text-ink-muted">
+          {t.auth.emailSentTo} {email}. {t.auth.checkInbox}
+        </p>
+        <div className="flex gap-2">
+          <Input
+            required
+            placeholder={t.auth.emailOtpPlaceholder}
+            value={otp}
+            onChange={(e) => setOtp(e.target.value)}
+            autoFocus
+          />
+          <Button type="submit" disabled={pending} className="shrink-0">
+            {pending ? t.common.loading : t.auth.emailOtpSubmit}
+          </Button>
+        </div>
+        {error && <p className="text-[12.5px] text-danger">{error}</p>}
+      </form>
     );
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex gap-2">
+    <form onSubmit={handleSendOtp} className="flex gap-2">
       <Input
         type="email"
         required
@@ -124,7 +120,7 @@ export function EmailForm({ next = "/", mode = "login" }: { next?: string; mode?
         onChange={(e) => setEmail(e.target.value)}
       />
       <Button type="submit" disabled={pending} className="shrink-0">
-        {t.common.login}
+        {pending ? t.common.loading : t.common.login}
       </Button>
       {error && <p className="text-[12.5px] text-danger">{error}</p>}
     </form>
@@ -164,9 +160,9 @@ export function EmailLoginToggle({
 }
 
 // Signing in with a password only ever applies to accounts that already set
-// one from their profile (or during onboarding) — signInWithPassword just
-// fails for everyone else, same as a wrong password, so no separate
-// "this account has no password" state is needed.
+// one from their profile (or during onboarding) — signIn.email just fails
+// for everyone else, same as a wrong password, so no separate "this
+// account has no password" state is needed.
 export function PasswordLoginForm({ next = "/" }: { next?: string }) {
   const { t } = useLocale();
   const router = useRouter();
@@ -179,8 +175,7 @@ export function PasswordLoginForm({ next = "/" }: { next?: string }) {
     e.preventDefault();
     setPending(true);
     setError(null);
-    const supabase = createClient();
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { error } = await authClient.signIn.email({ email, password });
     if (error) {
       setError(t.auth.passwordLoginError);
       setPending(false);

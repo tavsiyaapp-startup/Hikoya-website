@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
+import Link from "next/link";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 import { useTheme } from "@/lib/ThemeProvider";
 import { createClient } from "@/lib/supabase/client";
@@ -14,10 +15,6 @@ import { Textarea } from "@/components/ui/Textarea";
 import { Button } from "@/components/ui/Button";
 import { Toggle } from "@/components/ui/Toggle";
 import { SignOutButton } from "@/components/profile/SignOutButton";
-
-function siteUrl() {
-  return process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
-}
 
 export function EditProfileForm({
   userId,
@@ -48,9 +45,6 @@ export function EditProfileForm({
   const [newEmail, setNewEmail] = useState(email ?? "");
   const [accountMessages, setAccountMessages] = useState<string[]>([]);
   const [accountErrors, setAccountErrors] = useState<string[]>([]);
-  const [resetPending, setResetPending] = useState(false);
-  const [resetMessage, setResetMessage] = useState<string | null>(null);
-  const [resetError, setResetError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   useEffect(() => {
@@ -118,24 +112,6 @@ export function EditProfileForm({
       setAccountErrors(errors);
       if (messages.length === 0 && errors.length === 0) setOpen(false);
     });
-  }
-
-  // Doesn't take a new password directly — sends a confirmation link to the
-  // account's current email first ("is this really you?"). The password is
-  // only ever actually set on /auth/reset-password, after that link is
-  // clicked, so a hijacked open session alone can't silently take over login.
-  async function handleChangePasswordClick() {
-    if (!email) return;
-    setResetPending(true);
-    setResetMessage(null);
-    setResetError(null);
-    const supabase = createClient();
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${siteUrl()}${ROUTES.resetPassword}`,
-    });
-    setResetPending(false);
-    if (error) setResetError(t.profile.passwordResetError);
-    else setResetMessage(t.profile.passwordResetSent);
   }
 
   if (!open) {
@@ -242,11 +218,11 @@ export function EditProfileForm({
       <div className="border-t border-border-soft pt-4">
         <div className="mb-1 text-[13px] font-bold">{t.profile.changePassword}</div>
         <p className="mb-3 text-[12px] text-muted-2">{t.profile.changePasswordHint}</p>
-        <Button type="button" variant="secondary" size="sm" onClick={handleChangePasswordClick} disabled={resetPending}>
-          {resetPending ? t.common.loading : t.profile.changePassword}
-        </Button>
-        {resetMessage && <p className="mt-2 text-[12px] text-primary-800">{resetMessage}</p>}
-        {resetError && <p className="mt-2 text-[12px] text-danger">{resetError}</p>}
+        <Link href={ROUTES.resetPassword}>
+          <Button type="button" variant="secondary" size="sm">
+            {t.profile.changePassword}
+          </Button>
+        </Link>
       </div>
 
       <div className="border-t border-border-soft pt-4">

@@ -1,6 +1,10 @@
 import "server-only";
 import { cache } from "react";
-import { createClient } from "@/lib/supabase/server";
+import { headers } from "next/headers";
+import { eq } from "drizzle-orm";
+import { getAuth } from "@/server/auth/config";
+import { getDb } from "@/server/db/client";
+import { profiles } from "@/server/db/schema";
 import type { Profile } from "@/types/database";
 
 export interface CurrentUser {
@@ -10,31 +14,35 @@ export interface CurrentUser {
 }
 
 // Guests are the default, working state of this app — every caller must
-// tolerate `null`, including when Supabase itself is unreachable (e.g. the
-// placeholder .env.local credentials used before a real project is wired up).
+// tolerate `null`.
 //
 // Every layout AND every page under it calls this (layout needs it for the
 // header/sidebar, the page needs it again for its own gating/data). Without
-// `cache()`, that's 2 full Supabase round-trips (auth.getUser() + a profiles
-// select) duplicated on every single navigation — 4 round-trips just to
-// resolve who's logged in, before the page's own data even starts loading.
-// `cache()` memoizes it per request so layout + page + anything else that
-// calls it share one result.
+// `cache()`, that's 2 full round-trips (session + a profiles select)
+// duplicated on every single navigation. `cache()` memoizes it per request
+// so layout + page + anything else that calls it share one result.
+//
+// Reads a Better Auth session now, not Supabase — this is the single choke
+// point every caller (24+ files) goes through, so moving identity here
+// moves it everywhere at once. Needs the public login forms
+// (src/components/auth/AuthButtons.tsx etc.) to actually issue a Better
+// Auth session for this to resolve to anyone; both moved together.
 export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return null;
+    const session = await getAuth().api.getSession({ headers: await headers() });
+    if (!session) return null;
 
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", user.id)
-      .single();
+    const db = getDb();
+    const [row] = await db.select().from(profiles).where(eq(profiles.id, session.user.id)).limit(1);
+    if (!row) return { id: session.user.id, email: session.user.email ?? null, profile: null };
 
-    return { id: user.id, email: user.email ?? null, profile: (profile as Profile) ?? null };
+    const profile: Profile = {
+      ...row,
+      onboarded_at: row.onboarded_at ? row.onboarded_at.toISOString() : null,
+      created_at: row.created_at.toISOString(),
+    };
+
+    return { id: session.user.id, email: session.user.email ?? null, profile };
   } catch {
     return null;
   }

@@ -1,30 +1,65 @@
 import "server-only";
-import { createAdminClient } from "@/lib/supabase/admin";
-import type { Chapter, Story, StoryTopTier, HeroSlide, Announcement } from "@/types/database";
+import { and, asc, count, desc, eq, gte, ilike, inArray, isNull, isNotNull, lte, or, sql } from "drizzle-orm";
+import { getDb } from "@/server/db/client";
+import {
+  achievements,
+  chapters,
+  collectionItems,
+  collections,
+  comments,
+  featuredStories,
+  follows,
+  heroSlides,
+  announcements as announcementsTable,
+  platformSettings,
+  profiles,
+  requests,
+  stories,
+  userAchievements,
+} from "@/server/db/schema";
+import type { Achievement, Chapter, Story, StoryTopTier, HeroSlide, Announcement } from "@/types/database";
 
-// Admin panel reads always use the service-role client — staff need to see
-// everything regardless of RLS (draft stories, all users).
+// Admin panel reads used to always use the service-role client — now
+// Drizzle/pg directly (never through Supabase's PostgREST/RLS layer at
+// all), so "staff see everything regardless of RLS" is simply true by
+// construction, nothing to opt into per query anymore.
 // There's no dedicated audit-log table yet, so the dashboard's "recent
 // activity" feed is derived from recent stories/users/comments instead of a
 // true event log.
 
+function toISO(d: Date): string {
+  return d.toISOString();
+}
+
+function storyRowToStory(row: typeof stories.$inferSelect): Story {
+  return {
+    ...row,
+    created_at: toISO(row.created_at),
+    updated_at: toISO(row.updated_at),
+    published_at: row.published_at ? toISO(row.published_at) : null,
+    deleted_at: row.deleted_at ? toISO(row.deleted_at) : null,
+  };
+}
+
+function chapterRowToChapter(row: typeof chapters.$inferSelect): Chapter {
+  return {
+    ...row,
+    created_at: toISO(row.created_at),
+    updated_at: toISO(row.updated_at),
+    published_at: row.published_at ? toISO(row.published_at) : null,
+  };
+}
+
 export async function getAdminStats() {
   try {
-    const admin = createAdminClient();
-    const [{ count: storyCount }, { count: userCount }, { data: views }, { count: commentCount }] =
-      await Promise.all([
-        admin.from("stories").select("id", { count: "exact", head: true }),
-        admin.from("profiles").select("id", { count: "exact", head: true }),
-        admin.from("stories").select("view_count"),
-        admin.from("comments").select("id", { count: "exact", head: true }),
-      ]);
-    const totalViews = (views ?? []).reduce((sum, s) => sum + (s.view_count ?? 0), 0);
-    return {
-      storyCount: storyCount ?? 0,
-      userCount: userCount ?? 0,
-      totalViews,
-      commentCount: commentCount ?? 0,
-    };
+    const db = getDb();
+    const [[{ storyCount }], [{ userCount }], [{ totalViews }], [{ commentCount }]] = await Promise.all([
+      db.select({ storyCount: count() }).from(stories),
+      db.select({ userCount: count() }).from(profiles),
+      db.select({ totalViews: sql<number>`coalesce(sum(${stories.view_count}), 0)` }).from(stories),
+      db.select({ commentCount: count() }).from(comments),
+    ]);
+    return { storyCount, userCount, totalViews: Number(totalViews), commentCount };
   } catch {
     return { storyCount: 0, userCount: 0, totalViews: 0, commentCount: 0 };
   }
@@ -32,13 +67,22 @@ export async function getAdminStats() {
 
 export async function getRecentStoriesAdmin(limit = 6) {
   try {
-    const admin = createAdminClient();
-    const { data } = await admin
-      .from("stories")
-      .select("id, title, slug, cover_url, status, created_at, author:profiles!stories_author_id_fkey(display_name)")
-      .order("created_at", { ascending: false })
+    const db = getDb();
+    const rows = await db
+      .select({
+        id: stories.id,
+        title: stories.title,
+        slug: stories.slug,
+        cover_url: stories.cover_url,
+        status: stories.status,
+        created_at: stories.created_at,
+        author: { display_name: profiles.display_name },
+      })
+      .from(stories)
+      .innerJoin(profiles, eq(stories.author_id, profiles.id))
+      .orderBy(desc(stories.created_at))
       .limit(limit);
-    return data ?? [];
+    return rows.map((r) => ({ ...r, created_at: toISO(r.created_at) }));
   } catch {
     return [];
   }
@@ -46,13 +90,20 @@ export async function getRecentStoriesAdmin(limit = 6) {
 
 export async function getRecentUsersAdmin(limit = 6) {
   try {
-    const admin = createAdminClient();
-    const { data } = await admin
-      .from("profiles")
-      .select("id, display_name, username, created_at, status, role")
-      .order("created_at", { ascending: false })
+    const db = getDb();
+    const rows = await db
+      .select({
+        id: profiles.id,
+        display_name: profiles.display_name,
+        username: profiles.username,
+        created_at: profiles.created_at,
+        status: profiles.status,
+        role: profiles.role,
+      })
+      .from(profiles)
+      .orderBy(desc(profiles.created_at))
       .limit(limit);
-    return data ?? [];
+    return rows.map((r) => ({ ...r, created_at: toISO(r.created_at) }));
   } catch {
     return [];
   }
@@ -74,53 +125,59 @@ export async function getRecentActivity(
   range?: { from?: string; to?: string }
 ): Promise<AdminActivityItem[]> {
   try {
-    const admin = createAdminClient();
+    const db = getDb();
 
-    let storiesQuery = admin
-      .from("stories")
-      .select("id, title, published_at, author:profiles!stories_author_id_fkey(display_name)")
-      .not("published_at", "is", null)
-      .order("published_at", { ascending: false });
-    let commentsQuery = admin
-      .from("comments")
-      .select("id, created_at, user:profiles!comments_user_id_fkey(display_name), chapter:chapters(story:stories(title))")
-      .order("created_at", { ascending: false });
-    let usersQuery = admin.from("profiles").select("id, display_name, created_at").order("created_at", { ascending: false });
+    const storyConds = [isNotNull(stories.published_at)];
+    if (range?.from) storyConds.push(gte(stories.published_at, new Date(range.from)));
+    if (range?.to) storyConds.push(lte(stories.published_at, new Date(range.to)));
 
-    if (range?.from) {
-      storiesQuery = storiesQuery.gte("published_at", range.from);
-      commentsQuery = commentsQuery.gte("created_at", range.from);
-      usersQuery = usersQuery.gte("created_at", range.from);
-    }
-    if (range?.to) {
-      storiesQuery = storiesQuery.lte("published_at", range.to);
-      commentsQuery = commentsQuery.lte("created_at", range.to);
-      usersQuery = usersQuery.lte("created_at", range.to);
-    }
+    const commentConds = [];
+    if (range?.from) commentConds.push(gte(comments.created_at, new Date(range.from)));
+    if (range?.to) commentConds.push(lte(comments.created_at, new Date(range.to)));
 
-    const [storiesRes, commentsRes, usersRes] = await Promise.all([
-      storiesQuery.limit(limit),
-      commentsQuery.limit(limit),
-      usersQuery.limit(limit),
+    const userConds = [];
+    if (range?.from) userConds.push(gte(profiles.created_at, new Date(range.from)));
+    if (range?.to) userConds.push(lte(profiles.created_at, new Date(range.to)));
+
+    const [storiesRows, commentsRows, usersRows] = await Promise.all([
+      db
+        .select({ id: stories.id, title: stories.title, published_at: stories.published_at, author: { display_name: profiles.display_name } })
+        .from(stories)
+        .innerJoin(profiles, eq(stories.author_id, profiles.id))
+        .where(and(...storyConds))
+        .orderBy(desc(stories.published_at))
+        .limit(limit),
+      db
+        .select({
+          id: comments.id,
+          created_at: comments.created_at,
+          user: { display_name: profiles.display_name },
+          storyTitle: stories.title,
+        })
+        .from(comments)
+        .innerJoin(profiles, eq(comments.user_id, profiles.id))
+        .innerJoin(stories, eq(comments.story_id, stories.id))
+        .where(commentConds.length ? and(...commentConds) : undefined)
+        .orderBy(desc(comments.created_at))
+        .limit(limit),
+      db
+        .select({ id: profiles.id, display_name: profiles.display_name, created_at: profiles.created_at })
+        .from(profiles)
+        .where(userConds.length ? and(...userConds) : undefined)
+        .orderBy(desc(profiles.created_at))
+        .limit(limit),
     ]);
 
     const items: AdminActivityItem[] = [];
-
-    for (const s of storiesRes.data ?? []) {
-      const author = s.author as unknown as { display_name: string } | null;
-      if (!author || !s.published_at) continue;
-      items.push({ type: "story_published", id: s.id, actorName: author.display_name, targetTitle: s.title, timestamp: s.published_at });
+    for (const s of storiesRows) {
+      if (!s.published_at) continue;
+      items.push({ type: "story_published", id: s.id, actorName: s.author.display_name, targetTitle: s.title, timestamp: toISO(s.published_at) });
     }
-
-    for (const c of commentsRes.data ?? []) {
-      const user = c.user as unknown as { display_name: string } | null;
-      const story = (c.chapter as unknown as { story: { title: string } | null } | null)?.story;
-      if (!user || !story) continue;
-      items.push({ type: "new_comment", id: c.id, actorName: user.display_name, targetTitle: story.title, timestamp: c.created_at });
+    for (const c of commentsRows) {
+      items.push({ type: "new_comment", id: c.id, actorName: c.user.display_name, targetTitle: c.storyTitle, timestamp: toISO(c.created_at) });
     }
-
-    for (const u of usersRes.data ?? []) {
-      items.push({ type: "new_user", id: u.id, actorName: u.display_name, timestamp: u.created_at });
+    for (const u of usersRows) {
+      items.push({ type: "new_user", id: u.id, actorName: u.display_name, timestamp: toISO(u.created_at) });
     }
 
     items.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
@@ -142,33 +199,27 @@ export async function getActivityCounts(range?: { from?: string; to?: string }):
   newComments: number;
 }> {
   try {
-    const admin = createAdminClient();
+    const db = getDb();
 
-    let usersQuery = admin.from("profiles").select("id", { count: "exact", head: true });
-    let chaptersQuery = admin
-      .from("chapters")
-      .select("id", { count: "exact", head: true })
-      .not("published_at", "is", null);
-    let commentsQuery = admin.from("comments").select("id", { count: "exact", head: true });
+    const userConds = [];
+    if (range?.from) userConds.push(gte(profiles.created_at, new Date(range.from)));
+    if (range?.to) userConds.push(lte(profiles.created_at, new Date(range.to)));
 
-    if (range?.from) {
-      usersQuery = usersQuery.gte("created_at", range.from);
-      chaptersQuery = chaptersQuery.gte("published_at", range.from);
-      commentsQuery = commentsQuery.gte("created_at", range.from);
-    }
-    if (range?.to) {
-      usersQuery = usersQuery.lte("created_at", range.to);
-      chaptersQuery = chaptersQuery.lte("published_at", range.to);
-      commentsQuery = commentsQuery.lte("created_at", range.to);
-    }
+    const chapterConds = [isNotNull(chapters.published_at)];
+    if (range?.from) chapterConds.push(gte(chapters.published_at, new Date(range.from)));
+    if (range?.to) chapterConds.push(lte(chapters.published_at, new Date(range.to)));
 
-    const [{ count: newUsers }, { count: publishedChapters }, { count: newComments }] = await Promise.all([
-      usersQuery,
-      chaptersQuery,
-      commentsQuery,
+    const commentConds = [];
+    if (range?.from) commentConds.push(gte(comments.created_at, new Date(range.from)));
+    if (range?.to) commentConds.push(lte(comments.created_at, new Date(range.to)));
+
+    const [[{ newUsers }], [{ publishedChapters }], [{ newComments }]] = await Promise.all([
+      db.select({ newUsers: count() }).from(profiles).where(userConds.length ? and(...userConds) : undefined),
+      db.select({ publishedChapters: count() }).from(chapters).where(and(...chapterConds)),
+      db.select({ newComments: count() }).from(comments).where(commentConds.length ? and(...commentConds) : undefined),
     ]);
 
-    return { newUsers: newUsers ?? 0, publishedChapters: publishedChapters ?? 0, newComments: newComments ?? 0 };
+    return { newUsers, publishedChapters, newComments };
   } catch {
     return { newUsers: 0, publishedChapters: 0, newComments: 0 };
   }
@@ -178,13 +229,13 @@ export type AdminUserSort = "newest" | "followers" | "stories";
 
 export async function searchUsersAdmin(query?: string, sort: AdminUserSort = "newest") {
   try {
-    const admin = createAdminClient();
-    let q = admin.from("profiles").select("*");
-    if (query) q = q.or(`display_name.ilike.%${query}%,username.ilike.%${query}%`);
+    const db = getDb();
+    const q = query?.trim();
+    const where = q ? or(ilike(profiles.display_name, `%${q}%`), ilike(profiles.username, `%${q}%`)) : undefined;
 
     if (sort === "newest") {
-      const { data } = await q.order("created_at", { ascending: false }).limit(100);
-      return data ?? [];
+      const rows = await db.select().from(profiles).where(where).orderBy(desc(profiles.created_at)).limit(100);
+      return rows.map((r) => ({ ...r, created_at: toISO(r.created_at), onboarded_at: r.onboarded_at ? toISO(r.onboarded_at) : null }));
     }
 
     // Profiles don't carry a denormalized follower/story count to order by
@@ -193,14 +244,16 @@ export async function searchUsersAdmin(query?: string, sort: AdminUserSort = "ne
     // the rest of this file), then rank the whole window before slicing to
     // the 100 actually shown, so an older but genuinely popular author isn't
     // hidden behind a newest-first cutoff.
-    const { data: profiles } = await q.limit(500);
-    const list = profiles ?? [];
-    if (list.length === 0) return list;
+    const list = await db.select().from(profiles).where(where).limit(500);
+    if (list.length === 0) return [];
 
     const ids = list.map((p) => p.id);
     const counts = sort === "followers" ? await getAuthorFollowerCounts(ids) : await getAuthorStoryCounts(ids);
 
-    return list.sort((a, b) => (counts[b.id] ?? 0) - (counts[a.id] ?? 0)).slice(0, 100);
+    return list
+      .sort((a, b) => (counts[b.id] ?? 0) - (counts[a.id] ?? 0))
+      .slice(0, 100)
+      .map((r) => ({ ...r, created_at: toISO(r.created_at), onboarded_at: r.onboarded_at ? toISO(r.onboarded_at) : null }));
   } catch {
     return [];
   }
@@ -212,10 +265,13 @@ export async function searchUsersAdmin(query?: string, sort: AdminUserSort = "ne
 export async function getAuthorStoryCounts(userIds: string[]): Promise<Record<string, number>> {
   if (userIds.length === 0) return {};
   try {
-    const admin = createAdminClient();
-    const { data } = await admin.from("stories").select("author_id").in("author_id", userIds).is("deleted_at", null);
+    const db = getDb();
+    const rows = await db
+      .select({ author_id: stories.author_id })
+      .from(stories)
+      .where(and(inArray(stories.author_id, userIds), isNull(stories.deleted_at)));
     const counts: Record<string, number> = {};
-    for (const row of data ?? []) counts[row.author_id] = (counts[row.author_id] ?? 0) + 1;
+    for (const row of rows) counts[row.author_id] = (counts[row.author_id] ?? 0) + 1;
     return counts;
   } catch {
     return {};
@@ -225,21 +281,25 @@ export async function getAuthorStoryCounts(userIds: string[]): Promise<Record<st
 export async function getAuthorFollowerCounts(userIds: string[]): Promise<Record<string, number>> {
   if (userIds.length === 0) return {};
   try {
-    const admin = createAdminClient();
-    const { data } = await admin.from("follows").select("author_id").in("author_id", userIds);
+    const db = getDb();
+    const rows = await db.select({ author_id: follows.author_id }).from(follows).where(inArray(follows.author_id, userIds));
     const counts: Record<string, number> = {};
-    for (const row of data ?? []) counts[row.author_id] = (counts[row.author_id] ?? 0) + 1;
+    for (const row of rows) counts[row.author_id] = (counts[row.author_id] ?? 0) + 1;
     return counts;
   } catch {
     return {};
   }
 }
 
-export async function getAllAchievements() {
+export async function getAllAchievements(): Promise<Achievement[]> {
   try {
-    const admin = createAdminClient();
-    const { data } = await admin.from("achievements").select("*").order("title_ru");
-    return data ?? [];
+    const db = getDb();
+    const rows = await db.select().from(achievements).orderBy(asc(achievements.title_ru));
+    // metric is a plain text column (no DB-level enum), same as it was a
+    // plain text column read through Supabase before — the app has always
+    // trusted the small, staff-only achievements table to hold one of
+    // these four values rather than enforcing it at the schema level.
+    return rows as Achievement[];
   } catch {
     return [];
   }
@@ -250,12 +310,12 @@ export async function getUserAchievementsMap(userIds: string[]): Promise<Map<str
   const map = new Map<string, string[]>();
   if (userIds.length === 0) return map;
   try {
-    const admin = createAdminClient();
-    const { data } = await admin
-      .from("user_achievements")
-      .select("user_id, achievement_id")
-      .in("user_id", userIds);
-    for (const row of data ?? []) {
+    const db = getDb();
+    const rows = await db
+      .select({ user_id: userAchievements.user_id, achievement_id: userAchievements.achievement_id })
+      .from(userAchievements)
+      .where(inArray(userAchievements.user_id, userIds));
+    for (const row of rows) {
       const list = map.get(row.user_id) ?? [];
       list.push(row.achievement_id);
       map.set(row.user_id, list);
@@ -268,9 +328,9 @@ export async function getUserAchievementsMap(userIds: string[]): Promise<Map<str
 
 export async function getAllHeroSlidesAdmin(): Promise<HeroSlide[]> {
   try {
-    const admin = createAdminClient();
-    const { data } = await admin.from("hero_slides").select("*").order("created_at", { ascending: true });
-    return (data as HeroSlide[]) ?? [];
+    const db = getDb();
+    const rows = await db.select().from(heroSlides).orderBy(asc(heroSlides.created_at));
+    return rows.map((r) => ({ ...r, created_at: toISO(r.created_at) }));
   } catch {
     return [];
   }
@@ -278,9 +338,9 @@ export async function getAllHeroSlidesAdmin(): Promise<HeroSlide[]> {
 
 export async function getAllAnnouncementsAdmin(): Promise<Announcement[]> {
   try {
-    const admin = createAdminClient();
-    const { data } = await admin.from("announcements").select("*").order("created_at", { ascending: false });
-    return (data as Announcement[]) ?? [];
+    const db = getDb();
+    const rows = await db.select().from(announcementsTable).orderBy(desc(announcementsTable.created_at));
+    return rows.map((r) => ({ ...r, created_at: toISO(r.created_at) }));
   } catch {
     return [];
   }
@@ -288,15 +348,19 @@ export async function getAllAnnouncementsAdmin(): Promise<Announcement[]> {
 
 export async function searchStoriesForFeaturedAdmin(query?: string) {
   try {
-    const admin = createAdminClient();
-    let q = admin
-      .from("stories")
-      .select("id, title, author:profiles!stories_author_id_fkey(display_name)")
-      .eq("status", "published")
-      .order("title", { ascending: true });
-    if (query) q = q.ilike("title", `%${query}%`);
-    const { data } = await q.limit(100);
-    return data ?? [];
+    const db = getDb();
+    const q = query?.trim();
+    const where = q
+      ? and(eq(stories.status, "published"), ilike(stories.title, `%${q}%`))
+      : eq(stories.status, "published");
+    const rows = await db
+      .select({ id: stories.id, title: stories.title, author: { display_name: profiles.display_name } })
+      .from(stories)
+      .innerJoin(profiles, eq(stories.author_id, profiles.id))
+      .where(where)
+      .orderBy(asc(stories.title))
+      .limit(100);
+    return rows;
   } catch {
     return [];
   }
@@ -307,9 +371,12 @@ export async function getFeaturedTiersMap(storyIds: string[]): Promise<Map<strin
   const map = new Map<string, Set<StoryTopTier>>();
   if (storyIds.length === 0) return map;
   try {
-    const admin = createAdminClient();
-    const { data } = await admin.from("featured_stories").select("story_id, tier").in("story_id", storyIds);
-    for (const row of data ?? []) {
+    const db = getDb();
+    const rows = await db
+      .select({ story_id: featuredStories.story_id, tier: featuredStories.tier })
+      .from(featuredStories)
+      .where(inArray(featuredStories.story_id, storyIds));
+    for (const row of rows) {
       const set = map.get(row.story_id) ?? new Set<StoryTopTier>();
       set.add(row.tier);
       map.set(row.story_id, set);
@@ -319,8 +386,6 @@ export async function getFeaturedTiersMap(storyIds: string[]): Promise<Map<strin
     return map;
   }
 }
-
-const storySelect = "*, author:profiles!stories_author_id_fkey(display_name)";
 
 export type AdminStorySort = "newest" | "views" | "likes";
 
@@ -337,17 +402,23 @@ export async function getAllStoriesAdmin(
   const title = options?.q?.trim();
   const sort = options?.sort ?? "newest";
   try {
-    const admin = createAdminClient();
+    const db = getDb();
     let list: (Story & { author: { display_name: string } | null })[] = [];
+
+    const selectStory = () =>
+      db
+        .select({ story: stories, author: { display_name: profiles.display_name } })
+        .from(stories)
+        .innerJoin(profiles, eq(stories.author_id, profiles.id));
 
     // The trash — soft-deleted by their author (deleted_at set, see
     // deleteStory in stories.ts) — is its own tab, kept out of every other
     // tab below rather than mixed into the regular status list.
     if (statusFilter === "deleted") {
-      let deletedQuery = admin.from("stories").select(storySelect).not("deleted_at", "is", null);
-      if (title) deletedQuery = deletedQuery.ilike("title", `%${title}%`);
-      const { data } = await deletedQuery.limit(STORY_FETCH_LIMIT);
-      list = data ?? [];
+      const conds = [isNotNull(stories.deleted_at)];
+      if (title) conds.push(ilike(stories.title, `%${title}%`));
+      const rows = await selectStory().where(and(...conds)).limit(STORY_FETCH_LIMIT);
+      list = rows.map((r) => ({ ...storyRowToStory(r.story), author: r.author }));
     } else if (statusFilter === "pending_review") {
       // A story keeps its own status once published — adding chapters to it
       // afterward never touches stories.status, only the new chapters' own
@@ -356,32 +427,30 @@ export async function getAllStoriesAdmin(
       // story" submission from the pending queue, so it also pulls in any
       // story that merely *has* a pending chapter, whatever the story's own
       // status is.
-      let pendingQuery = admin.from("stories").select(storySelect).eq("status", "pending_review").is("deleted_at", null);
-      if (title) pendingQuery = pendingQuery.ilike("title", `%${title}%`);
-      const [{ data: pendingStories }, { data: pendingChapterRows }] = await Promise.all([
-        pendingQuery,
-        admin.from("chapters").select("story_id").eq("status", "pending_review"),
+      const pendingConds = [eq(stories.status, "pending_review"), isNull(stories.deleted_at)];
+      if (title) pendingConds.push(ilike(stories.title, `%${title}%`));
+      const [pendingRows, pendingChapterRows] = await Promise.all([
+        selectStory().where(and(...pendingConds)),
+        db.select({ story_id: chapters.story_id }).from(chapters).where(eq(chapters.status, "pending_review")),
       ]);
 
-      const already = new Set((pendingStories ?? []).map((s) => s.id));
-      const extraIds = [...new Set((pendingChapterRows ?? []).map((c) => c.story_id))].filter(
-        (id) => !already.has(id)
-      );
+      const already = new Set(pendingRows.map((r) => r.story.id));
+      const extraIds = [...new Set(pendingChapterRows.map((c) => c.story_id))].filter((id) => !already.has(id));
 
-      let extraStories: typeof pendingStories = [];
+      let extraRows: typeof pendingRows = [];
       if (extraIds.length) {
-        let extraQuery = admin.from("stories").select(storySelect).in("id", extraIds).is("deleted_at", null);
-        if (title) extraQuery = extraQuery.ilike("title", `%${title}%`);
-        extraStories = (await extraQuery).data ?? [];
+        const extraConds = [inArray(stories.id, extraIds), isNull(stories.deleted_at)];
+        if (title) extraConds.push(ilike(stories.title, `%${title}%`));
+        extraRows = await selectStory().where(and(...extraConds));
       }
 
-      list = [...(pendingStories ?? []), ...(extraStories ?? [])];
+      list = [...pendingRows, ...extraRows].map((r) => ({ ...storyRowToStory(r.story), author: r.author }));
     } else {
-      let generalQuery = admin.from("stories").select(storySelect).is("deleted_at", null);
-      if (statusFilter) generalQuery = generalQuery.eq("status", statusFilter);
-      if (title) generalQuery = generalQuery.ilike("title", `%${title}%`);
-      const { data } = await generalQuery.limit(STORY_FETCH_LIMIT);
-      list = data ?? [];
+      const conds = [isNull(stories.deleted_at)];
+      if (statusFilter) conds.push(eq(stories.status, statusFilter as Story["status"]));
+      if (title) conds.push(ilike(stories.title, `%${title}%`));
+      const rows = await selectStory().where(and(...conds)).limit(STORY_FETCH_LIMIT);
+      list = rows.map((r) => ({ ...storyRowToStory(r.story), author: r.author }));
     }
 
     list.sort((a, b) => {
@@ -399,10 +468,10 @@ export async function getAllStoriesAdmin(
 export async function getStoryChapterCounts(storyIds: string[]) {
   if (storyIds.length === 0) return {} as Record<string, number>;
   try {
-    const admin = createAdminClient();
-    const { data } = await admin.from("chapters").select("story_id").in("story_id", storyIds);
+    const db = getDb();
+    const rows = await db.select({ story_id: chapters.story_id }).from(chapters).where(inArray(chapters.story_id, storyIds));
     const counts: Record<string, number> = {};
-    for (const row of data ?? []) counts[row.story_id] = (counts[row.story_id] ?? 0) + 1;
+    for (const row of rows) counts[row.story_id] = (counts[row.story_id] ?? 0) + 1;
     return counts;
   } catch {
     return {};
@@ -415,25 +484,25 @@ export async function getStoryChapterCounts(storyIds: string[]) {
 export async function getPendingChapterCounts(storyIds: string[]) {
   if (storyIds.length === 0) return {} as Record<string, number>;
   try {
-    const admin = createAdminClient();
-    const { data } = await admin
-      .from("chapters")
-      .select("story_id")
-      .eq("status", "pending_review")
-      .in("story_id", storyIds);
+    const db = getDb();
+    const rows = await db
+      .select({ story_id: chapters.story_id })
+      .from(chapters)
+      .where(and(eq(chapters.status, "pending_review"), inArray(chapters.story_id, storyIds)));
     const counts: Record<string, number> = {};
-    for (const row of data ?? []) counts[row.story_id] = (counts[row.story_id] ?? 0) + 1;
+    for (const row of rows) counts[row.story_id] = (counts[row.story_id] ?? 0) + 1;
     return counts;
   } catch {
     return {};
   }
 }
 
-// Moderation reads always go through the admin client — staff need to see
-// a story/chapter regardless of its status (pending_review, draft after a
-// rejection, etc), and this view is intentionally decoupled from the
-// author's own /manage page: admins can read here, never edit, and their
-// reads never touch view_count (no ChapterReadingRecorder on these routes).
+// Moderation reads always see every story/chapter regardless of status
+// (pending_review, draft after a rejection, etc) — nothing to opt into
+// anymore, there's no RLS layer in between. This view is intentionally
+// decoupled from the author's own /manage page: admins can read here,
+// never edit, and their reads never touch view_count (no
+// ChapterReadingRecorder on these routes).
 
 export type StoryForModeration = Story & {
   author: { id: string; username: string; display_name: string } | null;
@@ -441,13 +510,17 @@ export type StoryForModeration = Story & {
 
 export async function getStoryForModeration(id: string): Promise<StoryForModeration | null> {
   try {
-    const admin = createAdminClient();
-    const { data } = await admin
-      .from("stories")
-      .select("*, author:profiles!stories_author_id_fkey(id, username, display_name)")
-      .eq("id", id)
-      .single();
-    return (data as StoryForModeration) ?? null;
+    const db = getDb();
+    const [row] = await db
+      .select({
+        story: stories,
+        author: { id: profiles.id, username: profiles.username, display_name: profiles.display_name },
+      })
+      .from(stories)
+      .innerJoin(profiles, eq(stories.author_id, profiles.id))
+      .where(eq(stories.id, id))
+      .limit(1);
+    return row ? { ...storyRowToStory(row.story), author: row.author } : null;
   } catch {
     return null;
   }
@@ -460,13 +533,22 @@ export type ChapterListItem = Pick<
 
 export async function getChaptersForModeration(storyId: string): Promise<ChapterListItem[]> {
   try {
-    const admin = createAdminClient();
-    const { data } = await admin
-      .from("chapters")
-      .select("id, story_id, order_index, title, word_count, status, rejection_reason, updated_at")
-      .eq("story_id", storyId)
-      .order("order_index", { ascending: true });
-    return (data as ChapterListItem[]) ?? [];
+    const db = getDb();
+    const rows = await db
+      .select({
+        id: chapters.id,
+        story_id: chapters.story_id,
+        order_index: chapters.order_index,
+        title: chapters.title,
+        word_count: chapters.word_count,
+        status: chapters.status,
+        rejection_reason: chapters.rejection_reason,
+        updated_at: chapters.updated_at,
+      })
+      .from(chapters)
+      .where(eq(chapters.story_id, storyId))
+      .orderBy(asc(chapters.order_index));
+    return rows.map((r) => ({ ...r, updated_at: toISO(r.updated_at) }));
   } catch {
     return [];
   }
@@ -474,9 +556,9 @@ export async function getChaptersForModeration(storyId: string): Promise<Chapter
 
 export async function getChapterForModeration(chapterId: string): Promise<Chapter | null> {
   try {
-    const admin = createAdminClient();
-    const { data } = await admin.from("chapters").select("*").eq("id", chapterId).single();
-    return (data as Chapter) ?? null;
+    const db = getDb();
+    const [row] = await db.select().from(chapters).where(eq(chapters.id, chapterId)).limit(1);
+    return row ? chapterRowToChapter(row) : null;
   } catch {
     return null;
   }
@@ -490,13 +572,12 @@ export type ChapterForDownload = { order_index: number; title: string; content: 
 // adminHref path on StoryCard.
 export async function getChaptersForDownload(storyId: string): Promise<ChapterForDownload[]> {
   try {
-    const admin = createAdminClient();
-    const { data } = await admin
-      .from("chapters")
-      .select("order_index, title, content")
-      .eq("story_id", storyId)
-      .order("order_index", { ascending: true });
-    return data ?? [];
+    const db = getDb();
+    return await db
+      .select({ order_index: chapters.order_index, title: chapters.title, content: chapters.content })
+      .from(chapters)
+      .where(eq(chapters.story_id, storyId))
+      .orderBy(asc(chapters.order_index));
   } catch {
     return [];
   }
@@ -504,14 +585,16 @@ export async function getChaptersForDownload(storyId: string): Promise<ChapterFo
 
 export async function getAllRequestsAdmin(statusFilter?: string) {
   try {
-    const admin = createAdminClient();
-    let q = admin
-      .from("requests")
-      .select("*, from_user:profiles!requests_from_user_id_fkey(display_name)")
-      .order("created_at", { ascending: false });
-    if (statusFilter) q = q.eq("status", statusFilter);
-    const { data } = await q.limit(100);
-    return data ?? [];
+    const db = getDb();
+    const where = statusFilter ? eq(requests.status, statusFilter as "open" | "closed") : undefined;
+    const rows = await db
+      .select({ request: requests, from_user: { display_name: profiles.display_name } })
+      .from(requests)
+      .innerJoin(profiles, eq(requests.from_user_id, profiles.id))
+      .where(where)
+      .orderBy(desc(requests.created_at))
+      .limit(100);
+    return rows.map((r) => ({ ...r.request, created_at: toISO(r.request.created_at), from_user: r.from_user }));
   } catch {
     return [];
   }
@@ -519,13 +602,14 @@ export async function getAllRequestsAdmin(statusFilter?: string) {
 
 export async function getAllCollectionsAdmin() {
   try {
-    const admin = createAdminClient();
-    const { data } = await admin
-      .from("collections")
-      .select("*, owner:profiles!collections_owner_id_fkey(display_name)")
-      .order("created_at", { ascending: false })
+    const db = getDb();
+    const rows = await db
+      .select({ collection: collections, owner: { display_name: profiles.display_name } })
+      .from(collections)
+      .innerJoin(profiles, eq(collections.owner_id, profiles.id))
+      .orderBy(desc(collections.created_at))
       .limit(100);
-    return data ?? [];
+    return rows.map((r) => ({ ...r.collection, created_at: toISO(r.collection.created_at), owner: r.owner }));
   } catch {
     return [];
   }
@@ -533,9 +617,9 @@ export async function getAllCollectionsAdmin() {
 
 export async function getCollectionByIdAdmin(id: string) {
   try {
-    const admin = createAdminClient();
-    const { data } = await admin.from("collections").select("*").eq("id", id).single();
-    return data;
+    const db = getDb();
+    const [row] = await db.select().from(collections).where(eq(collections.id, id)).limit(1);
+    return row ? { ...row, created_at: toISO(row.created_at) } : null;
   } catch {
     return null;
   }
@@ -543,9 +627,9 @@ export async function getCollectionByIdAdmin(id: string) {
 
 export async function getCollectionItemIds(collectionId: string): Promise<string[]> {
   try {
-    const admin = createAdminClient();
-    const { data } = await admin.from("collection_items").select("story_id").eq("collection_id", collectionId);
-    return (data ?? []).map((r) => r.story_id);
+    const db = getDb();
+    const rows = await db.select({ story_id: collectionItems.story_id }).from(collectionItems).where(eq(collectionItems.collection_id, collectionId));
+    return rows.map((r) => r.story_id);
   } catch {
     return [];
   }
@@ -553,12 +637,12 @@ export async function getCollectionItemIds(collectionId: string): Promise<string
 
 export async function getAllStoriesForAdminPicker() {
   try {
-    const admin = createAdminClient();
-    const { data } = await admin
-      .from("stories")
-      .select("id, title, author:profiles!stories_author_id_fkey(display_name)")
-      .order("title", { ascending: true });
-    return data ?? [];
+    const db = getDb();
+    return await db
+      .select({ id: stories.id, title: stories.title, author: { display_name: profiles.display_name } })
+      .from(stories)
+      .innerJoin(profiles, eq(stories.author_id, profiles.id))
+      .orderBy(asc(stories.title));
   } catch {
     return [];
   }
@@ -578,44 +662,72 @@ export type AdminCommentRow = {
 
 export type AdminCommentThread = AdminCommentRow & { replies: AdminCommentRow[] };
 
-const adminCommentSelect =
-  "id, parent_id, text, like_count, is_spoiler, created_at, user:profiles!comments_user_id_fkey(display_name, username), story:stories(id, title, slug), chapter:chapters(id, order_index, title)";
-
 // Top-level comments only, paginated — each thread's replies are fetched
 // separately (one extra query keyed off the page's parent ids) and nested
 // underneath so "reply comes together with the comment it answers" holds
 // even though replies themselves aren't paginated independently.
 export async function getAllCommentsAdmin(page = 1, pageSize = 24): Promise<{ threads: AdminCommentThread[]; total: number }> {
   try {
-    const admin = createAdminClient();
-    const { count } = await admin.from("comments").select("id", { count: "exact", head: true }).is("parent_id", null);
+    const db = getDb();
+    const [{ total }] = await db.select({ total: count() }).from(comments).where(isNull(comments.parent_id));
 
     const from = (page - 1) * pageSize;
-    const { data: topLevel } = await admin
-      .from("comments")
-      .select(adminCommentSelect)
-      .is("parent_id", null)
-      .order("created_at", { ascending: false })
-      .range(from, from + pageSize - 1);
+    const selectComment = () =>
+      db
+        .select({
+          id: comments.id,
+          parent_id: comments.parent_id,
+          text: comments.text,
+          like_count: comments.like_count,
+          is_spoiler: comments.is_spoiler,
+          created_at: comments.created_at,
+          user: { display_name: profiles.display_name, username: profiles.username },
+          story: { id: stories.id, title: stories.title, slug: stories.slug },
+          chapter_id: chapters.id,
+          chapter_order_index: chapters.order_index,
+          chapter_title: chapters.title,
+        })
+        .from(comments)
+        .innerJoin(profiles, eq(comments.user_id, profiles.id))
+        .innerJoin(stories, eq(comments.story_id, stories.id))
+        .leftJoin(chapters, eq(comments.chapter_id, chapters.id));
 
-    const topIds = (topLevel ?? []).map((c) => c.id);
-    const { data: replies } = topIds.length
-      ? await admin.from("comments").select(adminCommentSelect).in("parent_id", topIds).order("created_at", { ascending: true })
-      : { data: [] as AdminCommentRow[] };
+    const topLevel = await selectComment()
+      .where(isNull(comments.parent_id))
+      .orderBy(desc(comments.created_at))
+      .limit(pageSize)
+      .offset(from);
 
-    const repliesByParent = new Map<string, AdminCommentRow[]>();
-    for (const r of (replies as AdminCommentRow[] | null) ?? []) {
-      const arr = repliesByParent.get(r.parent_id as string) ?? [];
-      arr.push(r);
-      repliesByParent.set(r.parent_id as string, arr);
+    const topIds = topLevel.map((c) => c.id);
+    const replies = topIds.length
+      ? await selectComment().where(inArray(comments.parent_id, topIds)).orderBy(asc(comments.created_at))
+      : [];
+
+    function toRow(c: (typeof topLevel)[number]): AdminCommentRow {
+      return {
+        id: c.id,
+        parent_id: c.parent_id,
+        text: c.text,
+        like_count: c.like_count,
+        is_spoiler: c.is_spoiler,
+        created_at: toISO(c.created_at),
+        user: c.user,
+        story: c.story,
+        chapter: c.chapter_id ? { id: c.chapter_id, order_index: c.chapter_order_index!, title: c.chapter_title! } : null,
+      };
     }
 
-    const threads = ((topLevel as AdminCommentRow[] | null) ?? []).map((c) => ({
-      ...c,
-      replies: repliesByParent.get(c.id) ?? [],
-    }));
+    const repliesByParent = new Map<string, AdminCommentRow[]>();
+    for (const r of replies) {
+      const row = toRow(r);
+      const arr = repliesByParent.get(row.parent_id as string) ?? [];
+      arr.push(row);
+      repliesByParent.set(row.parent_id as string, arr);
+    }
 
-    return { threads, total: count ?? 0 };
+    const threads = topLevel.map((c) => ({ ...toRow(c), replies: repliesByParent.get(c.id) ?? [] }));
+
+    return { threads, total };
   } catch {
     return { threads: [], total: 0 };
   }
@@ -623,9 +735,9 @@ export async function getAllCommentsAdmin(page = 1, pageSize = 24): Promise<{ th
 
 export async function getPlatformSettingsAdmin() {
   try {
-    const admin = createAdminClient();
-    const { data } = await admin.from("platform_settings").select("*").eq("id", 1).single();
-    return data;
+    const db = getDb();
+    const [row] = await db.select().from(platformSettings).where(eq(platformSettings.id, 1)).limit(1);
+    return row ?? null;
   } catch {
     return null;
   }

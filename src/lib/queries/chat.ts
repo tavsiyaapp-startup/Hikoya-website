@@ -1,24 +1,39 @@
 import "server-only";
-import { createClient } from "@/lib/supabase/server";
+import { desc, eq, count } from "drizzle-orm";
+import { getDb } from "@/server/db/client";
+import { adminChatMessages, adminChats, profiles } from "@/server/db/schema";
 import type { AdminChatMessage, AdminChatSummary } from "@/types/database";
 
 export type ChatMessageWithSender = AdminChatMessage & {
   sender: { display_name: string; avatar_url: string | null } | null;
 };
 
+function toMessage(row: typeof adminChatMessages.$inferSelect): AdminChatMessage {
+  return { ...row, created_at: row.created_at.toISOString() };
+}
+
+function toSummary(row: typeof adminChats.$inferSelect): AdminChatSummary {
+  return { ...row, last_message_at: row.last_message_at.toISOString() };
+}
+
 // Used by both /chat (the user's own thread) and /admin/chats (any staff
-// member's view of a given user's thread) — RLS (user_id = auth.uid() or
-// is_staff()) is what actually enforces who may read what here.
+// member's view of a given user's thread) — who may call this with which
+// userId is enforced by the caller (src/lib/actions/admin-chat.ts and the
+// page components), not by a database policy anymore.
 export async function getAdminChatMessages(userId: string, limit = 300): Promise<ChatMessageWithSender[]> {
   try {
-    const supabase = await createClient();
-    const { data } = await supabase
-      .from("admin_chat_messages")
-      .select("*, sender:profiles!admin_chat_messages_sender_id_fkey(display_name, avatar_url)")
-      .eq("user_id", userId)
-      .order("created_at", { ascending: true })
+    const db = getDb();
+    const rows = await db
+      .select({
+        message: adminChatMessages,
+        sender: { display_name: profiles.display_name, avatar_url: profiles.avatar_url },
+      })
+      .from(adminChatMessages)
+      .innerJoin(profiles, eq(adminChatMessages.sender_id, profiles.id))
+      .where(eq(adminChatMessages.user_id, userId))
+      .orderBy(adminChatMessages.created_at)
       .limit(limit);
-    return (data as ChatMessageWithSender[]) ?? [];
+    return rows.map((r) => ({ ...toMessage(r.message), sender: r.sender }));
   } catch {
     return [];
   }
@@ -26,9 +41,9 @@ export async function getAdminChatMessages(userId: string, limit = 300): Promise
 
 export async function getAdminChatSummary(userId: string): Promise<AdminChatSummary | null> {
   try {
-    const supabase = await createClient();
-    const { data } = await supabase.from("admin_chats").select("*").eq("user_id", userId).maybeSingle();
-    return (data as AdminChatSummary) ?? null;
+    const db = getDb();
+    const [row] = await db.select().from(adminChats).where(eq(adminChats.user_id, userId)).limit(1);
+    return row ? toSummary(row) : null;
   } catch {
     return null;
   }
@@ -38,16 +53,21 @@ export type AdminChatListItem = AdminChatSummary & {
   user: { display_name: string; username: string; avatar_url: string | null } | null;
 };
 
-// Admin-only (RLS: is_staff()) — every user who has ever exchanged a
-// message with support, most recently active first.
+// Admin-only — every user who has ever exchanged a message with support,
+// most recently active first. Staff-only gating happens at the call site
+// (src/app/admin/...), the same as every other admin query.
 export async function getAdminChatsList(): Promise<AdminChatListItem[]> {
   try {
-    const supabase = await createClient();
-    const { data } = await supabase
-      .from("admin_chats")
-      .select("*, user:profiles!admin_chats_user_id_fkey(display_name, username, avatar_url)")
-      .order("last_message_at", { ascending: false });
-    return (data as AdminChatListItem[]) ?? [];
+    const db = getDb();
+    const rows = await db
+      .select({
+        chat: adminChats,
+        user: { display_name: profiles.display_name, username: profiles.username, avatar_url: profiles.avatar_url },
+      })
+      .from(adminChats)
+      .innerJoin(profiles, eq(adminChats.user_id, profiles.id))
+      .orderBy(desc(adminChats.last_message_at));
+    return rows.map((r) => ({ ...toSummary(r.chat), user: r.user }));
   } catch {
     return [];
   }
@@ -60,13 +80,13 @@ export async function getProfileForChat(
   userId: string
 ): Promise<{ display_name: string; username: string; avatar_url: string | null } | null> {
   try {
-    const supabase = await createClient();
-    const { data } = await supabase
-      .from("profiles")
-      .select("display_name, username, avatar_url")
-      .eq("id", userId)
-      .maybeSingle();
-    return data ?? null;
+    const db = getDb();
+    const [row] = await db
+      .select({ display_name: profiles.display_name, username: profiles.username, avatar_url: profiles.avatar_url })
+      .from(profiles)
+      .where(eq(profiles.id, userId))
+      .limit(1);
+    return row ?? null;
   } catch {
     return null;
   }
@@ -74,12 +94,9 @@ export async function getProfileForChat(
 
 export async function getUnreadAdminChatsCount(): Promise<number> {
   try {
-    const supabase = await createClient();
-    const { count } = await supabase
-      .from("admin_chats")
-      .select("user_id", { count: "exact", head: true })
-      .eq("unread_by_admin", true);
-    return count ?? 0;
+    const db = getDb();
+    const [{ total }] = await db.select({ total: count() }).from(adminChats).where(eq(adminChats.unread_by_admin, true));
+    return total;
   } catch {
     return 0;
   }

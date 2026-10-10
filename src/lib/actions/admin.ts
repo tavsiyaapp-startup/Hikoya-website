@@ -2,20 +2,38 @@
 
 import { revalidatePath, updateTag } from "next/cache";
 import { redirect } from "next/navigation";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { and, eq, inArray, isNotNull, sql } from "drizzle-orm";
+import { getDb } from "@/server/db/client";
+import {
+  announcements,
+  chapters,
+  collectionItems,
+  collections,
+  featuredStories,
+  heroSlides,
+  likes,
+  platformSettings,
+  profiles,
+  requests,
+  stories,
+  userAchievements,
+} from "@/server/db/schema";
+import { setCredentialPassword } from "@/server/auth/set-password";
 import { createNotification } from "@/lib/actions/create-notification";
-import { deleteOldStorageFile } from "@/lib/storage-cleanup";
 import { ROUTES } from "@/lib/constants";
 import { getStaffSession } from "@/server/auth/staff";
 
-// Identity now comes from Better Auth (Phase 1 of the Supabase exit, see
-// src/server/auth/staff.ts) — the actual writes below still go through
-// createAdminClient() (service-role, bypasses RLS) exactly as before,
-// unaffected by this. Redirect targets match what this used to send a
-// Supabase-signed-out user to; keeping ROUTES.onboarding here (rather
-// than ROUTES.adminLogin, which is what proxy.ts's own gate already sends
-// people to before a Server Action ever runs) avoids changing behavior
-// for any other caller of this function.
+// Identity comes from Better Auth (Phase 1 of the Supabase exit, see
+// src/server/auth/staff.ts). The writes below used to go through
+// createAdminClient() (Supabase's service-role client, bypassing RLS) —
+// moved onto Drizzle/pg directly (Phase 2) since Supabase itself is
+// currently unreachable (egress quota), so every one of these was failing
+// outright regardless of RLS. Behavior/signatures kept identical so none
+// of the calling admin pages needed touching. Zero Supabase dependency
+// left in this file — the one piece that used to also delete the old
+// image from Supabase Storage (deleteHeroSlide/deleteAnnouncement) now
+// just leaves it orphaned there instead; file storage isn't migrated yet,
+// that's its own separate, still-pending piece.
 async function requireStaff() {
   const result = await getStaffSession();
   if (result.status === "signed-out") redirect(ROUTES.onboarding);
@@ -34,20 +52,19 @@ async function requireAdmin() {
 
 export async function updateUserRole(userId: string, role: "reader" | "author" | "moderator" | "admin") {
   await requireAdmin();
-  const admin = createAdminClient();
-  await admin.from("profiles").update({ role }).eq("id", userId);
+  const db = getDb();
+  await db.update(profiles).set({ role }).where(eq(profiles.id, userId));
   revalidatePath(`${ROUTES.admin}/users`);
 }
 
 export async function approveStory(storyId: string, storySlug: string) {
   await requireStaff();
-  const admin = createAdminClient();
-  const { data: story } = await admin
-    .from("stories")
-    .update({ status: "published", published_at: new Date().toISOString(), rejection_reason: null })
-    .eq("id", storyId)
-    .select("author_id")
-    .single();
+  const db = getDb();
+  const [story] = await db
+    .update(stories)
+    .set({ status: "published", published_at: new Date(), rejection_reason: null })
+    .where(eq(stories.id, storyId))
+    .returning({ author_id: stories.author_id });
   if (story) {
     await createNotification({ userId: story.author_id, type: "story_approved", storyId });
   }
@@ -62,13 +79,12 @@ export async function approveStory(storyId: string, storySlug: string) {
 
 export async function rejectStory(storyId: string, storySlug: string, reason: string) {
   await requireStaff();
-  const admin = createAdminClient();
-  const { data: story } = await admin
-    .from("stories")
-    .update({ status: "draft", rejection_reason: reason })
-    .eq("id", storyId)
-    .select("author_id")
-    .single();
+  const db = getDb();
+  const [story] = await db
+    .update(stories)
+    .set({ status: "draft", rejection_reason: reason })
+    .where(eq(stories.id, storyId))
+    .returning({ author_id: stories.author_id });
   if (story) {
     await createNotification({ userId: story.author_id, type: "story_rejected", storyId, message: reason });
   }
@@ -80,11 +96,10 @@ export async function rejectStory(storyId: string, storySlug: string, reason: st
   // never touches a chapter that's individually pending review on an
   // already-published story (rejectChapter below is the one-chapter path
   // for that case, untouched by this).
-  await admin
-    .from("chapters")
-    .update({ status: "draft", rejection_reason: reason })
-    .eq("story_id", storyId)
-    .eq("status", "pending_review");
+  await db
+    .update(chapters)
+    .set({ status: "draft", rejection_reason: reason })
+    .where(and(eq(chapters.story_id, storyId), eq(chapters.status, "pending_review")));
   updateTag("stories");
   revalidatePath(ROUTES.manage(storySlug));
   revalidatePath(ROUTES.story(storySlug));
@@ -95,18 +110,18 @@ export async function rejectStory(storyId: string, storySlug: string, reason: st
 
 // Same status/reason fields as rejectStory, applied to an already-live
 // story instead of a pending submission — staff can only take a published
-// story off public view, never delete it (RLS blocks that outright, see
-// migration 0027). Distinct notification type from story_rejected so the
-// author isn't told a live story was "rejected".
+// story off public view, never delete it (RLS used to block that outright,
+// see migration 0027 — now this is simply the only code path that exists).
+// Distinct notification type from story_rejected so the author isn't told
+// a live story was "rejected".
 export async function hideStory(storyId: string, storySlug: string, reason: string) {
   await requireStaff();
-  const admin = createAdminClient();
-  const { data: story } = await admin
-    .from("stories")
-    .update({ status: "draft", rejection_reason: reason })
-    .eq("id", storyId)
-    .select("author_id")
-    .single();
+  const db = getDb();
+  const [story] = await db
+    .update(stories)
+    .set({ status: "draft", rejection_reason: reason })
+    .where(eq(stories.id, storyId))
+    .returning({ author_id: stories.author_id });
   if (story) {
     await createNotification({ userId: story.author_id, type: "story_hidden", storyId, message: reason });
   }
@@ -126,13 +141,12 @@ export async function hideStory(storyId: string, storySlug: string, reason: stri
 // back into their normal drafts list with nothing else to reconcile.
 export async function restoreStory(storyId: string, storySlug: string) {
   await requireStaff();
-  const admin = createAdminClient();
-  const { data: story } = await admin
-    .from("stories")
-    .update({ deleted_at: null })
-    .eq("id", storyId)
-    .select("author_id")
-    .single();
+  const db = getDb();
+  const [story] = await db
+    .update(stories)
+    .set({ deleted_at: null })
+    .where(eq(stories.id, storyId))
+    .returning({ author_id: stories.author_id });
   if (story) {
     await createNotification({ userId: story.author_id, type: "story_restored", storyId });
   }
@@ -151,26 +165,21 @@ export async function restoreStory(storyId: string, storySlug: string) {
 // story_tags/collection_items/featured_stories all cascade on their own.
 export async function permanentlyDeleteStory(storyId: string) {
   await requireStaff();
-  const admin = createAdminClient();
+  const db = getDb();
 
-  const { data: chapterRows } = await admin.from("chapters").select("id").eq("story_id", storyId);
-  const chapterIds = (chapterRows ?? []).map((c) => c.id as string);
+  const chapterRows = await db.select({ id: chapters.id }).from(chapters).where(eq(chapters.story_id, storyId));
+  const chapterIds = chapterRows.map((c) => c.id);
 
-  let commentIds: string[] = [];
+  await db.delete(likes).where(and(eq(likes.target_type, "story"), eq(likes.target_id, storyId)));
   if (chapterIds.length > 0) {
-    const { data: commentRows } = await admin.from("comments").select("id").in("chapter_id", chapterIds);
-    commentIds = (commentRows ?? []).map((c) => c.id as string);
+    await db.delete(likes).where(and(eq(likes.target_type, "chapter"), inArray(likes.target_id, chapterIds)));
   }
+  // Comment likes cascade with the comments themselves (deleted below via
+  // the story's own cascade), so unlike chapters there's no separate
+  // comment-id lookup needed here — only story/chapter likes are
+  // polymorphic references the stories.id cascade can't reach on its own.
 
-  await admin.from("likes").delete().eq("target_type", "story").eq("target_id", storyId);
-  if (chapterIds.length > 0) {
-    await admin.from("likes").delete().eq("target_type", "chapter").in("target_id", chapterIds);
-  }
-  if (commentIds.length > 0) {
-    await admin.from("likes").delete().eq("target_type", "comment").in("target_id", commentIds);
-  }
-
-  await admin.from("stories").delete().eq("id", storyId).not("deleted_at", "is", null);
+  await db.delete(stories).where(and(eq(stories.id, storyId), isNotNull(stories.deleted_at)));
 
   revalidatePath(`${ROUTES.admin}/stories`);
   revalidatePath(ROUTES.admin);
@@ -178,13 +187,12 @@ export async function permanentlyDeleteStory(storyId: string) {
 
 export async function approveChapter(chapterId: string, storyId: string, storySlug: string) {
   await requireStaff();
-  const admin = createAdminClient();
-  await admin
-    .from("chapters")
-    .update({ status: "published", published_at: new Date().toISOString(), rejection_reason: null })
-    .eq("id", chapterId)
-    .eq("story_id", storyId);
-  const { data: story } = await admin.from("stories").select("author_id").eq("id", storyId).single();
+  const db = getDb();
+  await db
+    .update(chapters)
+    .set({ status: "published", published_at: new Date(), rejection_reason: null })
+    .where(and(eq(chapters.id, chapterId), eq(chapters.story_id, storyId)));
+  const [story] = await db.select({ author_id: stories.author_id }).from(stories).where(eq(stories.id, storyId)).limit(1);
   if (story) {
     await createNotification({ userId: story.author_id, type: "chapter_approved", storyId, chapterId });
   }
@@ -197,13 +205,12 @@ export async function approveChapter(chapterId: string, storyId: string, storySl
 
 export async function rejectChapter(chapterId: string, storyId: string, storySlug: string, reason: string) {
   await requireStaff();
-  const admin = createAdminClient();
-  await admin
-    .from("chapters")
-    .update({ status: "draft", rejection_reason: reason })
-    .eq("id", chapterId)
-    .eq("story_id", storyId);
-  const { data: story } = await admin.from("stories").select("author_id").eq("id", storyId).single();
+  const db = getDb();
+  await db
+    .update(chapters)
+    .set({ status: "draft", rejection_reason: reason })
+    .where(and(eq(chapters.id, chapterId), eq(chapters.story_id, storyId)));
+  const [story] = await db.select({ author_id: stories.author_id }).from(stories).where(eq(stories.id, storyId)).limit(1);
   if (story) {
     await createNotification({
       userId: story.author_id,
@@ -222,24 +229,23 @@ export async function rejectChapter(chapterId: string, storyId: string, storySlu
 
 export async function toggleUserStatus(userId: string, currentStatus: string) {
   await requireStaff();
-  const admin = createAdminClient();
-  await admin
-    .from("profiles")
-    .update({ status: currentStatus === "active" ? "blocked" : "active" })
-    .eq("id", userId);
+  const db = getDb();
+  await db
+    .update(profiles)
+    .set({ status: currentStatus === "active" ? "blocked" : "active" })
+    .where(eq(profiles.id, userId));
   revalidatePath(`${ROUTES.admin}/users`);
   revalidatePath(ROUTES.admin);
 }
 
 export async function toggleUserVerified(userId: string, verified: boolean) {
   await requireStaff();
-  const admin = createAdminClient();
-  const { data } = await admin
-    .from("profiles")
-    .update({ is_verified: verified })
-    .eq("id", userId)
-    .select("username")
-    .single();
+  const db = getDb();
+  const [data] = await db
+    .update(profiles)
+    .set({ is_verified: verified })
+    .where(eq(profiles.id, userId))
+    .returning({ username: profiles.username });
   revalidatePath(`${ROUTES.admin}/users`);
   if (data?.username) revalidatePath(ROUTES.author(data.username));
 }
@@ -249,11 +255,11 @@ export async function toggleUserVerified(userId: string, verified: boolean) {
 // "turn off" only when one does.
 export async function toggleFeaturedStory(storyId: string, tier: "day" | "week" | "month", featured: boolean) {
   await requireStaff();
-  const admin = createAdminClient();
+  const db = getDb();
   if (featured) {
-    await admin.from("featured_stories").insert({ story_id: storyId, tier });
+    await db.insert(featuredStories).values({ story_id: storyId, tier });
   } else {
-    await admin.from("featured_stories").delete().eq("story_id", storyId).eq("tier", tier);
+    await db.delete(featuredStories).where(and(eq(featuredStories.story_id, storyId), eq(featuredStories.tier, tier)));
   }
   updateTag("stories");
   revalidatePath(`${ROUTES.admin}/featured`);
@@ -286,11 +292,11 @@ function readHeroSlideFields(formData: FormData) {
 
 export async function createHeroSlide(formData: FormData) {
   await requireStaff();
-  const admin = createAdminClient();
+  const db = getDb();
   const fields = readHeroSlideFields(formData);
   if (!fields.image_url && !fields.title_ru && !fields.title_uz && !fields.body_ru && !fields.body_uz) return;
 
-  await admin.from("hero_slides").insert(fields);
+  await db.insert(heroSlides).values(fields);
 
   updateTag("hero-slides");
   revalidatePath(`${ROUTES.admin}/banner`);
@@ -299,11 +305,11 @@ export async function createHeroSlide(formData: FormData) {
 
 export async function updateHeroSlide(slideId: string, formData: FormData) {
   await requireStaff();
-  const admin = createAdminClient();
+  const db = getDb();
   const fields = readHeroSlideFields(formData);
   if (!fields.image_url && !fields.title_ru && !fields.title_uz && !fields.body_ru && !fields.body_uz) return;
 
-  await admin.from("hero_slides").update(fields).eq("id", slideId);
+  await db.update(heroSlides).set(fields).where(eq(heroSlides.id, slideId));
 
   updateTag("hero-slides");
   revalidatePath(`${ROUTES.admin}/banner`);
@@ -312,17 +318,15 @@ export async function updateHeroSlide(slideId: string, formData: FormData) {
 
 export async function deleteHeroSlide(slideId: string) {
   await requireStaff();
-  const admin = createAdminClient();
-  const { count } = await admin.from("hero_slides").select("*", { count: "exact", head: true });
-  if ((count ?? 0) <= 1) return;
-  const { data: deleted } = await admin
-    .from("hero_slides")
-    .delete()
-    .eq("id", slideId)
-    .select("image_url, image_url_mobile")
-    .single();
-  if (deleted?.image_url) await deleteOldStorageFile(admin, "hero-slides", deleted.image_url);
-  if (deleted?.image_url_mobile) await deleteOldStorageFile(admin, "hero-slides", deleted.image_url_mobile);
+  const db = getDb();
+  const [{ total }] = await db.select({ total: sql<number>`count(*)` }).from(heroSlides);
+  if (total <= 1) return;
+  // Used to also delete the slide's image(s) from Supabase Storage here —
+  // dropped along with every other Supabase dependency in this file; file
+  // storage isn't migrated yet (still a separate, pending piece), so this
+  // now just leaves an orphaned file in Storage instead of depending on a
+  // service that's currently unreachable anyway.
+  await db.delete(heroSlides).where(eq(heroSlides.id, slideId));
   updateTag("hero-slides");
   revalidatePath(`${ROUTES.admin}/banner`);
   revalidatePath(ROUTES.home);
@@ -343,11 +347,11 @@ function readAnnouncementFields(formData: FormData) {
 
 export async function createAnnouncement(formData: FormData) {
   await requireStaff();
-  const admin = createAdminClient();
+  const db = getDb();
   const fields = readAnnouncementFields(formData);
   if (!fields.image_url && !fields.text_ru && !fields.text_uz) return;
 
-  await admin.from("announcements").insert(fields);
+  await db.insert(announcements).values(fields);
 
   updateTag("announcements");
   revalidatePath(`${ROUTES.admin}/announcements`);
@@ -356,11 +360,11 @@ export async function createAnnouncement(formData: FormData) {
 
 export async function updateAnnouncement(announcementId: string, formData: FormData) {
   await requireStaff();
-  const admin = createAdminClient();
+  const db = getDb();
   const fields = readAnnouncementFields(formData);
   if (!fields.image_url && !fields.text_ru && !fields.text_uz) return;
 
-  await admin.from("announcements").update(fields).eq("id", announcementId);
+  await db.update(announcements).set(fields).where(eq(announcements.id, announcementId));
 
   updateTag("announcements");
   revalidatePath(`${ROUTES.admin}/announcements`);
@@ -369,14 +373,9 @@ export async function updateAnnouncement(announcementId: string, formData: FormD
 
 export async function deleteAnnouncement(announcementId: string) {
   await requireStaff();
-  const admin = createAdminClient();
-  const { data: deleted } = await admin
-    .from("announcements")
-    .delete()
-    .eq("id", announcementId)
-    .select("image_url")
-    .single();
-  if (deleted?.image_url) await deleteOldStorageFile(admin, "announcements", deleted.image_url);
+  const db = getDb();
+  // Same as deleteHeroSlide above — no more Supabase Storage cleanup here.
+  await db.delete(announcements).where(eq(announcements.id, announcementId));
   updateTag("announcements");
   revalidatePath(`${ROUTES.admin}/announcements`);
   revalidatePath(ROUTES.home);
@@ -386,61 +385,83 @@ export async function deleteAnnouncement(announcementId: string) {
 // simplest correct way to sync a set from a checkbox list with no ordering.
 export async function updateUserAchievements(userId: string, achievementIds: string[]) {
   await requireStaff();
-  const admin = createAdminClient();
-  await admin.from("user_achievements").delete().eq("user_id", userId);
+  const db = getDb();
+  await db.delete(userAchievements).where(eq(userAchievements.user_id, userId));
   if (achievementIds.length > 0) {
-    await admin
-      .from("user_achievements")
-      .insert(achievementIds.map((achievementId) => ({ user_id: userId, achievement_id: achievementId })));
+    await db
+      .insert(userAchievements)
+      .values(achievementIds.map((achievementId) => ({ user_id: userId, achievement_id: achievementId })));
   }
-  const { data } = await admin.from("profiles").select("username").eq("id", userId).single();
+  const [data] = await db.select({ username: profiles.username }).from(profiles).where(eq(profiles.id, userId)).limit(1);
   revalidatePath(`${ROUTES.admin}/users`);
   if (data?.username) revalidatePath(ROUTES.author(data.username));
 }
 
 export async function setRequestStatusAdmin(requestId: string, status: "open" | "closed") {
   await requireStaff();
-  const admin = createAdminClient();
-  await admin.from("requests").update({ status }).eq("id", requestId);
+  const db = getDb();
+  await db.update(requests).set({ status }).where(eq(requests.id, requestId));
   revalidatePath(`${ROUTES.admin}/requests`);
   revalidatePath(ROUTES.board);
 }
 
 export async function deleteRequestAdmin(requestId: string) {
   await requireStaff();
-  const admin = createAdminClient();
-  await admin.from("requests").delete().eq("id", requestId);
+  const db = getDb();
+  await db.delete(requests).where(eq(requests.id, requestId));
   revalidatePath(`${ROUTES.admin}/requests`);
   revalidatePath(ROUTES.board);
 }
 
 export async function updateStoryStatusAdmin(storyId: string, status: "draft" | "published" | "unlisted") {
   await requireStaff();
-  const admin = createAdminClient();
-  await admin.from("stories").update({ status }).eq("id", storyId);
+  const db = getDb();
+  // "unlisted" is a visibility, not a status — matches the original
+  // Supabase query, which wrote this same value into the status column
+  // under this same name (schema_reference.sql's story_status enum
+  // includes it for exactly this admin override).
+  await db.update(stories).set({ status }).where(eq(stories.id, storyId));
   updateTag("stories");
   revalidatePath(`${ROUTES.admin}/stories`);
 }
 
 export async function updatePlatformSettings(formData: FormData) {
   await requireStaff();
-  const admin = createAdminClient();
+  const db = getDb();
 
   const guestFreeChapters = Number(formData.get("guestFreeChapters") ?? 1);
   const commentsRequireApproval = formData.get("commentsRequireApproval") === "on";
   const newStoryRequiresReview = formData.get("newStoryRequiresReview") === "on";
 
-  await admin
-    .from("platform_settings")
-    .update({
+  await db
+    .update(platformSettings)
+    .set({
       guest_free_chapters: guestFreeChapters,
       comments_require_approval: commentsRequireApproval,
       new_story_requires_review: newStoryRequiresReview,
     })
-    .eq("id", 1);
+    .where(eq(platformSettings.id, 1));
 
   updateTag("settings");
   revalidatePath(`${ROUTES.admin}/settings`);
+}
+
+// Username generation mirrors supabase/migrations/0005_auth_trigger.sql's
+// handle_new_user() — the Postgres trigger that used to run this on every
+// new auth.users row, now dead code since Better Auth inserts into
+// profiles directly and never touches auth.users. This is the one place
+// outside that trigger a brand-new profiles row gets created by hand.
+async function uniqueUsernameFromEmail(email: string): Promise<string> {
+  const db = getDb();
+  const base = email.split("@")[0].replace(/[^a-zA-Z0-9_]/g, "") || "user";
+  let candidate = base;
+  let suffix = 0;
+  for (;;) {
+    const [existing] = await db.select({ id: profiles.id }).from(profiles).where(eq(profiles.username, candidate)).limit(1);
+    if (!existing) return candidate;
+    suffix += 1;
+    candidate = `${base}${suffix}`;
+  }
 }
 
 export async function createModerator(
@@ -455,26 +476,27 @@ export async function createModerator(
   if (!email || !password || !displayName) return { error: "missing_fields" };
   if (password.length < 6) return { error: "password_too_short" };
 
-  const admin = createAdminClient();
-  const { data, error } = await admin.auth.admin.createUser({
-    email,
-    password,
-    email_confirm: true,
-    user_metadata: { full_name: displayName },
-  });
-  if (error || !data.user) {
-    // Doesn't touch the existing account — Supabase just refuses the
-    // duplicate email outright. Point the admin at the right tool instead
-    // (promote the existing account's role on /admin/users) rather than a
-    // generic failure message.
-    if (error?.code === "email_exists") return { error: "email_exists" };
+  const db = getDb();
+  const [existing] = await db.select({ id: profiles.id }).from(profiles).where(eq(profiles.email, email.toLowerCase())).limit(1);
+  if (existing) return { error: "email_exists" };
+
+  try {
+    const userId = crypto.randomUUID();
+    const username = await uniqueUsernameFromEmail(email);
+    await db.insert(profiles).values({
+      id: userId,
+      username,
+      display_name: displayName,
+      role: "moderator",
+      email: email.toLowerCase(),
+      email_verified: true,
+      onboarded_at: new Date(),
+      has_password: true,
+    });
+    await setCredentialPassword(db, userId, password);
+  } catch {
     return { error: "unknown" };
   }
-
-  // on_auth_user_created stubs a profiles row (role defaults to 'reader')
-  // for every new auth.users insert, including this admin-created one —
-  // promote it to moderator right after.
-  await admin.from("profiles").update({ role: "moderator" }).eq("id", data.user.id);
 
   revalidatePath(`${ROUTES.admin}/settings`);
   revalidatePath(`${ROUTES.admin}/users`);
@@ -490,28 +512,27 @@ function collectionInputFromForm(formData: FormData) {
 }
 
 export async function createCollectionAdmin(formData: FormData) {
-  const user = await requireStaff();
-  const admin = createAdminClient();
+  const staff = await requireStaff();
+  const db = getDb();
   const { title, description, isFeatured, storyIds } = collectionInputFromForm(formData);
   if (!title) return;
 
-  const { data: collection, error } = await admin
-    .from("collections")
-    .insert({
-      owner_id: user.id,
+  const [collection] = await db
+    .insert(collections)
+    .values({
+      owner_id: staff.id,
       owner_type: "moderator",
       title,
       description: description || null,
       is_featured: isFeatured,
     })
-    .select("id")
-    .single();
-  if (error || !collection) return;
+    .returning({ id: collections.id });
+  if (!collection) return;
 
   if (storyIds.length > 0) {
-    await admin
-      .from("collection_items")
-      .insert(storyIds.map((storyId, i) => ({ collection_id: collection.id, story_id: storyId, position: i })));
+    await db
+      .insert(collectionItems)
+      .values(storyIds.map((storyId, i) => ({ collection_id: collection.id, story_id: storyId, position: i })));
   }
 
   updateTag("collections");
@@ -523,20 +544,20 @@ export async function createCollectionAdmin(formData: FormData) {
 
 export async function updateCollectionAdmin(collectionId: string, formData: FormData) {
   await requireStaff();
-  const admin = createAdminClient();
+  const db = getDb();
   const { title, description, isFeatured, storyIds } = collectionInputFromForm(formData);
   if (!title) return;
 
-  await admin
-    .from("collections")
-    .update({ title, description: description || null, is_featured: isFeatured })
-    .eq("id", collectionId);
+  await db
+    .update(collections)
+    .set({ title, description: description || null, is_featured: isFeatured })
+    .where(eq(collections.id, collectionId));
 
-  await admin.from("collection_items").delete().eq("collection_id", collectionId);
+  await db.delete(collectionItems).where(eq(collectionItems.collection_id, collectionId));
   if (storyIds.length > 0) {
-    await admin
-      .from("collection_items")
-      .insert(storyIds.map((storyId, i) => ({ collection_id: collectionId, story_id: storyId, position: i })));
+    await db
+      .insert(collectionItems)
+      .values(storyIds.map((storyId, i) => ({ collection_id: collectionId, story_id: storyId, position: i })));
   }
 
   updateTag("collections");
@@ -548,8 +569,8 @@ export async function updateCollectionAdmin(collectionId: string, formData: Form
 
 export async function deleteCollectionAdmin(collectionId: string) {
   await requireStaff();
-  const admin = createAdminClient();
-  await admin.from("collections").delete().eq("id", collectionId);
+  const db = getDb();
+  await db.delete(collections).where(eq(collections.id, collectionId));
   updateTag("collections");
   revalidatePath(`${ROUTES.admin}/collections`);
   revalidatePath(ROUTES.collections);

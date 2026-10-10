@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { sql } from "drizzle-orm";
-import { getCurrentUser } from "@/lib/current-user";
+import { getStaffSession } from "@/server/auth/staff";
 import { getDb } from "@/server/db/client";
 import { profiles, stories } from "@/server/db/schema";
 
@@ -12,9 +12,8 @@ import { profiles, stories } from "@/server/db/schema";
 // outside the /admin layout's own gating. Delete this file once the
 // connection is confirmed working; it has no reason to stay.
 export async function GET() {
-  const user = await getCurrentUser();
-  const isStaff = user?.profile && ["admin", "moderator"].includes(user.profile.role);
-  if (!isStaff) return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  const result = await getStaffSession();
+  if (result.status !== "staff") return NextResponse.json({ error: "forbidden" }, { status: 403 });
 
   try {
     const db = getDb();

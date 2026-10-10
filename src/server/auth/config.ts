@@ -79,6 +79,15 @@ function buildAuth() {
           input: false,
           defaultValue: () => `user_${crypto.randomUUID().slice(0, 8)}`,
         },
+        // profiles.role has a DB default ('reader'), so it was never a
+        // SCHEMA_MISMATCH problem like username — but without declaring it
+        // here, Better Auth strips it from the session's user object, and
+        // the admin staff check (src/server/auth/staff.ts) needs it there.
+        role: {
+          type: "string",
+          required: false,
+          input: false,
+        },
       },
     },
     account: {
@@ -129,12 +138,18 @@ function buildAuth() {
     },
     plugins: [
       emailOTP({
-        async sendVerificationOTP({ email, otp }) {
-          await sendMail(
-            email,
-            "Код для входа на Hikoya",
-            `Ваш код для входа: ${otp}\n\nКод действует 5 минут. Если вы не запрашивали вход, просто проигнорируйте это письмо.`
-          );
+        async sendVerificationOTP({ email, otp, type }) {
+          // Same plugin instance handles sign-in codes and the admin
+          // forgot-password flow (src/app/admin-login/AdminLoginForm.tsx,
+          // via authClient.emailOtp.requestPasswordReset) — the wording
+          // needs to match which one actually triggered it.
+          const subject =
+            type === "forget-password" ? "Код для сброса пароля на Hikoya" : "Код для входа на Hikoya";
+          const body =
+            type === "forget-password"
+              ? `Ваш код для сброса пароля: ${otp}\n\nКод действует 5 минут. Если вы не запрашивали сброс пароля, просто проигнорируйте это письмо.`
+              : `Ваш код для входа: ${otp}\n\nКод действует 5 минут. Если вы не запрашивали вход, просто проигнорируйте это письмо.`;
+          await sendMail(email, subject, body);
         },
       }),
       // Must be last — it hooks "after" every endpoint to write the session

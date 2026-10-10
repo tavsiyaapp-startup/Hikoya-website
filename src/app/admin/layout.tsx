@@ -1,19 +1,22 @@
 import Link from "next/link";
 import Image from "next/image";
 import { redirect } from "next/navigation";
-import { getCurrentUser } from "@/lib/current-user";
+import { getStaffSession } from "@/server/auth/staff";
 import { getServerLocale } from "@/lib/i18n/locale-server";
 import { getDictionary } from "@/lib/i18n";
 import { getUnreadAdminChatsCount } from "@/lib/queries/chat";
 import { ROUTES } from "@/lib/constants";
 import { ShieldIcon, UserIcon, CollectionsIcon, BoardIcon, HomeIcon, LibraryIcon, SparkleIcon, ImageIcon, ClockIcon, MessageIcon, CommentsIcon, BellIcon } from "@/components/ui/icons";
 import { AdminNavLink } from "./AdminNavLink";
+import { AdminSignOutLink } from "./AdminSignOutLink";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
-  const user = await getCurrentUser();
-  if (!user) redirect(ROUTES.adminLogin);
-  const isStaff = user.profile && ["admin", "moderator"].includes(user.profile.role);
-  if (!isStaff) redirect(ROUTES.home);
+  // proxy.ts already gates every /admin* request the same way — this is
+  // defense in depth for a direct render that somehow skips the
+  // middleware, same as before this cutover.
+  const result = await getStaffSession();
+  if (result.status === "signed-out") redirect(ROUTES.adminLogin);
+  if (result.status === "not-staff") redirect(ROUTES.home);
 
   const locale = await getServerLocale();
   const t = getDictionary(locale);
@@ -61,6 +64,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         >
           ← {t.nav.home}
         </Link>
+        <AdminSignOutLink label={t.admin.signOut} />
       </aside>
 
       <div className="min-w-0 flex-1">{children}</div>

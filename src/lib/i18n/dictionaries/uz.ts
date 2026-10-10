@@ -455,6 +455,7 @@ const uz: typeof ru = {
     saveError: "Profilni saqlab boʻlmadi. Qaytadan urinib koʻring.",
   },
   admin: {
+    signOut: "Chiqish",
     dashboard: "Boshqaruv paneli",
     users: "Foydalanuvchilar",
     stories: "Hikoyalar",
@@ -602,8 +603,12 @@ const uz: typeof ru = {
     loginError: "Email yoki parol notoʻgʻri.",
     loginForgotPassword: "Parolni unutdingizmi yoki hali oʻrnatmadingizmi?",
     loginResetNeedsEmail: "Avval yuqorida email kiriting.",
-    loginResetSent: "Parol oʻrnatish uchun xat pochtaga yuborildi. Havola orqali oʻting, parol qoʻying va shu yerdan kiring.",
-    loginResetError: "Xatni yuborib boʻlmadi. Emailni tekshirib, qayta urinib koʻring.",
+    loginResetSent: "Kod pochtaga yuborildi. Uni yangi parol bilan birga quyida kiriting.",
+    loginResetError: "Amalni bajarib boʻlmadi. Maʼlumotlarni tekshirib, qayta urinib koʻring.",
+    loginOtpPlaceholder: "Xatdagi kod",
+    loginNewPasswordPlaceholder: "Yangi parol",
+    loginResetConfirm: "Parolni oʻrnatish",
+    loginPasswordChanged: "Parol oʻrnatildi. Endi shu parol bilan kiring.",
   },
   auth: {
     googleError: "Kirish serveriga ulanib boʻlmadi. Birozdan keyin qayta urinib koʻring.",

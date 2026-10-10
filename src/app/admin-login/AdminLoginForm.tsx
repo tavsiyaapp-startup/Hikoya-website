@@ -2,15 +2,10 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
+import { authClient } from "@/lib/auth-client";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
-import { ROUTES } from "@/lib/constants";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
-
-function siteUrl() {
-  return process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
-}
 
 export function AdminLoginForm({ next }: { next?: string }) {
   const { t } = useLocale();
@@ -20,6 +15,15 @@ export function AdminLoginForm({ next }: { next?: string }) {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Forgot-password is a 2-step OTP flow (request code, then enter code +
+  // new password) via the emailOTP plugin already wired in
+  // src/server/auth/config.ts — Better Auth's own email-link reset flow
+  // isn't configured, and this stays a 2-step inline form rather than a
+  // separate page for this one narrow case ("a freshly-promoted moderator
+  // whose account never had a password").
+  const [resetStep, setResetStep] = useState<"idle" | "otp-sent">("idle");
+  const [otp, setOtp] = useState("");
+  const [newPassword, setNewPassword] = useState("");
   const [resetPending, setResetPending] = useState(false);
   const [resetMessage, setResetMessage] = useState<string | null>(null);
   const [resetError, setResetError] = useState<string | null>(null);
@@ -32,8 +36,7 @@ export function AdminLoginForm({ next }: { next?: string }) {
     e.preventDefault();
     setPending(true);
     setError(null);
-    const supabase = createClient();
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { error } = await authClient.signIn.email({ email, password });
     if (error) {
       setError(t.admin.loginError);
       setPending(false);
@@ -43,12 +46,7 @@ export function AdminLoginForm({ next }: { next?: string }) {
     router.refresh();
   }
 
-  // For a freshly-promoted moderator whose account never had a password
-  // (registered via Google, or the site's magic-link flow) — signInWithPassword
-  // has nothing to check against for them. Same resetPasswordForEmail flow the
-  // regular profile's "change password" button uses; lands them on
-  // /auth/reset-password to actually set one, then they come back here.
-  async function handleForgotPassword() {
+  async function handleRequestReset() {
     if (!email) {
       setResetError(t.admin.loginResetNeedsEmail);
       return;
@@ -56,13 +54,29 @@ export function AdminLoginForm({ next }: { next?: string }) {
     setResetPending(true);
     setResetError(null);
     setResetMessage(null);
-    const supabase = createClient();
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${siteUrl()}${ROUTES.resetPassword}`,
-    });
+    const { error } = await authClient.emailOtp.requestPasswordReset({ email });
     setResetPending(false);
-    if (error) setResetError(t.admin.loginResetError);
-    else setResetMessage(t.admin.loginResetSent);
+    if (error) {
+      setResetError(t.admin.loginResetError);
+      return;
+    }
+    setResetStep("otp-sent");
+    setResetMessage(t.admin.loginResetSent);
+  }
+
+  async function handleConfirmReset() {
+    setResetPending(true);
+    setResetError(null);
+    const { error } = await authClient.emailOtp.resetPassword({ email, otp, password: newPassword });
+    setResetPending(false);
+    if (error) {
+      setResetError(t.admin.loginResetError);
+      return;
+    }
+    setResetStep("idle");
+    setOtp("");
+    setNewPassword("");
+    setResetMessage(t.admin.loginPasswordChanged);
   }
 
   return (
@@ -87,14 +101,40 @@ export function AdminLoginForm({ next }: { next?: string }) {
       </Button>
       {error && <p className="text-[12.5px] text-danger">{error}</p>}
 
-      <button
-        type="button"
-        onClick={handleForgotPassword}
-        disabled={resetPending}
-        className="cursor-pointer text-center text-[12.5px] font-bold text-primary-800 hover:underline"
-      >
-        {resetPending ? t.common.loading : t.admin.loginForgotPassword}
-      </button>
+      {resetStep === "idle" ? (
+        <button
+          type="button"
+          onClick={handleRequestReset}
+          disabled={resetPending}
+          className="cursor-pointer text-center text-[12.5px] font-bold text-primary-800 hover:underline"
+        >
+          {resetPending ? t.common.loading : t.admin.loginForgotPassword}
+        </button>
+      ) : (
+        <div className="flex flex-col gap-2 border-t border-line pt-3">
+          <Input
+            required
+            placeholder={t.admin.loginOtpPlaceholder}
+            value={otp}
+            onChange={(e) => setOtp(e.target.value)}
+          />
+          <Input
+            type="password"
+            required
+            placeholder={t.admin.loginNewPasswordPlaceholder}
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+          />
+          <Button
+            type="button"
+            onClick={handleConfirmReset}
+            disabled={resetPending}
+            className="w-full justify-center"
+          >
+            {resetPending ? t.common.loading : t.admin.loginResetConfirm}
+          </Button>
+        </div>
+      )}
       {resetMessage && <p className="text-[12.5px] text-success">{resetMessage}</p>}
       {resetError && <p className="text-[12.5px] text-danger">{resetError}</p>}
     </form>

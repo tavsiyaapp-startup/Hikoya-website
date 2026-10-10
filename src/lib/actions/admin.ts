@@ -2,36 +2,34 @@
 
 import { revalidatePath, updateTag } from "next/cache";
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createNotification } from "@/lib/actions/create-notification";
 import { deleteOldStorageFile } from "@/lib/storage-cleanup";
 import { ROUTES } from "@/lib/constants";
+import { getStaffSession } from "@/server/auth/staff";
 
+// Identity now comes from Better Auth (Phase 1 of the Supabase exit, see
+// src/server/auth/staff.ts) — the actual writes below still go through
+// createAdminClient() (service-role, bypasses RLS) exactly as before,
+// unaffected by this. Redirect targets match what this used to send a
+// Supabase-signed-out user to; keeping ROUTES.onboarding here (rather
+// than ROUTES.adminLogin, which is what proxy.ts's own gate already sends
+// people to before a Server Action ever runs) avoids changing behavior
+// for any other caller of this function.
 async function requireStaff() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect(ROUTES.onboarding);
-
-  const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single();
-  if (!profile || !["admin", "moderator"].includes(profile.role)) redirect(ROUTES.home);
-  return user;
+  const result = await getStaffSession();
+  if (result.status === "signed-out") redirect(ROUTES.onboarding);
+  if (result.status === "not-staff") redirect(ROUTES.home);
+  return result.staff;
 }
 
 // Stricter than requireStaff() — moderators have every admin-panel
 // capability except this one: only a real admin can hand out moderator
 // accounts (or promote/demote anyone) to other people.
 async function requireAdmin() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect(ROUTES.onboarding);
-
-  const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single();
-  if (!profile || profile.role !== "admin") redirect(ROUTES.home);
+  const result = await getStaffSession();
+  if (result.status === "signed-out") redirect(ROUTES.onboarding);
+  if (result.status === "not-staff" || !result.staff.isAdmin) redirect(ROUTES.home);
 }
 
 export async function updateUserRole(userId: string, role: "reader" | "author" | "moderator" | "admin") {

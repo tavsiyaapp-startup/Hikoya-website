@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getCurrentUser } from "@/lib/current-user";
+import { getStaffSession } from "@/server/auth/staff";
 import { getStoryForModeration, getChaptersForDownload } from "@/lib/queries/admin";
 import { buildStoryDocx } from "@/lib/docx/exportStory";
 
@@ -21,9 +21,8 @@ export const maxDuration = 60;
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
-  const user = await getCurrentUser();
-  const isStaff = user?.profile && ["admin", "moderator"].includes(user.profile.role);
-  if (!isStaff) return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  const result = await getStaffSession();
+  if (result.status !== "staff") return NextResponse.json({ error: "forbidden" }, { status: 403 });
 
   const [story, chapters] = await Promise.all([getStoryForModeration(id), getChaptersForDownload(id)]);
   if (!story) return NextResponse.json({ error: "not_found" }, { status: 404 });

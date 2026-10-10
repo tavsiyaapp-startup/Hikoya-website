@@ -4,9 +4,8 @@ import { useState, useTransition } from "react";
 import Image from "next/image";
 import { createHeroSlide, updateHeroSlide } from "@/lib/actions/admin";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
-import { createClient } from "@/lib/supabase/client";
 import { resizeImageFile } from "@/lib/image-resize";
-import { deleteOldStorageFile } from "@/lib/storage-cleanup";
+import { uploadStaffImage, deleteStaffImage } from "@/lib/actions/uploads";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { Button } from "@/components/ui/Button";
@@ -37,15 +36,14 @@ export function HeroSlideForm({ slide, onDone }: { slide?: HeroSlide; onDone?: (
     persistedUrl: string | null | undefined
   ): Promise<string> {
     const resized = await resizeImageFile(file, { maxWidth, maxHeight });
-    const supabase = createClient();
-    const path = `${Date.now()}-${resized.name}`;
-    const { error } = await supabase.storage.from("hero-slides").upload(path, resized, { upsert: true });
-    if (error) throw error;
-    const { data } = supabase.storage.from("hero-slides").getPublicUrl(path);
+    const formData = new FormData();
+    formData.set("file", resized, resized.name);
+    const result = await uploadStaffImage("hero-slides", formData);
+    if ("error" in result) throw new Error(result.error);
     if (oldUrl && oldUrl !== persistedUrl) {
-      await deleteOldStorageFile(supabase, "hero-slides", oldUrl);
+      await deleteStaffImage("hero-slides", oldUrl);
     }
-    return data.publicUrl;
+    return result.url;
   }
 
   async function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -89,12 +87,11 @@ export function HeroSlideForm({ slide, onDone }: { slide?: HeroSlide; onDone?: (
     startTransition(async () => {
       if (slide) {
         await updateHeroSlide(slide.id, formData);
-        const supabase = createClient();
         if (slide.image_url && imageUrl !== slide.image_url) {
-          await deleteOldStorageFile(supabase, "hero-slides", slide.image_url);
+          await deleteStaffImage("hero-slides", slide.image_url);
         }
         if (slide.image_url_mobile && imageUrlMobile !== slide.image_url_mobile) {
-          await deleteOldStorageFile(supabase, "hero-slides", slide.image_url_mobile);
+          await deleteStaffImage("hero-slides", slide.image_url_mobile);
         }
         onDone?.();
       } else {

@@ -5,9 +5,8 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { clsx } from "clsx";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
-import { createClient } from "@/lib/supabase/client";
 import { resizeImageFile } from "@/lib/image-resize";
-import { deleteOldStorageFile } from "@/lib/storage-cleanup";
+import { uploadUserImage, deleteUserImage } from "@/lib/actions/uploads";
 import { createStory, addChapter } from "@/lib/actions/stories";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
@@ -73,13 +72,12 @@ export function CreateWizard({
     setCoverError(null);
     try {
       const resized = await resizeImageFile(file, { maxWidth: 1080, maxHeight: 1440 });
-      const supabase = createClient();
-      const path = `${userId}/${Date.now()}-${resized.name}`;
-      const { error } = await supabase.storage.from("covers").upload(path, resized, { upsert: true });
-      if (error) throw error;
-      const { data } = supabase.storage.from("covers").getPublicUrl(path);
-      await deleteOldStorageFile(supabase, "covers", coverUrl);
-      setCoverUrl(data.publicUrl);
+      const formData = new FormData();
+      formData.set("file", resized, resized.name);
+      const result = await uploadUserImage("covers", formData);
+      if ("error" in result) throw new Error(result.error);
+      await deleteUserImage("covers", coverUrl);
+      setCoverUrl(result.url);
     } catch {
       setCoverError(t.create.coverError);
     } finally {

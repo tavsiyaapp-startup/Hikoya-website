@@ -10,8 +10,8 @@ import { Placeholder } from "@tiptap/extensions";
 import { clsx } from "clsx";
 import { AlignLeftIcon, AlignCenterIcon, ImageIcon } from "@/components/ui/icons";
 import { ChapterMarker } from "@/lib/editor/chapterMarkerNode";
-import { createClient } from "@/lib/supabase/client";
 import { resizeImageFile } from "@/lib/image-resize";
+import { uploadUserImage } from "@/lib/actions/uploads";
 
 export interface RichTextEditorHandle {
   insertChapterMarker: () => void;
@@ -112,17 +112,12 @@ function Toolbar({ editor }: { editor: Editor }) {
     setImageUploading(true);
     setImageError(null);
     try {
-      const supabase = createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) throw new Error("unauthorized");
       const resized = await resizeImageFile(file, { maxWidth: 1200, maxHeight: 1600 });
-      const path = `${user.id}/${Date.now()}-${resized.name}`;
-      const { error } = await supabase.storage.from("chapter-images").upload(path, resized, { upsert: true });
-      if (error) throw error;
-      const { data } = supabase.storage.from("chapter-images").getPublicUrl(path);
-      editor.chain().focus().setImage({ src: data.publicUrl }).run();
+      const formData = new FormData();
+      formData.set("file", resized, resized.name);
+      const result = await uploadUserImage("chapter-images", formData);
+      if ("error" in result) throw new Error(result.error);
+      editor.chain().focus().setImage({ src: result.url }).run();
     } catch {
       setImageError("Не удалось загрузить картинку");
     } finally {

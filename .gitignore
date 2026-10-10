@@ -50,3 +50,11 @@ next-env.d.ts
 # Local data exports — contain user emails and password hashes, never commit
 full_backup.sql
 storage files.csv
+
+# User-uploaded files (avatars/covers/chapter images/banners) — written
+# directly to disk on the server by src/server/storage/local.ts, never
+# checked into the repo. Deploys never touch this folder either way (see
+# that file's comment), but keeping it out of git avoids ever accidentally
+# committing a local test upload.
+/public/uploads/
+

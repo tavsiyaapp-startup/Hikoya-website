@@ -3,9 +3,8 @@
 import { useState, useTransition } from "react";
 import Image from "next/image";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
-import { createClient } from "@/lib/supabase/client";
 import { resizeImageFile } from "@/lib/image-resize";
-import { deleteOldStorageFile } from "@/lib/storage-cleanup";
+import { uploadUserImage, deleteUserImage } from "@/lib/actions/uploads";
 import { updateStory } from "@/lib/actions/stories";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
@@ -74,11 +73,10 @@ export function EditStoryForm({
     setCoverError(null);
     try {
       const resized = await resizeImageFile(file, { maxWidth: 1080, maxHeight: 1440 });
-      const supabase = createClient();
-      const path = `${authorId}/${Date.now()}-${resized.name}`;
-      const { error } = await supabase.storage.from("covers").upload(path, resized, { upsert: true });
-      if (error) throw error;
-      const { data } = supabase.storage.from("covers").getPublicUrl(path);
+      const formData = new FormData();
+      formData.set("file", resized, resized.name);
+      const result = await uploadUserImage("covers", formData);
+      if ("error" in result) throw new Error(result.error);
       // Only safe to clean up immediately when replacing an upload from
       // earlier in this same editing session — initialCoverUrl is still
       // what the story's cover_url points to in the DB until handleSave
@@ -86,9 +84,9 @@ export function EditStoryForm({
       // there instead (otherwise navigating away without saving would
       // delete the live cover out from under the still-unchanged DB row).
       if (coverUrl && coverUrl !== initialCoverUrl) {
-        await deleteOldStorageFile(supabase, "covers", coverUrl);
+        await deleteUserImage("covers", coverUrl);
       }
-      setCoverUrl(data.publicUrl);
+      setCoverUrl(result.url);
     } catch {
       setCoverError(t.create.coverError);
     } finally {
@@ -109,7 +107,7 @@ export function EditStoryForm({
         isTranslation,
       });
       if (initialCoverUrl && coverUrl !== initialCoverUrl) {
-        await deleteOldStorageFile(createClient(), "covers", initialCoverUrl);
+        await deleteUserImage("covers", initialCoverUrl);
       }
     });
   }

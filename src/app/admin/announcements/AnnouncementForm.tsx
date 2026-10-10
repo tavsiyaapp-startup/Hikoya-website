@@ -4,9 +4,8 @@ import { useState, useTransition } from "react";
 import Image from "next/image";
 import { createAnnouncement, updateAnnouncement } from "@/lib/actions/admin";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
-import { createClient } from "@/lib/supabase/client";
 import { resizeImageFile } from "@/lib/image-resize";
-import { deleteOldStorageFile } from "@/lib/storage-cleanup";
+import { uploadStaffImage, deleteStaffImage } from "@/lib/actions/uploads";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { Button } from "@/components/ui/Button";
@@ -27,13 +26,12 @@ export function AnnouncementForm({ announcement, onDone }: { announcement?: Anno
     setError(null);
     try {
       const resized = await resizeImageFile(file, { maxWidth: 900, maxHeight: 900 });
-      const supabase = createClient();
-      const path = `${Date.now()}-${resized.name}`;
-      const { error } = await supabase.storage.from("announcements").upload(path, resized, { upsert: true });
-      if (error) throw error;
-      const { data } = supabase.storage.from("announcements").getPublicUrl(path);
-      await deleteOldStorageFile(supabase, "announcements", imageUrl);
-      setImageUrl(data.publicUrl);
+      const formData = new FormData();
+      formData.set("file", resized, resized.name);
+      const result = await uploadStaffImage("announcements", formData);
+      if ("error" in result) throw new Error(result.error);
+      await deleteStaffImage("announcements", imageUrl);
+      setImageUrl(result.url);
     } catch (err) {
       console.error("announcement image upload failed:", err);
       const detail = err instanceof Error ? err.message : String(err);

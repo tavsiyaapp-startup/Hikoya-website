@@ -1,5 +1,6 @@
 import "server-only";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { getDb } from "@/server/db/client";
+import { notifications } from "@/server/db/schema";
 import type { NotificationType } from "@/types/database";
 
 interface NotifyInput {
@@ -13,13 +14,14 @@ interface NotifyInput {
 }
 
 // Shared by src/lib/actions/social.ts (comments/likes) and
-// src/lib/actions/admin.ts (moderation outcomes) — always goes through the
-// service-role client since the recipient (userId) is never the caller
-// (auth.uid()), so the plain RLS-scoped client can't insert this row.
+// src/lib/actions/admin.ts (moderation outcomes). Used to always go
+// through the service-role client since the recipient (userId) is never
+// the caller (auth.uid()), so the plain RLS-scoped client couldn't insert
+// this row — moot now, Drizzle/pg here never went through RLS at all.
 export async function createNotification(input: NotifyInput) {
   if (input.actorId && input.actorId === input.userId) return;
-  const admin = createAdminClient();
-  await admin.from("notifications").insert({
+  const db = getDb();
+  await db.insert(notifications).values({
     user_id: input.userId,
     actor_id: input.actorId ?? null,
     type: input.type,

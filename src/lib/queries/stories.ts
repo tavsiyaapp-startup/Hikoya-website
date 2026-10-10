@@ -7,7 +7,7 @@ import { createPublicClient } from "@/lib/supabase/public";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentUser } from "@/lib/current-user";
 import { getDb } from "@/server/db/client";
-import { chapters, profiles, stories } from "@/server/db/schema";
+import { bookmarks, chapters, profiles, readingStatuses, stories } from "@/server/db/schema";
 import { genreVariants } from "@/lib/genre";
 import type { HomeTab } from "@/lib/homeTabs";
 import type { Story, Chapter, Collection, Profile, StoryTopTier, HeroSlide, Announcement } from "@/types/database";
@@ -666,13 +666,15 @@ export const searchStories = unstable_cache(
 
 export async function getBookmarkedStories(userId: string): Promise<StoryCard[]> {
   try {
-    const supabase = await createClient();
-    const { data } = await supabase
-      .from("bookmarks")
-      .select("story:stories(*, author:profiles!stories_author_id_fkey(username, display_name))")
-      .eq("user_id", userId)
-      .order("created_at", { ascending: false });
-    return ((data ?? []).map((row) => row.story).filter(Boolean) as unknown) as StoryCard[];
+    const db = getDb();
+    const rows = await db
+      .select({ story: stories, author: { username: profiles.username, display_name: profiles.display_name } })
+      .from(bookmarks)
+      .innerJoin(stories, eq(bookmarks.story_id, stories.id))
+      .innerJoin(profiles, eq(stories.author_id, profiles.id))
+      .where(eq(bookmarks.user_id, userId))
+      .orderBy(desc(bookmarks.created_at));
+    return rows.map((r) => toStoryCard(r.story, r.author));
   } catch {
     return [];
   }
@@ -716,14 +718,15 @@ export async function getMyCollectionsWithStory(userId: string, storyId: string)
 
 export async function getStoriesByReadingStatus(userId: string, status: string): Promise<StoryCard[]> {
   try {
-    const supabase = await createClient();
-    const { data } = await supabase
-      .from("reading_statuses")
-      .select("story:stories(*, author:profiles!stories_author_id_fkey(username, display_name))")
-      .eq("user_id", userId)
-      .eq("status", status)
-      .order("updated_at", { ascending: false });
-    return ((data ?? []).map((row) => row.story).filter(Boolean) as unknown) as StoryCard[];
+    const db = getDb();
+    const rows = await db
+      .select({ story: stories, author: { username: profiles.username, display_name: profiles.display_name } })
+      .from(readingStatuses)
+      .innerJoin(stories, eq(readingStatuses.story_id, stories.id))
+      .innerJoin(profiles, eq(stories.author_id, profiles.id))
+      .where(and(eq(readingStatuses.user_id, userId), eq(readingStatuses.status, status as "want_to_read" | "read" | "dropped")))
+      .orderBy(desc(readingStatuses.updated_at));
+    return rows.map((r) => toStoryCard(r.story, r.author));
   } catch {
     return [];
   }

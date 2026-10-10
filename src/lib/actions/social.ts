@@ -3,80 +3,59 @@
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { and, eq } from "drizzle-orm";
-import { createClient } from "@/lib/supabase/server";
 import { createNotification } from "@/lib/actions/create-notification";
 import { getAuth } from "@/server/auth/config";
 import { getDb } from "@/server/db/client";
-import { follows } from "@/server/db/schema";
+import { bookmarks, comments, follows, likes, stories } from "@/server/db/schema";
 
-async function requireUser() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  return { supabase, user };
-}
-
-// Better-Auth-backed counterpart to requireUser() above — only
-// toggleFollowAuthor uses this so far; every other function in this file
-// is still on the Supabase identity/writes it already had (its own next
-// piece of the migration, not done here).
 async function requireViewerId(): Promise<string | null> {
   const session = await getAuth().api.getSession({ headers: await headers() });
   return session?.user.id ?? null;
 }
 
 export async function toggleStoryLike(storyId: string, path: string) {
-  const { supabase, user } = await requireUser();
-  if (!user) return;
+  const viewerId = await requireViewerId();
+  if (!viewerId) return;
 
-  const { data: existing } = await supabase
-    .from("likes")
-    .select("id")
-    .eq("user_id", user.id)
-    .eq("target_type", "story")
-    .eq("target_id", storyId)
-    .maybeSingle();
+  const db = getDb();
+  const [existing] = await db
+    .select({ id: likes.id })
+    .from(likes)
+    .where(and(eq(likes.user_id, viewerId), eq(likes.target_type, "story"), eq(likes.target_id, storyId)))
+    .limit(1);
 
   if (existing) {
-    const { error } = await supabase.from("likes").delete().eq("id", existing.id);
-    if (error) console.error("toggleStoryLike failed:", error);
+    await db.delete(likes).where(eq(likes.id, existing.id));
     revalidatePath(path);
     return;
   }
 
-  const { error } = await supabase
-    .from("likes")
-    .insert({ user_id: user.id, target_type: "story", target_id: storyId });
-  if (error) {
-    console.error("toggleStoryLike failed:", error);
-    revalidatePath(path);
-    return;
-  }
+  await db.insert(likes).values({ user_id: viewerId, target_type: "story", target_id: storyId });
 
-  const { data: story } = await supabase.from("stories").select("author_id").eq("id", storyId).single();
-  if (story && story.author_id !== user.id) {
-    await createNotification({ userId: story.author_id, actorId: user.id, type: "story_like", storyId });
+  const [story] = await db.select({ author_id: stories.author_id }).from(stories).where(eq(stories.id, storyId)).limit(1);
+  if (story && story.author_id !== viewerId) {
+    await createNotification({ userId: story.author_id, actorId: viewerId, type: "story_like", storyId });
   }
 
   revalidatePath(path);
 }
 
 export async function toggleStoryBookmark(storyId: string, path: string) {
-  const { supabase, user } = await requireUser();
-  if (!user) return;
+  const viewerId = await requireViewerId();
+  if (!viewerId) return;
 
-  const { data: existing } = await supabase
-    .from("bookmarks")
-    .select("id")
-    .eq("user_id", user.id)
-    .eq("story_id", storyId)
-    .maybeSingle();
+  const db = getDb();
+  const [existing] = await db
+    .select({ id: bookmarks.id })
+    .from(bookmarks)
+    .where(and(eq(bookmarks.user_id, viewerId), eq(bookmarks.story_id, storyId)))
+    .limit(1);
 
-  const { error } = existing
-    ? await supabase.from("bookmarks").delete().eq("id", existing.id)
-    : await supabase.from("bookmarks").insert({ user_id: user.id, story_id: storyId });
-  if (error) console.error("toggleStoryBookmark failed:", error);
+  if (existing) {
+    await db.delete(bookmarks).where(eq(bookmarks.id, existing.id));
+  } else {
+    await db.insert(bookmarks).values({ user_id: viewerId, story_id: storyId });
+  }
   revalidatePath(path);
 }
 
@@ -101,7 +80,7 @@ export async function toggleFollowAuthor(authorId: string, path: string) {
 
 // chapterId is null for a general comment posted from the story page's own
 // "Комментарии" tab (all-chapters view) rather than under a specific
-// chapter — storyId is required either way so RLS/counters don't need to
+// chapter — storyId is required either way so counters don't need to
 // derive it through a chapters join (see migration 0042).
 export async function postComment(
   storyId: string,
@@ -111,36 +90,37 @@ export async function postComment(
   parentId?: string,
   isSpoiler?: boolean
 ) {
-  const { supabase, user } = await requireUser();
-  if (!user || !text.trim()) return;
+  const viewerId = await requireViewerId();
+  const trimmed = text.trim();
+  if (!viewerId || !trimmed) return;
 
-  const { data: comment, error } = await supabase
-    .from("comments")
-    .insert({
+  const db = getDb();
+  const [comment] = await db
+    .insert(comments)
+    .values({
       story_id: storyId,
       chapter_id: chapterId,
-      user_id: user.id,
-      text: text.trim(),
+      user_id: viewerId,
+      text: trimmed,
       parent_id: parentId ?? null,
       is_spoiler: Boolean(isSpoiler),
     })
-    .select("id")
-    .single();
-  if (error || !comment) {
-    console.error("postComment failed:", error);
+    .returning({ id: comments.id });
+  if (!comment) {
+    console.error("postComment failed: insert returned no row");
     return;
   }
 
-  const { data: story } = await supabase.from("stories").select("id, author_id").eq("id", storyId).single();
+  const [story] = await db.select({ id: stories.id, author_id: stories.author_id }).from(stories).where(eq(stories.id, storyId)).limit(1);
 
   let parentAuthorId: string | null = null;
   if (parentId) {
-    const { data: parent } = await supabase.from("comments").select("user_id").eq("id", parentId).single();
+    const [parent] = await db.select({ user_id: comments.user_id }).from(comments).where(eq(comments.id, parentId)).limit(1);
     parentAuthorId = parent?.user_id ?? null;
-    if (parentAuthorId && parentAuthorId !== user.id) {
+    if (parentAuthorId && parentAuthorId !== viewerId) {
       await createNotification({
         userId: parentAuthorId,
-        actorId: user.id,
+        actorId: viewerId,
         type: "comment_reply",
         storyId: story?.id,
         chapterId,
@@ -149,10 +129,10 @@ export async function postComment(
     }
   }
 
-  if (story && story.author_id !== user.id && story.author_id !== parentAuthorId) {
+  if (story && story.author_id !== viewerId && story.author_id !== parentAuthorId) {
     await createNotification({
       userId: story.author_id,
-      actorId: user.id,
+      actorId: viewerId,
       type: "new_comment",
       storyId: story.id,
       chapterId,
@@ -164,46 +144,40 @@ export async function postComment(
 }
 
 export async function toggleCommentLike(commentId: string, path: string) {
-  const { supabase, user } = await requireUser();
-  if (!user) return;
+  const viewerId = await requireViewerId();
+  if (!viewerId) return;
 
-  const { data: existing } = await supabase
-    .from("likes")
-    .select("id")
-    .eq("user_id", user.id)
-    .eq("target_type", "comment")
-    .eq("target_id", commentId)
-    .maybeSingle();
+  const db = getDb();
+  const [existing] = await db
+    .select({ id: likes.id })
+    .from(likes)
+    .where(and(eq(likes.user_id, viewerId), eq(likes.target_type, "comment"), eq(likes.target_id, commentId)))
+    .limit(1);
 
   if (existing) {
-    const { error } = await supabase.from("likes").delete().eq("id", existing.id);
-    if (error) console.error("toggleCommentLike failed:", error);
+    await db.delete(likes).where(eq(likes.id, existing.id));
     revalidatePath(path);
     return;
   }
 
-  const { error } = await supabase
-    .from("likes")
-    .insert({ user_id: user.id, target_type: "comment", target_id: commentId });
-  if (error) {
-    console.error("toggleCommentLike failed:", error);
-    revalidatePath(path);
-    return;
-  }
+  await db.insert(likes).values({ user_id: viewerId, target_type: "comment", target_id: commentId });
 
-  const { data: comment } = await supabase
-    .from("comments")
-    .select("user_id, chapter_id, chapter:chapters(story_id)")
-    .eq("id", commentId)
-    .single();
-  const chapter = comment?.chapter as unknown as { story_id: string } | null;
-  if (comment && comment.user_id !== user.id) {
+  // comments.story_id is set directly on every comment (chapter-attached
+  // or not) — used here instead of going through chapters the way
+  // Supabase's nested select used to, which left storyId unset for a
+  // chapterless (general story-page) comment's likes.
+  const [row] = await db
+    .select({ user_id: comments.user_id, chapter_id: comments.chapter_id, story_id: comments.story_id })
+    .from(comments)
+    .where(eq(comments.id, commentId))
+    .limit(1);
+  if (row && row.user_id !== viewerId) {
     await createNotification({
-      userId: comment.user_id,
-      actorId: user.id,
+      userId: row.user_id,
+      actorId: viewerId,
       type: "comment_like",
-      storyId: chapter?.story_id,
-      chapterId: comment.chapter_id,
+      storyId: row.story_id,
+      chapterId: row.chapter_id,
       commentId,
     });
   }

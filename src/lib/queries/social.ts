@@ -1,26 +1,42 @@
 import "server-only";
-import { and, count, desc, eq, inArray } from "drizzle-orm";
-import { createClient } from "@/lib/supabase/server";
+import { and, asc, count, desc, eq, inArray } from "drizzle-orm";
 import { getDb } from "@/server/db/client";
-import { follows, profiles, stories } from "@/server/db/schema";
+import {
+  bookmarks,
+  chapterReads,
+  chapters,
+  comments,
+  follows,
+  likes,
+  profiles,
+  readingProgress,
+  readingStatuses,
+  stories,
+} from "@/server/db/schema";
 import { toStoryCard, type StoryCard } from "@/lib/queries/stories";
 
 export async function getUserStoryState(userId: string | undefined, storyId: string) {
   if (!userId)
     return { liked: false, bookmarked: false, readingStatus: null as string | null, continueChapterId: null as string | null };
   try {
-    const supabase = await createClient();
-    const [{ data: like }, { data: bookmark }, { data: status }, { data: progress }] = await Promise.all([
-      supabase
-        .from("likes")
-        .select("id")
-        .eq("user_id", userId)
-        .eq("target_type", "story")
-        .eq("target_id", storyId)
-        .maybeSingle(),
-      supabase.from("bookmarks").select("id").eq("user_id", userId).eq("story_id", storyId).maybeSingle(),
-      supabase.from("reading_statuses").select("status").eq("user_id", userId).eq("story_id", storyId).maybeSingle(),
-      supabase.from("reading_progress").select("chapter_id").eq("user_id", userId).eq("story_id", storyId).maybeSingle(),
+    const db = getDb();
+    const [[like], [bookmark], [status], [progress]] = await Promise.all([
+      db
+        .select({ id: likes.id })
+        .from(likes)
+        .where(and(eq(likes.user_id, userId), eq(likes.target_type, "story"), eq(likes.target_id, storyId)))
+        .limit(1),
+      db.select({ id: bookmarks.id }).from(bookmarks).where(and(eq(bookmarks.user_id, userId), eq(bookmarks.story_id, storyId))).limit(1),
+      db
+        .select({ status: readingStatuses.status })
+        .from(readingStatuses)
+        .where(and(eq(readingStatuses.user_id, userId), eq(readingStatuses.story_id, storyId)))
+        .limit(1),
+      db
+        .select({ chapter_id: readingProgress.chapter_id })
+        .from(readingProgress)
+        .where(and(eq(readingProgress.user_id, userId), eq(readingProgress.story_id, storyId)))
+        .limit(1),
     ]);
     return {
       liked: Boolean(like),
@@ -41,9 +57,12 @@ export async function getUserStoryState(userId: string | undefined, storyId: str
 export async function getReadChapterIds(userId: string | undefined, storyId: string): Promise<Set<string>> {
   if (!userId) return new Set();
   try {
-    const supabase = await createClient();
-    const { data } = await supabase.from("chapter_reads").select("chapter_id").eq("user_id", userId).eq("story_id", storyId);
-    return new Set((data ?? []).map((r) => r.chapter_id as string));
+    const db = getDb();
+    const rows = await db
+      .select({ chapter_id: chapterReads.chapter_id })
+      .from(chapterReads)
+      .where(and(eq(chapterReads.user_id, userId), eq(chapterReads.story_id, storyId)));
+    return new Set(rows.map((r) => r.chapter_id));
   } catch {
     return new Set();
   }
@@ -139,29 +158,43 @@ export type CommentRow = {
 
 export type CommentWithReplies = CommentRow & { replies: CommentRow[] };
 
+function buildThreads<T extends CommentRow>(all: T[]): (T & { replies: T[] })[] {
+  const repliesByParent = new Map<string, T[]>();
+  for (const c of all) {
+    if (!c.parent_id) continue;
+    const arr = repliesByParent.get(c.parent_id) ?? [];
+    arr.push(c);
+    repliesByParent.set(c.parent_id, arr);
+  }
+  return all
+    .filter((c) => !c.parent_id)
+    .sort((a, b) => +new Date(b.created_at) - +new Date(a.created_at))
+    .map((c) => ({ ...c, replies: repliesByParent.get(c.id) ?? [] }));
+}
+
 export async function getChapterComments(chapterId: string): Promise<CommentWithReplies[]> {
   try {
-    const supabase = await createClient();
-    const { data } = await supabase
-      .from("comments")
-      .select("*, user:profiles(display_name)")
-      .eq("chapter_id", chapterId)
-      .order("created_at", { ascending: true })
+    const db = getDb();
+    const rows = await db
+      .select({
+        id: comments.id,
+        chapter_id: comments.chapter_id,
+        story_id: comments.story_id,
+        user_id: comments.user_id,
+        parent_id: comments.parent_id,
+        text: comments.text,
+        like_count: comments.like_count,
+        created_at: comments.created_at,
+        is_spoiler: comments.is_spoiler,
+        user: { display_name: profiles.display_name },
+      })
+      .from(comments)
+      .innerJoin(profiles, eq(comments.user_id, profiles.id))
+      .where(eq(comments.chapter_id, chapterId))
+      .orderBy(asc(comments.created_at))
       .limit(300);
-    const all = (data as CommentRow[]) ?? [];
-
-    const repliesByParent = new Map<string, CommentRow[]>();
-    for (const c of all) {
-      if (!c.parent_id) continue;
-      const arr = repliesByParent.get(c.parent_id) ?? [];
-      arr.push(c);
-      repliesByParent.set(c.parent_id, arr);
-    }
-
-    return all
-      .filter((c) => !c.parent_id)
-      .sort((a, b) => +new Date(b.created_at) - +new Date(a.created_at))
-      .map((c) => ({ ...c, replies: repliesByParent.get(c.id) ?? [] }));
+    const all: CommentRow[] = rows.map((r) => ({ ...r, created_at: r.created_at.toISOString() }));
+    return buildThreads(all);
   } catch {
     return [];
   }
@@ -175,33 +208,39 @@ export type StoryCommentThread = StoryCommentRow & { replies: StoryCommentRow[] 
 
 export async function getStoryComments(storyId: string, limit = 300): Promise<StoryCommentThread[]> {
   try {
-    const supabase = await createClient();
-    // Left join (not chapters!inner) — a general comment (chapter_id is
+    const db = getDb();
+    // Left join (not an inner join) — a general comment (chapter_id is
     // null, added straight from the story page's own Comments tab) has no
     // chapter row to join against and would be silently dropped by an
     // inner join. Filtering on comments.story_id directly (rather than
     // chapter.story_id) is also what makes those chapterless rows match at
     // all.
-    const { data } = await supabase
-      .from("comments")
-      .select("*, user:profiles(display_name), chapter:chapters(order_index, title, story_id)")
-      .eq("story_id", storyId)
-      .order("created_at", { ascending: true })
+    const rows = await db
+      .select({
+        id: comments.id,
+        chapter_id: comments.chapter_id,
+        story_id: comments.story_id,
+        user_id: comments.user_id,
+        parent_id: comments.parent_id,
+        text: comments.text,
+        like_count: comments.like_count,
+        created_at: comments.created_at,
+        is_spoiler: comments.is_spoiler,
+        user: { display_name: profiles.display_name },
+        chapter: { order_index: chapters.order_index, title: chapters.title },
+      })
+      .from(comments)
+      .innerJoin(profiles, eq(comments.user_id, profiles.id))
+      .leftJoin(chapters, eq(comments.chapter_id, chapters.id))
+      .where(eq(comments.story_id, storyId))
+      .orderBy(asc(comments.created_at))
       .limit(limit);
-    const all = (data as StoryCommentRow[]) ?? [];
-
-    const repliesByParent = new Map<string, StoryCommentRow[]>();
-    for (const c of all) {
-      if (!c.parent_id) continue;
-      const arr = repliesByParent.get(c.parent_id) ?? [];
-      arr.push(c);
-      repliesByParent.set(c.parent_id, arr);
-    }
-
-    return all
-      .filter((c) => !c.parent_id)
-      .sort((a, b) => +new Date(b.created_at) - +new Date(a.created_at))
-      .map((c) => ({ ...c, replies: repliesByParent.get(c.id) ?? [] }));
+    const all: StoryCommentRow[] = rows.map((r) => ({
+      ...r,
+      created_at: r.created_at.toISOString(),
+      chapter: r.chapter_id ? r.chapter : null,
+    }));
+    return buildThreads(all);
   } catch {
     return [];
   }
@@ -210,14 +249,12 @@ export async function getStoryComments(storyId: string, limit = 300): Promise<St
 export async function getLikedCommentIds(userId: string | undefined, commentIds: string[]): Promise<Set<string>> {
   if (!userId || commentIds.length === 0) return new Set();
   try {
-    const supabase = await createClient();
-    const { data } = await supabase
-      .from("likes")
-      .select("target_id")
-      .eq("user_id", userId)
-      .eq("target_type", "comment")
-      .in("target_id", commentIds);
-    return new Set((data ?? []).map((r) => r.target_id as string));
+    const db = getDb();
+    const rows = await db
+      .select({ target_id: likes.target_id })
+      .from(likes)
+      .where(and(eq(likes.user_id, userId), eq(likes.target_type, "comment"), inArray(likes.target_id, commentIds)));
+    return new Set(rows.map((r) => r.target_id));
   } catch {
     return new Set();
   }

@@ -1,8 +1,13 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
+import { and, eq } from "drizzle-orm";
 import { createClient } from "@/lib/supabase/server";
 import { createNotification } from "@/lib/actions/create-notification";
+import { getAuth } from "@/server/auth/config";
+import { getDb } from "@/server/db/client";
+import { follows } from "@/server/db/schema";
 
 async function requireUser() {
   const supabase = await createClient();
@@ -10,6 +15,15 @@ async function requireUser() {
     data: { user },
   } = await supabase.auth.getUser();
   return { supabase, user };
+}
+
+// Better-Auth-backed counterpart to requireUser() above — only
+// toggleFollowAuthor uses this so far; every other function in this file
+// is still on the Supabase identity/writes it already had (its own next
+// piece of the migration, not done here).
+async function requireViewerId(): Promise<string | null> {
+  const session = await getAuth().api.getSession({ headers: await headers() });
+  return session?.user.id ?? null;
 }
 
 export async function toggleStoryLike(storyId: string, path: string) {
@@ -67,20 +81,21 @@ export async function toggleStoryBookmark(storyId: string, path: string) {
 }
 
 export async function toggleFollowAuthor(authorId: string, path: string) {
-  const { supabase, user } = await requireUser();
-  if (!user || user.id === authorId) return;
+  const viewerId = await requireViewerId();
+  if (!viewerId || viewerId === authorId) return;
 
-  const { data: existing } = await supabase
-    .from("follows")
-    .select("id")
-    .eq("follower_id", user.id)
-    .eq("author_id", authorId)
-    .maybeSingle();
+  const db = getDb();
+  const [existing] = await db
+    .select({ id: follows.id })
+    .from(follows)
+    .where(and(eq(follows.follower_id, viewerId), eq(follows.author_id, authorId)))
+    .limit(1);
 
-  const { error } = existing
-    ? await supabase.from("follows").delete().eq("id", existing.id)
-    : await supabase.from("follows").insert({ follower_id: user.id, author_id: authorId });
-  if (error) console.error("toggleFollowAuthor failed:", error);
+  if (existing) {
+    await db.delete(follows).where(eq(follows.id, existing.id));
+  } else {
+    await db.insert(follows).values({ follower_id: viewerId, author_id: authorId });
+  }
   revalidatePath(path);
 }
 

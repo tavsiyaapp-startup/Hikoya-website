@@ -16,7 +16,7 @@ import type { Story, Chapter, Collection, Profile, StoryTopTier, HeroSlide, Anno
 // StoryCard (date formatting in components, etc.) expects the ISO-string
 // shape PostgREST always produced — converting here keeps that contract
 // identical for every caller regardless of which backend answered it.
-function toStoryCard(
+export function toStoryCard(
   row: typeof stories.$inferSelect,
   author: { username: string; display_name: string }
 ): StoryCard {

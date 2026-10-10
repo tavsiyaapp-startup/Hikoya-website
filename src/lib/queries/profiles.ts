@@ -1,12 +1,22 @@
 import "server-only";
-import { createClient } from "@/lib/supabase/server";
+import { and, eq, count, sql } from "drizzle-orm";
+import { getDb } from "@/server/db/client";
+import { achievements, profiles, stories, userAchievements } from "@/server/db/schema";
 import type { Profile } from "@/types/database";
+
+function toProfile(row: typeof profiles.$inferSelect): Profile {
+  return {
+    ...row,
+    onboarded_at: row.onboarded_at ? row.onboarded_at.toISOString() : null,
+    created_at: row.created_at.toISOString(),
+  };
+}
 
 export async function getProfileByUsername(username: string): Promise<Profile | null> {
   try {
-    const supabase = await createClient();
-    const { data } = await supabase.from("profiles").select("*").eq("username", username).single();
-    return (data as Profile) ?? null;
+    const db = getDb();
+    const [row] = await db.select().from(profiles).where(eq(profiles.username, username)).limit(1);
+    return row ? toProfile(row) : null;
   } catch {
     return null;
   }
@@ -15,9 +25,9 @@ export async function getProfileByUsername(username: string): Promise<Profile | 
 // Used by /admin/users/[id] — the admin list links by id, not username.
 export async function getProfileById(id: string): Promise<Profile | null> {
   try {
-    const supabase = await createClient();
-    const { data } = await supabase.from("profiles").select("*").eq("id", id).maybeSingle();
-    return (data as Profile) ?? null;
+    const db = getDb();
+    const [row] = await db.select().from(profiles).where(eq(profiles.id, id)).limit(1);
+    return row ? toProfile(row) : null;
   } catch {
     return null;
   }
@@ -25,13 +35,12 @@ export async function getProfileById(id: string): Promise<Profile | null> {
 
 export async function getAuthorStoryCount(authorId: string) {
   try {
-    const supabase = await createClient();
-    const { count } = await supabase
-      .from("stories")
-      .select("id", { count: "exact", head: true })
-      .eq("author_id", authorId)
-      .eq("status", "published");
-    return count ?? 0;
+    const db = getDb();
+    const [{ total }] = await db
+      .select({ total: count() })
+      .from(stories)
+      .where(and(eq(stories.author_id, authorId), eq(stories.status, "published")));
+    return total;
   } catch {
     return 0;
   }
@@ -39,14 +48,12 @@ export async function getAuthorStoryCount(authorId: string) {
 
 export async function getAuthorTotals(authorId: string) {
   try {
-    const supabase = await createClient();
-    const { data: stories } = await supabase
-      .from("stories")
-      .select("like_count")
-      .eq("author_id", authorId)
-      .eq("status", "published");
-    const totalLikes = (stories ?? []).reduce((sum, s) => sum + (s.like_count ?? 0), 0);
-    return { totalLikes };
+    const db = getDb();
+    const [{ totalLikes }] = await db
+      .select({ totalLikes: sql<number>`coalesce(sum(${stories.like_count}), 0)` })
+      .from(stories)
+      .where(and(eq(stories.author_id, authorId), eq(stories.status, "published")));
+    return { totalLikes: Number(totalLikes) };
   } catch {
     return { totalLikes: 0 };
   }
@@ -54,12 +61,15 @@ export async function getAuthorTotals(authorId: string) {
 
 export async function getAuthorAchievements(userId: string) {
   try {
-    const supabase = await createClient();
-    const { data } = await supabase
-      .from("user_achievements")
-      .select("achievement:achievements(code, title_ru, title_uz)")
-      .eq("user_id", userId);
-    return data ?? [];
+    const db = getDb();
+    const rows = await db
+      .select({
+        achievement: { code: achievements.code, title_ru: achievements.title_ru, title_uz: achievements.title_uz },
+      })
+      .from(userAchievements)
+      .innerJoin(achievements, eq(userAchievements.achievement_id, achievements.id))
+      .where(eq(userAchievements.user_id, userId));
+    return rows;
   } catch {
     return [];
   }

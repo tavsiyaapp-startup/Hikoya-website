@@ -1,6 +1,9 @@
 import "server-only";
+import { and, count, desc, eq, inArray } from "drizzle-orm";
 import { createClient } from "@/lib/supabase/server";
-import type { StoryCard } from "@/lib/queries/stories";
+import { getDb } from "@/server/db/client";
+import { follows, profiles, stories } from "@/server/db/schema";
+import { toStoryCard, type StoryCard } from "@/lib/queries/stories";
 
 export async function getUserStoryState(userId: string | undefined, storyId: string) {
   if (!userId)
@@ -49,14 +52,13 @@ export async function getReadChapterIds(userId: string | undefined, storyId: str
 export async function isFollowingAuthor(userId: string | undefined, authorId: string) {
   if (!userId) return false;
   try {
-    const supabase = await createClient();
-    const { data } = await supabase
-      .from("follows")
-      .select("id")
-      .eq("follower_id", userId)
-      .eq("author_id", authorId)
-      .maybeSingle();
-    return Boolean(data);
+    const db = getDb();
+    const [row] = await db
+      .select({ id: follows.id })
+      .from(follows)
+      .where(and(eq(follows.follower_id, userId), eq(follows.author_id, authorId)))
+      .limit(1);
+    return Boolean(row);
   } catch {
     return false;
   }
@@ -64,12 +66,9 @@ export async function isFollowingAuthor(userId: string | undefined, authorId: st
 
 export async function getFollowerCount(authorId: string) {
   try {
-    const supabase = await createClient();
-    const { count } = await supabase
-      .from("follows")
-      .select("id", { count: "exact", head: true })
-      .eq("author_id", authorId);
-    return count ?? 0;
+    const db = getDb();
+    const [row] = await db.select({ total: count() }).from(follows).where(eq(follows.author_id, authorId));
+    return row.total;
   } catch {
     return 0;
   }
@@ -86,37 +85,40 @@ export type FollowedAuthorGroup = {
 // "who am I following" stays accurate even before they've posted anything.
 export async function getFollowedAuthorsWithStories(userId: string): Promise<FollowedAuthorGroup[]> {
   try {
-    const supabase = await createClient();
-    const { data: follows } = await supabase
-      .from("follows")
-      .select("author:profiles!follows_author_id_fkey(id, username, display_name, avatar_url)")
-      .eq("follower_id", userId)
-      .order("created_at", { ascending: false });
+    const db = getDb();
+    const authorRows = await db
+      .select({
+        id: profiles.id,
+        username: profiles.username,
+        display_name: profiles.display_name,
+        avatar_url: profiles.avatar_url,
+      })
+      .from(follows)
+      .innerJoin(profiles, eq(follows.author_id, profiles.id))
+      .where(eq(follows.follower_id, userId))
+      .orderBy(desc(follows.created_at));
 
-    const authors = (follows ?? [])
-      .map((f) => f.author as unknown as FollowedAuthorGroup["author"] | null)
-      .filter((a): a is FollowedAuthorGroup["author"] => Boolean(a));
-    if (authors.length === 0) return [];
+    if (authorRows.length === 0) return [];
+    const authorIds = authorRows.map((a) => a.id);
 
-    const { data: stories } = await supabase
-      .from("stories")
-      .select("*, author:profiles!stories_author_id_fkey(username, display_name)")
-      .in(
-        "author_id",
-        authors.map((a) => a.id)
+    const storyRows = await db
+      .select({ story: stories, author: { username: profiles.username, display_name: profiles.display_name } })
+      .from(stories)
+      .innerJoin(profiles, eq(stories.author_id, profiles.id))
+      .where(
+        and(inArray(stories.author_id, authorIds), eq(stories.status, "published"), eq(stories.visibility, "public"))
       )
-      .eq("status", "published")
-      .eq("visibility", "public")
-      .order("published_at", { ascending: false });
+      .orderBy(desc(stories.published_at));
 
     const storiesByAuthor = new Map<string, StoryCard[]>();
-    for (const story of (stories ?? []) as StoryCard[]) {
-      const arr = storiesByAuthor.get(story.author_id) ?? [];
-      arr.push(story);
-      storiesByAuthor.set(story.author_id, arr);
+    for (const row of storyRows) {
+      const card = toStoryCard(row.story, row.author);
+      const arr = storiesByAuthor.get(card.author_id) ?? [];
+      arr.push(card);
+      storiesByAuthor.set(card.author_id, arr);
     }
 
-    return authors.map((author) => ({ author, stories: storiesByAuthor.get(author.id) ?? [] }));
+    return authorRows.map((author) => ({ author, stories: storiesByAuthor.get(author.id) ?? [] }));
   } catch {
     return [];
   }

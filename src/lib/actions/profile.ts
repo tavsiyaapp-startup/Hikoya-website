@@ -4,7 +4,6 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { eq } from "drizzle-orm";
-import { createClient } from "@/lib/supabase/server";
 import { getAuth } from "@/server/auth/config";
 import { getDb } from "@/server/db/client";
 import { profiles } from "@/server/db/schema";
@@ -24,11 +23,8 @@ function normalizeHandle(raw: string): string | null {
 }
 
 export async function updateProfile(username: string, formData: FormData) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect(ROUTES.onboarding);
+  const session = await getAuth().api.getSession({ headers: await headers() });
+  if (!session) redirect(ROUTES.onboarding);
 
   const displayName = String(formData.get("displayName") ?? "").trim();
   const bio = String(formData.get("bio") ?? "").trim();
@@ -37,16 +33,17 @@ export async function updateProfile(username: string, formData: FormData) {
   const telegramHandle = normalizeHandle(String(formData.get("telegramHandle") ?? ""));
   if (!displayName) return;
 
-  await supabase
-    .from("profiles")
-    .update({
+  const db = getDb();
+  await db
+    .update(profiles)
+    .set({
       display_name: displayName,
       bio: bio || null,
       instagram_handle: instagramHandle,
       telegram_handle: telegramHandle,
       ...(typeof avatarUrl === "string" && avatarUrl ? { avatar_url: avatarUrl } : {}),
     })
-    .eq("id", user.id);
+    .where(eq(profiles.id, session.user.id));
 
   revalidatePath(ROUTES.author(username));
 }

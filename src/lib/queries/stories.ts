@@ -1,13 +1,34 @@
 import "server-only";
 import { unstable_cache } from "next/cache";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { and, asc, count, desc, eq } from "drizzle-orm";
 import { createClient } from "@/lib/supabase/server";
 import { createPublicClient } from "@/lib/supabase/public";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentUser } from "@/lib/current-user";
+import { getDb } from "@/server/db/client";
+import { chapters, profiles, stories } from "@/server/db/schema";
 import { genreVariants } from "@/lib/genre";
 import type { HomeTab } from "@/lib/homeTabs";
 import type { Story, Chapter, Collection, Profile, StoryTopTier, HeroSlide, Announcement } from "@/types/database";
+
+// Drizzle returns Date objects for timestamp columns; every consumer of
+// StoryCard (date formatting in components, etc.) expects the ISO-string
+// shape PostgREST always produced — converting here keeps that contract
+// identical for every caller regardless of which backend answered it.
+function toStoryCard(
+  row: typeof stories.$inferSelect,
+  author: { username: string; display_name: string }
+): StoryCard {
+  return {
+    ...row,
+    created_at: row.created_at.toISOString(),
+    updated_at: row.updated_at.toISOString(),
+    published_at: row.published_at ? row.published_at.toISOString() : null,
+    deleted_at: row.deleted_at ? row.deleted_at.toISOString() : null,
+    author,
+  };
+}
 
 // Every query here tolerates an unreachable Supabase project (placeholder
 // .env.local before a real project is wired up) by returning an empty
@@ -26,63 +47,58 @@ export type Paginated<T> = { items: T[]; total: number };
 // is intentionally left uncached and on the per-request RLS-scoped client.
 const CACHE_SECONDS = 300;
 
+// Supabase is currently unusable for this project (egress quota exceeded,
+// blocking every service including reads) — these three, the home page's
+// Популярное/Завершено/Новое tabs plus /all and /search, are the first
+// moved to the Drizzle/pg connection directly (src/server/db/client.ts),
+// which never goes through Supabase at all. Same filter (published, public
+// visibility), same order, same shape — only the backend underneath
+// changed, so every caller/component stays untouched.
+const PUBLIC_STORY_FILTER = and(eq(stories.status, "published"), eq(stories.visibility, "public"));
+
+async function queryPublicStories(
+  orderBy: ReturnType<typeof desc>,
+  limit: number,
+  offset: number,
+  extraFilter?: ReturnType<typeof eq>
+): Promise<Paginated<StoryCard>> {
+  try {
+    const db = getDb();
+    const where = extraFilter ? and(PUBLIC_STORY_FILTER, extraFilter) : PUBLIC_STORY_FILTER;
+
+    const [rows, [{ total }]] = await Promise.all([
+      db
+        .select({ story: stories, author: { username: profiles.username, display_name: profiles.display_name } })
+        .from(stories)
+        .innerJoin(profiles, eq(stories.author_id, profiles.id))
+        .where(where)
+        .orderBy(orderBy)
+        .limit(limit)
+        .offset(offset),
+      db.select({ total: count() }).from(stories).where(where),
+    ]);
+
+    return { items: rows.map((r) => toStoryCard(r.story, r.author)), total };
+  } catch {
+    return { items: [], total: 0 };
+  }
+}
+
 export const getPopularStories = unstable_cache(
-  async (limit = 8, offset = 0): Promise<Paginated<StoryCard>> => {
-    try {
-      const supabase = createPublicClient();
-      const { data, count } = await supabase
-        .from("stories")
-        .select("*, author:profiles!stories_author_id_fkey(username, display_name)", { count: "exact" })
-        .eq("status", "published")
-        .eq("visibility", "public")
-        .order("like_count", { ascending: false })
-        .range(offset, offset + limit - 1);
-      return { items: (data as StoryCard[]) ?? [], total: count ?? 0 };
-    } catch {
-      return { items: [], total: 0 };
-    }
-  },
+  (limit = 8, offset = 0) => queryPublicStories(desc(stories.like_count), limit, offset),
   ["popular-stories"],
   { revalidate: CACHE_SECONDS, tags: ["stories"] }
 );
 
 export const getFinishedStories = unstable_cache(
-  async (limit = 8, offset = 0): Promise<Paginated<StoryCard>> => {
-    try {
-      const supabase = createPublicClient();
-      const { data, count } = await supabase
-        .from("stories")
-        .select("*, author:profiles!stories_author_id_fkey(username, display_name)", { count: "exact" })
-        .eq("status", "published")
-        .eq("visibility", "public")
-        .eq("progress_status", "finished")
-        .order("like_count", { ascending: false })
-        .range(offset, offset + limit - 1);
-      return { items: (data as StoryCard[]) ?? [], total: count ?? 0 };
-    } catch {
-      return { items: [], total: 0 };
-    }
-  },
+  (limit = 8, offset = 0) =>
+    queryPublicStories(desc(stories.like_count), limit, offset, eq(stories.progress_status, "finished")),
   ["finished-stories"],
   { revalidate: CACHE_SECONDS, tags: ["stories"] }
 );
 
 export const getNewestStories = unstable_cache(
-  async (limit = 8, offset = 0): Promise<Paginated<StoryCard>> => {
-    try {
-      const supabase = createPublicClient();
-      const { data, count } = await supabase
-        .from("stories")
-        .select("*, author:profiles!stories_author_id_fkey(username, display_name)", { count: "exact" })
-        .eq("status", "published")
-        .eq("visibility", "public")
-        .order("published_at", { ascending: false })
-        .range(offset, offset + limit - 1);
-      return { items: (data as StoryCard[]) ?? [], total: count ?? 0 };
-    } catch {
-      return { items: [], total: 0 };
-    }
-  },
+  (limit = 8, offset = 0) => queryPublicStories(desc(stories.published_at), limit, offset),
   ["newest-stories"],
   { revalidate: CACHE_SECONDS, tags: ["stories"] }
 );
@@ -437,27 +453,56 @@ export type StoryDetail = Story & {
 // level rule that nothing renders a full page for it regardless).
 export async function getStoryBySlug(slug: string): Promise<StoryDetail | null> {
   try {
-    const supabase = await createClient();
-    const { data } = await supabase
-      .from("stories")
-      .select("*, author:profiles!stories_author_id_fkey(id, username, display_name, avatar_url)")
-      .eq("slug", slug)
-      .single();
-    if (!data || data.deleted_at) return null;
-    // RLS lets everyone SELECT a non-published story now too (0040, so
+    const db = getDb();
+    const [row] = await db
+      .select({
+        story: stories,
+        author: {
+          id: profiles.id,
+          username: profiles.username,
+          display_name: profiles.display_name,
+          avatar_url: profiles.avatar_url,
+        },
+      })
+      .from(stories)
+      .innerJoin(profiles, eq(stories.author_id, profiles.id))
+      .where(eq(stories.slug, slug))
+      .limit(1);
+    if (!row || row.story.deleted_at) return null;
+    // RLS used to let everyone SELECT a non-published story too (0040, so
     // stale collection/library references can render a "черновик"
     // placeholder instead of silently vanishing) — the actual story page
-    // still needs to stay off-limits to anyone but the author/staff.
-    if (data.status !== "published") {
+    // still needs to stay off-limits to anyone but the author/staff. This
+    // app-level check replaces that now that the read doesn't go through
+    // RLS at all.
+    if (row.story.status !== "published") {
       const viewer = await getCurrentUser();
-      const isOwner = viewer?.id === data.author_id;
+      const isOwner = viewer?.id === row.story.author_id;
       const isStaff = viewer?.profile?.role === "admin" || viewer?.profile?.role === "moderator";
       if (!isOwner && !isStaff) return null;
     }
-    return data as StoryDetail;
+    return {
+      ...row.story,
+      created_at: row.story.created_at.toISOString(),
+      updated_at: row.story.updated_at.toISOString(),
+      published_at: row.story.published_at ? row.story.published_at.toISOString() : null,
+      // Already guarded not-truthy above (deleted stories return null before
+      // this point) — TS narrows it to `null` here, so no .toISOString() call.
+      deleted_at: null,
+      author: row.author,
+    };
   } catch {
     return null;
   }
+}
+
+function toChapter(row: typeof chapters.$inferSelect): Chapter {
+  return {
+    ...row,
+    created_at: row.created_at.toISOString(),
+    updated_at: row.updated_at.toISOString(),
+    published_at: row.published_at ? row.published_at.toISOString() : null,
+  };
 }
 
 export async function getChaptersForStory(
@@ -465,11 +510,12 @@ export async function getChaptersForStory(
   includeDrafts = false
 ): Promise<Chapter[]> {
   try {
-    const supabase = await createClient();
-    let query = supabase.from("chapters").select("*").eq("story_id", storyId);
-    if (!includeDrafts) query = query.eq("status", "published");
-    const { data } = await query.order("order_index", { ascending: true });
-    return (data as Chapter[]) ?? [];
+    const db = getDb();
+    const where = includeDrafts
+      ? eq(chapters.story_id, storyId)
+      : and(eq(chapters.story_id, storyId), eq(chapters.status, "published"));
+    const rows = await db.select().from(chapters).where(where).orderBy(asc(chapters.order_index));
+    return rows.map(toChapter);
   } catch {
     return [];
   }
@@ -477,15 +523,15 @@ export async function getChaptersForStory(
 
 export async function getChapter(storyId: string, orderIndex: number): Promise<Chapter | null> {
   try {
-    const supabase = await createClient();
-    const { data } = await supabase
-      .from("chapters")
-      .select("*")
-      .eq("story_id", storyId)
-      .eq("order_index", orderIndex)
-      .eq("status", "published")
-      .single();
-    return (data as Chapter) ?? null;
+    const db = getDb();
+    const [row] = await db
+      .select()
+      .from(chapters)
+      .where(
+        and(eq(chapters.story_id, storyId), eq(chapters.order_index, orderIndex), eq(chapters.status, "published"))
+      )
+      .limit(1);
+    return row ? toChapter(row) : null;
   } catch {
     return null;
   }

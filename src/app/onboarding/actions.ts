@@ -1,6 +1,7 @@
 "use server";
 
 import { cookies, headers } from "next/headers";
+import { safeNext } from "@/lib/safe-next";
 import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { getAuth } from "@/server/auth/config";
@@ -14,7 +15,7 @@ const MIN_PASSWORD_LENGTH = 6;
 export async function completeOnboarding(formData: FormData) {
   const session = await getAuth().api.getSession({ headers: await headers() });
 
-  const next = (formData.get("next") as string) || "/";
+  const next = safeNext(formData.get("next") as string | null);
   if (!session) redirect(`/onboarding?next=${encodeURIComponent(next)}`);
   const userId = session.user.id;
 

@@ -6,18 +6,37 @@ import { and, eq } from "drizzle-orm";
 import { createNotification } from "@/lib/actions/create-notification";
 import { getAuth } from "@/server/auth/config";
 import { getDb } from "@/server/db/client";
-import { bookmarks, comments, follows, likes, stories } from "@/server/db/schema";
+import { bookmarks, chapters, comments, follows, likes, stories } from "@/server/db/schema";
+import { loadViewer } from "@/server/data/viewer";
+import { getStoryRecord } from "@/server/data/stories";
+import { canCommentOnChapter, canCommentOnStory, canViewStory, isActive, type Viewer } from "@/server/authz/policy";
 
 async function requireViewerId(): Promise<string | null> {
   const session = await getAuth().api.getSession({ headers: await headers() });
   return session?.user.id ?? null;
 }
 
-export async function toggleStoryLike(storyId: string, path: string) {
+const MAX_COMMENT_LENGTH = 5000;
+
+// Likes, comments and follows are public actions — a blocked account
+// (profiles.status = 'blocked') may still read and bookmark, but not do
+// these (owner's rule; see src/server/authz/policy.ts isActive). Returns the
+// viewer only when signed in AND active.
+async function requireActiveViewer(): Promise<Viewer | null> {
   const viewerId = await requireViewerId();
-  if (!viewerId) return;
+  if (!viewerId) return null;
+  const viewer = await loadViewer(getDb(), viewerId);
+  return viewer && isActive(viewer) ? viewer : null;
+}
+
+export async function toggleStoryLike(storyId: string, path: string) {
+  const viewer = await requireActiveViewer();
+  if (!viewer) return;
+  const viewerId = viewer.id;
 
   const db = getDb();
+  const storyRecord = await getStoryRecord(db, storyId);
+  if (!storyRecord || !canViewStory(viewer, storyRecord)) return;
   const [existing] = await db
     .select({ id: likes.id })
     .from(likes)
@@ -60,8 +79,9 @@ export async function toggleStoryBookmark(storyId: string, path: string) {
 }
 
 export async function toggleFollowAuthor(authorId: string, path: string) {
-  const viewerId = await requireViewerId();
-  if (!viewerId || viewerId === authorId) return;
+  const viewer = await requireActiveViewer();
+  if (!viewer || viewer.id === authorId) return;
+  const viewerId = viewer.id;
 
   const db = getDb();
   const [existing] = await db
@@ -90,11 +110,31 @@ export async function postComment(
   parentId?: string,
   isSpoiler?: boolean
 ) {
-  const viewerId = await requireViewerId();
+  const viewer = await requireActiveViewer();
   const trimmed = text.trim();
-  if (!viewerId || !trimmed) return;
+  if (!viewer || !trimmed || trimmed.length > MAX_COMMENT_LENGTH) return;
+  const viewerId = viewer.id;
 
   const db = getDb();
+  // Only on content the commenter can actually see, and the chapter/parent
+  // must belong to this same story — otherwise a crafted call could comment
+  // on drafts or attach a reply/notification to an unrelated thread.
+  const storyRecord = await getStoryRecord(db, storyId);
+  if (!storyRecord) return;
+  if (chapterId) {
+    const [chapter] = await db
+      .select({ id: chapters.id, story_id: chapters.story_id, status: chapters.status })
+      .from(chapters)
+      .where(eq(chapters.id, chapterId))
+      .limit(1);
+    if (!chapter || !canCommentOnChapter(viewer, chapter, storyRecord)) return;
+  } else if (!canCommentOnStory(viewer, storyRecord)) {
+    return;
+  }
+  if (parentId) {
+    const [parentRow] = await db.select({ story_id: comments.story_id }).from(comments).where(eq(comments.id, parentId)).limit(1);
+    if (!parentRow || parentRow.story_id !== storyId) return;
+  }
   const [comment] = await db
     .insert(comments)
     .values({
@@ -144,8 +184,9 @@ export async function postComment(
 }
 
 export async function toggleCommentLike(commentId: string, path: string) {
-  const viewerId = await requireViewerId();
-  if (!viewerId) return;
+  const viewer = await requireActiveViewer();
+  if (!viewer) return;
+  const viewerId = viewer.id;
 
   const db = getDb();
   const [existing] = await db
@@ -159,6 +200,9 @@ export async function toggleCommentLike(commentId: string, path: string) {
     revalidatePath(path);
     return;
   }
+
+  const [target] = await db.select({ id: comments.id, hidden_at: comments.hidden_at }).from(comments).where(eq(comments.id, commentId)).limit(1);
+  if (!target || target.hidden_at) return;
 
   await db.insert(likes).values({ user_id: viewerId, target_type: "comment", target_id: commentId });
 

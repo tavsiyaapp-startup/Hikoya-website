@@ -12,6 +12,7 @@ import path from "path";
 // by a redeploy once created.
 const UPLOADS_ROOT = path.join(process.cwd(), "public", "uploads");
 const PUBLIC_PREFIX = "/uploads";
+const UPLOAD_PATH_PATTERN = /^[a-z-]+\/[A-Za-z0-9-]+\/[0-9]+-[a-z0-9]+\.(jpg|png|gif|webp)$/;
 
 // Mirrors the Supabase Storage bucket names they replace. covers/avatars/
 // chapter-images are per-user (ownerId below is the uploader's own id);
@@ -19,16 +20,34 @@ const PUBLIC_PREFIX = "/uploads";
 // pseudo-owner folder since there's no per-admin ownership to scope them to.
 export type UploadBucket = "covers" | "avatars" | "chapter-images" | "hero-slides" | "announcements";
 
-// Only the extension survives from a browser-supplied filename — nothing
-// else about it is trusted enough to become part of a disk path.
-function safeExtension(fileName: string): string {
-  const ext = path.extname(fileName).toLowerCase().replace(/[^a-z0-9]/g, "");
-  return ext ? `.${ext.slice(0, 8)}` : "";
+// Uploaded files are served straight from this site's own origin, so the
+// file type is decided by the actual bytes, never by the browser-supplied
+// filename or Content-Type (both are attacker-controlled). Accepting e.g. an
+// "avatar.html" or an SVG with a <script> would turn any upload into stored
+// XSS on hikoya.org. Only these raster formats are ever written to disk.
+const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
+
+export class InvalidUploadError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "InvalidUploadError";
+  }
 }
 
-function extensionFromContentType(contentType: string): string {
-  const ext = contentType.split("/")[1]?.replace(/[^a-z0-9]/gi, "").slice(0, 8);
-  return ext ? `.${ext}` : "";
+function detectImageExtension(buf: Buffer): string | null {
+  if (buf.length >= 3 && buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) return ".jpg";
+  if (buf.length >= 8 && buf.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) return ".png";
+  if (buf.length >= 6 && (buf.subarray(0, 6).toString("ascii") === "GIF87a" || buf.subarray(0, 6).toString("ascii") === "GIF89a")) return ".gif";
+  if (buf.length >= 12 && buf.subarray(0, 4).toString("ascii") === "RIFF" && buf.subarray(8, 12).toString("ascii") === "WEBP") return ".webp";
+  return null;
+}
+
+function validatedExtension(buffer: Buffer): string {
+  if (buffer.length === 0) throw new InvalidUploadError("empty file");
+  if (buffer.length > MAX_UPLOAD_BYTES) throw new InvalidUploadError("file too large");
+  const ext = detectImageExtension(buffer);
+  if (!ext) throw new InvalidUploadError("not a supported image (jpeg/png/webp/gif)");
+  return ext;
 }
 
 function randomSegment(): string {
@@ -51,14 +70,18 @@ async function writeUpload(bucket: UploadBucket, ownerId: string, buffer: Buffer
 // or "shared" for the staff-only buckets) — never raw user input — so it
 // never needs sanitizing the way the filename does.
 export async function saveUpload(bucket: UploadBucket, ownerId: string, file: File): Promise<string> {
+  if (file.size > MAX_UPLOAD_BYTES) throw new InvalidUploadError("file too large");
   const buffer = Buffer.from(await file.arrayBuffer());
-  return writeUpload(bucket, ownerId, buffer, safeExtension(file.name));
+  return writeUpload(bucket, ownerId, buffer, validatedExtension(buffer));
 }
 
 // For server-side writers that already have raw bytes instead of a browser
 // File — import-docx.ts's mammoth image extraction.
-export async function saveUploadBuffer(bucket: UploadBucket, ownerId: string, buffer: Buffer, contentType: string): Promise<string> {
-  return writeUpload(bucket, ownerId, buffer, extensionFromContentType(contentType));
+// contentType from the .docx is ignored for the same reason — the bytes
+// decide. An embedded image in an unsupported format (EMF/WMF/SVG...) throws
+// InvalidUploadError and the caller drops it.
+export async function saveUploadBuffer(bucket: UploadBucket, ownerId: string, buffer: Buffer): Promise<string> {
+  return writeUpload(bucket, ownerId, buffer, validatedExtension(buffer));
 }
 
 // Best-effort, same tolerance the old Supabase-backed deleteOldStorageFile
@@ -69,8 +92,13 @@ export async function saveUploadBuffer(bucket: UploadBucket, ownerId: string, bu
 export async function deleteUpload(url: string | null | undefined): Promise<void> {
   if (!url || !url.startsWith(`${PUBLIC_PREFIX}/`)) return;
   const relative = url.slice(PUBLIC_PREFIX.length + 1);
+  // Exactly the shape writeUpload produces — <bucket>/<ownerId>/<file> with
+  // no "..", slashes or other tricks in any segment. A prefix check alone let
+  // "covers/<me>/../../avatars/<someone-else>/x.jpg" through to delete another
+  // user's file.
+  if (!UPLOAD_PATH_PATTERN.test(relative)) return;
   const resolved = path.join(UPLOADS_ROOT, relative);
-  if (!resolved.startsWith(UPLOADS_ROOT)) return;
+  if (!resolved.startsWith(UPLOADS_ROOT + path.sep)) return;
   try {
     await unlink(resolved);
   } catch {

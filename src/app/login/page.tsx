@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { safeNext } from "@/lib/safe-next";
 import { getCurrentUser } from "@/lib/current-user";
 import { ROUTES } from "@/lib/constants";
 import { LoginForm } from "./LoginForm";
@@ -8,7 +9,8 @@ export default async function LoginPage({
 }: {
   searchParams: Promise<{ next?: string; mode?: string }>;
 }) {
-  const { next = "/", mode } = await searchParams;
+  const { next: rawNext, mode } = await searchParams;
+  const next = safeNext(rawNext);
   const user = await getCurrentUser();
 
   if (user) {

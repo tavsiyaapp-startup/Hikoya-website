@@ -1,6 +1,9 @@
 import "server-only";
 import { headers } from "next/headers";
+import { eq } from "drizzle-orm";
 import { getAuth } from "@/server/auth/config";
+import { getDb } from "@/server/db/client";
+import { profiles } from "@/server/db/schema";
 
 export type StaffSession = {
   id: string;
@@ -28,12 +31,24 @@ export type StaffSessionResult =
 // through the service-role Supabase client (createAdminClient(), bypasses
 // RLS) — this only answers "who is this and are they staff", the same
 // question those call sites asked of Supabase before.
+// Role and status are read from profiles on every call, not from the
+// session object: the session is cookie-cached for up to 5 minutes
+// (config.ts cookieCache), so a moderator who was just demoted or blocked
+// would otherwise keep full admin access until it expired — and a blocked
+// staff account (status != 'active') must not reach /admin at all.
 export async function getStaffSession(): Promise<StaffSessionResult> {
   const session = await getAuth().api.getSession({ headers: await headers() });
   if (!session) return { status: "signed-out" };
 
-  const role = (session.user as { role?: string }).role;
-  if (role !== "admin" && role !== "moderator") return { status: "not-staff" };
+  const [profile] = await getDb()
+    .select({ role: profiles.role, status: profiles.status })
+    .from(profiles)
+    .where(eq(profiles.id, session.user.id))
+    .limit(1);
+  const role = profile?.role;
+  if (!profile || profile.status !== "active" || (role !== "admin" && role !== "moderator")) {
+    return { status: "not-staff" };
+  }
 
   return {
     status: "staff",

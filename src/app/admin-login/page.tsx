@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { safeNext } from "@/lib/safe-next";
 import { getServerLocale } from "@/lib/i18n/locale-server";
 import { getDictionary } from "@/lib/i18n";
 import { AdminLoginForm } from "./AdminLoginForm";
@@ -8,7 +9,8 @@ export default async function AdminLoginPage({
 }: {
   searchParams: Promise<{ next?: string }>;
 }) {
-  const { next } = await searchParams;
+  const { next: rawNext } = await searchParams;
+  const next = rawNext ? safeNext(rawNext) : undefined;
   const locale = await getServerLocale();
   const t = getDictionary(locale);
 

@@ -27,8 +27,12 @@ export async function convertDocxToHtml(formData: FormData): Promise<{ html: str
       {
         convertImage: mammoth.images.imgElement(async (image) => {
           const imageBuffer = await image.readAsBuffer();
-          const url = await saveUploadBuffer("chapter-images", userId, imageBuffer, image.contentType);
-          return { src: url };
+          try {
+            return { src: await saveUploadBuffer("chapter-images", userId, imageBuffer) };
+          } catch {
+            // Unsupported embedded format (EMF/WMF/SVG...) — dropped, same as a failed upload used to be.
+            return { src: "" };
+          }
         }),
       }
     );

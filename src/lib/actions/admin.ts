@@ -22,6 +22,7 @@ import { setCredentialPassword } from "@/server/auth/set-password";
 import { createNotification } from "@/lib/actions/create-notification";
 import { ROUTES } from "@/lib/constants";
 import { getStaffSession } from "@/server/auth/staff";
+import { canChangeUserStatus, canVerifyUser } from "@/server/authz/policy";
 
 // Identity comes from Better Auth (Phase 1 of the Supabase exit, see
 // src/server/auth/staff.ts). The writes below used to go through
@@ -48,10 +49,15 @@ async function requireAdmin() {
   const result = await getStaffSession();
   if (result.status === "signed-out") redirect(ROUTES.onboarding);
   if (result.status === "not-staff" || !result.staff.isAdmin) redirect(ROUTES.home);
+  return result.staff;
 }
 
+const ROLES = ["reader", "author", "moderator", "admin"] as const;
+
 export async function updateUserRole(userId: string, role: "reader" | "author" | "moderator" | "admin") {
-  await requireAdmin();
+  const admin = await requireAdmin();
+  // An admin demoting themselves could leave the site with no admin at all.
+  if (userId === admin.id || !ROLES.includes(role)) return;
   const db = getDb();
   await db.update(profiles).set({ role }).where(eq(profiles.id, userId));
   revalidatePath(`${ROUTES.admin}/users`);
@@ -227,9 +233,21 @@ export async function rejectChapter(chapterId: string, storyId: string, storySlu
   revalidatePath(ROUTES.adminChapter(storyId, chapterId));
 }
 
-export async function toggleUserStatus(userId: string, currentStatus: string) {
-  await requireStaff();
+// Who may act on whom (src/server/authz/policy.ts): never yourself, and a
+// moderator can't block or verify an admin. Without this, any moderator
+// could block the site's admins (or one admin another's account) straight
+// from a crafted request, regardless of what the UI shows.
+async function requireActionOnUser(userId: string, check: typeof canChangeUserStatus) {
+  const staff = await requireStaff();
   const db = getDb();
+  const [target] = await db.select({ id: profiles.id, role: profiles.role }).from(profiles).where(eq(profiles.id, userId)).limit(1);
+  if (!target || !check({ id: staff.id, role: staff.role, status: "active" }, target)) return null;
+  return db;
+}
+
+export async function toggleUserStatus(userId: string, currentStatus: string) {
+  const db = await requireActionOnUser(userId, canChangeUserStatus);
+  if (!db) return;
   await db
     .update(profiles)
     .set({ status: currentStatus === "active" ? "blocked" : "active" })
@@ -239,8 +257,8 @@ export async function toggleUserStatus(userId: string, currentStatus: string) {
 }
 
 export async function toggleUserVerified(userId: string, verified: boolean) {
-  await requireStaff();
-  const db = getDb();
+  const db = await requireActionOnUser(userId, canVerifyUser);
+  if (!db) return;
   const [data] = await db
     .update(profiles)
     .set({ is_verified: verified })

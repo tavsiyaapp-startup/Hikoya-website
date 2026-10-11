@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { safeNext } from "@/lib/safe-next";
 import { getCurrentUser } from "@/lib/current-user";
 import { ROUTES } from "@/lib/constants";
 import { SetPasswordForm } from "./SetPasswordForm";
@@ -8,7 +9,8 @@ export default async function SetPasswordPage({
 }: {
   searchParams: Promise<{ next?: string }>;
 }) {
-  const { next = "/" } = await searchParams;
+  const { next: rawNext } = await searchParams;
+  const next = safeNext(rawNext);
   const user = await getCurrentUser();
 
   if (!user) redirect(`${ROUTES.login}?next=${encodeURIComponent(next)}`);

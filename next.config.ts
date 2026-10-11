@@ -10,6 +10,30 @@ const nextConfig: NextConfig = {
   // Moving off Vercel to a self-hosted server (hikoya.org) — send anyone who
   // still lands on the old *.vercel.app URL to the real domain instead.
   // Scoped via `has: host`, so this is a no-op everywhere except that host.
+  // Baseline browser hardening for every page. No full Content-Security-
+  // Policy on pages (Google Analytics + Next's inline bootstrap scripts would
+  // need a nonce setup to avoid breaking the site) — but user uploads get a
+  // strict one: they're served from this same origin, so even a file that
+  // somehow slipped past the byte-level type check in
+  // src/server/storage/local.ts can't run script or be sniffed as HTML.
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: [
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "X-Frame-Options", value: "SAMEORIGIN" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          { key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains" },
+          { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+        ],
+      },
+      {
+        source: "/uploads/:path*",
+        headers: [{ key: "Content-Security-Policy", value: "default-src 'none'; img-src 'self'; sandbox" }],
+      },
+    ];
+  },
   async redirects() {
     return [
       {

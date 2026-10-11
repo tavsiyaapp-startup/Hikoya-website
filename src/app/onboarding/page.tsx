@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { safeNext } from "@/lib/safe-next";
 import { getCurrentUser } from "@/lib/current-user";
 import { OnboardingWizard } from "./OnboardingWizard";
 
@@ -7,7 +8,8 @@ export default async function OnboardingPage({
 }: {
   searchParams: Promise<{ next?: string; error?: string }>;
 }) {
-  const { next = "/", error } = await searchParams;
+  const { next: rawNext, error } = await searchParams;
+  const next = safeNext(rawNext);
   const user = await getCurrentUser();
 
   if (user?.profile?.onboarded_at) {

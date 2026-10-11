@@ -96,9 +96,13 @@ export function EmailForm({ next = "/" }: { next?: string; mode?: "login" | "reg
         <div className="flex gap-2">
           <Input
             required
+            name="otp"
+            autoComplete="one-time-code"
+            inputMode="numeric"
+            maxLength={6}
             placeholder={t.auth.emailOtpPlaceholder}
             value={otp}
-            onChange={(e) => setOtp(e.target.value)}
+            onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
             autoFocus
           />
           <Button type="submit" disabled={pending} className="shrink-0">

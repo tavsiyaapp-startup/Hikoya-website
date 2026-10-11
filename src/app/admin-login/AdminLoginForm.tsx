@@ -114,12 +114,17 @@ export function AdminLoginForm({ next }: { next?: string }) {
         <div className="flex flex-col gap-2 border-t border-line pt-3">
           <Input
             required
+            name="otp"
+            autoComplete="one-time-code"
+            inputMode="numeric"
+            maxLength={6}
             placeholder={t.admin.loginOtpPlaceholder}
             value={otp}
-            onChange={(e) => setOtp(e.target.value)}
+            onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
           />
           <Input
             type="password"
+            autoComplete="new-password"
             required
             placeholder={t.admin.loginNewPasswordPlaceholder}
             value={newPassword}

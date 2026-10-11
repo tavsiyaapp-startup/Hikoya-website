@@ -58,7 +58,10 @@ export function ResetPasswordForm() {
     const { error } = await authClient.emailOtp.resetPassword({ email, otp, password });
     setPending(false);
     if (error) {
-      setError(t.profile.passwordChangeError);
+      // A wrong/expired code is by far the most common failure here — say so
+      // instead of the generic "couldn't update password".
+      const otpProblem = ["INVALID_OTP", "OTP_EXPIRED", "TOO_MANY_ATTEMPTS"].includes(error.code ?? "");
+      setError(otpProblem ? t.auth.emailOtpError : t.profile.passwordChangeError);
       return;
     }
     setStep("done");
@@ -89,14 +92,31 @@ export function ResetPasswordForm() {
               <p className="mb-2 text-center text-[14.5px] leading-relaxed text-muted">
                 {t.auth.emailSentTo} {email}. {t.auth.checkInbox}
               </p>
+              {/* Password managers treat the first text field before a
+                  password field as the username and auto-fill the email into
+                  it — that used to be the code field. This hidden username
+                  field gives them the right place, and the code field is
+                  marked as a one-time code so nothing gets filled into it. */}
+              <input type="email" name="username" autoComplete="username" value={email} readOnly hidden />
               <div>
                 <label className="mb-1.5 block text-[13px] font-bold">{t.auth.emailOtpPlaceholder}</label>
-                <Input required value={otp} onChange={(e) => setOtp(e.target.value)} autoFocus />
+                <Input
+                  required
+                  name="otp"
+                  autoComplete="one-time-code"
+                  inputMode="numeric"
+                  maxLength={6}
+                  placeholder="123456"
+                  value={otp}
+                  onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
+                  autoFocus
+                />
               </div>
               <div>
                 <label className="mb-1.5 block text-[13px] font-bold">{t.profile.passwordLabel}</label>
                 <PasswordInput
                   required
+                  autoComplete="new-password"
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -107,6 +127,7 @@ export function ResetPasswordForm() {
                 <label className="mb-1.5 block text-[13px] font-bold">{t.profile.passwordConfirmLabel}</label>
                 <PasswordInput
                   required
+                  autoComplete="new-password"
                   placeholder="••••••••"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}

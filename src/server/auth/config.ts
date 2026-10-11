@@ -3,6 +3,8 @@ import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "@better-auth/drizzle-adapter";
 import { emailOTP } from "better-auth/plugins";
 import { nextCookies } from "better-auth/next-js";
+import { createAuthMiddleware } from "better-auth/api";
+import { eq } from "drizzle-orm";
 import { getDb } from "@/server/db/client";
 import * as schema from "@/server/db/schema";
 import { hashPassword, verifyPassword } from "@/server/auth/password";
@@ -153,6 +155,22 @@ ${url}
         clientId: process.env.GOOGLE_CLIENT_ID ?? "",
         clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? "",
       },
+    },
+    // profiles.has_password drives /login's "you have no password yet, set
+    // one" redirect (src/app/login/page.tsx). Better Auth's own password
+    // endpoints never touch that column, so a successful reset-by-code (or
+    // any successful email+password sign-in, which proves a password
+    // exists) flips it here — otherwise the user who just reset their
+    // password gets sent to set it a second time.
+    hooks: {
+      after: createAuthMiddleware(async (ctx) => {
+        if (ctx.path !== "/email-otp/reset-password" && ctx.path !== "/sign-in/email") return;
+        const returned = ctx.context.returned;
+        if (!returned || returned instanceof Error) return;
+        const email = typeof ctx.body?.email === "string" ? ctx.body.email.trim().toLowerCase() : null;
+        if (!email) return;
+        await getDb().update(schema.profiles).set({ has_password: true }).where(eq(schema.profiles.email, email));
+      }),
     },
     plugins: [
       emailOTP({

@@ -56,14 +56,24 @@ export function ResetPasswordForm() {
     setPending(true);
     setError(null);
     const { error } = await authClient.emailOtp.resetPassword({ email, otp, password });
-    setPending(false);
     if (error) {
+      setPending(false);
       // A wrong/expired code is by far the most common failure here — say so
       // instead of the generic "couldn't update password".
       const otpProblem = ["INVALID_OTP", "OTP_EXPIRED", "TOO_MANY_ATTEMPTS"].includes(error.code ?? "");
       setError(otpProblem ? t.auth.emailOtpError : t.profile.passwordChangeError);
       return;
     }
+    // The code already proved this person owns the email, and they just
+    // chose the password — sign them straight in instead of making them
+    // type it again on /login. Full page load so the header/session-aware
+    // server components pick up the new session cookie.
+    const signIn = await authClient.signIn.email({ email, password });
+    if (!signIn.error) {
+      window.location.href = "/";
+      return;
+    }
+    setPending(false);
     setStep("done");
   }
 

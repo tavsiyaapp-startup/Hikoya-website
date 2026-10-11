@@ -20,7 +20,20 @@ function getTransporter() {
   return transporter;
 }
 
-export async function sendMail(to: string, subject: string, text: string): Promise<void> {
+export async function sendMail(to: string, subject: string, text: string) {
   const from = process.env.SMTP_USER ?? "noreply@hikoya.org";
-  await getTransporter().sendMail({ from: `Hikoya <${from}>`, to, subject, text });
+  try {
+    return await getTransporter().sendMail({ from: `Hikoya <${from}>`, to, subject, text });
+  } catch (err) {
+    // Better Auth swallows nothing here, but its endpoints answer
+    // {success:true} regardless of delivery — without this log line a
+    // failing SMTP server is invisible from outside.
+    console.error(`sendMail to ${to} failed:`, err);
+    throw err;
+  }
+}
+
+// For /api/admin/mail-test only: checks the SMTP login without sending.
+export async function verifySmtp() {
+  return getTransporter().verify();
 }

@@ -52,7 +52,6 @@ export const PRIVACY_HTML_RU = `
 <li><strong>Telegram</strong> — доставка уведомлений и обращений в поддержку, если вы ими пользуетесь.</li>
 </ul>
 <p>Эти сервисы обрабатывают данные в объёме, необходимом для их функции, и по своим собственным политикам конфиденциальности.</p>
-<p>До октября 2026 года база данных и файлы платформы размещались в сервисе Supabase. Часть файлов, загруженных до переезда (аватары, обложки, изображения глав), может временно оставаться там до завершения переноса.</p>
 <p>Мы можем раскрыть данные, если это требуется по закону или необходимо для защиты прав платформы, пользователей или третьих лиц.</p>
 
 <h1>4. Публичность данных</h1>
@@ -139,7 +138,6 @@ export const PRIVACY_HTML_UZ = `
 <li><strong>Telegram</strong> — bildirishnomalar va yordam xizmatiga murojaatlarni yetkazish, agar ulardan foydalansangiz.</li>
 </ul>
 <p>Bu xizmatlar maʼlumotlarni oʻz funksiyasi uchun zarur hajmda va oʻzining maxfiylik siyosatiga muvofiq qayta ishlaydi.</p>
-<p>2026-yil oktyabrigacha platforma maʼlumotlar bazasi va fayllari Supabase xizmatida joylashgan edi. Koʻchishdan oldin yuklangan fayllarning bir qismi (avatarlar, muqovalar, bob rasmlari) koʻchirish yakunlanguncha vaqtincha u yerda qolishi mumkin.</p>
 <p>Qonun talab qilsa yoki platforma, foydalanuvchilar yoki uchinchi shaxslarning huquqlarini himoya qilish uchun zarur boʻlsa, maʼlumotlarni oshkor qilishimiz mumkin.</p>
 
 <h1>4. Maʼlumotlarning ochiqligi</h1>

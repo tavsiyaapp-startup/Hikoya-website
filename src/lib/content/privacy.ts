@@ -9,7 +9,7 @@
 
 export const PRIVACY_HTML_RU = `
 <h1>Политика конфиденциальности Hikoya</h1>
-<p><strong>Последнее обновление:</strong> 24.09.2026</p>
+<p><strong>Последнее обновление:</strong> 11.10.2026</p>
 <p>Эта политика объясняет, какие данные собирает платформа <strong>Hikoya</strong>, зачем, как они используются и хранятся, и какие права есть у вас в отношении своих данных.</p>
 <p>Используя платформу, вы соглашаетесь с этой политикой.</p>
 
@@ -46,11 +46,13 @@ export const PRIVACY_HTML_RU = `
 <h1>3. Кому мы можем передавать данные</h1>
 <p>Часть данных обрабатывается сервисами, которые технически обеспечивают работу платформы:</p>
 <ul>
-<li><strong>Supabase</strong> — база данных, аутентификация и хранение файлов (аватары, обложки, изображения глав);</li>
+<li><strong>Хостинг-провайдер Hikoya</strong> — сервер, на котором работают сайт, база данных, хранение файлов (аватары, обложки, изображения глав) и отправка писем (коды входа и сброса пароля, подтверждение e-mail);</li>
+<li><strong>Google</strong> — вход через аккаунт Google, если вы выбираете этот способ (мы получаем ваше имя, e-mail и фото профиля);</li>
 <li><strong>Google Analytics</strong> — статистика посещаемости (обезличенная и агрегированная для целей анализа);</li>
 <li><strong>Telegram</strong> — доставка уведомлений и обращений в поддержку, если вы ими пользуетесь.</li>
 </ul>
 <p>Эти сервисы обрабатывают данные в объёме, необходимом для их функции, и по своим собственным политикам конфиденциальности.</p>
+<p>До октября 2026 года база данных и файлы платформы размещались в сервисе Supabase. Часть файлов, загруженных до переезда (аватары, обложки, изображения глав), может временно оставаться там до завершения переноса.</p>
 <p>Мы можем раскрыть данные, если это требуется по закону или необходимо для защиты прав платформы, пользователей или третьих лиц.</p>
 
 <h1>4. Публичность данных</h1>
@@ -89,12 +91,12 @@ export const PRIVACY_HTML_RU = `
 <p>Вопросы о данных, запросы на их изменение или удаление — пишите нам:</p>
 <p><strong>Telegram:</strong> <a href="https://t.me/hikoya_yoz" target="_blank" rel="noopener noreferrer">@hikoya_yoz</a></p>
 <p><strong>Сайт:</strong> <a href="https://hikoya.org">hikoya.org</a></p>
-<p><strong>Последнее обновление:</strong> 24.09.2026<br/><strong>Версия:</strong> 1.0</p>
+<p><strong>Последнее обновление:</strong> 11.10.2026<br/><strong>Версия:</strong> 1.1</p>
 `;
 
 export const PRIVACY_HTML_UZ = `
 <h1>Hikoya maxfiylik siyosati</h1>
-<p><strong>Oxirgi yangilanish:</strong> 24.09.2026</p>
+<p><strong>Oxirgi yangilanish:</strong> 11.10.2026</p>
 <p>Ushbu siyosat <strong>Hikoya</strong> platformasi qanday maʼlumotlarni toʻplashi, nima uchun, ular qanday ishlatilishi va saqlanishi, hamda oʻz maʼlumotlaringizga nisbatan qanday huquqlarga egaligingizni tushuntiradi.</p>
 <p>Platformadan foydalanib, siz ushbu siyosatga rozilik bildirasiz.</p>
 
@@ -131,11 +133,13 @@ export const PRIVACY_HTML_UZ = `
 <h1>3. Maʼlumotlarni kimga berishimiz mumkin</h1>
 <p>Maʼlumotlarning bir qismini platforma ishlashini texnik taʼminlaydigan xizmatlar qayta ishlaydi:</p>
 <ul>
-<li><strong>Supabase</strong> — maʼlumotlar bazasi, autentifikatsiya va fayllarni saqlash (avatarlar, muqovalar, bob rasmlari);</li>
+<li><strong>Hikoya hosting-provayderi</strong> — sayt, maʼlumotlar bazasi, fayllarni saqlash (avatarlar, muqovalar, bob rasmlari) va xatlarni yuborish (kirish va parolni tiklash kodlari, e-mailni tasdiqlash) ishlaydigan server;</li>
+<li><strong>Google</strong> — agar shu usulni tanlasangiz, Google akkaunti orqali kirish (biz ismingiz, e-mail va profil suratingizni olamiz);</li>
 <li><strong>Google Analytics</strong> — tashrif statistikasi (tahlil maqsadida shaxssizlantirilgan va umumlashtirilgan);</li>
 <li><strong>Telegram</strong> — bildirishnomalar va yordam xizmatiga murojaatlarni yetkazish, agar ulardan foydalansangiz.</li>
 </ul>
 <p>Bu xizmatlar maʼlumotlarni oʻz funksiyasi uchun zarur hajmda va oʻzining maxfiylik siyosatiga muvofiq qayta ishlaydi.</p>
+<p>2026-yil oktyabrigacha platforma maʼlumotlar bazasi va fayllari Supabase xizmatida joylashgan edi. Koʻchishdan oldin yuklangan fayllarning bir qismi (avatarlar, muqovalar, bob rasmlari) koʻchirish yakunlanguncha vaqtincha u yerda qolishi mumkin.</p>
 <p>Qonun talab qilsa yoki platforma, foydalanuvchilar yoki uchinchi shaxslarning huquqlarini himoya qilish uchun zarur boʻlsa, maʼlumotlarni oshkor qilishimiz mumkin.</p>
 
 <h1>4. Maʼlumotlarning ochiqligi</h1>
@@ -174,5 +178,5 @@ export const PRIVACY_HTML_UZ = `
 <p>Maʼlumotlar haqida savollar, ularni oʻzgartirish yoki oʻchirish soʻrovlari — bizga yozing:</p>
 <p><strong>Telegram:</strong> <a href="https://t.me/hikoya_yoz" target="_blank" rel="noopener noreferrer">@hikoya_yoz</a></p>
 <p><strong>Sayt:</strong> <a href="https://hikoya.org">hikoya.org</a></p>
-<p><strong>Oxirgi yangilanish:</strong> 24.09.2026<br/><strong>Versiya:</strong> 1.0</p>
+<p><strong>Oxirgi yangilanish:</strong> 11.10.2026<br/><strong>Versiya:</strong> 1.1</p>
 `;

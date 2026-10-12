@@ -51,6 +51,15 @@ function buildAuth() {
     // put at the start of the header itself — and stops it from falling
     // back to one shared bucket for everyone when the header has two hops.
     advanced: {
+      // profiles.id (Better Auth's user table) is a Postgres uuid column.
+      // Better Auth's default ids are 32-char random strings, which Postgres
+      // rejects there — so every first sign-in (email code or Google) failed
+      // with a 500 while creating the user row. A UUID fits profiles.id and
+      // is just as valid in ba_accounts/ba_sessions/ba_verifications, whose
+      // id columns are text.
+      database: {
+        generateId: () => crypto.randomUUID(),
+      },
       ipAddress: {
         ipAddressHeaders: ["x-forwarded-for"],
         trustedProxies: ["127.0.0.1", "::1"],
@@ -101,12 +110,10 @@ ${url}
       // profiles.username is NOT NULL + UNIQUE and Better Auth never
       // writes it — without telling Better Auth it exists, its Drizzle
       // schema check refuses to run at all (SCHEMA_MISMATCH), on every
-      // request, not just sign-up/sign-in. Real registration (email/
-      // password sign-up, first Google sign-in) still goes through
-      // Supabase, not Better Auth, so this is only a placeholder that
-      // keeps an accidental Better Auth-driven insert from crashing on
-      // the constraint — replace with real username assignment before
-      // Better Auth itself ever creates a profiles row.
+      // request, not just sign-up/sign-in. New accounts (first email-code
+      // or Google sign-in) are created by Better Auth with this placeholder
+      // username, and nothing changes it afterwards yet — the old Supabase
+      // trigger derived it from the email instead.
       additionalFields: {
         username: {
           type: "string",

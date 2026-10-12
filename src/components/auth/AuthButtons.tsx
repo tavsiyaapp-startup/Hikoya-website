@@ -80,11 +80,20 @@ export function EmailForm({ next = "/" }: { next?: string; mode?: "login" | "reg
     const { error } = await authClient.signIn.emailOtp({ email, otp });
     setPending(false);
     if (error) {
-      setError(t.auth.emailOtpError);
+      setError((error.status ?? 0) >= 500 ? t.auth.serverError : t.auth.emailOtpError);
       return;
     }
     router.push(next);
     router.refresh();
+  }
+
+  async function handleResendOtp() {
+    setPending(true);
+    setError(null);
+    setOtp("");
+    const { error } = await authClient.emailOtp.sendVerificationOtp({ email, type: "sign-in" });
+    setPending(false);
+    setError(error ? t.auth.emailError : t.auth.emailOtpResent);
   }
 
   if (step === "otp") {
@@ -110,6 +119,14 @@ export function EmailForm({ next = "/" }: { next?: string; mode?: "login" | "reg
           </Button>
         </div>
         {error && <p className="text-[12.5px] text-danger">{error}</p>}
+        <button
+          type="button"
+          onClick={handleResendOtp}
+          disabled={pending}
+          className="self-start cursor-pointer text-[12.5px] font-bold text-primary-800 hover:underline disabled:opacity-50"
+        >
+          {t.auth.emailOtpResend}
+        </button>
       </form>
     );
   }

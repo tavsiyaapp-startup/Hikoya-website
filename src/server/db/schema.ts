@@ -89,7 +89,10 @@ export const achievements = pgTable("achievements", {
 ]);
 
 export const profiles = pgTable("profiles", {
-  id: uuid("id").notNull().primaryKey().references(() => authUsers.id, { onDelete: "cascade" }),
+  // Same ids as the old Supabase auth.users rows, but no longer a foreign key
+  // to them — Better Auth creates profiles rows directly (the constraint is
+  // dropped on the live database).
+  id: uuid("id").notNull().primaryKey(),
   username: text("username").notNull(),
   display_name: text("display_name").notNull(),
   avatar_url: text("avatar_url"),
@@ -178,6 +181,8 @@ export const stories = pgTable("stories", {
   index("stories_deleted_at_idx").on(table.deleted_at).where(sql`(deleted_at IS NOT NULL)`),
   index("stories_genres_idx").using("gin", table.genres),
   index("stories_status_idx").on(table.status).where(sql`(status = 'published'::public.story_status)`),
+  index("stories_public_published_idx").on(table.published_at.desc().nullsLast(), table.id.desc()).where(sql`((status = 'published'::public.story_status) AND (visibility = 'public'::public.story_visibility))`),
+  index("stories_public_likes_idx").on(table.like_count.desc(), table.id.desc()).where(sql`((status = 'published'::public.story_status) AND (visibility = 'public'::public.story_visibility))`),
 ]);
 
 export const bookmarks = pgTable("bookmarks", {
@@ -187,6 +192,7 @@ export const bookmarks = pgTable("bookmarks", {
   created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 }, (table) => [
   unique("bookmarks_user_id_story_id_key").on(table.user_id, table.story_id),
+  index("bookmarks_story_id_idx").on(table.story_id),
 ]);
 
 export const chapters = pgTable("chapters", {
@@ -207,6 +213,7 @@ export const chapters = pgTable("chapters", {
 }, (table) => [
   unique("chapters_story_id_order_index_key").on(table.story_id, table.order_index),
   index("chapters_story_id_idx").on(table.story_id),
+  index("chapters_published_idx").on(table.published_at.desc()).where(sql`(status = 'published'::public.chapter_status)`),
 ]);
 
 export const chapterReads = pgTable("chapter_reads", {
@@ -217,6 +224,7 @@ export const chapterReads = pgTable("chapter_reads", {
 }, (table) => [
   primaryKey({ columns: [table.user_id, table.chapter_id] }),
   index("chapter_reads_user_story_idx").on(table.user_id, table.story_id),
+  index("chapter_reads_chapter_id_idx").on(table.chapter_id),
 ]);
 
 export const collections = pgTable("collections", {
@@ -238,6 +246,7 @@ export const collectionItems = pgTable("collection_items", {
   position: integer("position").default(0).notNull(),
 }, (table) => [
   primaryKey({ columns: [table.collection_id, table.story_id] }),
+  index("collection_items_story_id_idx").on(table.story_id),
 ]);
 
 export const comments = pgTable("comments", {
@@ -255,6 +264,8 @@ export const comments = pgTable("comments", {
 }, (table) => [
   index("comments_chapter_id_idx").on(table.chapter_id),
   index("comments_story_id_idx").on(table.story_id),
+  index("comments_parent_id_idx").on(table.parent_id),
+  index("comments_user_id_idx").on(table.user_id),
 ]);
 
 export const customLanguages = pgTable("custom_languages", {
@@ -278,6 +289,7 @@ export const follows = pgTable("follows", {
   created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 }, (table) => [
   unique("follows_follower_id_author_id_key").on(table.follower_id, table.author_id),
+  index("follows_author_id_idx").on(table.author_id),
 ]);
 
 export const heroSlides = pgTable("hero_slides", {
@@ -302,6 +314,7 @@ export const likes = pgTable("likes", {
   created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 }, (table) => [
   unique("likes_user_id_target_type_target_id_key").on(table.user_id, table.target_type, table.target_id),
+  index("likes_target_idx").on(table.target_type, table.target_id),
 ]);
 
 export const notifications = pgTable("notifications", {
@@ -317,6 +330,7 @@ export const notifications = pgTable("notifications", {
   created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 }, (table) => [
   index("notifications_user_id_idx").on(table.user_id, table.created_at.desc()),
+  index("notifications_unread_idx").on(table.user_id).where(sql`(is_read = false)`),
 ]);
 
 export const platformSettings = pgTable("platform_settings", {
@@ -335,6 +349,7 @@ export const readingProgress = pgTable("reading_progress", {
   updated_at: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 }, (table) => [
   primaryKey({ columns: [table.user_id, table.story_id] }),
+  index("reading_progress_story_id_idx").on(table.story_id),
 ]);
 
 export const readingStatuses = pgTable("reading_statuses", {
@@ -345,6 +360,7 @@ export const readingStatuses = pgTable("reading_statuses", {
 }, (table) => [
   primaryKey({ columns: [table.user_id, table.story_id] }),
   index("reading_statuses_user_status_idx").on(table.user_id, table.status),
+  index("reading_statuses_story_id_idx").on(table.story_id),
 ]);
 
 export const requests = pgTable("requests", {
@@ -359,6 +375,7 @@ export const requests = pgTable("requests", {
   created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 }, (table) => [
   index("requests_target_author_id_idx").on(table.target_author_id),
+  index("requests_from_user_id_idx").on(table.from_user_id),
 ]);
 
 export const requestResponses = pgTable("request_responses", {
@@ -371,6 +388,7 @@ export const requestResponses = pgTable("request_responses", {
   created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 }, (table) => [
   index("request_responses_request_id_idx").on(table.request_id),
+  index("request_responses_story_id_idx").on(table.story_id),
 ]);
 
 export const savedCollections = pgTable("saved_collections", {
@@ -379,6 +397,7 @@ export const savedCollections = pgTable("saved_collections", {
   created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 }, (table) => [
   primaryKey({ columns: [table.user_id, table.collection_id] }),
+  index("saved_collections_collection_id_idx").on(table.collection_id),
 ]);
 
 export const tags = pgTable("tags", {
@@ -395,6 +414,7 @@ export const storyTags = pgTable("story_tags", {
   tag_id: uuid("tag_id").notNull().references(() => tags.id, { onDelete: "cascade" }),
 }, (table) => [
   primaryKey({ columns: [table.story_id, table.tag_id] }),
+  index("story_tags_tag_id_idx").on(table.tag_id),
 ]);
 
 export const telegramSupportPendingMessages = pgTable("telegram_support_pending_messages", {

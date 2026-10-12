@@ -17,12 +17,10 @@ import { sendMail } from "@/server/auth/mailer";
 // email_verified, updated_at) and the ba_accounts/ba_sessions/
 // ba_verifications tables Better Auth owns outright.
 //
-// profiles.id currently has a foreign key to auth.users.id, left over from
-// when Supabase Auth created that row first. Better Auth inserts into
-// profiles directly for a new sign-up, with no auth.users row to match —
-// that FK must be dropped (after the one-time data migration out of
-// auth.users/auth.identities) or every new registration fails. Not done
-// yet; see D:\QIZLAB\backups\auth_migration.sql.
+// profiles.id used to be a foreign key to Supabase's auth.users.id. Better
+// Auth inserts into profiles directly for a new sign-up, with no auth.users
+// row to match, so that constraint had to go — it is dropped on the live
+// database (checked 12.10.2026: profiles has no foreign keys).
 //
 // Table mapping uses the schema-key method from Better Auth's Drizzle
 // adapter docs (schema: { ...schema, user: schema.profiles }) — the only

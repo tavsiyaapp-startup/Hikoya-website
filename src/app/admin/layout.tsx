@@ -5,6 +5,7 @@ import { getStaffSession } from "@/server/auth/staff";
 import { getServerLocale } from "@/lib/i18n/locale-server";
 import { getDictionary } from "@/lib/i18n";
 import { getUnreadAdminChatsCount } from "@/lib/queries/chat";
+import { getOpenReportsCount } from "@/lib/queries/admin";
 import { ROUTES } from "@/lib/constants";
 import { ShieldIcon, UserIcon, CollectionsIcon, BoardIcon, HomeIcon, LibraryIcon, SparkleIcon, ImageIcon, ClockIcon, MessageIcon, CommentsIcon, BellIcon } from "@/components/ui/icons";
 import { AdminNavLink } from "./AdminNavLink";
@@ -20,7 +21,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   const locale = await getServerLocale();
   const t = getDictionary(locale);
-  const unreadChats = await getUnreadAdminChatsCount();
+  const [unreadChats, openReports] = await Promise.all([getUnreadAdminChatsCount(), getOpenReportsCount()]);
 
   const nav = [
     { href: ROUTES.admin, icon: HomeIcon, label: t.admin.dashboard },
@@ -29,6 +30,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     { href: `${ROUTES.admin}/activity`, icon: ClockIcon, label: t.admin.recentActivity },
     { href: ROUTES.adminChats(), icon: MessageIcon, label: t.admin.chats, badge: unreadChats },
     { href: ROUTES.adminComments, icon: CommentsIcon, label: t.admin.comments },
+    { href: ROUTES.adminReports, icon: ShieldIcon, label: t.admin.reports, badge: openReports },
     { href: `${ROUTES.admin}/featured`, icon: SparkleIcon, label: t.admin.featured },
     { href: `${ROUTES.admin}/banner`, icon: ImageIcon, label: t.admin.banner },
     { href: `${ROUTES.admin}/announcements`, icon: BellIcon, label: t.admin.announcements },

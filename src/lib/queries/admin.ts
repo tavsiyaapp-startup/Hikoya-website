@@ -3,6 +3,7 @@ import { logQueryError } from "@/lib/queries/query-errors";
 import { and, asc, count, desc, eq, gte, ilike, inArray, isNull, isNotNull, lt, or, sql } from "drizzle-orm";
 import { getDb } from "@/server/db/client";
 import {
+  commentReports,
   achievements,
   chapters,
   collectionItems,
@@ -251,6 +252,18 @@ export async function getActivityCounts(range?: { from?: string; to?: string }):
   } catch (err) {
     logQueryError("getActivityCounts", err);
     return { newUsers: 0, publishedChapters: 0, newComments: 0 };
+  }
+}
+
+// Badge on the admin menu's "Жалобы" item.
+export async function getOpenReportsCount(): Promise<number> {
+  try {
+    const db = getDb();
+    const [{ total }] = await db.select({ total: count() }).from(commentReports).where(eq(commentReports.status, "open"));
+    return total;
+  } catch (err) {
+    logQueryError("getOpenReportsCount", err);
+    return 0;
   }
 }
 

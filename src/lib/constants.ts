@@ -11,6 +11,7 @@ export const ROUTES = {
   adminLogin: "/admin-login",
   adminChats: (userId?: string) => (userId ? `/admin/chats?selected=${userId}` : "/admin/chats"),
   adminComments: "/admin/comments",
+  adminReports: "/admin/reports",
   adminUser: (id: string) => `/admin/users/${id}`,
   adminStory: (id: string) => `/admin/stories/${id}`,
   adminStoryDownload: (id: string) => `/api/admin/stories/${id}/download`,

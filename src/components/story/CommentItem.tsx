@@ -8,6 +8,7 @@ import { useLocale } from "@/lib/i18n/LocaleProvider";
 import { Avatar } from "@/components/ui/Avatar";
 import { HeartIcon, EyeIcon, EyeOffIcon } from "@/components/ui/icons";
 import { CommentForm } from "@/components/story/CommentForm";
+import { ReportCommentButton } from "@/components/story/ReportCommentButton";
 import type { CommentRow } from "@/lib/queries/social";
 
 export function CommentItem({
@@ -21,6 +22,7 @@ export function CommentItem({
   likedReplyIds,
   isReply,
   blocked,
+  viewerId,
 }: {
   comment: CommentRow;
   replies?: CommentRow[];
@@ -32,6 +34,8 @@ export function CommentItem({
   likedReplyIds?: Set<string>;
   isReply?: boolean;
   blocked?: boolean;
+  // Signed-in viewer's id — the report button shows only on other people's comments.
+  viewerId?: string | null;
 }) {
   const { t } = useLocale();
   const [liked, setLiked] = useState(likedByMe);
@@ -97,7 +101,7 @@ export function CommentItem({
               )}
             </div>
           )}
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center gap-4">
             <button
               type="button"
               onClick={handleLike}
@@ -118,6 +122,7 @@ export function CommentItem({
                 {t.manage.reply}
               </button>
             )}
+            {viewerId && viewerId !== comment.user_id && <ReportCommentButton commentId={comment.id} />}
           </div>
         </div>
       </div>
@@ -141,6 +146,7 @@ export function CommentItem({
               likedByMe={likedReplyIds?.has(r.id) ?? false}
               isReply
               blocked={blocked}
+              viewerId={viewerId}
             />
           ))}
         </div>

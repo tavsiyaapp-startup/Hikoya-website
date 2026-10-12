@@ -196,6 +196,7 @@ export default async function ReaderPage({
                   likedByMe={likedCommentIds.has(c.id)}
                   likedReplyIds={likedCommentIds}
                   blocked={user?.profile?.status === "blocked"}
+                  viewerId={user?.id ?? null}
                 />
               ))}
             </div>

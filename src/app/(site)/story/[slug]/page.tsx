@@ -29,6 +29,7 @@ import { LikeBookmarkRow, FollowButton, ReadingStatusSelect } from "@/components
 import { ImageZoom } from "@/components/story/ImageZoom";
 import { CommentGuidelines } from "@/components/story/CommentGuidelines";
 import { CommentForm } from "@/components/story/CommentForm";
+import { ReportCommentButton } from "@/components/story/ReportCommentButton";
 import { LockIcon } from "@/components/ui/icons";
 import type { ReadingStatus } from "@/types/database";
 import { liveImageUrl } from "@/lib/images";
@@ -273,11 +274,11 @@ export default async function StoryPage({
             {storyComments.length > 0 ? (
               storyComments.map((c) => (
                 <div key={c.id} className="flex flex-col gap-2.5">
-                  <StoryCommentCard comment={c} slug={slug} locale={locale} t={t} />
+                  <StoryCommentCard comment={c} slug={slug} locale={locale} t={t} viewerId={user?.id ?? null} />
                   {c.replies.length > 0 && (
                     <div className="ml-10.5 flex flex-col gap-2.5">
                       {c.replies.map((r) => (
-                        <StoryCommentCard key={r.id} comment={r} slug={slug} locale={locale} t={t} isReply />
+                        <StoryCommentCard key={r.id} comment={r} slug={slug} locale={locale} t={t} isReply viewerId={user?.id ?? null} />
                       ))}
                     </div>
                   )}
@@ -318,12 +319,14 @@ function StoryCommentCard({
   locale,
   t,
   isReply,
+  viewerId,
 }: {
   comment: StoryCommentRow;
   slug: string;
   locale: "ru" | "uz";
   t: Dictionary;
   isReply?: boolean;
+  viewerId?: string | null;
 }) {
   const className = `flex gap-3.5 rounded-[12px] border border-border p-4.5 ${isReply ? "bg-surface" : "bg-card"}`;
   const content = (
@@ -342,6 +345,11 @@ function StoryCommentCard({
           )}
         </div>
         <p className="text-[14.5px] leading-relaxed text-ink-soft">{comment.text}</p>
+        {!comment.chapter && viewerId && viewerId !== comment.user_id && (
+          <div className="mt-2">
+            <ReportCommentButton commentId={comment.id} />
+          </div>
+        )}
       </div>
     </>
   );

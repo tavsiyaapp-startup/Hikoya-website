@@ -72,7 +72,10 @@ export async function getAdminChatsList(): Promise<AdminChatListItem[]> {
       })
       .from(adminChats)
       .innerJoin(profiles, eq(adminChats.user_id, profiles.id))
-      .orderBy(desc(adminChats.last_message_at));
+      .orderBy(desc(adminChats.last_message_at))
+      // Newest 300 threads — the list was unbounded and grows with every
+      // user who ever wrote to support.
+      .limit(300);
     return rows.map((r) => ({ ...toSummary(r.chat), user: r.user }));
   } catch (err) {
     logQueryError("getAdminChatsList", err);

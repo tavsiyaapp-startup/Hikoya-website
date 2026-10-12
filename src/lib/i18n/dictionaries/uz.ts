@@ -461,6 +461,7 @@ const uz: typeof ru = {
   },
   admin: {
     signOut: "Chiqish",
+    linkNotAllowed: "Saqlanmadi: havola Hikoya sahifasiga (masalan /search) yoki https orqali hikoya.org, t.me, instagram.com ga olib borishi kerak.",
     actionRefused: "Amal bajarilmadi: bu foydalanuvchi uchun huquqingiz yetarli emas.",
     dashboard: "Boshqaruv paneli",
     users: "Foydalanuvchilar",

@@ -19,10 +19,10 @@ export default async function AdminActivityPage({
   const { from, to } = await searchParams;
   const locale = await getServerLocale();
   const t = getDictionary(locale);
-  // `to` is a plain date (yyyy-mm-dd) from the <input type="date">, so lte
-  // would otherwise cut off at that day's midnight — extend it through the
-  // end of the day so the selected end date is actually included.
-  const range = { from, to: to ? `${to}T23:59:59.999` : undefined };
+  // `from`/`to` are plain dates (yyyy-mm-dd) from <input type="date">; the
+  // queries read them as whole days in Tashkent time, `to` inclusive (see
+  // rangeStart/rangeEnd in src/lib/queries/admin.ts).
+  const range = { from, to };
   const hasRange = Boolean(from || to);
   const [activity, counts] = await Promise.all([
     getRecentActivity(MAX_ITEMS, range),

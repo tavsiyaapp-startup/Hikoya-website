@@ -49,10 +49,16 @@ export function AnnouncementForm({ announcement, onDone }: { announcement?: Anno
     }
     startTransition(async () => {
       if (announcement) {
-        await updateAnnouncement(announcement.id, formData);
+        if (!(await updateAnnouncement(announcement.id, formData))) {
+          setError(t.admin.linkNotAllowed);
+          return;
+        }
         onDone?.();
       } else {
-        await createAnnouncement(formData);
+        if (!(await createAnnouncement(formData))) {
+          setError(t.admin.linkNotAllowed);
+          return;
+        }
         setImageUrl(null);
         setError(null);
         setFormKey((k) => k + 1);

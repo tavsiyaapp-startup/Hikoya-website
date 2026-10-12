@@ -86,7 +86,10 @@ export function HeroSlideForm({ slide, onDone }: { slide?: HeroSlide; onDone?: (
     }
     startTransition(async () => {
       if (slide) {
-        await updateHeroSlide(slide.id, formData);
+        if (!(await updateHeroSlide(slide.id, formData))) {
+          setError(t.admin.linkNotAllowed);
+          return;
+        }
         if (slide.image_url && imageUrl !== slide.image_url) {
           await deleteStaffImage("hero-slides", slide.image_url);
         }
@@ -95,7 +98,10 @@ export function HeroSlideForm({ slide, onDone }: { slide?: HeroSlide; onDone?: (
         }
         onDone?.();
       } else {
-        await createHeroSlide(formData);
+        if (!(await createHeroSlide(formData))) {
+          setError(t.admin.linkNotAllowed);
+          return;
+        }
         setImageUrl(null);
         setImageUrlMobile(null);
         setError(null);

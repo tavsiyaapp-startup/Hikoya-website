@@ -89,6 +89,8 @@ export async function addChapter(db: DbOrTx, viewer: Viewer | null, storyId: str
   });
 }
 
+// Returns the chapter's status so the caller can tell moderators when an
+// already-approved chapter was changed.
 export async function updateChapter(db: DbOrTx, viewer: Viewer | null, chapterId: string, input: ChapterInput) {
   const { chapter } = await requireEditableChapter(db, viewer, chapterId);
   const title = input.title.trim();
@@ -99,6 +101,7 @@ export async function updateChapter(db: DbOrTx, viewer: Viewer | null, chapterId
     .update(chapters)
     .set({ title, content, word_count: wordCount(content), updated_at: new Date() })
     .where(eq(chapters.id, chapter.id));
+  return { status: chapter.status };
 }
 
 // The reorder after a delete was previously a loop of one UPDATE per chapter

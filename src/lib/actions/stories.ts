@@ -11,7 +11,7 @@ import { loadViewer } from "@/server/data/viewer";
 import { getRequiresReview } from "@/server/data/settings";
 import * as storiesData from "@/server/data/stories";
 import * as chaptersData from "@/server/data/chapters";
-import { notifyPendingReview } from "@/lib/telegram";
+import { notifyApprovedChapterEdited, notifyPendingReview } from "@/lib/telegram";
 import { uploadUrlPrefix } from "@/server/storage/local";
 import { ROUTES } from "@/lib/constants";
 import type { AgeRating, StoryProgressStatus, StoryVisibility } from "@/types/database";
@@ -162,7 +162,26 @@ export async function updateChapter(chapterId: string, storyId: string, storySlu
   const content = String(formData.get("content") ?? "").trim();
   if (!title || !content) return;
 
-  await chaptersData.updateChapter(db, viewer, chapterId, { title, content });
+  const updated = await chaptersData.updateChapter(db, viewer, chapterId, { title, content });
+
+  // Staff edits don't need a second look; an author's edit of an approved
+  // chapter does, when the site pre-moderates content.
+  if (updated.status === "published" && viewer.role !== "admin" && viewer.role !== "moderator") {
+    try {
+      if (await getRequiresReview(db)) {
+        const [storyRow] = await db.select({ title: stories.title }).from(stories).where(eq(stories.id, storyId)).limit(1);
+        await notifyApprovedChapterEdited({
+          authorName: await getAuthorDisplayName(db, viewer.id),
+          storyTitle: storyRow?.title ?? "",
+          chapterTitle: title,
+          storyId,
+          chapterId,
+        });
+      }
+    } catch (err) {
+      console.error("[stories] edited-chapter notification failed", chapterId, err);
+    }
+  }
 
   updateTag("stories");
   revalidatePath(ROUTES.manage(storySlug));

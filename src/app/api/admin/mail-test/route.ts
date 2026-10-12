@@ -4,6 +4,7 @@ import { getStaffSession } from "@/server/auth/staff";
 import { getDb } from "@/server/db/client";
 import { profiles } from "@/server/db/schema";
 import { sendMail, verifySmtp } from "@/server/auth/mailer";
+import { takeRateLimit } from "@/server/rate-limit";
 
 // Staff-only mail diagnostics: open /api/admin/mail-test?to=someone@example.com
 // while signed in to the admin panel. Better Auth's OTP/reset endpoints always
@@ -12,8 +13,14 @@ import { sendMail, verifySmtp } from "@/server/auth/mailer";
 // what actually happens: whether the address belongs to an account, whether
 // the SMTP login works, and what the mail server answered.
 export async function GET(request: Request) {
+  // Admins only, and a few runs per hour: it reveals whether an email has an
+  // account and sends real mail, so a moderator account (or a stolen one)
+  // shouldn't be able to use it to probe addresses or send mail in bulk.
   const result = await getStaffSession();
-  if (result.status !== "staff") return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  if (result.status !== "staff" || !result.staff.isAdmin) return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  if (!takeRateLimit(`mail-test:${result.staff.id}`, 5, 60 * 60 * 1000)) {
+    return NextResponse.json({ error: "too many requests, try again later" }, { status: 429 });
+  }
 
   const to = new URL(request.url).searchParams.get("to")?.trim().toLowerCase();
   if (!to) return NextResponse.json({ error: "add ?to=email@example.com" }, { status: 400 });
@@ -31,6 +38,12 @@ export async function GET(request: Request) {
     accountNote: account
       ? `аккаунт @${account.username} — коды входа/сброса на этот адрес отправляются`
       : "аккаунта с таким email нет — сайт НЕ отправляет на него коды сброса пароля",
+    // What nginx passes on about the caller — used to confirm the client-IP
+    // setup in src/server/auth/config.ts (advanced.ipAddress).
+    forwarded: {
+      xForwardedFor: request.headers.get("x-forwarded-for"),
+      xRealIp: request.headers.get("x-real-ip"),
+    },
     smtp: {
       host: process.env.SMTP_HOST ?? null,
       port: process.env.SMTP_PORT ?? "465 (по умолчанию)",

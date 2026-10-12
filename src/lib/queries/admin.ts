@@ -1,6 +1,6 @@
 import "server-only";
 import { logQueryError } from "@/lib/queries/query-errors";
-import { and, asc, count, desc, eq, gte, ilike, inArray, isNull, isNotNull, lte, or, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, gte, ilike, inArray, isNull, isNotNull, lt, or, sql } from "drizzle-orm";
 import { getDb } from "@/server/db/client";
 import {
   achievements,
@@ -22,6 +22,23 @@ import type { Achievement, Chapter, Story, StoryTopTier, HeroSlide, Announcement
 
 // Search text is matched literally — % and _ typed into an admin search box
 // used to act as wildcards (Postgres LIKE's default escape is backslash).
+// The admin date filters send plain "YYYY-MM-DD" days. Read as a Date that
+// is midnight UTC, so "to" used to cut off the whole last day of the range
+// (and both edges were shifted by Tashkent's +5h). Days are taken in
+// Tashkent time, and "to" includes that entire day.
+const SITE_UTC_OFFSET = "+05:00";
+
+function rangeStart(day: string): Date {
+  return /^\d{4}-\d{2}-\d{2}$/.test(day) ? new Date(`${day}T00:00:00${SITE_UTC_OFFSET}`) : new Date(day);
+}
+
+function rangeEnd(day: string): Date {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return new Date(day);
+  const end = new Date(`${day}T00:00:00${SITE_UTC_OFFSET}`);
+  end.setUTCDate(end.getUTCDate() + 1);
+  return end;
+}
+
 function escapeLike(value: string): string {
   return value.replace(/[\\%_]/g, "\\$&");
 }
@@ -138,16 +155,16 @@ export async function getRecentActivity(
     const db = getDb();
 
     const storyConds = [isNotNull(stories.published_at)];
-    if (range?.from) storyConds.push(gte(stories.published_at, new Date(range.from)));
-    if (range?.to) storyConds.push(lte(stories.published_at, new Date(range.to)));
+    if (range?.from) storyConds.push(gte(stories.published_at, rangeStart(range.from)));
+    if (range?.to) storyConds.push(lt(stories.published_at, rangeEnd(range.to)));
 
     const commentConds = [];
-    if (range?.from) commentConds.push(gte(comments.created_at, new Date(range.from)));
-    if (range?.to) commentConds.push(lte(comments.created_at, new Date(range.to)));
+    if (range?.from) commentConds.push(gte(comments.created_at, rangeStart(range.from)));
+    if (range?.to) commentConds.push(lt(comments.created_at, rangeEnd(range.to)));
 
     const userConds = [];
-    if (range?.from) userConds.push(gte(profiles.created_at, new Date(range.from)));
-    if (range?.to) userConds.push(lte(profiles.created_at, new Date(range.to)));
+    if (range?.from) userConds.push(gte(profiles.created_at, rangeStart(range.from)));
+    if (range?.to) userConds.push(lt(profiles.created_at, rangeEnd(range.to)));
 
     const [storiesRows, commentsRows, usersRows] = await Promise.all([
       db
@@ -213,16 +230,16 @@ export async function getActivityCounts(range?: { from?: string; to?: string }):
     const db = getDb();
 
     const userConds = [];
-    if (range?.from) userConds.push(gte(profiles.created_at, new Date(range.from)));
-    if (range?.to) userConds.push(lte(profiles.created_at, new Date(range.to)));
+    if (range?.from) userConds.push(gte(profiles.created_at, rangeStart(range.from)));
+    if (range?.to) userConds.push(lt(profiles.created_at, rangeEnd(range.to)));
 
     const chapterConds = [isNotNull(chapters.published_at)];
-    if (range?.from) chapterConds.push(gte(chapters.published_at, new Date(range.from)));
-    if (range?.to) chapterConds.push(lte(chapters.published_at, new Date(range.to)));
+    if (range?.from) chapterConds.push(gte(chapters.published_at, rangeStart(range.from)));
+    if (range?.to) chapterConds.push(lt(chapters.published_at, rangeEnd(range.to)));
 
     const commentConds = [];
-    if (range?.from) commentConds.push(gte(comments.created_at, new Date(range.from)));
-    if (range?.to) commentConds.push(lte(comments.created_at, new Date(range.to)));
+    if (range?.from) commentConds.push(gte(comments.created_at, rangeStart(range.from)));
+    if (range?.to) commentConds.push(lt(comments.created_at, rangeEnd(range.to)));
 
     const [[{ newUsers }], [{ publishedChapters }], [{ newComments }]] = await Promise.all([
       db.select({ newUsers: count() }).from(profiles).where(userConds.length ? and(...userConds) : undefined),
@@ -283,12 +300,11 @@ export async function getAuthorStoryCounts(userIds: string[]): Promise<Record<st
   try {
     const db = getDb();
     const rows = await db
-      .select({ author_id: stories.author_id })
+      .select({ author_id: stories.author_id, total: count() })
       .from(stories)
-      .where(and(inArray(stories.author_id, userIds), isNull(stories.deleted_at)));
-    const counts: Record<string, number> = {};
-    for (const row of rows) counts[row.author_id] = (counts[row.author_id] ?? 0) + 1;
-    return counts;
+      .where(and(inArray(stories.author_id, userIds), isNull(stories.deleted_at)))
+      .groupBy(stories.author_id);
+    return Object.fromEntries(rows.map((r) => [r.author_id, r.total]));
   } catch (err) {
     logQueryError("getAuthorStoryCounts", err);
     return {};
@@ -299,10 +315,12 @@ export async function getAuthorFollowerCounts(userIds: string[]): Promise<Record
   if (userIds.length === 0) return {};
   try {
     const db = getDb();
-    const rows = await db.select({ author_id: follows.author_id }).from(follows).where(inArray(follows.author_id, userIds));
-    const counts: Record<string, number> = {};
-    for (const row of rows) counts[row.author_id] = (counts[row.author_id] ?? 0) + 1;
-    return counts;
+    const rows = await db
+      .select({ author_id: follows.author_id, total: count() })
+      .from(follows)
+      .where(inArray(follows.author_id, userIds))
+      .groupBy(follows.author_id);
+    return Object.fromEntries(rows.map((r) => [r.author_id, r.total]));
   } catch (err) {
     logQueryError("getAuthorFollowerCounts", err);
     return {};
@@ -464,7 +482,7 @@ export async function getAllStoriesAdmin(
       if (title) pendingConds.push(ilike(stories.title, `%${escapeLike(title)}%`));
       const [pendingRows, pendingChapterRows] = await Promise.all([
         selectStory().where(and(...pendingConds)),
-        db.select({ story_id: chapters.story_id }).from(chapters).where(eq(chapters.status, "pending_review")),
+        db.selectDistinct({ story_id: chapters.story_id }).from(chapters).where(eq(chapters.status, "pending_review")),
       ]);
 
       const already = new Set(pendingRows.map((r) => r.story.id));
@@ -503,10 +521,12 @@ export async function getStoryChapterCounts(storyIds: string[]) {
   if (storyIds.length === 0) return {} as Record<string, number>;
   try {
     const db = getDb();
-    const rows = await db.select({ story_id: chapters.story_id }).from(chapters).where(inArray(chapters.story_id, storyIds));
-    const counts: Record<string, number> = {};
-    for (const row of rows) counts[row.story_id] = (counts[row.story_id] ?? 0) + 1;
-    return counts;
+    const rows = await db
+      .select({ story_id: chapters.story_id, total: count() })
+      .from(chapters)
+      .where(inArray(chapters.story_id, storyIds))
+      .groupBy(chapters.story_id);
+    return Object.fromEntries(rows.map((r) => [r.story_id, r.total])) as Record<string, number>;
   } catch (err) {
     logQueryError("getStoryChapterCounts", err);
     return {};
@@ -521,12 +541,11 @@ export async function getPendingChapterCounts(storyIds: string[]) {
   try {
     const db = getDb();
     const rows = await db
-      .select({ story_id: chapters.story_id })
+      .select({ story_id: chapters.story_id, total: count() })
       .from(chapters)
-      .where(and(eq(chapters.status, "pending_review"), inArray(chapters.story_id, storyIds)));
-    const counts: Record<string, number> = {};
-    for (const row of rows) counts[row.story_id] = (counts[row.story_id] ?? 0) + 1;
-    return counts;
+      .where(and(eq(chapters.status, "pending_review"), inArray(chapters.story_id, storyIds)))
+      .groupBy(chapters.story_id);
+    return Object.fromEntries(rows.map((r) => [r.story_id, r.total])) as Record<string, number>;
   } catch (err) {
     logQueryError("getPendingChapterCounts", err);
     return {};

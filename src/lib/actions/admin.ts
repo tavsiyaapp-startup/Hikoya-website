@@ -24,6 +24,7 @@ import { createNotification } from "@/lib/actions/create-notification";
 import { ROUTES } from "@/lib/constants";
 import { getStaffSession } from "@/server/auth/staff";
 import { canChangeUserStatus, canVerifyUser } from "@/server/authz/policy";
+import { uploadUrlPrefix } from "@/server/storage/local";
 
 // Identity comes from Better Auth (Phase 1 of the Supabase exit, see
 // src/server/auth/staff.ts). The writes below used to go through
@@ -328,6 +329,29 @@ export async function toggleFeaturedStory(storyId: string, tier: "day" | "week" 
   revalidatePath(ROUTES.search);
 }
 
+// Banner/announcement links are shown to every visitor of the home page, so
+// they're limited to this site's own pages and a short list of hosts the
+// site actually links out to — not any URL a (possibly compromised)
+// moderator account types in, which could send everyone to a phishing page.
+const ALLOWED_LINK_HOSTS = ["hikoya.org", "www.hikoya.org", "t.me", "telegram.me", "instagram.com", "www.instagram.com"];
+
+function isAllowedLink(url: string): boolean {
+  if (url.startsWith("/")) return !url.startsWith("//") && !url.startsWith("/\\") && !/[\u0000-\u001f]/.test(url);
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === "https:" && ALLOWED_LINK_HOSTS.includes(parsed.hostname);
+  } catch {
+    return false;
+  }
+}
+
+// Images must be files staff uploaded through uploadStaffImage, or the image
+// the row already has (older ones may still point at Supabase).
+function isAllowedStaffImage(url: string | null, bucket: "hero-slides" | "announcements", current: (string | null)[]): boolean {
+  if (!url || current.includes(url)) return true;
+  return url.startsWith(uploadUrlPrefix(bucket, "shared")) && !url.includes("..");
+}
+
 function readHeroSlideFields(formData: FormData) {
   const titleRu = String(formData.get("titleRu") ?? "").trim();
   const titleUz = String(formData.get("titleUz") ?? "").trim();
@@ -351,30 +375,49 @@ function readHeroSlideFields(formData: FormData) {
   };
 }
 
-export async function createHeroSlide(formData: FormData) {
+// Returns false when refused (nothing filled in, or a link/image that isn't
+// allowed) so the form can show an error instead of silently not saving.
+export async function createHeroSlide(formData: FormData): Promise<boolean> {
   await requireStaff();
   const db = getDb();
   const fields = readHeroSlideFields(formData);
-  if (!fields.image_url && !fields.title_ru && !fields.title_uz && !fields.body_ru && !fields.body_uz) return;
+  if (!fields.image_url && !fields.title_ru && !fields.title_uz && !fields.body_ru && !fields.body_uz) return false;
+  if (fields.cta_url && !isAllowedLink(fields.cta_url)) return false;
+  if (!isAllowedStaffImage(fields.image_url, "hero-slides", []) || !isAllowedStaffImage(fields.image_url_mobile, "hero-slides", [])) return false;
 
   await db.insert(heroSlides).values(fields);
 
   updateTag("hero-slides");
   revalidatePath(`${ROUTES.admin}/banner`);
   revalidatePath(ROUTES.home);
+  return true;
 }
 
-export async function updateHeroSlide(slideId: string, formData: FormData) {
+export async function updateHeroSlide(slideId: string, formData: FormData): Promise<boolean> {
   await requireStaff();
   const db = getDb();
   const fields = readHeroSlideFields(formData);
-  if (!fields.image_url && !fields.title_ru && !fields.title_uz && !fields.body_ru && !fields.body_uz) return;
+  if (!fields.image_url && !fields.title_ru && !fields.title_uz && !fields.body_ru && !fields.body_uz) return false;
+  if (fields.cta_url && !isAllowedLink(fields.cta_url)) return false;
+  const [current] = await db
+    .select({ image_url: heroSlides.image_url, image_url_mobile: heroSlides.image_url_mobile })
+    .from(heroSlides)
+    .where(eq(heroSlides.id, slideId))
+    .limit(1);
+  const currentImages = [current?.image_url ?? null, current?.image_url_mobile ?? null];
+  if (
+    !isAllowedStaffImage(fields.image_url, "hero-slides", currentImages) ||
+    !isAllowedStaffImage(fields.image_url_mobile, "hero-slides", currentImages)
+  ) {
+    return false;
+  }
 
   await db.update(heroSlides).set(fields).where(eq(heroSlides.id, slideId));
 
   updateTag("hero-slides");
   revalidatePath(`${ROUTES.admin}/banner`);
   revalidatePath(ROUTES.home);
+  return true;
 }
 
 export async function deleteHeroSlide(slideId: string) {
@@ -406,30 +449,41 @@ function readAnnouncementFields(formData: FormData) {
   };
 }
 
-export async function createAnnouncement(formData: FormData) {
+export async function createAnnouncement(formData: FormData): Promise<boolean> {
   await requireStaff();
   const db = getDb();
   const fields = readAnnouncementFields(formData);
-  if (!fields.image_url && !fields.text_ru && !fields.text_uz) return;
+  if (!fields.image_url && !fields.text_ru && !fields.text_uz) return false;
+  if (fields.link_url && !isAllowedLink(fields.link_url)) return false;
+  if (!isAllowedStaffImage(fields.image_url, "announcements", [])) return false;
 
   await db.insert(announcements).values(fields);
 
   updateTag("announcements");
   revalidatePath(`${ROUTES.admin}/announcements`);
   revalidatePath(ROUTES.home);
+  return true;
 }
 
-export async function updateAnnouncement(announcementId: string, formData: FormData) {
+export async function updateAnnouncement(announcementId: string, formData: FormData): Promise<boolean> {
   await requireStaff();
   const db = getDb();
   const fields = readAnnouncementFields(formData);
-  if (!fields.image_url && !fields.text_ru && !fields.text_uz) return;
+  if (!fields.image_url && !fields.text_ru && !fields.text_uz) return false;
+  if (fields.link_url && !isAllowedLink(fields.link_url)) return false;
+  const [current] = await db
+    .select({ image_url: announcements.image_url })
+    .from(announcements)
+    .where(eq(announcements.id, announcementId))
+    .limit(1);
+  if (!isAllowedStaffImage(fields.image_url, "announcements", [current?.image_url ?? null])) return false;
 
   await db.update(announcements).set(fields).where(eq(announcements.id, announcementId));
 
   updateTag("announcements");
   revalidatePath(`${ROUTES.admin}/announcements`);
   revalidatePath(ROUTES.home);
+  return true;
 }
 
 export async function deleteAnnouncement(announcementId: string) {
@@ -490,11 +544,15 @@ export async function updateStoryStatusAdmin(storyId: string, status: "draft" | 
   revalidatePath(`${ROUTES.admin}/stories`);
 }
 
+// Moderators may change the number of free guest chapters; switching
+// pre-moderation of stories/comments on or off is site policy and stays with
+// admins — a moderator's submitted values for those two are ignored.
 export async function updatePlatformSettings(formData: FormData) {
-  await requireStaff();
+  const staff = await requireStaff();
   const db = getDb();
 
   const guestFreeChapters = Number(formData.get("guestFreeChapters") ?? 1);
+  if (!Number.isInteger(guestFreeChapters) || guestFreeChapters < 0 || guestFreeChapters > 1000) return;
   const commentsRequireApproval = formData.get("commentsRequireApproval") === "on";
   const newStoryRequiresReview = formData.get("newStoryRequiresReview") === "on";
 
@@ -502,8 +560,9 @@ export async function updatePlatformSettings(formData: FormData) {
     .update(platformSettings)
     .set({
       guest_free_chapters: guestFreeChapters,
-      comments_require_approval: commentsRequireApproval,
-      new_story_requires_review: newStoryRequiresReview,
+      ...(staff.isAdmin
+        ? { comments_require_approval: commentsRequireApproval, new_story_requires_review: newStoryRequiresReview }
+        : {}),
     })
     .where(eq(platformSettings.id, 1));
 

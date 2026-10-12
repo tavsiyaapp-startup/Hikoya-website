@@ -46,6 +46,18 @@ function buildAuth() {
     // just this value. NEXT_PUBLIC_SITE_URL is already set to
     // https://hikoya.org in deploy-self-host.yml's production env.
     baseURL: process.env.NEXT_PUBLIC_SITE_URL ?? "https://hikoya.org",
+    // The app sits behind nginx on the same machine, which appends the real
+    // client address to X-Forwarded-For. Marking loopback as the trusted
+    // proxy makes Better Auth's sign-in rate limit read the address nginx
+    // added (rightmost untrusted hop) instead of a value the client could
+    // put at the start of the header itself — and stops it from falling
+    // back to one shared bucket for everyone when the header has two hops.
+    advanced: {
+      ipAddress: {
+        ipAddressHeaders: ["x-forwarded-for"],
+        trustedProxies: ["127.0.0.1", "::1"],
+      },
+    },
     database: drizzleAdapter(getDb(), {
       provider: "pg",
       schema: {
@@ -140,8 +152,9 @@ ${url}
       },
       // Avoids a database read on every request for an already-valid
       // session — see backend_reads.md's note on middleware running on
-      // every request.
-      cookieCache: { enabled: true, maxAge: 5 * 60 },
+      // every request. Kept short: until it expires, a signed-out or
+      // revoked session still passes in whatever browser holds the cookie.
+      cookieCache: { enabled: true, maxAge: 60 },
     },
     verification: {
       fields: {

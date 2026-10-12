@@ -80,10 +80,25 @@ export async function updateProfile(username: string, formData: FormData): Promi
 export async function setInitialPassword(password: string): Promise<{ ok: boolean }> {
   const session = await getAuth().api.getSession({ headers: await headers() });
   if (!session) return { ok: false };
+  // Same minimum the forms enforce (MIN_PASSWORD_LENGTH = 6), now also on
+  // the server; 128 caps the bcrypt input.
+  if (typeof password !== "string" || password.length < 6 || password.length > 128) return { ok: false };
 
   const db = getDb();
-  await setCredentialPassword(db, session.user.id, password);
-  await db.update(profiles).set({ has_password: true }).where(eq(profiles.id, session.user.id));
+  // Only for an account that has no password yet. Changing an existing one
+  // goes through the emailed-code reset instead — otherwise anyone holding a
+  // stolen session could replace the owner's password without knowing it.
+  const [profile] = await db
+    .select({ has_password: profiles.has_password })
+    .from(profiles)
+    .where(eq(profiles.id, session.user.id))
+    .limit(1);
+  if (!profile || profile.has_password) return { ok: false };
+
+  await db.transaction(async (tx) => {
+    await setCredentialPassword(tx, session.user.id, password);
+    await tx.update(profiles).set({ has_password: true }).where(eq(profiles.id, session.user.id));
+  });
 
   // Once a password exists, any other signed-in device is worth
   // re-verifying rather than trusting silently — sign out everywhere else,

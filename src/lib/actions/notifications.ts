@@ -25,7 +25,8 @@ export async function markNotificationRead(notificationId: string) {
       .update(notifications)
       .set({ is_read: true })
       .where(and(eq(notifications.id, notificationId), eq(notifications.user_id, userId)));
-  } catch {
+  } catch (err) {
+    console.error("[notifications] markNotificationRead failed", notificationId, err);
     return;
   }
   revalidatePath("/", "layout");

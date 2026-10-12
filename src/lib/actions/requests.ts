@@ -12,6 +12,9 @@ import { getStoryRecord } from "@/server/data/stories";
 import { canCloseRequest, canLinkStoryToRequest, isActive } from "@/server/authz/policy";
 import { ROUTES } from "@/lib/constants";
 
+const MAX_TITLE_LENGTH = 200;
+const MAX_TEXT_LENGTH = 5000;
+
 async function requireViewer() {
   const db = getDb();
   const session = await getAuth().api.getSession({ headers: await headers() });
@@ -26,7 +29,7 @@ export async function createRequest(formData: FormData) {
 
   const title = String(formData.get("title") ?? "").trim();
   const text = String(formData.get("text") ?? "").trim();
-  if (!title || !text) return;
+  if (!title || !text || title.length > MAX_TITLE_LENGTH || text.length > MAX_TEXT_LENGTH) return;
 
   await db.insert(requests).values({ from_user_id: viewer.id, title, text });
 
@@ -38,7 +41,7 @@ export async function respondToRequest(requestId: string, formData: FormData) {
   if (!isActive(viewer)) return;
 
   const text = String(formData.get("text") ?? "").trim();
-  if (!text) return;
+  if (!text || text.length > MAX_TEXT_LENGTH) return;
 
   const rawStoryId = String(formData.get("storyId") ?? "").trim();
   let storyId: string | null = null;

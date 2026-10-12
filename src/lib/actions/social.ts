@@ -6,12 +6,29 @@ import { and, eq } from "drizzle-orm";
 import { createNotification } from "@/lib/actions/create-notification";
 import { getAuth } from "@/server/auth/config";
 import { getDb } from "@/server/db/client";
-import { bookmarks, chapters, comments, follows, likes, stories } from "@/server/db/schema";
+import { bookmarks, chapters, comments, follows, likes } from "@/server/db/schema";
 import { loadViewer } from "@/server/data/viewer";
 import { getStoryRecord } from "@/server/data/stories";
-import { canCommentOnChapter, canCommentOnStory, canViewStory, isActive, type Viewer } from "@/server/authz/policy";
+import {
+  canCommentOnChapter,
+  canCommentOnStory,
+  canViewChapter,
+  canViewStory,
+  isActive,
+  type Viewer,
+} from "@/server/authz/policy";
 
-async function requireViewerId(): Promise<string | null> {
+// Toggle actions return the resulting state (true = now liked/bookmarked/
+// followed, false = now removed) or null when the action was refused
+// (signed out, blocked, story not visible...). The buttons update
+// optimistically and use this to settle on the real state — before, a
+// refused or failed toggle left the button showing "liked" while nothing
+// was saved.
+export type ToggleResult = boolean | null;
+
+export type PostCommentResult = { ok: true } | { error: "unauthorized" | "too_long" | "empty" | "not_allowed" };
+
+async function getSessionUserId(): Promise<string | null> {
   const session = await getAuth().api.getSession({ headers: await headers() });
   return session?.user.id ?? null;
 }
@@ -23,79 +40,89 @@ const MAX_COMMENT_LENGTH = 5000;
 // these (owner's rule; see src/server/authz/policy.ts isActive). Returns the
 // viewer only when signed in AND active.
 async function requireActiveViewer(): Promise<Viewer | null> {
-  const viewerId = await requireViewerId();
+  const viewerId = await getSessionUserId();
   if (!viewerId) return null;
   const viewer = await loadViewer(getDb(), viewerId);
   return viewer && isActive(viewer) ? viewer : null;
 }
 
-export async function toggleStoryLike(storyId: string, path: string) {
+async function requireViewer(): Promise<Viewer | null> {
+  const viewerId = await getSessionUserId();
+  if (!viewerId) return null;
+  return loadViewer(getDb(), viewerId);
+}
+
+export async function toggleStoryLike(storyId: string, path: string): Promise<ToggleResult> {
   const viewer = await requireActiveViewer();
-  if (!viewer) return;
-  const viewerId = viewer.id;
+  if (!viewer) return null;
 
   const db = getDb();
-  const storyRecord = await getStoryRecord(db, storyId);
-  if (!storyRecord || !canViewStory(viewer, storyRecord)) return;
-  const [existing] = await db
-    .select({ id: likes.id })
-    .from(likes)
-    .where(and(eq(likes.user_id, viewerId), eq(likes.target_type, "story"), eq(likes.target_id, storyId)))
-    .limit(1);
-
-  if (existing) {
-    await db.delete(likes).where(eq(likes.id, existing.id));
+  const removed = await db
+    .delete(likes)
+    .where(and(eq(likes.user_id, viewer.id), eq(likes.target_type, "story"), eq(likes.target_id, storyId)))
+    .returning({ id: likes.id });
+  if (removed.length > 0) {
     revalidatePath(path);
-    return;
+    return false;
   }
 
-  await db.insert(likes).values({ user_id: viewerId, target_type: "story", target_id: storyId });
+  const storyRecord = await getStoryRecord(db, storyId);
+  if (!storyRecord || !canViewStory(viewer, storyRecord)) return null;
 
-  const [story] = await db.select({ author_id: stories.author_id }).from(stories).where(eq(stories.id, storyId)).limit(1);
-  if (story && story.author_id !== viewerId) {
-    await createNotification({ userId: story.author_id, actorId: viewerId, type: "story_like", storyId });
-  }
-
+  // onConflictDoNothing: a double click (two requests racing past the delete
+  // above) no longer hits the unique constraint and fails with a 500.
+  const inserted = await db
+    .insert(likes)
+    .values({ user_id: viewer.id, target_type: "story", target_id: storyId })
+    .onConflictDoNothing()
+    .returning({ id: likes.id });
   revalidatePath(path);
+
+  if (inserted.length > 0 && storyRecord.author_id !== viewer.id) {
+    await createNotification({ userId: storyRecord.author_id, actorId: viewer.id, type: "story_like", storyId });
+  }
+  return true;
 }
 
-export async function toggleStoryBookmark(storyId: string, path: string) {
-  const viewerId = await requireViewerId();
-  if (!viewerId) return;
+// Bookmarks are private, so a blocked account may still use them — but only
+// on stories it can actually see (otherwise a crafted id would put a draft's
+// title/cover into the library list).
+export async function toggleStoryBookmark(storyId: string, path: string): Promise<ToggleResult> {
+  const viewer = await requireViewer();
+  if (!viewer) return null;
 
   const db = getDb();
-  const [existing] = await db
-    .select({ id: bookmarks.id })
-    .from(bookmarks)
-    .where(and(eq(bookmarks.user_id, viewerId), eq(bookmarks.story_id, storyId)))
-    .limit(1);
-
-  if (existing) {
-    await db.delete(bookmarks).where(eq(bookmarks.id, existing.id));
-  } else {
-    await db.insert(bookmarks).values({ user_id: viewerId, story_id: storyId });
+  const removed = await db
+    .delete(bookmarks)
+    .where(and(eq(bookmarks.user_id, viewer.id), eq(bookmarks.story_id, storyId)))
+    .returning({ id: bookmarks.id });
+  if (removed.length > 0) {
+    revalidatePath(path);
+    return false;
   }
+
+  const storyRecord = await getStoryRecord(db, storyId);
+  if (!storyRecord || !canViewStory(viewer, storyRecord)) return null;
+
+  await db.insert(bookmarks).values({ user_id: viewer.id, story_id: storyId }).onConflictDoNothing();
   revalidatePath(path);
+  return true;
 }
 
-export async function toggleFollowAuthor(authorId: string, path: string) {
+export async function toggleFollowAuthor(authorId: string, path: string): Promise<ToggleResult> {
   const viewer = await requireActiveViewer();
-  if (!viewer || viewer.id === authorId) return;
-  const viewerId = viewer.id;
+  if (!viewer || viewer.id === authorId) return null;
 
   const db = getDb();
-  const [existing] = await db
-    .select({ id: follows.id })
-    .from(follows)
-    .where(and(eq(follows.follower_id, viewerId), eq(follows.author_id, authorId)))
-    .limit(1);
-
-  if (existing) {
-    await db.delete(follows).where(eq(follows.id, existing.id));
-  } else {
-    await db.insert(follows).values({ follower_id: viewerId, author_id: authorId });
+  const removed = await db
+    .delete(follows)
+    .where(and(eq(follows.follower_id, viewer.id), eq(follows.author_id, authorId)))
+    .returning({ id: follows.id });
+  if (removed.length === 0) {
+    await db.insert(follows).values({ follower_id: viewer.id, author_id: authorId }).onConflictDoNothing();
   }
   revalidatePath(path);
+  return removed.length === 0;
 }
 
 // chapterId is null for a general comment posted from the story page's own
@@ -109,122 +136,135 @@ export async function postComment(
   path: string,
   parentId?: string,
   isSpoiler?: boolean
-) {
+): Promise<PostCommentResult> {
   const viewer = await requireActiveViewer();
+  if (!viewer) return { error: "unauthorized" };
   const trimmed = text.trim();
-  if (!viewer || !trimmed || trimmed.length > MAX_COMMENT_LENGTH) return;
-  const viewerId = viewer.id;
+  if (!trimmed) return { error: "empty" };
+  if (trimmed.length > MAX_COMMENT_LENGTH) return { error: "too_long" };
 
   const db = getDb();
   // Only on content the commenter can actually see, and the chapter/parent
   // must belong to this same story — otherwise a crafted call could comment
   // on drafts or attach a reply/notification to an unrelated thread.
   const storyRecord = await getStoryRecord(db, storyId);
-  if (!storyRecord) return;
+  if (!storyRecord) return { error: "not_allowed" };
   if (chapterId) {
     const [chapter] = await db
       .select({ id: chapters.id, story_id: chapters.story_id, status: chapters.status })
       .from(chapters)
       .where(eq(chapters.id, chapterId))
       .limit(1);
-    if (!chapter || !canCommentOnChapter(viewer, chapter, storyRecord)) return;
+    if (!chapter || !canCommentOnChapter(viewer, chapter, storyRecord)) return { error: "not_allowed" };
   } else if (!canCommentOnStory(viewer, storyRecord)) {
-    return;
+    return { error: "not_allowed" };
   }
+
+  let parentAuthorId: string | null = null;
   if (parentId) {
-    const [parentRow] = await db.select({ story_id: comments.story_id }).from(comments).where(eq(comments.id, parentId)).limit(1);
-    if (!parentRow || parentRow.story_id !== storyId) return;
+    const [parentRow] = await db
+      .select({ story_id: comments.story_id, user_id: comments.user_id, hidden_at: comments.hidden_at })
+      .from(comments)
+      .where(eq(comments.id, parentId))
+      .limit(1);
+    if (!parentRow || parentRow.story_id !== storyId || parentRow.hidden_at) return { error: "not_allowed" };
+    parentAuthorId = parentRow.user_id;
   }
+
   const [comment] = await db
     .insert(comments)
     .values({
       story_id: storyId,
       chapter_id: chapterId,
-      user_id: viewerId,
+      user_id: viewer.id,
       text: trimmed,
       parent_id: parentId ?? null,
       is_spoiler: Boolean(isSpoiler),
     })
     .returning({ id: comments.id });
-  if (!comment) {
-    console.error("postComment failed: insert returned no row");
-    return;
-  }
+  revalidatePath(path);
 
-  const [story] = await db.select({ id: stories.id, author_id: stories.author_id }).from(stories).where(eq(stories.id, storyId)).limit(1);
-
-  let parentAuthorId: string | null = null;
-  if (parentId) {
-    const [parent] = await db.select({ user_id: comments.user_id }).from(comments).where(eq(comments.id, parentId)).limit(1);
-    parentAuthorId = parent?.user_id ?? null;
-    if (parentAuthorId && parentAuthorId !== viewerId) {
-      await createNotification({
-        userId: parentAuthorId,
-        actorId: viewerId,
-        type: "comment_reply",
-        storyId: story?.id,
-        chapterId,
-        commentId: comment.id,
-      });
-    }
-  }
-
-  if (story && story.author_id !== viewerId && story.author_id !== parentAuthorId) {
+  if (parentAuthorId && parentAuthorId !== viewer.id) {
     await createNotification({
-      userId: story.author_id,
-      actorId: viewerId,
-      type: "new_comment",
-      storyId: story.id,
+      userId: parentAuthorId,
+      actorId: viewer.id,
+      type: "comment_reply",
+      storyId,
       chapterId,
       commentId: comment.id,
     });
   }
 
-  revalidatePath(path);
-}
-
-export async function toggleCommentLike(commentId: string, path: string) {
-  const viewer = await requireActiveViewer();
-  if (!viewer) return;
-  const viewerId = viewer.id;
-
-  const db = getDb();
-  const [existing] = await db
-    .select({ id: likes.id })
-    .from(likes)
-    .where(and(eq(likes.user_id, viewerId), eq(likes.target_type, "comment"), eq(likes.target_id, commentId)))
-    .limit(1);
-
-  if (existing) {
-    await db.delete(likes).where(eq(likes.id, existing.id));
-    revalidatePath(path);
-    return;
-  }
-
-  const [target] = await db.select({ id: comments.id, hidden_at: comments.hidden_at }).from(comments).where(eq(comments.id, commentId)).limit(1);
-  if (!target || target.hidden_at) return;
-
-  await db.insert(likes).values({ user_id: viewerId, target_type: "comment", target_id: commentId });
-
-  // comments.story_id is set directly on every comment (chapter-attached
-  // or not) — used here instead of going through chapters the way
-  // Supabase's nested select used to, which left storyId unset for a
-  // chapterless (general story-page) comment's likes.
-  const [row] = await db
-    .select({ user_id: comments.user_id, chapter_id: comments.chapter_id, story_id: comments.story_id })
-    .from(comments)
-    .where(eq(comments.id, commentId))
-    .limit(1);
-  if (row && row.user_id !== viewerId) {
+  if (storyRecord.author_id !== viewer.id && storyRecord.author_id !== parentAuthorId) {
     await createNotification({
-      userId: row.user_id,
-      actorId: viewerId,
-      type: "comment_like",
-      storyId: row.story_id,
-      chapterId: row.chapter_id,
-      commentId,
+      userId: storyRecord.author_id,
+      actorId: viewer.id,
+      type: "new_comment",
+      storyId,
+      chapterId,
+      commentId: comment.id,
     });
   }
 
+  return { ok: true };
+}
+
+export async function toggleCommentLike(commentId: string, path: string): Promise<ToggleResult> {
+  const viewer = await requireActiveViewer();
+  if (!viewer) return null;
+
+  const db = getDb();
+  const removed = await db
+    .delete(likes)
+    .where(and(eq(likes.user_id, viewer.id), eq(likes.target_type, "comment"), eq(likes.target_id, commentId)))
+    .returning({ id: likes.id });
+  if (removed.length > 0) {
+    revalidatePath(path);
+    return false;
+  }
+
+  const [target] = await db
+    .select({
+      user_id: comments.user_id,
+      chapter_id: comments.chapter_id,
+      story_id: comments.story_id,
+      hidden_at: comments.hidden_at,
+    })
+    .from(comments)
+    .where(eq(comments.id, commentId))
+    .limit(1);
+  if (!target || target.hidden_at) return null;
+
+  // The comment's story (and chapter, for a chapter comment) must be visible
+  // to the liker — otherwise comments on drafts/hidden stories could be liked
+  // and their authors notified.
+  const storyRecord = await getStoryRecord(db, target.story_id);
+  if (!storyRecord || !canViewStory(viewer, storyRecord)) return null;
+  if (target.chapter_id) {
+    const [chapter] = await db
+      .select({ id: chapters.id, story_id: chapters.story_id, status: chapters.status })
+      .from(chapters)
+      .where(eq(chapters.id, target.chapter_id))
+      .limit(1);
+    if (!chapter || !canViewChapter(viewer, chapter, storyRecord)) return null;
+  }
+
+  const inserted = await db
+    .insert(likes)
+    .values({ user_id: viewer.id, target_type: "comment", target_id: commentId })
+    .onConflictDoNothing()
+    .returning({ id: likes.id });
   revalidatePath(path);
+
+  if (inserted.length > 0 && target.user_id !== viewer.id) {
+    await createNotification({
+      userId: target.user_id,
+      actorId: viewer.id,
+      type: "comment_like",
+      storyId: target.story_id,
+      chapterId: target.chapter_id,
+      commentId,
+    });
+  }
+  return true;
 }

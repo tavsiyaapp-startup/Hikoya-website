@@ -1,5 +1,6 @@
 import "server-only";
-import { and, asc, count, desc, eq, inArray } from "drizzle-orm";
+import { logQueryError } from "@/lib/queries/query-errors";
+import { and, asc, count, desc, eq, inArray, isNull } from "drizzle-orm";
 import { getDb } from "@/server/db/client";
 import {
   bookmarks,
@@ -44,7 +45,8 @@ export async function getUserStoryState(userId: string | undefined, storyId: str
       readingStatus: status?.status ?? null,
       continueChapterId: progress?.chapter_id ?? null,
     };
-  } catch {
+  } catch (err) {
+    logQueryError("getUserStoryState", err);
     return { liked: false, bookmarked: false, readingStatus: null, continueChapterId: null };
   }
 }
@@ -63,7 +65,8 @@ export async function getReadChapterIds(userId: string | undefined, storyId: str
       .from(chapterReads)
       .where(and(eq(chapterReads.user_id, userId), eq(chapterReads.story_id, storyId)));
     return new Set(rows.map((r) => r.chapter_id));
-  } catch {
+  } catch (err) {
+    logQueryError("getReadChapterIds", err);
     return new Set();
   }
 }
@@ -78,7 +81,8 @@ export async function isFollowingAuthor(userId: string | undefined, authorId: st
       .where(and(eq(follows.follower_id, userId), eq(follows.author_id, authorId)))
       .limit(1);
     return Boolean(row);
-  } catch {
+  } catch (err) {
+    logQueryError("isFollowingAuthor", err);
     return false;
   }
 }
@@ -88,7 +92,8 @@ export async function getFollowerCount(authorId: string) {
     const db = getDb();
     const [row] = await db.select({ total: count() }).from(follows).where(eq(follows.author_id, authorId));
     return row.total;
-  } catch {
+  } catch (err) {
+    logQueryError("getFollowerCount", err);
     return 0;
   }
 }
@@ -138,7 +143,8 @@ export async function getFollowedAuthorsWithStories(userId: string): Promise<Fol
     }
 
     return authorRows.map((author) => ({ author, stories: storiesByAuthor.get(author.id) ?? [] }));
-  } catch {
+  } catch (err) {
+    logQueryError("getFollowedAuthorsWithStories", err);
     return [];
   }
 }
@@ -172,30 +178,61 @@ function buildThreads<T extends CommentRow>(all: T[]): (T & { replies: T[] })[] 
     .map((c) => ({ ...c, replies: repliesByParent.get(c.id) ?? [] }));
 }
 
+// Shown threads: the newest top-level comments (up to MAX_THREADS) and every
+// reply to them. Hidden comments (hidden_at set by a moderator) are never
+// returned. Before, the query was "oldest 300 rows, replies included", so a
+// busy chapter stopped showing new comments at all, and hidden comments
+// stayed visible to everyone.
+const MAX_THREADS = 200;
+
+const COMMENT_COLUMNS = {
+  id: comments.id,
+  chapter_id: comments.chapter_id,
+  story_id: comments.story_id,
+  user_id: comments.user_id,
+  parent_id: comments.parent_id,
+  text: comments.text,
+  like_count: comments.like_count,
+  created_at: comments.created_at,
+  is_spoiler: comments.is_spoiler,
+  user: { display_name: profiles.display_name },
+};
+
+async function loadThreads(scope: ReturnType<typeof eq>) {
+  const db = getDb();
+  const visible = and(scope, isNull(comments.hidden_at));
+  const topLevel = await db
+    .select(COMMENT_COLUMNS)
+    .from(comments)
+    .innerJoin(profiles, eq(comments.user_id, profiles.id))
+    .where(and(visible, isNull(comments.parent_id)))
+    .orderBy(desc(comments.created_at))
+    .limit(MAX_THREADS);
+  if (topLevel.length === 0) return [];
+  const replies = await db
+    .select(COMMENT_COLUMNS)
+    .from(comments)
+    .innerJoin(profiles, eq(comments.user_id, profiles.id))
+    .where(
+      and(
+        visible,
+        inArray(
+          comments.parent_id,
+          topLevel.map((c) => c.id)
+        )
+      )
+    )
+    .orderBy(asc(comments.created_at));
+  return [...topLevel, ...replies];
+}
+
 export async function getChapterComments(chapterId: string): Promise<CommentWithReplies[]> {
   try {
-    const db = getDb();
-    const rows = await db
-      .select({
-        id: comments.id,
-        chapter_id: comments.chapter_id,
-        story_id: comments.story_id,
-        user_id: comments.user_id,
-        parent_id: comments.parent_id,
-        text: comments.text,
-        like_count: comments.like_count,
-        created_at: comments.created_at,
-        is_spoiler: comments.is_spoiler,
-        user: { display_name: profiles.display_name },
-      })
-      .from(comments)
-      .innerJoin(profiles, eq(comments.user_id, profiles.id))
-      .where(eq(comments.chapter_id, chapterId))
-      .orderBy(asc(comments.created_at))
-      .limit(300);
+    const rows = await loadThreads(eq(comments.chapter_id, chapterId));
     const all: CommentRow[] = rows.map((r) => ({ ...r, created_at: r.created_at.toISOString() }));
     return buildThreads(all);
-  } catch {
+  } catch (err) {
+    console.error("getChapterComments failed:", err);
     return [];
   }
 }
@@ -206,42 +243,29 @@ export type StoryCommentRow = CommentRow & {
 
 export type StoryCommentThread = StoryCommentRow & { replies: StoryCommentRow[] };
 
-export async function getStoryComments(storyId: string, limit = 300): Promise<StoryCommentThread[]> {
+export async function getStoryComments(storyId: string): Promise<StoryCommentThread[]> {
   try {
     const db = getDb();
-    // Left join (not an inner join) — a general comment (chapter_id is
-    // null, added straight from the story page's own Comments tab) has no
-    // chapter row to join against and would be silently dropped by an
-    // inner join. Filtering on comments.story_id directly (rather than
-    // chapter.story_id) is also what makes those chapterless rows match at
-    // all.
-    const rows = await db
-      .select({
-        id: comments.id,
-        chapter_id: comments.chapter_id,
-        story_id: comments.story_id,
-        user_id: comments.user_id,
-        parent_id: comments.parent_id,
-        text: comments.text,
-        like_count: comments.like_count,
-        created_at: comments.created_at,
-        is_spoiler: comments.is_spoiler,
-        user: { display_name: profiles.display_name },
-        chapter: { order_index: chapters.order_index, title: chapters.title },
-      })
-      .from(comments)
-      .innerJoin(profiles, eq(comments.user_id, profiles.id))
-      .leftJoin(chapters, eq(comments.chapter_id, chapters.id))
-      .where(eq(comments.story_id, storyId))
-      .orderBy(asc(comments.created_at))
-      .limit(limit);
+    // filtering on comments.story_id (not chapter.story_id) is what makes
+    // chapterless story-page comments match at all.
+    const rows = await loadThreads(eq(comments.story_id, storyId));
+    const chapterIds = [...new Set(rows.map((r) => r.chapter_id).filter((id): id is string => Boolean(id)))];
+    const chapterRows =
+      chapterIds.length === 0
+        ? []
+        : await db
+            .select({ id: chapters.id, order_index: chapters.order_index, title: chapters.title })
+            .from(chapters)
+            .where(inArray(chapters.id, chapterIds));
+    const chapterById = new Map(chapterRows.map((c) => [c.id, { order_index: c.order_index, title: c.title }]));
     const all: StoryCommentRow[] = rows.map((r) => ({
       ...r,
       created_at: r.created_at.toISOString(),
-      chapter: r.chapter_id ? r.chapter : null,
+      chapter: r.chapter_id ? chapterById.get(r.chapter_id) ?? null : null,
     }));
     return buildThreads(all);
-  } catch {
+  } catch (err) {
+    console.error("getStoryComments failed:", err);
     return [];
   }
 }
@@ -255,7 +279,8 @@ export async function getLikedCommentIds(userId: string | undefined, commentIds:
       .from(likes)
       .where(and(eq(likes.user_id, userId), eq(likes.target_type, "comment"), inArray(likes.target_id, commentIds)));
     return new Set(rows.map((r) => r.target_id));
-  } catch {
+  } catch (err) {
+    logQueryError("getLikedCommentIds", err);
     return new Set();
   }
 }

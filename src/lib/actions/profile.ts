@@ -8,6 +8,9 @@ import { getAuth } from "@/server/auth/config";
 import { getDb } from "@/server/db/client";
 import { profiles } from "@/server/db/schema";
 import { setCredentialPassword } from "@/server/auth/set-password";
+import { loadViewer } from "@/server/data/viewer";
+import { canEditOwnProfile } from "@/server/authz/policy";
+import { uploadUrlPrefix } from "@/server/storage/local";
 import { ROUTES } from "@/lib/constants";
 
 // Accepts a bare handle ("name"), a "@name", or a pasted full profile URL
@@ -22,18 +25,37 @@ function normalizeHandle(raw: string): string | null {
   return handle || null;
 }
 
-export async function updateProfile(username: string, formData: FormData) {
+const MAX_DISPLAY_NAME = 60;
+const MAX_BIO = 1000;
+const MAX_HANDLE = 60;
+
+// Returns true only when the profile was actually saved, so the form knows
+// whether it is safe to clean up the previous avatar file — before, an empty
+// name made this return silently while the form still deleted the old
+// avatar, leaving the profile pointing at a missing file.
+export async function updateProfile(username: string, formData: FormData): Promise<boolean> {
   const session = await getAuth().api.getSession({ headers: await headers() });
   if (!session) redirect(ROUTES.onboarding);
+
+  const db = getDb();
+  // A blocked account can't rename itself or change its avatar to dodge a
+  // block (policy.ts canEditOwnProfile requires an active account).
+  const viewer = await loadViewer(db, session.user.id);
+  if (!viewer || !canEditOwnProfile(viewer, session.user.id)) return false;
 
   const displayName = String(formData.get("displayName") ?? "").trim();
   const bio = String(formData.get("bio") ?? "").trim();
   const avatarUrl = formData.get("avatarUrl");
   const instagramHandle = normalizeHandle(String(formData.get("instagramHandle") ?? ""));
   const telegramHandle = normalizeHandle(String(formData.get("telegramHandle") ?? ""));
-  if (!displayName) return;
+  if (!displayName || displayName.length > MAX_DISPLAY_NAME || bio.length > MAX_BIO) return false;
+  if ((instagramHandle?.length ?? 0) > MAX_HANDLE || (telegramHandle?.length ?? 0) > MAX_HANDLE) return false;
+  // Only an avatar this user uploaded themselves (src/lib/actions/uploads.ts)
+  // is accepted — not an arbitrary URL, which could point at a tracking
+  // server or at someone else's file.
+  const ownAvatar =
+    typeof avatarUrl === "string" && avatarUrl.startsWith(uploadUrlPrefix("avatars", session.user.id)) ? avatarUrl : null;
 
-  const db = getDb();
   await db
     .update(profiles)
     .set({
@@ -41,11 +63,12 @@ export async function updateProfile(username: string, formData: FormData) {
       bio: bio || null,
       instagram_handle: instagramHandle,
       telegram_handle: telegramHandle,
-      ...(typeof avatarUrl === "string" && avatarUrl ? { avatar_url: avatarUrl } : {}),
+      ...(ownAvatar ? { avatar_url: ownAvatar } : {}),
     })
     .where(eq(profiles.id, session.user.id));
 
   revalidatePath(ROUTES.author(username));
+  return true;
 }
 
 // Sets a password for an already-signed-in account that doesn't have one

@@ -1,4 +1,5 @@
 import "server-only";
+import { logQueryError } from "@/lib/queries/query-errors";
 import { desc, eq, count } from "drizzle-orm";
 import { getDb } from "@/server/db/client";
 import { adminChatMessages, adminChats, profiles } from "@/server/db/schema";
@@ -31,10 +32,14 @@ export async function getAdminChatMessages(userId: string, limit = 300): Promise
       .from(adminChatMessages)
       .innerJoin(profiles, eq(adminChatMessages.sender_id, profiles.id))
       .where(eq(adminChatMessages.user_id, userId))
-      .orderBy(adminChatMessages.created_at)
+      // Newest `limit` messages, then flipped back to chronological order.
+      // Ordering oldest-first with a limit meant that after 300 messages
+      // in a thread, new messages and staff replies stopped appearing.
+      .orderBy(desc(adminChatMessages.created_at))
       .limit(limit);
-    return rows.map((r) => ({ ...toMessage(r.message), sender: r.sender }));
-  } catch {
+    return rows.reverse().map((r) => ({ ...toMessage(r.message), sender: r.sender }));
+  } catch (err) {
+    logQueryError("getAdminChatMessages", err);
     return [];
   }
 }
@@ -44,7 +49,8 @@ export async function getAdminChatSummary(userId: string): Promise<AdminChatSumm
     const db = getDb();
     const [row] = await db.select().from(adminChats).where(eq(adminChats.user_id, userId)).limit(1);
     return row ? toSummary(row) : null;
-  } catch {
+  } catch (err) {
+    logQueryError("getAdminChatSummary", err);
     return null;
   }
 }
@@ -68,7 +74,8 @@ export async function getAdminChatsList(): Promise<AdminChatListItem[]> {
       .innerJoin(profiles, eq(adminChats.user_id, profiles.id))
       .orderBy(desc(adminChats.last_message_at));
     return rows.map((r) => ({ ...toSummary(r.chat), user: r.user }));
-  } catch {
+  } catch (err) {
+    logQueryError("getAdminChatsList", err);
     return [];
   }
 }
@@ -87,7 +94,8 @@ export async function getProfileForChat(
       .where(eq(profiles.id, userId))
       .limit(1);
     return row ?? null;
-  } catch {
+  } catch (err) {
+    logQueryError("getProfileForChat", err);
     return null;
   }
 }
@@ -97,7 +105,8 @@ export async function getUnreadAdminChatsCount(): Promise<number> {
     const db = getDb();
     const [{ total }] = await db.select({ total: count() }).from(adminChats).where(eq(adminChats.unread_by_admin, true));
     return total;
-  } catch {
+  } catch (err) {
+    logQueryError("getUnreadAdminChatsCount", err);
     return 0;
   }
 }

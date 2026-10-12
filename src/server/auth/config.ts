@@ -147,6 +147,15 @@ ${url}
     },
     emailAndPassword: {
       enabled: true,
+      // The site never registers through /sign-up/email — new accounts come
+      // from the email-code flow (emailOTP below) or Google, both of which
+      // prove the person owns the address. Left open, anyone could POST a
+      // sign-up with someone else's email and a password of their choice;
+      // once the real owner later signed in by code or Google, that
+      // attacker's password would still work (account pre-hijacking), and
+      // the endpoint also revealed which emails are registered. Password
+      // sign-in for existing accounts is unaffected.
+      disableSignUp: true,
       // Supabase's bcrypt hashes keep working; see src/server/auth/password.ts.
       password: { hash: hashPassword, verify: verifyPassword },
     },

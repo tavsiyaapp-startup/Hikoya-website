@@ -90,7 +90,11 @@ export function EditProfileForm({
 
   function handleSubmit(formData: FormData) {
     startTransition(async () => {
-      await updateProfile(username, formData);
+      const saved = await updateProfile(username, formData);
+      if (!saved) {
+        setAccountErrors([t.onboarding.saveError]);
+        return;
+      }
       if (avatarUrl && preview !== avatarUrl) {
         await deleteUserImage("avatars", avatarUrl);
       }

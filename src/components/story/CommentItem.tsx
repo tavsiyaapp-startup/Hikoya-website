@@ -41,10 +41,18 @@ export function CommentItem({
   const [, startTransition] = useTransition();
 
   function handleLike() {
-    const next = !liked;
+    const previous = liked;
+    const next = !previous;
     setLiked(next);
     setCount((c) => c + (next ? 1 : -1));
-    startTransition(() => toggleCommentLike(comment.id, path));
+    startTransition(async () => {
+      const result = await toggleCommentLike(comment.id, path);
+      const settled = result ?? previous;
+      if (settled !== next) {
+        setLiked(settled);
+        setCount((c) => c + (settled ? 1 : -1));
+      }
+    });
   }
 
   return (

@@ -2,6 +2,7 @@
 
 import { cookies, headers } from "next/headers";
 import { safeNext } from "@/lib/safe-next";
+import { uploadUrlPrefix } from "@/server/storage/local";
 import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { getAuth } from "@/server/auth/config";
@@ -23,7 +24,11 @@ export async function completeOnboarding(formData: FormData) {
   const localeValue = String(formData.get("locale") ?? "");
   const locale = isLocale(localeValue) ? localeValue : defaultLocale;
   const displayName = String(formData.get("displayName") ?? "").trim();
-  const avatarUrl = String(formData.get("avatarUrl") ?? "").trim();
+  const rawAvatarUrl = String(formData.get("avatarUrl") ?? "").trim();
+  // Only an avatar this user uploaded (src/lib/actions/uploads.ts) — never an
+  // arbitrary URL from the form. Anything else (e.g. the Google photo the
+  // wizard was pre-filled with) just leaves the existing avatar_url as is.
+  const avatarUrl = rawAvatarUrl.startsWith(uploadUrlPrefix("avatars", userId)) ? rawAvatarUrl : "";
   const bio = String(formData.get("bio") ?? "").trim();
   const password = String(formData.get("password") ?? "");
 

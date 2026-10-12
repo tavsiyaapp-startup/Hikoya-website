@@ -27,7 +27,22 @@ function createDb(): Db {
   if (!connectionString) {
     throw new Error("DATABASE_URL is not set");
   }
-  const pool = new Pool({ connectionString, max: 10, idleTimeoutMillis: 30_000 });
+  const pool = new Pool({
+    connectionString,
+    max: 10,
+    idleTimeoutMillis: 30_000,
+    // Fail fast instead of hanging a request forever when all 10 connections
+    // are busy or the database is unreachable, and kill runaway queries.
+    connectionTimeoutMillis: 10_000,
+    statement_timeout: 30_000,
+  });
+  // An idle client losing its connection (PostgreSQL restart, network drop)
+  // emits 'error' on the pool; with no listener that is an uncaught
+  // exception and takes the whole single Node process — the entire site —
+  // down. The pool drops the broken client and opens a new one on demand.
+  pool.on("error", (err) => {
+    console.error("postgres pool: idle client error", err);
+  });
   return drizzle(pool, { schema });
 }
 

@@ -1,4 +1,5 @@
 import "server-only";
+import { logQueryError } from "@/lib/queries/query-errors";
 import { and, asc, count, desc, eq, gte, ilike, inArray, isNull, isNotNull, lte, or, sql } from "drizzle-orm";
 import { getDb } from "@/server/db/client";
 import {
@@ -60,7 +61,8 @@ export async function getAdminStats() {
       db.select({ commentCount: count() }).from(comments),
     ]);
     return { storyCount, userCount, totalViews: Number(totalViews), commentCount };
-  } catch {
+  } catch (err) {
+    logQueryError("getAdminStats", err);
     return { storyCount: 0, userCount: 0, totalViews: 0, commentCount: 0 };
   }
 }
@@ -83,7 +85,8 @@ export async function getRecentStoriesAdmin(limit = 6) {
       .orderBy(desc(stories.created_at))
       .limit(limit);
     return rows.map((r) => ({ ...r, created_at: toISO(r.created_at) }));
-  } catch {
+  } catch (err) {
+    logQueryError("getRecentStoriesAdmin", err);
     return [];
   }
 }
@@ -104,7 +107,8 @@ export async function getRecentUsersAdmin(limit = 6) {
       .orderBy(desc(profiles.created_at))
       .limit(limit);
     return rows.map((r) => ({ ...r, created_at: toISO(r.created_at) }));
-  } catch {
+  } catch (err) {
+    logQueryError("getRecentUsersAdmin", err);
     return [];
   }
 }
@@ -182,7 +186,8 @@ export async function getRecentActivity(
 
     items.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
     return items.slice(0, limit);
-  } catch {
+  } catch (err) {
+    logQueryError("getRecentActivity", err);
     return [];
   }
 }
@@ -220,7 +225,8 @@ export async function getActivityCounts(range?: { from?: string; to?: string }):
     ]);
 
     return { newUsers, publishedChapters, newComments };
-  } catch {
+  } catch (err) {
+    logQueryError("getActivityCounts", err);
     return { newUsers: 0, publishedChapters: 0, newComments: 0 };
   }
 }
@@ -254,7 +260,8 @@ export async function searchUsersAdmin(query?: string, sort: AdminUserSort = "ne
       .sort((a, b) => (counts[b.id] ?? 0) - (counts[a.id] ?? 0))
       .slice(0, 100)
       .map((r) => ({ ...r, created_at: toISO(r.created_at), onboarded_at: r.onboarded_at ? toISO(r.onboarded_at) : null }));
-  } catch {
+  } catch (err) {
+    logQueryError("searchUsersAdmin", err);
     return [];
   }
 }
@@ -273,7 +280,8 @@ export async function getAuthorStoryCounts(userIds: string[]): Promise<Record<st
     const counts: Record<string, number> = {};
     for (const row of rows) counts[row.author_id] = (counts[row.author_id] ?? 0) + 1;
     return counts;
-  } catch {
+  } catch (err) {
+    logQueryError("getAuthorStoryCounts", err);
     return {};
   }
 }
@@ -286,7 +294,8 @@ export async function getAuthorFollowerCounts(userIds: string[]): Promise<Record
     const counts: Record<string, number> = {};
     for (const row of rows) counts[row.author_id] = (counts[row.author_id] ?? 0) + 1;
     return counts;
-  } catch {
+  } catch (err) {
+    logQueryError("getAuthorFollowerCounts", err);
     return {};
   }
 }
@@ -300,7 +309,8 @@ export async function getAllAchievements(): Promise<Achievement[]> {
     // trusted the small, staff-only achievements table to hold one of
     // these four values rather than enforcing it at the schema level.
     return rows as Achievement[];
-  } catch {
+  } catch (err) {
+    logQueryError("getAllAchievements", err);
     return [];
   }
 }
@@ -321,7 +331,8 @@ export async function getUserAchievementsMap(userIds: string[]): Promise<Map<str
       map.set(row.user_id, list);
     }
     return map;
-  } catch {
+  } catch (err) {
+    logQueryError("getUserAchievementsMap", err);
     return map;
   }
 }
@@ -331,7 +342,8 @@ export async function getAllHeroSlidesAdmin(): Promise<HeroSlide[]> {
     const db = getDb();
     const rows = await db.select().from(heroSlides).orderBy(asc(heroSlides.created_at));
     return rows.map((r) => ({ ...r, created_at: toISO(r.created_at) }));
-  } catch {
+  } catch (err) {
+    logQueryError("getAllHeroSlidesAdmin", err);
     return [];
   }
 }
@@ -341,7 +353,8 @@ export async function getAllAnnouncementsAdmin(): Promise<Announcement[]> {
     const db = getDb();
     const rows = await db.select().from(announcementsTable).orderBy(desc(announcementsTable.created_at));
     return rows.map((r) => ({ ...r, created_at: toISO(r.created_at) }));
-  } catch {
+  } catch (err) {
+    logQueryError("getAllAnnouncementsAdmin", err);
     return [];
   }
 }
@@ -361,7 +374,8 @@ export async function searchStoriesForFeaturedAdmin(query?: string) {
       .orderBy(asc(stories.title))
       .limit(100);
     return rows;
-  } catch {
+  } catch (err) {
+    logQueryError("searchStoriesForFeaturedAdmin", err);
     return [];
   }
 }
@@ -382,7 +396,8 @@ export async function getFeaturedTiersMap(storyIds: string[]): Promise<Map<strin
       map.set(row.story_id, set);
     }
     return map;
-  } catch {
+  } catch (err) {
+    logQueryError("getFeaturedTiersMap", err);
     return map;
   }
 }
@@ -460,7 +475,8 @@ export async function getAllStoriesAdmin(
     });
 
     return list.slice(0, 100);
-  } catch {
+  } catch (err) {
+    logQueryError("getAllStoriesAdmin", err);
     return [];
   }
 }
@@ -473,7 +489,8 @@ export async function getStoryChapterCounts(storyIds: string[]) {
     const counts: Record<string, number> = {};
     for (const row of rows) counts[row.story_id] = (counts[row.story_id] ?? 0) + 1;
     return counts;
-  } catch {
+  } catch (err) {
+    logQueryError("getStoryChapterCounts", err);
     return {};
   }
 }
@@ -492,7 +509,8 @@ export async function getPendingChapterCounts(storyIds: string[]) {
     const counts: Record<string, number> = {};
     for (const row of rows) counts[row.story_id] = (counts[row.story_id] ?? 0) + 1;
     return counts;
-  } catch {
+  } catch (err) {
+    logQueryError("getPendingChapterCounts", err);
     return {};
   }
 }
@@ -521,7 +539,8 @@ export async function getStoryForModeration(id: string): Promise<StoryForModerat
       .where(eq(stories.id, id))
       .limit(1);
     return row ? { ...storyRowToStory(row.story), author: row.author } : null;
-  } catch {
+  } catch (err) {
+    logQueryError("getStoryForModeration", err);
     return null;
   }
 }
@@ -549,7 +568,8 @@ export async function getChaptersForModeration(storyId: string): Promise<Chapter
       .where(eq(chapters.story_id, storyId))
       .orderBy(asc(chapters.order_index));
     return rows.map((r) => ({ ...r, updated_at: toISO(r.updated_at) }));
-  } catch {
+  } catch (err) {
+    logQueryError("getChaptersForModeration", err);
     return [];
   }
 }
@@ -559,7 +579,8 @@ export async function getChapterForModeration(chapterId: string): Promise<Chapte
     const db = getDb();
     const [row] = await db.select().from(chapters).where(eq(chapters.id, chapterId)).limit(1);
     return row ? chapterRowToChapter(row) : null;
-  } catch {
+  } catch (err) {
+    logQueryError("getChapterForModeration", err);
     return null;
   }
 }
@@ -578,7 +599,8 @@ export async function getChaptersForDownload(storyId: string): Promise<ChapterFo
       .from(chapters)
       .where(eq(chapters.story_id, storyId))
       .orderBy(asc(chapters.order_index));
-  } catch {
+  } catch (err) {
+    logQueryError("getChaptersForDownload", err);
     return [];
   }
 }
@@ -595,7 +617,8 @@ export async function getAllRequestsAdmin(statusFilter?: string) {
       .orderBy(desc(requests.created_at))
       .limit(100);
     return rows.map((r) => ({ ...r.request, created_at: toISO(r.request.created_at), from_user: r.from_user }));
-  } catch {
+  } catch (err) {
+    logQueryError("getAllRequestsAdmin", err);
     return [];
   }
 }
@@ -610,7 +633,8 @@ export async function getAllCollectionsAdmin() {
       .orderBy(desc(collections.created_at))
       .limit(100);
     return rows.map((r) => ({ ...r.collection, created_at: toISO(r.collection.created_at), owner: r.owner }));
-  } catch {
+  } catch (err) {
+    logQueryError("getAllCollectionsAdmin", err);
     return [];
   }
 }
@@ -620,7 +644,8 @@ export async function getCollectionByIdAdmin(id: string) {
     const db = getDb();
     const [row] = await db.select().from(collections).where(eq(collections.id, id)).limit(1);
     return row ? { ...row, created_at: toISO(row.created_at) } : null;
-  } catch {
+  } catch (err) {
+    logQueryError("getCollectionByIdAdmin", err);
     return null;
   }
 }
@@ -630,7 +655,8 @@ export async function getCollectionItemIds(collectionId: string): Promise<string
     const db = getDb();
     const rows = await db.select({ story_id: collectionItems.story_id }).from(collectionItems).where(eq(collectionItems.collection_id, collectionId));
     return rows.map((r) => r.story_id);
-  } catch {
+  } catch (err) {
+    logQueryError("getCollectionItemIds", err);
     return [];
   }
 }
@@ -643,7 +669,8 @@ export async function getAllStoriesForAdminPicker() {
       .from(stories)
       .innerJoin(profiles, eq(stories.author_id, profiles.id))
       .orderBy(asc(stories.title));
-  } catch {
+  } catch (err) {
+    logQueryError("getAllStoriesForAdminPicker", err);
     return [];
   }
 }
@@ -728,7 +755,8 @@ export async function getAllCommentsAdmin(page = 1, pageSize = 24): Promise<{ th
     const threads = topLevel.map((c) => ({ ...toRow(c), replies: repliesByParent.get(c.id) ?? [] }));
 
     return { threads, total };
-  } catch {
+  } catch (err) {
+    logQueryError("getAllCommentsAdmin", err);
     return { threads: [], total: 0 };
   }
 }
@@ -738,7 +766,8 @@ export async function getPlatformSettingsAdmin() {
     const db = getDb();
     const [row] = await db.select().from(platformSettings).where(eq(platformSettings.id, 1)).limit(1);
     return row ?? null;
-  } catch {
+  } catch (err) {
+    logQueryError("getPlatformSettingsAdmin", err);
     return null;
   }
 }

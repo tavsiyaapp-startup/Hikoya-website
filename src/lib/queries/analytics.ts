@@ -1,4 +1,5 @@
 import "server-only";
+import { logQueryError } from "@/lib/queries/query-errors";
 import { BetaAnalyticsDataClient } from "@google-analytics/data";
 
 // Reused across calls on a warm serverless instance instead of constructing
@@ -35,7 +36,8 @@ export async function getActiveUsersNow(): Promise<number | null> {
     ]);
     const value = response.rows?.[0]?.metricValues?.[0]?.value;
     return value ? Number(value) : 0;
-  } catch {
+  } catch (err) {
+    logQueryError("getActiveUsersNow", err);
     return null;
   }
 }

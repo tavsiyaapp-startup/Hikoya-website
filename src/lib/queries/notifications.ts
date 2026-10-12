@@ -1,4 +1,5 @@
 import "server-only";
+import { logQueryError } from "@/lib/queries/query-errors";
 import { and, desc, eq } from "drizzle-orm";
 import { getDb } from "@/server/db/client";
 import { chapters, notifications, profiles, stories } from "@/server/db/schema";
@@ -12,7 +13,8 @@ export async function getUnreadNotificationCount(userId: string): Promise<number
       .from(notifications)
       .where(and(eq(notifications.user_id, userId), eq(notifications.is_read, false)));
     return rows.length;
-  } catch {
+  } catch (err) {
+    logQueryError("getUnreadNotificationCount", err);
     return 0;
   }
 }
@@ -47,7 +49,8 @@ export async function getNotifications(userId: string, limit = 40): Promise<Noti
       story: r.notification.story_id ? r.story : null,
       chapter: r.notification.chapter_id ? r.chapter : null,
     }));
-  } catch {
+  } catch (err) {
+    logQueryError("getNotifications", err);
     return [];
   }
 }

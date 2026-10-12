@@ -2,6 +2,7 @@ import "server-only";
 import { unstable_cache } from "next/cache";
 import { and, arrayOverlaps, asc, count, desc, eq, gte, ilike, inArray, isNull, sql } from "drizzle-orm";
 import { getCurrentUser } from "@/lib/current-user";
+import { logQueryError, withFallback } from "@/lib/queries/query-errors";
 import { getDb } from "@/server/db/client";
 import {
   bookmarks,
@@ -89,35 +90,50 @@ async function queryPublicStories(
     ]);
 
     return { items: rows.map((r) => toStoryCard(r.story, r.author)), total };
-  } catch {
-    return { items: [], total: 0 };
+  } catch (err) {
+    logQueryError("queryPublicStories", err);
+    throw err;
   }
 }
 
-export const getPopularStories = unstable_cache(
+export const getPopularStories = withFallback(
+  "getPopularStories",
+  unstable_cache(
   (limit = 8, offset = 0) => queryPublicStories(desc(stories.like_count), limit, offset),
   ["popular-stories"],
   { revalidate: CACHE_SECONDS, tags: ["stories"] }
+  ),
+  () => ({ items: [], total: 0 })
 );
 
-export const getFinishedStories = unstable_cache(
+export const getFinishedStories = withFallback(
+  "getFinishedStories",
+  unstable_cache(
   (limit = 8, offset = 0) =>
     queryPublicStories(desc(stories.like_count), limit, offset, eq(stories.progress_status, "finished")),
   ["finished-stories"],
   { revalidate: CACHE_SECONDS, tags: ["stories"] }
+  ),
+  () => ({ items: [], total: 0 })
 );
 
-export const getNewestStories = unstable_cache(
+export const getNewestStories = withFallback(
+  "getNewestStories",
+  unstable_cache(
   (limit = 8, offset = 0) => queryPublicStories(desc(stories.published_at), limit, offset),
   ["newest-stories"],
   { revalidate: CACHE_SECONDS, tags: ["stories"] }
+  ),
+  () => ({ items: [], total: 0 })
 );
 
 // "Подписки" home tab. unstable_cache'd per-viewer — userId is part of the
 // function's arguments, which Next.js folds into the cache key alongside
 // the keyParts below, so each user gets their own cache entry (no leaking
 // one user's feed to another).
-export const getFollowingStories = unstable_cache(
+export const getFollowingStories = withFallback(
+  "getFollowingStories",
+  unstable_cache(
   async (userId: string, limit = 8, offset = 0): Promise<Paginated<StoryCard>> => {
     try {
       const db = getDb();
@@ -128,12 +144,15 @@ export const getFollowingStories = unstable_cache(
       const authorIds = followedRows.map((f) => f.author_id);
       if (authorIds.length === 0) return { items: [], total: 0 };
       return queryPublicStories(desc(stories.published_at), limit, offset, and(inArray(stories.author_id, authorIds)));
-    } catch {
-      return { items: [], total: 0 };
+    } catch (err) {
+      logQueryError("getFollowingStories", err);
+      throw err;
     }
   },
   ["following-stories"],
   { revalidate: CACHE_SECONDS, tags: ["stories"] }
+  ),
+  () => ({ items: [], total: 0 })
 );
 
 // "Для вас" home tab — same per-viewer caching as getFollowingStories
@@ -145,7 +164,9 @@ export const getFollowingStories = unstable_cache(
 // account has neither yet, so this naturally falls back to the same
 // popular feed as everyone else until they pick interests or like
 // something.
-export const getForYouStories = unstable_cache(
+export const getForYouStories = withFallback(
+  "getForYouStories",
+  unstable_cache(
   async (userId: string, limit = 8, offset = 0): Promise<Paginated<StoryCard>> => {
     try {
       const db = getDb();
@@ -170,12 +191,15 @@ export const getForYouStories = unstable_cache(
       if (preferredGenres.length === 0) return getPopularStories(limit, offset);
 
       return queryPublicStories(desc(stories.like_count), limit, offset, and(arrayOverlaps(stories.genres, preferredGenres)));
-    } catch {
-      return { items: [], total: 0 };
+    } catch (err) {
+      logQueryError("getForYouStories", err);
+      throw err;
     }
   },
   ["for-you-stories"],
   { revalidate: CACHE_SECONDS, tags: ["stories"] }
+  ),
+  () => ({ items: [], total: 0 })
 );
 
 // Same tab -> query dispatch the home page's feed section uses, shared with
@@ -221,9 +245,13 @@ export async function attachCollectionCovers(list: CollectionWithOwner[]): Promi
     .from(collectionItems)
     .innerJoin(stories, eq(collectionItems.story_id, stories.id))
     .where(
-      inArray(
-        collectionItems.collection_id,
-        list.map((c) => c.id)
+      and(
+        inArray(
+          collectionItems.collection_id,
+          list.map((c) => c.id)
+        ),
+        PUBLIC_STORY_FILTER,
+        isNull(stories.deleted_at)
       )
     )
     .orderBy(asc(collectionItems.position));
@@ -243,7 +271,9 @@ export async function attachCollectionCovers(list: CollectionWithOwner[]): Promi
   }));
 }
 
-export const getFeaturedCollections = unstable_cache(
+export const getFeaturedCollections = withFallback(
+  "getFeaturedCollections",
+  unstable_cache(
   async (limit = 3, offset = 0): Promise<Paginated<CollectionCardData>> => {
     try {
       const db = getDb();
@@ -261,52 +291,67 @@ export const getFeaturedCollections = unstable_cache(
       ]);
       const items = await attachCollectionCovers(rows.map(toCollectionWithOwner));
       return { items, total };
-    } catch {
-      return { items: [], total: 0 };
+    } catch (err) {
+      logQueryError("getFeaturedCollections", err);
+      throw err;
     }
   },
   ["featured-collections"],
   { revalidate: CACHE_SECONDS, tags: ["collections"] }
+  ),
+  () => ({ items: [], total: 0 })
 );
 
 // Hero-banner carousel slides, managed from /admin/banner — ordered by
 // created_at, so slide 1 is whichever row was created earliest.
-export const getHeroSlides = unstable_cache(
+export const getHeroSlides = withFallback(
+  "getHeroSlides",
+  unstable_cache(
   async (): Promise<HeroSlide[]> => {
     try {
       const db = getDb();
       const rows = await db.select().from(heroSlides).orderBy(asc(heroSlides.created_at));
       return rows.map((r) => ({ ...r, created_at: r.created_at.toISOString() }));
-    } catch {
-      return [];
+    } catch (err) {
+      logQueryError("getHeroSlides", err);
+      throw err;
     }
   },
   ["hero-slides"],
   { revalidate: CACHE_SECONDS, tags: ["hero-slides"] }
+  ),
+  () => ([])
 );
 
 // Small announcement cards next to the hero, managed from
 // /admin/announcements — newest first (unlike hero slides, recency is the
 // point). AnnouncementBoard paginates these 2 at a time as a vertical
 // carousel, so the caller can (and does) fetch more than just 2.
-export const getAnnouncements = unstable_cache(
+export const getAnnouncements = withFallback(
+  "getAnnouncements",
+  unstable_cache(
   async (limit = 12): Promise<Announcement[]> => {
     try {
       const db = getDb();
       const rows = await db.select().from(announcements).orderBy(desc(announcements.created_at)).limit(limit);
       return rows.map((r) => ({ ...r, created_at: r.created_at.toISOString() }));
-    } catch {
-      return [];
+    } catch (err) {
+      logQueryError("getAnnouncements", err);
+      throw err;
     }
   },
   ["announcements"],
   { revalidate: CACHE_SECONDS, tags: ["announcements"] }
+  ),
+  () => ([])
 );
 
 // Staff-pinned stories for the homepage's Топ дня/недели/месяца section
 // (featured_stories, /admin/featured) — ordered "first pinned, shown
 // first", not by recency.
-export const getTopStories = unstable_cache(
+export const getTopStories = withFallback(
+  "getTopStories",
+  unstable_cache(
   async (tier: StoryTopTier, limit = 8): Promise<StoryCard[]> => {
     try {
       const db = getDb();
@@ -326,12 +371,15 @@ export const getTopStories = unstable_cache(
         .where(and(inArray(stories.id, ids), PUBLIC_STORY_FILTER));
       const byId = new Map(rows.map((r) => [r.story.id, toStoryCard(r.story, r.author)]));
       return ids.map((id) => byId.get(id)).filter((s): s is StoryCard => Boolean(s));
-    } catch {
-      return [];
+    } catch (err) {
+      logQueryError("getTopStories", err);
+      throw err;
     }
   },
   ["top-stories"],
   { revalidate: CACHE_SECONDS, tags: ["stories"] }
+  ),
+  () => ([])
 );
 
 // Collections that include at least one of this author's published stories —
@@ -356,7 +404,8 @@ export async function getCollectionsFeaturingAuthor(authorId: string, limit = 6)
       .orderBy(desc(collections.created_at))
       .limit(limit);
     return attachCollectionCovers(rows.map(toCollectionWithOwner));
-  } catch {
+  } catch (err) {
+    logQueryError("getCollectionsFeaturingAuthor", err);
     return [];
   }
 }
@@ -378,7 +427,9 @@ const RECENT_DAYS = 7;
 // happens in SQL so total already matches what gets rendered (one card per
 // story). Same query the recent_chapter_stories() Postgres function (migration
 // 0036) ran, inlined here so it doesn't depend on that function existing.
-export const getRecentPublishedChapters = unstable_cache(
+export const getRecentPublishedChapters = withFallback(
+  "getRecentPublishedChapters",
+  unstable_cache(
   async (limit = 3, offset = 0): Promise<Paginated<WeeklyStoryGroup>> => {
     try {
       const db = getDb();
@@ -391,6 +442,8 @@ export const getRecentPublishedChapters = unstable_cache(
         where c.status = 'published'
           and c.published_at >= now() - (${RECENT_DAYS} || ' days')::interval
           and s.status = 'published'
+          and s.visibility = 'public'
+          and s.deleted_at is null
         group by c.story_id
         order by max(c.published_at) desc
         limit ${limit} offset ${offset}
@@ -442,12 +495,15 @@ export const getRecentPublishedChapters = unstable_cache(
       }
 
       return { items, total };
-    } catch {
-      return { items: [], total: 0 };
+    } catch (err) {
+      logQueryError("getRecentPublishedChapters", err);
+      throw err;
     }
   },
   ["recent-published-chapters"],
   { revalidate: CACHE_SECONDS, tags: ["stories"] }
+  ),
+  () => ({ items: [], total: 0 })
 );
 
 export type StoryDetail = Story & {
@@ -493,7 +549,8 @@ export async function getStoryBySlug(slug: string): Promise<StoryDetail | null> 
       deleted_at: null,
       author: row.author,
     };
-  } catch {
+  } catch (err) {
+    logQueryError("getStoryBySlug", err);
     return null;
   }
 }
@@ -518,7 +575,8 @@ export async function getChaptersForStory(
       : and(eq(chapters.story_id, storyId), eq(chapters.status, "published"));
     const rows = await db.select().from(chapters).where(where).orderBy(asc(chapters.order_index));
     return rows.map(toChapter);
-  } catch {
+  } catch (err) {
+    logQueryError("getChaptersForStory", err);
     return [];
   }
 }
@@ -534,7 +592,8 @@ export async function getChapter(storyId: string, orderIndex: number): Promise<C
       )
       .limit(1);
     return row ? toChapter(row) : null;
-  } catch {
+  } catch (err) {
+    logQueryError("getChapter", err);
     return null;
   }
 }
@@ -576,7 +635,8 @@ export async function getContinueReading(userId: string, limit = 3): Promise<Con
       .filter((row) => !statusedStoryIds.has(row.story_id))
       .slice(0, limit)
       .map((row) => ({ ...row, percent: Number(row.percent), updated_at: row.updated_at.toISOString() }));
-  } catch {
+  } catch (err) {
+    logQueryError("getContinueReading", err);
     return [];
   }
 }
@@ -608,7 +668,9 @@ function escapeLike(value: string): string {
   return value.replace(/[\\%_]/g, (c) => `\\${c}`);
 }
 
-export const searchStories = unstable_cache(
+export const searchStories = withFallback(
+  "searchStories",
+  unstable_cache(
   async (filters: SearchFilters): Promise<StoryCard[]> => {
     try {
       const db = getDb();
@@ -674,12 +736,15 @@ export const searchStories = unstable_cache(
         if (rb !== undefined) return 1;
         return 0;
       });
-    } catch {
-      return [];
+    } catch (err) {
+      logQueryError("searchStories", err);
+      throw err;
     }
   },
   ["search-stories"],
   { revalidate: CACHE_SECONDS, tags: ["stories"] }
+  ),
+  () => ([])
 );
 
 export async function getBookmarkedStories(userId: string): Promise<StoryCard[]> {
@@ -693,7 +758,8 @@ export async function getBookmarkedStories(userId: string): Promise<StoryCard[]>
       .where(eq(bookmarks.user_id, userId))
       .orderBy(desc(bookmarks.created_at));
     return rows.map((r) => toStoryCard(r.story, r.author));
-  } catch {
+  } catch (err) {
+    logQueryError("getBookmarkedStories", err);
     return [];
   }
 }
@@ -708,7 +774,8 @@ export async function getMyCollections(userId: string): Promise<CollectionCardDa
       .where(eq(collections.owner_id, userId))
       .orderBy(desc(collections.created_at));
     return attachCollectionCovers(rows.map(toCollectionWithOwner));
-  } catch {
+  } catch (err) {
+    logQueryError("getMyCollections", err);
     return [];
   }
 }
@@ -733,7 +800,8 @@ export async function getMyCollectionsWithStory(userId: string, storyId: string)
     ]);
     const inCollectionIds = new Set(items.map((i) => i.collection_id));
     return owned.map((c) => ({ id: c.id, title: c.title, hasStory: inCollectionIds.has(c.id) }));
-  } catch {
+  } catch (err) {
+    logQueryError("getMyCollectionsWithStory", err);
     return [];
   }
 }
@@ -749,7 +817,8 @@ export async function getStoriesByReadingStatus(userId: string, status: string):
       .where(and(eq(readingStatuses.user_id, userId), eq(readingStatuses.status, status as "want_to_read" | "read" | "dropped")))
       .orderBy(desc(readingStatuses.updated_at));
     return rows.map((r) => toStoryCard(r.story, r.author));
-  } catch {
+  } catch (err) {
+    logQueryError("getStoriesByReadingStatus", err);
     return [];
   }
 }
@@ -770,12 +839,15 @@ export async function getAuthorStories(authorId: string, includeDrafts: boolean)
       .where(includeDrafts ? base : and(base, PUBLIC_STORY_FILTER))
       .orderBy(desc(stories.created_at));
     return rows.map((r) => toStoryCard(r.story, r.author));
-  } catch {
+  } catch (err) {
+    logQueryError("getAuthorStories", err);
     return [];
   }
 }
 
-export const getPublicCollections = unstable_cache(
+export const getPublicCollections = withFallback(
+  "getPublicCollections",
+  unstable_cache(
   async (ownerType?: string | string[]): Promise<CollectionCardData[]> => {
     try {
       const db = getDb();
@@ -792,12 +864,15 @@ export const getPublicCollections = unstable_cache(
         .where(and(eq(collections.is_private, false), ownerFilter))
         .orderBy(desc(collections.is_featured), desc(collections.created_at));
       return attachCollectionCovers(rows.map(toCollectionWithOwner));
-    } catch {
-      return [];
+    } catch (err) {
+      logQueryError("getPublicCollections", err);
+      throw err;
     }
   },
   ["public-collections"],
   { revalidate: CACHE_SECONDS, tags: ["collections"] }
+  ),
+  () => ([])
 );
 
 // A saved collection its owner has since made private disappears from
@@ -814,7 +889,8 @@ export async function getSavedCollections(userId: string): Promise<CollectionCar
       .orderBy(desc(savedCollections.created_at));
     const visible = rows.filter((r) => !r.collection.is_private || r.collection.owner_id === userId);
     return attachCollectionCovers(visible.map(toCollectionWithOwner));
-  } catch {
+  } catch (err) {
+    logQueryError("getSavedCollections", err);
     return [];
   }
 }
@@ -829,7 +905,8 @@ export async function isCollectionSaved(userId: string | undefined, collectionId
       .where(and(eq(savedCollections.user_id, userId), eq(savedCollections.collection_id, collectionId)))
       .limit(1);
     return Boolean(row);
-  } catch {
+  } catch (err) {
+    logQueryError("isCollectionSaved", err);
     return false;
   }
 }
@@ -852,10 +929,13 @@ export async function getCollectionWithStories(id: string) {
       .from(collectionItems)
       .innerJoin(stories, eq(collectionItems.story_id, stories.id))
       .innerJoin(profiles, eq(stories.author_id, profiles.id))
-      .where(eq(collectionItems.collection_id, id))
+      // Only stories that are actually public — a collection must not expose
+      // the title/cover of a draft, hidden or deleted story.
+      .where(and(eq(collectionItems.collection_id, id), PUBLIC_STORY_FILTER, isNull(stories.deleted_at)))
       .orderBy(asc(collectionItems.position));
     return { collection: toCollection(row), stories: items.map((i) => toStoryCard(i.story, i.author)) };
-  } catch {
+  } catch (err) {
+    logQueryError("getCollectionWithStories", err);
     return null;
   }
 }
@@ -864,7 +944,9 @@ export async function getCollectionWithStories(id: string) {
 // forms — genre/age_rating/relationship-type are handled by their own
 // dedicated single-select pickers, so this only offers warning/style tags
 // plus whatever authors have already typed in.
-export const getAllTags = unstable_cache(
+export const getAllTags = withFallback(
+  "getAllTags",
+  unstable_cache(
   async (): Promise<string[]> => {
     try {
       const db = getDb();
@@ -874,29 +956,37 @@ export const getAllTags = unstable_cache(
         .where(inArray(tags.category, ["warning", "style"]))
         .orderBy(asc(tags.label_ru));
       return Array.from(new Set(rows.map((t) => t.label_ru)));
-    } catch {
-      return [];
+    } catch (err) {
+      logQueryError("getAllTags", err);
+      throw err;
     }
   },
   ["all-tags"],
   { revalidate: CACHE_SECONDS, tags: ["tags"] }
+  ),
+  () => ([])
 );
 
 // Language labels authors have typed in that aren't "ru"/"uz" — offered as
 // extra chips next to Русский/Ўзбекча on the create form and as extra
 // filters on /search, alongside whatever this specific author just typed.
-export const getCustomLanguages = unstable_cache(
+export const getCustomLanguages = withFallback(
+  "getCustomLanguages",
+  unstable_cache(
   async (): Promise<string[]> => {
     try {
       const db = getDb();
       const rows = await db.select({ label: customLanguages.label }).from(customLanguages).orderBy(asc(customLanguages.label));
       return rows.map((l) => l.label);
-    } catch {
-      return [];
+    } catch (err) {
+      logQueryError("getCustomLanguages", err);
+      throw err;
     }
   },
   ["custom-languages"],
   { revalidate: CACHE_SECONDS, tags: ["custom-languages"] }
+  ),
+  () => ([])
 );
 
 export async function getTagsForStory(storyId: string): Promise<string[]> {
@@ -908,12 +998,15 @@ export async function getTagsForStory(storyId: string): Promise<string[]> {
       .innerJoin(tags, eq(storyTags.tag_id, tags.id))
       .where(eq(storyTags.story_id, storyId));
     return rows.map((r) => r.label_ru);
-  } catch {
+  } catch (err) {
+    logQueryError("getTagsForStory", err);
     return [];
   }
 }
 
-export const getGuestFreeChapterCount = unstable_cache(
+export const getGuestFreeChapterCount = withFallback(
+  "getGuestFreeChapterCount",
+  unstable_cache(
   async (): Promise<number> => {
     try {
       const db = getDb();
@@ -923,10 +1016,13 @@ export const getGuestFreeChapterCount = unstable_cache(
         .where(eq(platformSettings.id, 1))
         .limit(1);
       return row?.guest_free_chapters ?? 1;
-    } catch {
-      return 1;
+    } catch (err) {
+      logQueryError("getGuestFreeChapterCount", err);
+      throw err;
     }
   },
   ["guest-free-chapter-count"],
   { revalidate: CACHE_SECONDS, tags: ["settings"] }
+  ),
+  () => (1)
 );

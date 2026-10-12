@@ -8,7 +8,8 @@ import { getAuth } from "@/server/auth/config";
 import { getDb, type DbOrTx } from "@/server/db/client";
 import { collectionItems, collections, profiles, savedCollections } from "@/server/db/schema";
 import { loadViewer } from "@/server/data/viewer";
-import { canCreateCollection, canManageCollection, canSaveCollection, type CollectionRecord } from "@/server/authz/policy";
+import { canCreateCollection, canManageCollection, canSaveCollection, canViewStory, type CollectionRecord } from "@/server/authz/policy";
+import { getStoryRecord } from "@/server/data/stories";
 import { ROUTES } from "@/lib/constants";
 
 // Identity comes from Better Auth now, not Supabase. Ownership checks that
@@ -79,15 +80,27 @@ export async function createCollectionWithStory(
   const trimmed = title.trim();
   if (!trimmed) return { error: "empty_title" };
 
+  const story = await getStoryRecord(db, storyId);
+  if (!story || !canViewStory(viewer, story)) return { error: "failed" };
+
   const ownerType = await ownerTypeFor(db, viewer.id);
 
-  const [collection] = await db
-    .insert(collections)
-    .values({ owner_id: viewer.id, owner_type: ownerType, title: trimmed })
-    .returning({ id: collections.id, title: collections.title });
-  if (!collection) return { error: "failed" };
-
-  await db.insert(collectionItems).values({ collection_id: collection.id, story_id: storyId });
+  // One transaction: if adding the story fails, no empty collection is left
+  // behind, and the caller gets its {error} result instead of a thrown error.
+  let collection: { id: string; title: string };
+  try {
+    collection = await db.transaction(async (tx) => {
+      const [created] = await tx
+        .insert(collections)
+        .values({ owner_id: viewer.id, owner_type: ownerType, title: trimmed })
+        .returning({ id: collections.id, title: collections.title });
+      await tx.insert(collectionItems).values({ collection_id: created.id, story_id: storyId });
+      return created;
+    });
+  } catch (err) {
+    console.error("createCollectionWithStory failed:", err);
+    return { error: "failed" };
+  }
 
   updateTag("collections");
   revalidatePath(path);
@@ -118,49 +131,45 @@ export async function updateCollection(collectionId: string, formData: FormData)
   revalidatePath(ROUTES.library);
 }
 
-export async function toggleSavedCollection(collectionId: string, path: string) {
+// Returns the resulting state (true = saved, false = unsaved) or null if
+// refused; the button uses it to settle its optimistic state.
+export async function toggleSavedCollection(collectionId: string, path: string): Promise<boolean | null> {
   const { db, viewer } = await requireViewer();
-  const collection = await getCollectionRecord(db, collectionId);
-  if (!collection || !canSaveCollection(viewer, collection)) return;
-
-  const [existing] = await db
-    .select({ collection_id: savedCollections.collection_id })
-    .from(savedCollections)
+  const removed = await db
+    .delete(savedCollections)
     .where(and(eq(savedCollections.user_id, viewer.id), eq(savedCollections.collection_id, collectionId)))
-    .limit(1);
-
-  if (existing) {
-    await db
-      .delete(savedCollections)
-      .where(and(eq(savedCollections.user_id, viewer.id), eq(savedCollections.collection_id, collectionId)));
-  } else {
-    await db.insert(savedCollections).values({ user_id: viewer.id, collection_id: collectionId });
+    .returning({ collection_id: savedCollections.collection_id });
+  if (removed.length === 0) {
+    const collection = await getCollectionRecord(db, collectionId);
+    if (!collection || !canSaveCollection(viewer, collection)) return null;
+    await db.insert(savedCollections).values({ user_id: viewer.id, collection_id: collectionId }).onConflictDoNothing();
   }
 
   revalidatePath(path);
   revalidatePath(ROUTES.collections);
+  return removed.length === 0;
 }
 
-export async function toggleStoryInCollection(collectionId: string, storyId: string, path: string) {
+// Returns true = story now in the collection, false = removed, null =
+// refused. Adding requires the story to be visible to the viewer: a crafted
+// id would otherwise put a draft title/cover into a public collection.
+export async function toggleStoryInCollection(collectionId: string, storyId: string, path: string): Promise<boolean | null> {
   const { db, viewer } = await requireViewer();
   const collection = await getCollectionRecord(db, collectionId);
-  if (!collection || !canManageCollection(viewer, collection)) return;
+  if (!collection || !canManageCollection(viewer, collection)) return null;
 
-  const [existing] = await db
-    .select({ story_id: collectionItems.story_id })
-    .from(collectionItems)
+  const removed = await db
+    .delete(collectionItems)
     .where(and(eq(collectionItems.collection_id, collectionId), eq(collectionItems.story_id, storyId)))
-    .limit(1);
-
-  if (existing) {
-    await db
-      .delete(collectionItems)
-      .where(and(eq(collectionItems.collection_id, collectionId), eq(collectionItems.story_id, storyId)));
-  } else {
-    await db.insert(collectionItems).values({ collection_id: collectionId, story_id: storyId });
+    .returning({ story_id: collectionItems.story_id });
+  if (removed.length === 0) {
+    const story = await getStoryRecord(db, storyId);
+    if (!story || !canViewStory(viewer, story)) return null;
+    await db.insert(collectionItems).values({ collection_id: collectionId, story_id: storyId }).onConflictDoNothing();
   }
 
   updateTag("collections");
   revalidatePath(path);
   revalidatePath(ROUTES.library);
+  return removed.length === 0;
 }

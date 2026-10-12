@@ -43,7 +43,9 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
     };
 
     return { id: session.user.id, email: session.user.email ?? null, profile };
-  } catch {
+  } catch (err) {
+    // Logged: a database error here otherwise looks exactly like "signed out".
+    console.error("getCurrentUser failed:", err);
     return null;
   }
 });

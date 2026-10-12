@@ -31,6 +31,7 @@ export function CommentForm({
   const { t } = useLocale();
   const [text, setText] = useState("");
   const [isSpoiler, setIsSpoiler] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const formRef = useRef<HTMLFormElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -38,8 +39,16 @@ export function CommentForm({
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!text.trim()) return;
+    setError(null);
     startTransition(async () => {
-      await postComment(storyId, chapterId, text, path, parentId, isSpoiler);
+      // The text is only cleared once the server confirms the comment was
+      // saved. Before, a refused comment (too long, blocked account, story
+      // no longer visible) was silently dropped and the text vanished.
+      const result = await postComment(storyId, chapterId, text, path, parentId, isSpoiler);
+      if ("error" in result) {
+        setError(result.error === "too_long" ? t.reader.commentTooLong : t.reader.commentPostError);
+        return;
+      }
       setText("");
       setIsSpoiler(false);
       onSuccess?.();
@@ -73,6 +82,7 @@ export function CommentForm({
           onChange={(e) => setText(e.target.value)}
           placeholder={t.reader.commentPlaceholder}
           rows={2}
+          maxLength={5000}
           autoFocus={autoFocus}
           className="flex-1"
         />
@@ -92,6 +102,7 @@ export function CommentForm({
           {parentId ? t.manage.reply : t.reader.commentSubmit}
         </Button>
       </div>
+      {error && <p className="text-[12.5px] text-danger">{error}</p>}
     </form>
   );
 }

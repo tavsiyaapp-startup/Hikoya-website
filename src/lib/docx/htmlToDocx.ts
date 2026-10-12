@@ -1,6 +1,9 @@
 import "server-only";
 import { Parser } from "htmlparser2";
 import { Paragraph, TextRun, ImageRun, HeadingLevel, AlignmentType, BorderStyle } from "docx";
+import { readFile } from "fs/promises";
+import path from "path";
+import { isAllowedImageSrc } from "@/lib/sanitize";
 
 // Converts one chapter's stored content into docx paragraphs. Content is
 // either rich HTML from RichTextEditor (src/components/ui/RichTextEditor.tsx)
@@ -80,6 +83,36 @@ function scaledTransformation(width: number, height: number) {
 // embedding an <img> in the .docx needs its bytes fetched from Storage
 // first — so images are resolved in one async pass up front, keyed by src,
 // before the real (sync) parse runs.
+const MAX_EXPORT_IMAGE_BYTES = 10 * 1024 * 1024;
+
+// Only sources the sanitizer allows are ever fetched (our own /uploads, read
+// straight from disk, or the old Supabase public bucket) — chapter HTML is
+// author-controlled, so fetching any <img src> let an author make the
+// server request localhost/internal URLs (SSRF) and stuff the response into
+// the .docx staff download. Body size is capped so one huge file can't
+// exhaust the small host's memory.
+async function loadImageBytes(url: string): Promise<{ data: Buffer; contentType: string } | null> {
+  if (!isAllowedImageSrc(url)) return null;
+  if (url.startsWith("/uploads/")) {
+    const uploadsRoot = path.join(process.cwd(), "public", "uploads");
+    const file = path.join(process.cwd(), "public", url);
+    if (!file.startsWith(uploadsRoot + path.sep)) return null;
+    const data = await readFile(file);
+    return data.length > MAX_EXPORT_IMAGE_BYTES ? null : { data, contentType: "" };
+  }
+  const res = await fetch(url, { signal: AbortSignal.timeout(8000), redirect: "error" });
+  if (!res.ok) return null;
+  const declared = Number(res.headers.get("content-length") ?? 0);
+  if (declared > MAX_EXPORT_IMAGE_BYTES) return null;
+  const data = Buffer.from(await res.arrayBuffer());
+  if (data.length > MAX_EXPORT_IMAGE_BYTES) return null;
+  return { data, contentType: res.headers.get("content-type") ?? "" };
+}
+
+// The parser below is synchronous (htmlparser2 has no async hooks), but
+// embedding an <img> in the .docx needs its bytes first — so images are
+// resolved in one async pass up front, keyed by src, before the real
+// (sync) parse runs.
 async function fetchImages(html: string): Promise<Map<string, FetchedImage>> {
   const urls = new Set<string>();
   for (const m of html.matchAll(/<img[^>]*\ssrc="([^"]+)"/gi)) urls.add(m[1]);
@@ -88,18 +121,15 @@ async function fetchImages(html: string): Promise<Map<string, FetchedImage>> {
   await Promise.all(
     [...urls].map(async (url) => {
       try {
-        // Bounded so one slow/hanging Storage response can't eat the whole
-        // request's time budget — better to embed 9 of 10 images than to
-        // stall the entire export waiting on one.
-        const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
-        if (!res.ok) return;
-        const type = docxImageType(res.headers.get("content-type") ?? "", url);
+        const loaded = await loadImageBytes(url);
+        if (!loaded) return;
+        const type = docxImageType(loaded.contentType, url);
         if (!type) return;
-        const data = Buffer.from(await res.arrayBuffer());
-        const dims = readImageDimensions(data, type) ?? { width: 400, height: 300 };
-        map.set(url, { type, data, ...dims });
-      } catch {
-        // Skip images we can't fetch/decode — the rest of the chapter still exports.
+        const dims = readImageDimensions(loaded.data, type) ?? { width: 400, height: 300 };
+        map.set(url, { type, data: loaded.data, ...dims });
+      } catch (err) {
+        // Skip images we can't load/decode — the rest of the chapter still exports.
+        console.error(`docx export: image ${url} skipped:`, err);
       }
     })
   );

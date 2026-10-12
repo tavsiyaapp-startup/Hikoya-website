@@ -1,4 +1,5 @@
 import "server-only";
+import { logQueryError } from "@/lib/queries/query-errors";
 import { and, eq, count, sql } from "drizzle-orm";
 import { getDb } from "@/server/db/client";
 import { achievements, profiles, stories, userAchievements } from "@/server/db/schema";
@@ -17,7 +18,8 @@ export async function getProfileByUsername(username: string): Promise<Profile | 
     const db = getDb();
     const [row] = await db.select().from(profiles).where(eq(profiles.username, username)).limit(1);
     return row ? toProfile(row) : null;
-  } catch {
+  } catch (err) {
+    logQueryError("getProfileByUsername", err);
     return null;
   }
 }
@@ -28,7 +30,8 @@ export async function getProfileById(id: string): Promise<Profile | null> {
     const db = getDb();
     const [row] = await db.select().from(profiles).where(eq(profiles.id, id)).limit(1);
     return row ? toProfile(row) : null;
-  } catch {
+  } catch (err) {
+    logQueryError("getProfileById", err);
     return null;
   }
 }
@@ -41,7 +44,8 @@ export async function getAuthorStoryCount(authorId: string) {
       .from(stories)
       .where(and(eq(stories.author_id, authorId), eq(stories.status, "published")));
     return total;
-  } catch {
+  } catch (err) {
+    logQueryError("getAuthorStoryCount", err);
     return 0;
   }
 }
@@ -54,7 +58,8 @@ export async function getAuthorTotals(authorId: string) {
       .from(stories)
       .where(and(eq(stories.author_id, authorId), eq(stories.status, "published")));
     return { totalLikes: Number(totalLikes) };
-  } catch {
+  } catch (err) {
+    logQueryError("getAuthorTotals", err);
     return { totalLikes: 0 };
   }
 }
@@ -70,7 +75,8 @@ export async function getAuthorAchievements(userId: string) {
       .innerJoin(achievements, eq(userAchievements.achievement_id, achievements.id))
       .where(eq(userAchievements.user_id, userId));
     return rows;
-  } catch {
+  } catch (err) {
+    logQueryError("getAuthorAchievements", err);
     return [];
   }
 }

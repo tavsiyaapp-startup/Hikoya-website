@@ -107,12 +107,24 @@ export async function deleteChapter(db: DbOrTx, viewer: Viewer | null, chapterId
   const { chapter } = await requireEditableChapter(db, viewer, chapterId);
 
   await db.transaction(async (tx) => {
+    // Same story-row lock addChapter takes, so a concurrent add can't pick
+    // an order_index while the renumber below is in flight.
+    await tx.select({ id: stories.id }).from(stories).where(eq(stories.id, chapter.story_id)).for("update");
+
     const [deleted] = await tx.delete(chapters).where(eq(chapters.id, chapterId)).returning({ order_index: chapters.order_index });
     if (!deleted) return;
+    // Two steps because unique(story_id, order_index) is not deferrable and
+    // Postgres checks it row by row: a single "order_index - 1" can collide
+    // with a not-yet-shifted neighbour (23505) depending on physical row
+    // order, rolling back the whole delete. Negating first moves every
+    // affected row out of the positive range, then they land on their final
+    // values with no overlap possible.
+    const after = and(eq(chapters.story_id, chapter.story_id), gt(chapters.order_index, deleted.order_index));
+    await tx.update(chapters).set({ order_index: sql`-${chapters.order_index}` }).where(after);
     await tx
       .update(chapters)
-      .set({ order_index: sql`${chapters.order_index} - 1` })
-      .where(and(eq(chapters.story_id, chapter.story_id), gt(chapters.order_index, deleted.order_index)));
+      .set({ order_index: sql`-${chapters.order_index} - 1` })
+      .where(and(eq(chapters.story_id, chapter.story_id), sql`${chapters.order_index} < 0`));
   });
 }
 

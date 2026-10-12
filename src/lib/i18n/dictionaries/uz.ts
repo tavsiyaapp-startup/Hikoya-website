@@ -167,6 +167,8 @@ const uz: typeof ru = {
     storyProgress: "Hikoya progressi",
     guestProgressHint: "mehmon uchun progress saqlanmaydi",
     commentPlaceholder: "Izohingiz…",
+    commentPostError: "Izohni yuborib boʻlmadi. Qaytadan urinib koʻring.",
+    commentTooLong: "Izoh juda uzun (koʻpi bilan 5000 belgi).",
     commentSubmit: "Yuborish",
     commentsBlocked: "Hisobingiz bloklangan. Iltimos, sayt administratori bilan bog'laning.",
     contactAdmin: "Administratorga yozish",

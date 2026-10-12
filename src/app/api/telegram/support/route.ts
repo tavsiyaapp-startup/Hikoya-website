@@ -1,3 +1,4 @@
+import { timingSafeEqual } from "crypto";
 import { NextResponse } from "next/server";
 import { asc, eq } from "drizzle-orm";
 import { getDb, type Db } from "@/server/db/client";
@@ -31,6 +32,9 @@ const REPLY_USAGE_TEXT = "Использование: /reply <номер> <те�
 const TICKET_NOT_FOUND_TEXT = "❌ Обращение с таким номером не найдено.";
 const REPLY_FAILED_TEXT = "❌ Не удалось отправить. Пользователь заблокировал бота или ID неверен.";
 const REPLY_SENT_TEXT = "✅ Отправлено.";
+const FAILURE_TEXT = "Не удалось отправить обращение. Пожалуйста, попробуйте ещё раз чуть позже.";
+const TOO_MANY_PENDING_TEXT = "Слишком много сообщений в одном обращении. Нажмите «Отправить обращение» или начните заново командой /start.";
+const MAX_PENDING_MESSAGES = 30;
 const SEPARATOR = "-".repeat(30);
 
 const REPLY_PATTERN = /^\/reply(?:@\w+)?\s+(\d+)\s+([\s\S]+)$/;
@@ -61,13 +65,32 @@ type TelegramUpdate = {
   };
 };
 
-async function callTelegram(method: string, payload: Record<string, unknown>) {
-  const res = await fetch(`${TELEGRAM_API}/${method}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-  return res.json() as Promise<{ ok: boolean; result?: unknown }>;
+// Never throws: a network error, timeout or a Telegram error response all
+// come back as { ok: false } and are logged, so callers can decide what to do
+// (before, results were ignored and a failed forward still deleted the
+// user's queued messages and told them "received").
+async function callTelegram(method: string, payload: Record<string, unknown>): Promise<{ ok: boolean; result?: unknown }> {
+  try {
+    const res = await fetch(`${TELEGRAM_API}/${method}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(10_000),
+    });
+    const body = (await res.json()) as { ok: boolean; result?: unknown; description?: string };
+    if (!body.ok) console.error(`telegram ${method} failed:`, body.description ?? res.status);
+    return body;
+  } catch (err) {
+    console.error(`telegram ${method} failed:`, err);
+    return { ok: false };
+  }
+}
+
+function secretMatches(given: string | null, expected: string): boolean {
+  if (!given) return false;
+  const a = Buffer.from(given);
+  const b = Buffer.from(expected);
+  return a.length === b.length && timingSafeEqual(a, b);
 }
 
 function fullName(user: TelegramUser) {
@@ -78,15 +101,18 @@ type AdminClient = Db;
 
 export async function POST(request: Request) {
   const secret = request.headers.get("x-telegram-bot-api-secret-token");
-  if (!process.env.TELEGRAM_WEBHOOK_SECRET || secret !== process.env.TELEGRAM_WEBHOOK_SECRET) {
+  if (!process.env.TELEGRAM_WEBHOOK_SECRET || !secretMatches(secret, process.env.TELEGRAM_WEBHOOK_SECRET)) {
     return NextResponse.json({ ok: false }, { status: 401 });
   }
 
   const groupChatId = Number(process.env.TELEGRAM_SUPPORT_GROUP_CHAT_ID);
   const admin = getDb();
 
+  let privateChatId: number | null = null;
   try {
     const update = (await request.json()) as TelegramUpdate;
+    const chat = update.callback_query?.message?.chat ?? update.message?.chat;
+    if (chat && chat.type === "private") privateChatId = chat.id;
     if (update.callback_query) {
       await handleCallback(admin, update.callback_query, groupChatId);
     } else if (update.message) {
@@ -94,6 +120,9 @@ export async function POST(request: Request) {
     }
   } catch (err) {
     console.error("telegram support webhook error", err);
+    // Telegram won't retry (we answer 200 below), so at least tell the
+    // user their message didn't go through instead of silently dropping it.
+    if (privateChatId !== null) await callTelegram("sendMessage", { chat_id: privateChatId, text: FAILURE_TEXT });
   }
 
   // Always 200 — a non-2xx response makes Telegram retry the same update.
@@ -118,6 +147,15 @@ async function handleMessage(admin: AdminClient, message: TelegramMessage, group
   }
 
   if (message.text || message.photo || message.video) {
+    const queued = await admin
+      .select({ id: telegramSupportPendingMessages.id })
+      .from(telegramSupportPendingMessages)
+      .where(eq(telegramSupportPendingMessages.telegram_user_id, userId))
+      .limit(MAX_PENDING_MESSAGES);
+    if (queued.length >= MAX_PENDING_MESSAGES) {
+      await callTelegram("sendMessage", { chat_id: chatId, text: TOO_MANY_PENDING_TEXT });
+      return;
+    }
     await admin.insert(telegramSupportPendingMessages).values({
       telegram_user_id: userId,
       chat_id: chatId,
@@ -180,17 +218,28 @@ async function finalizeTicket(
     .returning({ ticket_number: telegramSupportTickets.ticket_number });
 
   const username = user.username ? `@${user.username}` : "без username";
-  await callTelegram("sendMessage", {
+  const header = await callTelegram("sendMessage", {
     chat_id: groupChatId,
     text: `🎫 Обращение #${ticket?.ticket_number}\n${username} ${fullName(user)}`,
   });
 
-  for (const item of pending) {
-    await callTelegram("copyMessage", {
-      chat_id: groupChatId,
-      from_chat_id: item.chat_id,
-      message_id: item.message_id,
-    });
+  let copied = 0;
+  if (header.ok) {
+    for (const item of pending) {
+      const result = await callTelegram("copyMessage", {
+        chat_id: groupChatId,
+        from_chat_id: item.chat_id,
+        message_id: item.message_id,
+      });
+      if (result.ok) copied++;
+    }
+  }
+
+  // Nothing reached the staff group — keep the queued messages so the user
+  // can press "send" again, and tell them it failed instead of "received".
+  if (!header.ok || copied === 0) {
+    await callTelegram("sendMessage", { chat_id: chatId, text: FAILURE_TEXT });
+    return;
   }
 
   await callTelegram("sendMessage", { chat_id: groupChatId, text: SEPARATOR });

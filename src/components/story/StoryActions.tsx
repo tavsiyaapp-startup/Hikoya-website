@@ -59,8 +59,12 @@ export function LikeBookmarkRow({
       <button
         type="button"
         onClick={() => {
-          setLiked((v) => !v);
-          startTransition(() => toggleStoryLike(storyId, path));
+          const previous = liked;
+          setLiked(!previous);
+          startTransition(async () => {
+            const result = await toggleStoryLike(storyId, path);
+            setLiked(result ?? previous);
+          });
         }}
         className={clsx(
           "flex h-11 flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl border text-[13.5px] font-bold transition",
@@ -73,8 +77,12 @@ export function LikeBookmarkRow({
       <button
         type="button"
         onClick={() => {
-          setBookmarked((v) => !v);
-          startTransition(() => toggleStoryBookmark(storyId, path));
+          const previous = bookmarked;
+          setBookmarked(!previous);
+          startTransition(async () => {
+            const result = await toggleStoryBookmark(storyId, path);
+            setBookmarked(result ?? previous);
+          });
         }}
         className={clsx(
           "flex h-11 flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl border text-[13.5px] font-bold transition",
@@ -172,8 +180,13 @@ function CollectionPickerButton({
                 key={c.id}
                 type="button"
                 onClick={() => {
-                  setItems((prev) => prev.map((x) => (x.id === c.id ? { ...x, hasStory: !x.hasStory } : x)));
-                  startTransition(() => toggleStoryInCollection(c.id, storyId, path));
+                  const previous = c.hasStory;
+                  setItems((prev) => prev.map((x) => (x.id === c.id ? { ...x, hasStory: !previous } : x)));
+                  startTransition(async () => {
+                    const result = await toggleStoryInCollection(c.id, storyId, path);
+                    const settled = result ?? previous;
+                    setItems((prev) => prev.map((x) => (x.id === c.id ? { ...x, hasStory: settled } : x)));
+                  });
                 }}
                 className="flex w-full cursor-pointer items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-[13.5px] hover:bg-surface"
               >
@@ -264,9 +277,13 @@ export function ReadingStatusSelect({
   const current = options.find((o) => o.value === status) ?? options[0];
 
   function choose(value: ReadingStatus | null) {
+    const previous = status;
     setStatus(value);
     setOpen(false);
-    startTransition(() => setReadingStatus(storyId, value, path));
+    startTransition(async () => {
+      const ok = await setReadingStatus(storyId, value, path);
+      if (!ok) setStatus(previous);
+    });
   }
 
   return (
@@ -336,8 +353,12 @@ export function FollowButton({
     <button
       type="button"
       onClick={() => {
-        setFollowing((v) => !v);
-        startTransition(() => toggleFollowAuthor(authorId, path));
+        const previous = following;
+        setFollowing(!previous);
+        startTransition(async () => {
+          const result = await toggleFollowAuthor(authorId, path);
+          setFollowing(result ?? previous);
+        });
       }}
       className={clsx(
         "flex h-10.5 w-full cursor-pointer items-center justify-center rounded-xl border text-[14px] font-bold transition",

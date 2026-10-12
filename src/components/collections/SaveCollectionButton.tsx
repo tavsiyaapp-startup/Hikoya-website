@@ -37,8 +37,12 @@ export function SaveCollectionButton({
     <button
       type="button"
       onClick={() => {
-        setSaved((v) => !v);
-        startTransition(() => toggleSavedCollection(collectionId, path));
+        const previous = saved;
+        setSaved(!previous);
+        startTransition(async () => {
+          const result = await toggleSavedCollection(collectionId, path);
+          setSaved(result ?? previous);
+        });
       }}
       className={clsx(
         "inline-flex h-10 cursor-pointer items-center rounded-xl border px-4 text-[13.5px] font-bold transition",

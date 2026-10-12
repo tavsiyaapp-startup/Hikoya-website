@@ -1,4 +1,5 @@
 import "server-only";
+import { logQueryError } from "@/lib/queries/query-errors";
 import { desc, eq, inArray } from "drizzle-orm";
 import { getDb } from "@/server/db/client";
 import { profiles, requestResponses, requests, stories } from "@/server/db/schema";
@@ -38,7 +39,8 @@ export async function getRequestsBySubmitter(userId: string): Promise<RequestWit
     const rows = await db.select().from(requests).where(eq(requests.from_user_id, userId)).orderBy(desc(requests.created_at));
     const responsesByRequest = await attachResponseCounts(db, rows);
     return rows.map((r) => ({ ...r, created_at: toISO(r.created_at), responses: responsesByRequest.get(r.id) ?? [] }));
-  } catch {
+  } catch (err) {
+    logQueryError("getRequestsBySubmitter", err);
     return [];
   }
 }
@@ -63,7 +65,8 @@ export async function getBoardRequests(status?: string): Promise<BoardRequest[]>
       from_user: r.from_user,
       responses: responsesByRequest.get(r.request.id) ?? [],
     }));
-  } catch {
+  } catch (err) {
+    logQueryError("getBoardRequests", err);
     return [];
   }
 }
@@ -81,7 +84,8 @@ export async function getRequestById(id: string): Promise<RequestWithAuthor | nu
       .limit(1);
     if (!row) return null;
     return { ...row.request, created_at: toISO(row.request.created_at), from_user: row.from_user };
-  } catch {
+  } catch (err) {
+    logQueryError("getRequestById", err);
     return null;
   }
 }
@@ -111,7 +115,8 @@ export async function getRequestResponses(requestId: string): Promise<RequestRes
       author: r.author,
       story: r.response.story_id ? r.story : null,
     }));
-  } catch {
+  } catch (err) {
+    logQueryError("getRequestResponses", err);
     return [];
   }
 }
@@ -127,7 +132,8 @@ export async function getLinkedRequestForStory(storyId: string): Promise<string 
       .where(eq(requestResponses.story_id, storyId))
       .limit(1);
     return row?.request_id ?? null;
-  } catch {
+  } catch (err) {
+    logQueryError("getLinkedRequestForStory", err);
     return null;
   }
 }

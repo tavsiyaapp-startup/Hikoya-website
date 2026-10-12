@@ -457,6 +457,10 @@ export const commentReports = pgTable("comment_reports", {
   created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   resolved_at: timestamp("resolved_at", { withTimezone: true }),
   resolved_by: uuid("resolved_by").references(() => profiles.id, { onDelete: "set null" }),
+  // dismiss | hide | block — what the moderator actually did. Added
+  // 13.10.2026 (D:\QIZLAB\backups\comment_reports_resolution.sql); older
+  // resolved rows have it null and only status tells dismissed/actioned.
+  resolution: text("resolution"),
 }, (table) => [
   unique("comment_reports_comment_reporter_key").on(table.comment_id, table.reporter_id),
   index("comment_reports_status_idx").on(table.status, table.created_at),

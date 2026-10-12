@@ -1,6 +1,6 @@
 import "server-only";
 import { alias } from "drizzle-orm/pg-core";
-import { and, asc, eq, isNull } from "drizzle-orm";
+import { and, asc, desc, eq, isNull, ne } from "drizzle-orm";
 import {
   canChangeUserStatus,
   canCommentOnChapter,
@@ -18,7 +18,7 @@ import {
 } from "@/server/authz/policy";
 import type { DbOrTx } from "@/server/db/client";
 import { commentReports, comments, likes, profiles } from "@/server/db/schema";
-import { ForbiddenError, NotFoundError } from "@/server/data/errors";
+import { AlreadyResolvedError, ForbiddenError, NotFoundError } from "@/server/data/errors";
 import { getChapterRecord, requireViewableChapter } from "@/server/data/chapters";
 import { getStoryRecord, requireViewableStory } from "@/server/data/stories";
 import { isValidReportReason, type ReportAction, type ReportReason } from "@/server/data/logic";
@@ -178,6 +178,7 @@ export async function reportComment(
 
 const reportAuthor = alias(profiles, "report_author");
 const reportReporter = alias(profiles, "report_reporter");
+const reportResolver = alias(profiles, "report_resolver");
 
 export async function listOpenReports(db: DbOrTx, viewer: Viewer | null) {
   if (!canReviewReports(viewer)) throw new ForbiddenError();
@@ -205,17 +206,51 @@ export async function listOpenReports(db: DbOrTx, viewer: Viewer | null) {
     .orderBy(asc(commentReports.created_at));
 }
 
+// Resolved complaints stay in the table — this is the history tab of
+// /admin/reports: newest decisions first, with who decided and what was done.
+export async function listResolvedReports(db: DbOrTx, viewer: Viewer | null, limit = 200) {
+  if (!canReviewReports(viewer)) throw new ForbiddenError();
+  return db
+    .select({
+      id: commentReports.id,
+      reason: commentReports.reason,
+      details: commentReports.details,
+      status: commentReports.status,
+      resolution: commentReports.resolution,
+      created_at: commentReports.created_at,
+      resolved_at: commentReports.resolved_at,
+      comment_id: comments.id,
+      comment_text: comments.text,
+      comment_hidden_at: comments.hidden_at,
+      story_id: comments.story_id,
+      chapter_id: comments.chapter_id,
+      author_username: reportAuthor.username,
+      reporter_username: reportReporter.username,
+      resolver_username: reportResolver.username,
+    })
+    .from(commentReports)
+    .innerJoin(comments, eq(commentReports.comment_id, comments.id))
+    .innerJoin(reportAuthor, eq(comments.user_id, reportAuthor.id))
+    .innerJoin(reportReporter, eq(commentReports.reporter_id, reportReporter.id))
+    .leftJoin(reportResolver, eq(commentReports.resolved_by, reportResolver.id))
+    .where(ne(commentReports.status, "open"))
+    .orderBy(desc(commentReports.resolved_at))
+    .limit(limit);
+}
+
 export async function resolveReport(db: DbOrTx, viewer: Viewer | null, reportId: string, action: ReportAction): Promise<void> {
   if (!canReviewReports(viewer)) throw new ForbiddenError();
 
   await db.transaction(async (tx) => {
+    // Locked so two moderators deciding at once can't both apply an action.
     const [report] = await tx
       .select({ id: commentReports.id, comment_id: commentReports.comment_id, status: commentReports.status })
       .from(commentReports)
       .where(eq(commentReports.id, reportId))
+      .for("update")
       .limit(1);
     if (!report) throw new NotFoundError("Report");
-    if (report.status !== "open") return; // already resolved by someone else
+    if (report.status !== "open") throw new AlreadyResolvedError();
 
     if (action === "hide") {
       if (!canHideComment(viewer)) throw new ForbiddenError();
@@ -235,7 +270,12 @@ export async function resolveReport(db: DbOrTx, viewer: Viewer | null, reportId:
 
     await tx
       .update(commentReports)
-      .set({ status: action === "dismiss" ? "dismissed" : "actioned", resolved_at: new Date(), resolved_by: viewer!.id })
+      .set({
+        status: action === "dismiss" ? "dismissed" : "actioned",
+        resolution: action,
+        resolved_at: new Date(),
+        resolved_by: viewer!.id,
+      })
       .where(eq(commentReports.id, reportId));
   });
 }

@@ -15,3 +15,11 @@ export class ForbiddenError extends Error {
     this.name = "ForbiddenError";
   }
 }
+
+// A complaint someone else already resolved (stale admin page).
+export class AlreadyResolvedError extends Error {
+  constructor() {
+    super("Report already resolved");
+    this.name = "AlreadyResolvedError";
+  }
+}

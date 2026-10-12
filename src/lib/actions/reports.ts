@@ -6,7 +6,7 @@ import { getAuth } from "@/server/auth/config";
 import { getDb } from "@/server/db/client";
 import { loadViewer } from "@/server/data/viewer";
 import { reportComment as reportCommentData, resolveReport } from "@/server/data/comments";
-import { ForbiddenError, NotFoundError } from "@/server/data/errors";
+import { AlreadyResolvedError, ForbiddenError, NotFoundError } from "@/server/data/errors";
 import { getStaffSession } from "@/server/auth/staff";
 import { takeRateLimit } from "@/server/rate-limit";
 import type { ReportAction } from "@/server/data/logic";
@@ -56,7 +56,7 @@ const ACTIONS: readonly string[] = ["dismiss", "hide", "block"];
 export async function resolveCommentReport(
   reportId: string,
   action: ReportAction
-): Promise<{ ok: true } | { error: "unauthorized" | "not_allowed" | "failed" }> {
+): Promise<{ ok: true } | { error: "unauthorized" | "not_allowed" | "already_resolved" | "failed" }> {
   const staff = await getStaffSession();
   if (staff.status !== "staff") return { error: "unauthorized" };
   if (typeof reportId !== "string" || !ACTIONS.includes(action)) return { error: "not_allowed" };
@@ -66,6 +66,7 @@ export async function resolveCommentReport(
   try {
     await resolveReport(db, viewer, reportId, action);
   } catch (err) {
+    if (err instanceof AlreadyResolvedError) return { error: "already_resolved" };
     if (err instanceof ForbiddenError || err instanceof NotFoundError) return { error: "not_allowed" };
     console.error("[reports] resolveReport failed", reportId, action, err);
     return { error: "failed" };

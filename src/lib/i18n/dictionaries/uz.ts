@@ -462,6 +462,10 @@ const uz: typeof ru = {
   admin: {
     signOut: "Chiqish",
     linkNotAllowed: "Saqlanmadi: havola Hikoya sahifasiga (masalan /search) yoki https orqali hikoya.org, t.me, instagram.com ga olib borishi kerak.",
+    setCover: "Muqova qo'yish",
+    changeCover: "Muqovani almashtirish",
+    removeCover: "Muqovani olib tashlash",
+    removeCoverConfirm: "Bu hikoyaning muqovasini olib tashlaysizmi?",
     actionRefused: "Amal bajarilmadi: bu foydalanuvchi uchun huquqingiz yetarli emas.",
     dashboard: "Boshqaruv paneli",
     users: "Foydalanuvchilar",

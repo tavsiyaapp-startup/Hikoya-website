@@ -24,7 +24,7 @@ import { createNotification } from "@/lib/actions/create-notification";
 import { ROUTES } from "@/lib/constants";
 import { getStaffSession } from "@/server/auth/staff";
 import { canChangeUserStatus, canVerifyUser } from "@/server/authz/policy";
-import { uploadUrlPrefix } from "@/server/storage/local";
+import { deleteUpload, InvalidUploadError, saveUpload, uploadUrlPrefix } from "@/server/storage/local";
 
 // Identity comes from Better Auth (Phase 1 of the Supabase exit, see
 // src/server/auth/staff.ts). The writes below used to go through
@@ -103,6 +103,60 @@ export async function approveStory(storyId: string, storySlug: string) {
   revalidatePath(`${ROUTES.admin}/stories`);
   revalidatePath(ROUTES.adminStory(storyId));
   revalidatePath(ROUTES.admin);
+  revalidatePath(ROUTES.home);
+}
+
+// Staff can set or replace any story's cover from /admin/stories/[id] —
+// mainly for stories whose old cover lived on Supabase and no longer loads.
+// The file is stored under the staff member's own covers/ folder; the author
+// can still change it later (updateStory accepts the story's current url).
+export async function setStoryCoverAdmin(
+  storyId: string,
+  storySlug: string,
+  formData: FormData
+): Promise<{ ok: true } | { error: "invalid_file" | "not_found" }> {
+  const staff = await requireStaff();
+  const file = formData.get("file");
+  if (!(file instanceof File) || file.size === 0) return { error: "invalid_file" };
+
+  const db = getDb();
+  const [story] = await db.select({ cover_url: stories.cover_url }).from(stories).where(eq(stories.id, storyId)).limit(1);
+  if (!story) return { error: "not_found" };
+
+  let url: string;
+  try {
+    url = await saveUpload("covers", staff.id, file);
+  } catch (err) {
+    if (err instanceof InvalidUploadError) return { error: "invalid_file" };
+    throw err;
+  }
+  await db.update(stories).set({ cover_url: url, updated_at: new Date() }).where(eq(stories.id, storyId));
+  // Only ever removes a file from this server's own uploads folder; an old
+  // Supabase url is just left as it is.
+  await deleteUpload(story.cover_url);
+
+  revalidateStoryCover(storyId, storySlug);
+  return { ok: true };
+}
+
+export async function removeStoryCoverAdmin(storyId: string, storySlug: string): Promise<void> {
+  await requireStaff();
+  const db = getDb();
+  const [story] = await db
+    .update(stories)
+    .set({ cover_url: null, updated_at: new Date() })
+    .where(eq(stories.id, storyId))
+    .returning({ id: stories.id });
+  if (!story) return;
+  revalidateStoryCover(storyId, storySlug);
+}
+
+function revalidateStoryCover(storyId: string, storySlug: string) {
+  updateTag("stories");
+  updateTag("collections");
+  revalidatePath(ROUTES.adminStory(storyId));
+  revalidatePath(ROUTES.story(storySlug));
+  revalidatePath(ROUTES.manage(storySlug));
   revalidatePath(ROUTES.home);
 }
 

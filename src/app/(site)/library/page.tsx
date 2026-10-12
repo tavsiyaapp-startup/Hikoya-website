@@ -14,6 +14,7 @@ import { ROUTES } from "@/lib/constants";
 import { StoryCard } from "@/components/story/StoryCard";
 import { Avatar } from "@/components/ui/Avatar";
 import { LinkChip } from "@/components/ui/LinkChip";
+import { liveImageUrl } from "@/lib/images";
 
 const TABS = ["reading", "wantToRead", "read", "dropped", "bookmarks", "following"] as const;
 type Tab = (typeof TABS)[number];
@@ -89,7 +90,7 @@ export default async function LibraryPage({
                   className="flex items-center gap-3 rounded-[14px] border border-border bg-card p-3.5 hover:border-primary-300 sm:gap-4.5 sm:p-4.5"
                 >
                   <div className="relative h-20 w-15 shrink-0 overflow-hidden rounded-[13px] bg-primary-200 sm:h-25 sm:w-19">
-                    {story.cover_url && <Image src={story.cover_url} alt="" fill className="object-cover" />}
+                    {liveImageUrl(story.cover_url) && <Image src={liveImageUrl(story.cover_url)!} alt="" fill className="object-cover" />}
                   </div>
                   <div className="min-w-0 flex-1">
                     <h3 className="mb-2.5 line-clamp-2 text-[15px] font-extrabold sm:text-[17px]">{story.title}</h3>

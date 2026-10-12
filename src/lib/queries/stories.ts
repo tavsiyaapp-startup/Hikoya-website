@@ -27,6 +27,7 @@ import {
 import { genreVariants } from "@/lib/genre";
 import type { HomeTab } from "@/lib/homeTabs";
 import type { Story, Chapter, Collection, Profile, StoryTopTier, HeroSlide, Announcement } from "@/types/database";
+import { liveImageUrl } from "@/lib/images";
 
 // Drizzle returns Date objects for timestamp columns; every consumer of
 // StoryCard (date formatting in components, etc.) expects the ISO-string
@@ -262,9 +263,10 @@ export async function attachCollectionCovers(list: CollectionWithOwner[]): Promi
   const counts = new Map<string, number>();
   for (const item of items) {
     counts.set(item.collection_id, (counts.get(item.collection_id) ?? 0) + 1);
-    if (!item.cover_url) continue;
+    const cover = liveImageUrl(item.cover_url);
+    if (!cover) continue;
     const arr = covers.get(item.collection_id) ?? [];
-    if (arr.length < 3) arr.push(item.cover_url);
+    if (arr.length < 3) arr.push(cover);
     covers.set(item.collection_id, arr);
   }
   return list.map((c) => ({
@@ -314,7 +316,12 @@ export const getHeroSlides = withFallback(
     try {
       const db = getDb();
       const rows = await db.select().from(heroSlides).orderBy(asc(heroSlides.created_at));
-      return rows.map((r) => ({ ...r, created_at: r.created_at.toISOString() }));
+      return rows.map((r) => ({
+        ...r,
+        image_url: liveImageUrl(r.image_url),
+        image_url_mobile: liveImageUrl(r.image_url_mobile),
+        created_at: r.created_at.toISOString(),
+      }));
     } catch (err) {
       logQueryError("getHeroSlides", err);
       throw err;
@@ -337,7 +344,7 @@ export const getAnnouncements = withFallback(
     try {
       const db = getDb();
       const rows = await db.select().from(announcements).orderBy(desc(announcements.created_at)).limit(limit);
-      return rows.map((r) => ({ ...r, created_at: r.created_at.toISOString() }));
+      return rows.map((r) => ({ ...r, image_url: liveImageUrl(r.image_url), created_at: r.created_at.toISOString() }));
     } catch (err) {
       logQueryError("getAnnouncements", err);
       throw err;

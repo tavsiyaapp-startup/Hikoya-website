@@ -13,6 +13,8 @@ import { StoryModerateActions } from "./StoryModerateActions";
 import { StoryHideAction } from "./StoryHideAction";
 import { TrashActions } from "./TrashActions";
 import { ChapterModerateActions } from "./ChapterModerateActions";
+import { StoryCoverAdmin } from "./StoryCoverAdmin";
+import { liveImageUrl } from "@/lib/images";
 
 function statusTone(status: string) {
   if (status === "published") return "success" as const;
@@ -58,8 +60,18 @@ export default async function AdminStoryModeratePage({ params }: { params: Promi
 
       <div className="px-4 pb-15 pt-7 sm:px-8.5">
         <div className="mb-6 flex flex-col gap-4.5 rounded-[14px] border border-border bg-card p-4.5 sm:flex-row sm:gap-6.5 sm:p-6.5">
-          <div className="relative mx-auto h-42 w-31.5 shrink-0 overflow-hidden rounded-[12px] bg-primary-200 sm:mx-0">
-            {story.cover_url && <Image src={story.cover_url} alt="" fill className="object-cover" />}
+          <div className="mx-auto shrink-0 sm:mx-0">
+            <div className="relative flex h-42 w-31.5 items-center justify-center overflow-hidden rounded-[12px] bg-primary-200 p-2.5">
+              {liveImageUrl(story.cover_url) ? (
+                <Image src={liveImageUrl(story.cover_url)!} alt="" fill className="object-cover" />
+              ) : (
+                <div className="text-center">
+                  <div className="line-clamp-4 text-[12px] font-extrabold leading-snug text-primary-900">{story.title}</div>
+                  <div className="mt-1 truncate text-[10.5px] font-semibold text-primary-800/80">{author?.display_name}</div>
+                </div>
+              )}
+            </div>
+            <StoryCoverAdmin storyId={story.id} storySlug={story.slug} hasCover={Boolean(liveImageUrl(story.cover_url))} />
           </div>
           <div className="min-w-0 flex-1">
             <div className="mb-3 flex flex-wrap items-center gap-2.5">

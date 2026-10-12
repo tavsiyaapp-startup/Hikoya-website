@@ -15,6 +15,7 @@ import { ChapterRow } from "@/components/manage/ChapterRow";
 import { EditStoryForm } from "@/components/manage/EditStoryForm";
 import { StoryModerationActions } from "@/components/manage/StoryModerationActions";
 import { DeleteStoryButton } from "@/components/manage/DeleteStoryButton";
+import { liveImageUrl } from "@/lib/images";
 
 const TABS = ["chapters", "edit"] as const;
 type Tab = (typeof TABS)[number];
@@ -57,7 +58,7 @@ export default async function ManagePage({
     <div>
       <div className="mb-6 flex flex-col gap-4.5 rounded-[16px] border border-border bg-card p-4.5 sm:flex-row sm:gap-6.5 sm:p-6.5">
         <div className="relative mx-auto h-42 w-31.5 shrink-0 overflow-hidden rounded-[12px] bg-primary-200 shadow-[0_10px_24px_rgba(60,40,120,0.16)] sm:mx-0 sm:h-50 sm:w-37.5">
-          {story.cover_url && <Image src={story.cover_url} alt="" fill className="object-cover" />}
+          {liveImageUrl(story.cover_url) && <Image src={liveImageUrl(story.cover_url)!} alt="" fill className="object-cover" />}
         </div>
         <div className="min-w-0 flex-1">
           <div className="mb-3 flex flex-wrap items-center gap-2.5">

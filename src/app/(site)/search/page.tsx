@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { SearchIcon } from "@/components/ui/icons";
 import { RELATIONSHIP_TYPES } from "@/lib/relationshipTypes";
+import { liveImageUrl } from "@/lib/images";
 
 type Query = { [key: string]: string | string[] | undefined };
 
@@ -261,9 +262,9 @@ export default async function SearchPage({
                 className="flex gap-3.5 rounded-[14px] border border-border bg-card p-3.5 hover:border-primary-300 hover:shadow-[0_12px_28px_rgba(60,40,120,0.09)] sm:gap-5 sm:p-4.5"
               >
                 <div className="relative h-28 w-20 shrink-0 overflow-hidden rounded-[14px] bg-primary-200 sm:h-38.75 sm:w-29">
-                  {story.cover_url && (
+                  {liveImageUrl(story.cover_url) && (
                     <Image
-                      src={story.cover_url}
+                      src={liveImageUrl(story.cover_url)!}
                       alt=""
                       fill
                       sizes="(max-width: 639px) 80px, 116px"

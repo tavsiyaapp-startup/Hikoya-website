@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/Chip";
 import { storyProgressLabel } from "@/lib/storyProgress";
 import type { StoryCard as StoryCardData } from "@/lib/queries/stories";
 import type { StoryProgressStatus } from "@/types/database";
+import { liveImageUrl } from "@/lib/images";
 
 // Solid-color pill, distinct from the shared Badge component's softer
 // pastel tones (Badge stays pastel everywhere else it's used) — this one's
@@ -87,9 +88,9 @@ export async function StoryCard({
         className="block overflow-hidden rounded-[12px] border border-border bg-card shadow-[0_2px_10px_rgba(60,40,120,0.05)] transition hover:-translate-y-0.5 hover:shadow-[0_14px_30px_rgba(60,40,120,0.12)]"
       >
         <div className="relative flex aspect-[3/4] items-center justify-center bg-primary-200 p-3">
-          {story.cover_url ? (
+          {liveImageUrl(story.cover_url) ? (
             <Image
-              src={story.cover_url}
+              src={liveImageUrl(story.cover_url)!}
               alt=""
               fill
               sizes="(max-width: 1023px) 25vw, 12.5vw"

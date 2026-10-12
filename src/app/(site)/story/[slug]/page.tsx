@@ -31,6 +31,7 @@ import { CommentGuidelines } from "@/components/story/CommentGuidelines";
 import { CommentForm } from "@/components/story/CommentForm";
 import { LockIcon } from "@/components/ui/icons";
 import type { ReadingStatus } from "@/types/database";
+import { liveImageUrl } from "@/lib/images";
 
 function relationshipLabel(value: string, locale: "ru" | "uz"): string {
   if (locale === "ru") return value;
@@ -86,13 +87,13 @@ export default async function StoryPage({
   return (
     <div className="flex flex-col items-start gap-6 lg:flex-row lg:gap-9">
       <div className="w-full lg:sticky lg:top-26 lg:w-75 lg:shrink-0">
-        {story.cover_url ? (
+        {liveImageUrl(story.cover_url) ? (
           <ImageZoom
-            src={story.cover_url}
+            src={liveImageUrl(story.cover_url)!}
             alt={story.title}
             triggerClassName="relative mx-auto mb-4.5 block aspect-[3/4] w-full max-w-60 cursor-zoom-in overflow-hidden rounded-[14px] bg-primary-200 shadow-[0_18px_40px_rgba(60,40,120,0.18)] sm:max-w-70 lg:mx-0 lg:max-w-none"
           >
-            <Image src={story.cover_url} alt="" fill className="object-cover" />
+            <Image src={liveImageUrl(story.cover_url)!} alt="" fill className="object-cover" />
           </ImageZoom>
         ) : (
           <div className="relative mx-auto mb-4.5 flex aspect-[3/4] w-full max-w-60 items-center justify-center overflow-hidden rounded-[14px] bg-primary-200 p-5 shadow-[0_18px_40px_rgba(60,40,120,0.18)] sm:max-w-70 lg:mx-0 lg:max-w-none">

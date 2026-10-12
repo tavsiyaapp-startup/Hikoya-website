@@ -460,6 +460,10 @@ const ru = {
   admin: {
     signOut: "Выйти",
     linkNotAllowed: "Не сохранено: ссылка должна вести на страницу Hikoya (например /search) или на hikoya.org, t.me, instagram.com по https.",
+    setCover: "Установить обложку",
+    changeCover: "Сменить обложку",
+    removeCover: "Убрать обложку",
+    removeCoverConfirm: "Убрать обложку у этой истории?",
     actionRefused: "Действие не выполнено: недостаточно прав для этого пользователя.",
     dashboard: "Дашборд",
     users: "Пользователи",

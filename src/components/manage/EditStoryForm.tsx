@@ -16,6 +16,7 @@ import { AddGenreButton } from "@/components/story/AddGenreButton";
 import { RELATIONSHIP_TYPES } from "@/lib/relationshipTypes";
 import { storyProgressLabel } from "@/lib/storyProgress";
 import type { StoryProgressStatus } from "@/types/database";
+import { liveImageUrl } from "@/lib/images";
 
 const PROGRESS_STATUSES: StoryProgressStatus[] = ["ongoing", "finished", "dropped"];
 
@@ -125,7 +126,7 @@ export function EditStoryForm({
 
       <div className="mt-5 flex flex-col items-start gap-5 sm:flex-row">
         <div className="relative h-45 w-full shrink-0 overflow-hidden rounded-[12px] bg-primary-200 shadow-[0_10px_26px_rgba(60,40,120,0.16)] sm:w-34">
-          {coverUrl && <Image src={coverUrl} alt="" fill className="object-cover" />}
+          {liveImageUrl(coverUrl) && <Image src={liveImageUrl(coverUrl)!} alt="" fill className="object-cover" />}
         </div>
         <label className="flex h-40 w-full flex-1 cursor-pointer flex-col items-center justify-center gap-2 rounded-[12px] border-2 border-dashed border-primary-300 bg-surface text-center hover:bg-primary-50 sm:h-45">
           <input type="file" accept="image/*" onChange={handleCoverChange} className="hidden" />

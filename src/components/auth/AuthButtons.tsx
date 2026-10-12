@@ -3,10 +3,18 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
+import { ROUTES } from "@/lib/constants";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { PasswordInput } from "@/components/ui/PasswordInput";
+
+// /login routes a signed-in user on: unfinished onboarding -> onboarding
+// (display name, avatar, password), no password yet -> set-password,
+// otherwise -> next.
+function afterSignIn(next: string): string {
+  return `${ROUTES.login}?next=${encodeURIComponent(next)}`;
+}
 
 export function GoogleButton({ next = "/", className }: { next?: string; className?: string }) {
   const { t } = useLocale();
@@ -16,7 +24,7 @@ export function GoogleButton({ next = "/", className }: { next?: string; classNa
   async function handleClick() {
     setPending(true);
     setError(null);
-    const { error } = await authClient.signIn.social({ provider: "google", callbackURL: next });
+    const { error } = await authClient.signIn.social({ provider: "google", callbackURL: afterSignIn(next) });
     if (error) {
       setError(t.auth.googleError);
       setPending(false);
@@ -83,7 +91,7 @@ export function EmailForm({ next = "/" }: { next?: string; mode?: "login" | "reg
       setError((error.status ?? 0) >= 500 ? t.auth.serverError : t.auth.emailOtpError);
       return;
     }
-    router.push(next);
+    router.push(afterSignIn(next));
     router.refresh();
   }
 

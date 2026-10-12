@@ -9,6 +9,7 @@ import { getDb } from "@/server/db/client";
 import * as schema from "@/server/db/schema";
 import { hashPassword, verifyPassword } from "@/server/auth/password";
 import { sendMail } from "@/server/auth/mailer";
+import { uniqueUsernameFromEmail } from "@/server/data/username";
 
 // profiles plays Better Auth's "user" role directly — same id as the old
 // auth.users (so every existing FK into profiles.id keeps working, no
@@ -110,10 +111,9 @@ ${url}
       // profiles.username is NOT NULL + UNIQUE and Better Auth never
       // writes it — without telling Better Auth it exists, its Drizzle
       // schema check refuses to run at all (SCHEMA_MISMATCH), on every
-      // request, not just sign-up/sign-in. New accounts (first email-code
-      // or Google sign-in) are created by Better Auth with this placeholder
-      // username, and nothing changes it afterwards yet — the old Supabase
-      // trigger derived it from the email instead.
+      // request, not just sign-up/sign-in. The real value for a new account
+      // is set from its email in databaseHooks.user.create below; this
+      // default only covers an insert that somehow skips that hook.
       additionalFields: {
         username: {
           type: "string",
@@ -199,6 +199,19 @@ ${url}
       google: {
         clientId: process.env.GOOGLE_CLIENT_ID ?? "",
         clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? "",
+      },
+    },
+    // A new account (first email-code or Google sign-in) gets its username
+    // from the email, like the old Supabase trigger did — people never
+    // choose it; they set the display name others see during onboarding.
+    databaseHooks: {
+      user: {
+        create: {
+          async before(user) {
+            const email = typeof user.email === "string" ? user.email : "";
+            return { data: { ...user, username: await uniqueUsernameFromEmail(email) } };
+          },
+        },
       },
     },
     // profiles.has_password drives /login's "you have no password yet, set

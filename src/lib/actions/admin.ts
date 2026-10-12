@@ -20,6 +20,7 @@ import {
   userAchievements,
 } from "@/server/db/schema";
 import { setCredentialPassword } from "@/server/auth/set-password";
+import { uniqueUsernameFromEmail } from "@/server/data/username";
 import { createNotification } from "@/lib/actions/create-notification";
 import { ROUTES } from "@/lib/constants";
 import { getStaffSession } from "@/server/auth/staff";
@@ -622,24 +623,6 @@ export async function updatePlatformSettings(formData: FormData) {
 
   updateTag("settings");
   revalidatePath(`${ROUTES.admin}/settings`);
-}
-
-// Username generation mirrors supabase/migrations/0005_auth_trigger.sql's
-// handle_new_user() — the Postgres trigger that used to run this on every
-// new auth.users row, now dead code since Better Auth inserts into
-// profiles directly and never touches auth.users. This is the one place
-// outside that trigger a brand-new profiles row gets created by hand.
-async function uniqueUsernameFromEmail(email: string): Promise<string> {
-  const db = getDb();
-  const base = email.split("@")[0].replace(/[^a-zA-Z0-9_]/g, "") || "user";
-  let candidate = base;
-  let suffix = 0;
-  for (;;) {
-    const [existing] = await db.select({ id: profiles.id }).from(profiles).where(eq(profiles.username, candidate)).limit(1);
-    if (!existing) return candidate;
-    suffix += 1;
-    candidate = `${base}${suffix}`;
-  }
 }
 
 export async function createModerator(

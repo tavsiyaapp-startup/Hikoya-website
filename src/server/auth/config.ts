@@ -3,7 +3,7 @@ import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "@better-auth/drizzle-adapter";
 import { emailOTP } from "better-auth/plugins";
 import { nextCookies } from "better-auth/next-js";
-import { createAuthMiddleware } from "better-auth/api";
+import { APIError, createAuthMiddleware } from "better-auth/api";
 import { eq } from "drizzle-orm";
 import { getDb } from "@/server/db/client";
 import * as schema from "@/server/db/schema";
@@ -37,6 +37,16 @@ import { uniqueUsernameFromEmail } from "@/server/data/username";
 // made `next build` fail outright without a reachable DATABASE_URL, both
 // locally and, worse, as a real risk in CI if the database were ever
 // briefly unreachable during a deploy's build step.
+const BLOCKED_AUTH_PATHS = new Set([
+  "/update-user",
+  "/delete-user",
+  "/change-password",
+  "/set-password",
+  "/link-social",
+  "/unlink-account",
+  "/sign-up/email",
+]);
+
 function buildAuth() {
   return betterAuth({
     // Without this, Better Auth has no trusted origin to compare the
@@ -221,13 +231,29 @@ ${url}
     // exists) flips it here — otherwise the user who just reset their
     // password gets sent to set it a second time.
     hooks: {
+      // Better Auth exposes its whole REST API under /api/auth/*. These
+      // endpoints are never used by the site, and some of them write straight
+      // to profiles (update-user maps name/image to display_name/avatar_url),
+      // skipping the site's own checks in updateProfile: blocked accounts,
+      // length limits and "avatar must be your own upload". Closed outright.
+      before: createAuthMiddleware(async (ctx) => {
+        if (BLOCKED_AUTH_PATHS.has(ctx.path)) {
+          throw new APIError("NOT_FOUND", { message: "Not available" });
+        }
+      }),
       after: createAuthMiddleware(async (ctx) => {
         if (ctx.path !== "/email-otp/reset-password" && ctx.path !== "/sign-in/email") return;
         const returned = ctx.context.returned;
         if (!returned || returned instanceof Error) return;
         const email = typeof ctx.body?.email === "string" ? ctx.body.email.trim().toLowerCase() : null;
         if (!email) return;
-        await getDb().update(schema.profiles).set({ has_password: true }).where(eq(schema.profiles.email, email));
+        // The sign-in / reset already succeeded; a failure here must not turn
+        // it into an error (the form would then say "wrong password").
+        try {
+          await getDb().update(schema.profiles).set({ has_password: true }).where(eq(schema.profiles.email, email));
+        } catch (err) {
+          console.error("[auth] setting has_password failed", email, err);
+        }
       }),
     },
     plugins: [

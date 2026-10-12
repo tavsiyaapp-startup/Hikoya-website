@@ -2,7 +2,7 @@
 
 import { revalidatePath, updateTag } from "next/cache";
 import { redirect } from "next/navigation";
-import { and, eq, inArray, isNotNull, ne, or, sql } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, isNull, ne, or, sql } from "drizzle-orm";
 import { getDb } from "@/server/db/client";
 import {
   announcements,
@@ -55,6 +55,12 @@ async function requireAdmin() {
   return result.staff;
 }
 
+// Rejection/hide reasons are shown to the author and stored on the row.
+const MAX_REASON = 1000;
+function cleanReason(reason: string): string {
+  return String(reason ?? "").trim().slice(0, MAX_REASON);
+}
+
 const ROLES = ["reader", "author", "moderator", "admin"] as const;
 
 // Returns false when refused, so the admin UI can say so instead of the
@@ -81,7 +87,9 @@ export async function approveStory(storyId: string, storySlug: string) {
     const [updated] = await tx
       .update(stories)
       .set({ status: "published", published_at: sql`coalesce(${stories.published_at}, now())`, rejection_reason: null })
-      .where(and(eq(stories.id, storyId), ne(stories.status, "published")))
+      // A story in the trash stays there — approving it would publish a
+      // story its author deleted.
+      .where(and(eq(stories.id, storyId), ne(stories.status, "published"), isNull(stories.deleted_at)))
       .returning({ author_id: stories.author_id });
     if (!updated) return null;
     await tx
@@ -161,8 +169,9 @@ function revalidateStoryCover(storyId: string, storySlug: string) {
   revalidatePath(ROUTES.home);
 }
 
-export async function rejectStory(storyId: string, storySlug: string, reason: string) {
+export async function rejectStory(storyId: string, storySlug: string, rawReason: string) {
   await requireStaff();
+  const reason = cleanReason(rawReason);
   const db = getDb();
   // Story and its pending chapters change together — a failure between the
   // two used to leave the story in draft with chapters still pending review.
@@ -204,8 +213,9 @@ export async function rejectStory(storyId: string, storySlug: string, reason: st
 // see migration 0027 — now this is simply the only code path that exists).
 // Distinct notification type from story_rejected so the author isn't told
 // a live story was "rejected".
-export async function hideStory(storyId: string, storySlug: string, reason: string) {
+export async function hideStory(storyId: string, storySlug: string, rawReason: string) {
   await requireStaff();
+  const reason = cleanReason(rawReason);
   const db = getDb();
   const [story] = await db
     .update(stories)
@@ -288,14 +298,20 @@ export async function permanentlyDeleteStory(storyId: string) {
   revalidatePath(ROUTES.admin);
 }
 
+// Both only act on a chapter that is actually in the matching state — a
+// double click or two moderators at once used to reset published_at and
+// send the author the same notification twice.
 export async function approveChapter(chapterId: string, storyId: string, storySlug: string) {
   await requireStaff();
   const db = getDb();
-  await db
+  const [updated] = await db
     .update(chapters)
-    .set({ status: "published", published_at: new Date(), rejection_reason: null })
-    .where(and(eq(chapters.id, chapterId), eq(chapters.story_id, storyId)));
-  const [story] = await db.select({ author_id: stories.author_id }).from(stories).where(eq(stories.id, storyId)).limit(1);
+    .set({ status: "published", published_at: sql`coalesce(${chapters.published_at}, now())`, rejection_reason: null })
+    .where(and(eq(chapters.id, chapterId), eq(chapters.story_id, storyId), ne(chapters.status, "published")))
+    .returning({ id: chapters.id });
+  const [story] = updated
+    ? await db.select({ author_id: stories.author_id }).from(stories).where(eq(stories.id, storyId)).limit(1)
+    : [];
   if (story) {
     await createNotification({ userId: story.author_id, type: "chapter_approved", storyId, chapterId });
   }
@@ -306,14 +322,18 @@ export async function approveChapter(chapterId: string, storyId: string, storySl
   revalidatePath(ROUTES.adminChapter(storyId, chapterId));
 }
 
-export async function rejectChapter(chapterId: string, storyId: string, storySlug: string, reason: string) {
+export async function rejectChapter(chapterId: string, storyId: string, storySlug: string, rawReason: string) {
   await requireStaff();
+  const reason = cleanReason(rawReason);
   const db = getDb();
-  await db
+  const [updated] = await db
     .update(chapters)
     .set({ status: "draft", rejection_reason: reason })
-    .where(and(eq(chapters.id, chapterId), eq(chapters.story_id, storyId)));
-  const [story] = await db.select({ author_id: stories.author_id }).from(stories).where(eq(stories.id, storyId)).limit(1);
+    .where(and(eq(chapters.id, chapterId), eq(chapters.story_id, storyId), ne(chapters.status, "draft")))
+    .returning({ id: chapters.id });
+  const [story] = updated
+    ? await db.select({ author_id: stories.author_id }).from(stories).where(eq(stories.id, storyId)).limit(1)
+    : [];
   if (story) {
     await createNotification({
       userId: story.author_id,
@@ -342,13 +362,19 @@ async function requireActionOnUser(userId: string, check: typeof canChangeUserSt
   return db;
 }
 
+// currentStatus is what the admin saw on screen; the update only applies
+// while the row still has it, so a stale page (or a second moderator acting
+// at the same moment) can't flip a block straight back off.
 export async function toggleUserStatus(userId: string, currentStatus: string): Promise<boolean> {
+  if (currentStatus !== "active" && currentStatus !== "blocked") return false;
   const db = await requireActionOnUser(userId, canChangeUserStatus);
   if (!db) return false;
-  await db
+  const [updated] = await db
     .update(profiles)
     .set({ status: currentStatus === "active" ? "blocked" : "active" })
-    .where(eq(profiles.id, userId));
+    .where(and(eq(profiles.id, userId), eq(profiles.status, currentStatus)))
+    .returning({ id: profiles.id });
+  if (!updated) return false;
   revalidatePath(`${ROUTES.admin}/users`);
   revalidatePath(ROUTES.admin);
   return true;
@@ -553,9 +579,12 @@ export async function deleteAnnouncement(announcementId: string) {
 
 // Replace-all, same pattern as updateCollectionAdmin's collection_items —
 // simplest correct way to sync a set from a checkbox list with no ordering.
-export async function updateUserAchievements(userId: string, achievementIds: string[]) {
-  await requireStaff();
-  const db = getDb();
+// Same who-may-act-on-whom rule as verification: a moderator can't change an
+// admin's badges. Returns false when refused.
+export async function updateUserAchievements(userId: string, rawAchievementIds: string[]): Promise<boolean> {
+  const db = await requireActionOnUser(userId, canVerifyUser);
+  if (!db) return false;
+  const achievementIds = [...new Set(rawAchievementIds.map(String))].slice(0, 100);
   // Delete + insert in one transaction: a failed insert used to leave the
   // user with all their achievements wiped.
   await db.transaction(async (tx) => {
@@ -569,6 +598,7 @@ export async function updateUserAchievements(userId: string, achievementIds: str
   const [data] = await db.select({ username: profiles.username }).from(profiles).where(eq(profiles.id, userId)).limit(1);
   revalidatePath(`${ROUTES.admin}/users`);
   if (data?.username) revalidatePath(ROUTES.author(data.username));
+  return true;
 }
 
 export async function setRequestStatusAdmin(requestId: string, status: "open" | "closed") {
@@ -594,30 +624,29 @@ export async function updateStoryStatusAdmin(storyId: string, status: "draft" | 
   // Supabase query, which wrote this same value into the status column
   // under this same name (schema_reference.sql's story_status enum
   // includes it for exactly this admin override).
-  await db.update(stories).set({ status }).where(eq(stories.id, storyId));
+  // Not for a story in the trash: restoring goes through the trash page.
+  await db.update(stories).set({ status }).where(and(eq(stories.id, storyId), isNull(stories.deleted_at)));
   updateTag("stories");
   revalidatePath(`${ROUTES.admin}/stories`);
 }
 
 // Moderators may change the number of free guest chapters; switching
-// pre-moderation of stories/comments on or off is site policy and stays with
-// admins — a moderator's submitted values for those two are ignored.
+// pre-moderation of stories on or off is site policy and stays with admins —
+// a moderator's submitted value for it is ignored. (comments_require_approval
+// stays in the table but has no switch: comments are never pre-moderated.)
 export async function updatePlatformSettings(formData: FormData) {
   const staff = await requireStaff();
   const db = getDb();
 
   const guestFreeChapters = Number(formData.get("guestFreeChapters") ?? 1);
   if (!Number.isInteger(guestFreeChapters) || guestFreeChapters < 0 || guestFreeChapters > 1000) return;
-  const commentsRequireApproval = formData.get("commentsRequireApproval") === "on";
   const newStoryRequiresReview = formData.get("newStoryRequiresReview") === "on";
 
   await db
     .update(platformSettings)
     .set({
       guest_free_chapters: guestFreeChapters,
-      ...(staff.isAdmin
-        ? { comments_require_approval: commentsRequireApproval, new_story_requires_review: newStoryRequiresReview }
-        : {}),
+      ...(staff.isAdmin ? { new_story_requires_review: newStoryRequiresReview } : {}),
     })
     .where(eq(platformSettings.id, 1));
 
@@ -671,10 +700,10 @@ export async function createModerator(
 }
 
 function collectionInputFromForm(formData: FormData) {
-  const title = String(formData.get("title") ?? "").trim();
-  const description = String(formData.get("description") ?? "").trim();
+  const title = String(formData.get("title") ?? "").trim().slice(0, 120);
+  const description = String(formData.get("description") ?? "").trim().slice(0, 2000);
   const isFeatured = formData.get("isFeatured") === "on";
-  const storyIds = formData.getAll("storyIds").map(String);
+  const storyIds = [...new Set(formData.getAll("storyIds").map(String))].slice(0, 200);
   return { title, description, isFeatured, storyIds };
 }
 

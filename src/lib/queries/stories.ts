@@ -1,6 +1,6 @@
 import "server-only";
 import { unstable_cache } from "next/cache";
-import { and, arrayOverlaps, asc, count, desc, eq, gte, ilike, inArray, isNull, sql } from "drizzle-orm";
+import { and, arrayOverlaps, asc, count, desc, eq, gte, ilike, inArray, isNull, ne, or, sql } from "drizzle-orm";
 import { getCurrentUser } from "@/lib/current-user";
 import { logQueryError, withFallback } from "@/lib/queries/query-errors";
 import { getDb } from "@/server/db/client";
@@ -65,7 +65,7 @@ export type Paginated<T> = { items: T[]; total: number };
 // userId), so caching them for a short window can't leak anything.
 const CACHE_SECONDS = 300;
 
-const PUBLIC_STORY_FILTER = and(eq(stories.status, "published"), eq(stories.visibility, "public"));
+const PUBLIC_STORY_FILTER = and(eq(stories.status, "published"), eq(stories.visibility, "public"), isNull(stories.deleted_at));
 const AUTHOR_COLUMNS = { username: profiles.username, display_name: profiles.display_name };
 // Postgres sorts NULLs first under DESC, so a story with no published_at
 // floated to the top of "Новые"; nulls last keeps it at the bottom instead.
@@ -542,8 +542,10 @@ export async function getStoryBySlug(slug: string): Promise<StoryDetail | null> 
       .where(eq(stories.slug, slug))
       .limit(1);
     if (!row || row.story.deleted_at) return null;
-    // A non-published story stays off-limits to anyone but the author/staff.
-    if (row.story.status !== "published") {
+    // A non-published story (or one still marked as a private draft) stays
+    // off-limits to anyone but the author/staff — same rule as
+    // isStoryPubliclyVisible in server/authz/policy.ts.
+    if (row.story.status !== "published" || row.story.visibility === "draft") {
       const viewer = await getCurrentUser();
       const isOwner = viewer?.id === row.story.author_id;
       const isStaff = viewer?.profile?.role === "admin" || viewer?.profile?.role === "moderator";
@@ -757,6 +759,20 @@ export const searchStories = withFallback(
   () => ([])
 );
 
+// A bookmark or reading status outlives the story's visibility — once a story
+// is hidden, sent back to drafts or moved to the trash it must drop out of
+// other readers' libraries too (its card would otherwise still show the
+// title, cover and description). The viewer's own stories stay listed.
+function visibleInLibrary(userId: string) {
+  return and(
+    isNull(stories.deleted_at),
+    or(
+      and(eq(stories.status, "published"), ne(stories.visibility, "draft")),
+      eq(stories.author_id, userId)
+    )
+  );
+}
+
 export async function getBookmarkedStories(userId: string): Promise<StoryCard[]> {
   try {
     const db = getDb();
@@ -765,7 +781,7 @@ export async function getBookmarkedStories(userId: string): Promise<StoryCard[]>
       .from(bookmarks)
       .innerJoin(stories, eq(bookmarks.story_id, stories.id))
       .innerJoin(profiles, eq(stories.author_id, profiles.id))
-      .where(eq(bookmarks.user_id, userId))
+      .where(and(eq(bookmarks.user_id, userId), visibleInLibrary(userId)))
       .orderBy(desc(bookmarks.created_at));
     return rows.map((r) => toStoryCard(r.story, r.author));
   } catch (err) {
@@ -824,7 +840,13 @@ export async function getStoriesByReadingStatus(userId: string, status: string):
       .from(readingStatuses)
       .innerJoin(stories, eq(readingStatuses.story_id, stories.id))
       .innerJoin(profiles, eq(stories.author_id, profiles.id))
-      .where(and(eq(readingStatuses.user_id, userId), eq(readingStatuses.status, status as "want_to_read" | "read" | "dropped")))
+      .where(
+        and(
+          eq(readingStatuses.user_id, userId),
+          eq(readingStatuses.status, status as "want_to_read" | "read" | "dropped"),
+          visibleInLibrary(userId)
+        )
+      )
       .orderBy(desc(readingStatuses.updated_at));
     return rows.map((r) => toStoryCard(r.story, r.author));
   } catch (err) {

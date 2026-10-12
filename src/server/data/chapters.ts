@@ -6,6 +6,7 @@ import {
   canEditChapter,
   canSubmitChapterForReview,
   canViewChapter,
+  isStaff,
   type ChapterRecord,
   type Viewer,
 } from "@/server/authz/policy";
@@ -15,6 +16,11 @@ import { ForbiddenError, NotFoundError } from "@/server/data/errors";
 import { getStoryRecord } from "@/server/data/stories";
 import { getRequiresReview } from "@/server/data/settings";
 import { computeChapterStatus, nextOrderIndex, wordCount } from "@/server/data/logic";
+
+// Upper bounds well above any real chapter (a whole novel is ~1-2 MB of
+// text); without them one request could store tens of megabytes per field.
+const MAX_CHAPTER_TITLE = 200;
+const MAX_CHAPTER_CONTENT = 2_000_000;
 
 const chapterRecordColumns = {
   id: chapters.id,
@@ -57,6 +63,7 @@ export async function addChapter(db: DbOrTx, viewer: Viewer | null, storyId: str
   const title = input.title.trim();
   const content = sanitizeHtml(input.content.trim());
   if (!title || !content) throw new Error("Title and content are required");
+  if (title.length > MAX_CHAPTER_TITLE || content.length > MAX_CHAPTER_CONTENT) throw new Error("Chapter too long");
 
   return db.transaction(async (tx) => {
     const [storyRow] = await tx
@@ -91,17 +98,29 @@ export async function addChapter(db: DbOrTx, viewer: Viewer | null, storyId: str
 
 // Returns the chapter's status so the caller can tell moderators when an
 // already-approved chapter was changed.
+// When pre-moderation is on, an author's edit of an already-approved chapter
+// sends it back to review (it leaves public view until approved again) —
+// otherwise clean text could be approved and then swapped for anything.
+// Staff edits keep the status.
 export async function updateChapter(db: DbOrTx, viewer: Viewer | null, chapterId: string, input: ChapterInput) {
   const { chapter } = await requireEditableChapter(db, viewer, chapterId);
   const title = input.title.trim();
   const content = sanitizeHtml(input.content.trim());
   if (!title || !content) throw new Error("Title and content are required");
+  if (title.length > MAX_CHAPTER_TITLE || content.length > MAX_CHAPTER_CONTENT) throw new Error("Chapter too long");
 
+  const backToReview = chapter.status === "published" && !isStaff(viewer) && (await getRequiresReview(db));
   await db
     .update(chapters)
-    .set({ title, content, word_count: wordCount(content), updated_at: new Date() })
+    .set({
+      title,
+      content,
+      word_count: wordCount(content),
+      updated_at: new Date(),
+      ...(backToReview ? { status: "pending_review" as const } : {}),
+    })
     .where(eq(chapters.id, chapter.id));
-  return { status: chapter.status };
+  return { status: backToReview ? ("pending_review" as const) : chapter.status, wentBackToReview: backToReview };
 }
 
 // The reorder after a delete was previously a loop of one UPDATE per chapter
@@ -138,7 +157,14 @@ export async function submitChapterForReview(db: DbOrTx, viewer: Viewer | null, 
   if (!story) throw new NotFoundError("Chapter");
   if (!canSubmitChapterForReview(viewer, chapter, story)) throw new ForbiddenError();
 
-  const requiresReview = await getRequiresReview(db);
+  // A chapter staff rejected goes back through review even with
+  // pre-moderation off (same rule as submitStoryForReview).
+  const [row] = await db
+    .select({ rejection_reason: chapters.rejection_reason })
+    .from(chapters)
+    .where(eq(chapters.id, chapterId))
+    .limit(1);
+  const requiresReview = (await getRequiresReview(db)) || Boolean(row?.rejection_reason);
   const status = requiresReview ? "pending_review" : "published";
   await db
     .update(chapters)

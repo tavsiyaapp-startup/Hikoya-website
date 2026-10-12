@@ -17,6 +17,7 @@ export function DeleteStoryButton({
   const { t } = useLocale();
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
+  const [error, setError] = useState(false);
 
   return (
     <div className="mt-6 rounded-[16px] border border-red-200 dark:border-red-900/60 bg-danger-bg p-4.5 sm:p-6.5">
@@ -49,11 +50,18 @@ export function DeleteStoryButton({
                 variant="danger"
                 className="flex-1"
                 disabled={pending}
-                onClick={() => startTransition(() => deleteStory(storyId, storySlug))}
+                onClick={() => {
+                  setError(false);
+                  // Redirects on success; only comes back when nothing was deleted.
+                  startTransition(async () => {
+                    if ((await deleteStory(storyId, storySlug)) === false) setError(true);
+                  });
+                }}
               >
                 {pending ? t.common.loading : t.manage.deleteStoryConfirmButton}
               </Button>
             </div>
+            {error && <p className="mt-3 text-[12.5px] font-semibold text-danger">{t.common.error}</p>}
           </div>
         </div>
       )}

@@ -92,18 +92,20 @@ export function canViewChapter(viewer: MaybeViewer, chapter: ChapterRecord, stor
 }
 
 // Редактирование истории и её глав: автор или staff (как было в RLS).
+// A story in the author's trash (deleted_at set) is frozen: no edits, no new
+// chapters, no resubmission — only staff restore or delete it for good.
 export function canEditStory(viewer: MaybeViewer, story: StoryRecord): boolean {
-  return isActive(viewer) && (isOwner(viewer, story.author_id) || isStaff(viewer));
+  return !story.deleted_at && isActive(viewer) && (isOwner(viewer, story.author_id) || isStaff(viewer));
 }
 
 export function canEditChapter(viewer: MaybeViewer, chapter: ChapterRecord, story: StoryRecord): boolean {
   if (chapter.story_id !== story.id) return false;
-  return isActive(viewer) && (isOwner(viewer, story.author_id) || isStaff(viewer));
+  return !story.deleted_at && isActive(viewer) && (isOwner(viewer, story.author_id) || isStaff(viewer));
 }
 
 // Добавлять главы может только автор истории. Staff здесь не входит, как и в RLS.
 export function canAddChapter(viewer: MaybeViewer, story: StoryRecord): boolean {
-  return isActive(viewer) && isOwner(viewer, story.author_id);
+  return !story.deleted_at && isActive(viewer) && isOwner(viewer, story.author_id);
 }
 
 // Удалить (мягко) историю может только автор.
@@ -113,12 +115,12 @@ export function canDeleteStory(viewer: MaybeViewer, story: StoryRecord): boolean
 
 // Отправить на проверку можно только черновик.
 export function canSubmitStoryForReview(viewer: MaybeViewer, story: StoryRecord): boolean {
-  return isActive(viewer) && isOwner(viewer, story.author_id) && story.status === "draft";
+  return !story.deleted_at && isActive(viewer) && isOwner(viewer, story.author_id) && story.status === "draft";
 }
 
 export function canSubmitChapterForReview(viewer: MaybeViewer, chapter: ChapterRecord, story: StoryRecord): boolean {
   if (chapter.story_id !== story.id) return false;
-  return isActive(viewer) && isOwner(viewer, story.author_id) && chapter.status === "draft";
+  return !story.deleted_at && isActive(viewer) && isOwner(viewer, story.author_id) && chapter.status === "draft";
 }
 
 // Комментарий и лайк: только к видимому контенту. Раньше RLS проверял только user_id.

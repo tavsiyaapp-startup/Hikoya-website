@@ -1,5 +1,5 @@
 import "server-only";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, isNull } from "drizzle-orm";
 import { sanitizeHtml } from "@/lib/sanitize";
 import { slugify, withRandomSuffix } from "@/lib/slug";
 import type { AgeRating, StoryProgressStatus, StoryVisibility } from "@/types/database";
@@ -83,6 +83,36 @@ async function resolveTagIds(tx: DbOrTx, labels: string[]): Promise<string[]> {
   return ids;
 }
 
+// Upper bounds far above any real story card; without them one request could
+// store megabytes in a title, or thousands of genres. Tags are bounded
+// separately in sanitizeNewTagLabels.
+const MAX_TITLE = 200;
+const MAX_DESCRIPTION = 5000;
+const MAX_ANNOUNCE = 1000;
+const MAX_GENRES = 10;
+const MAX_SHORT_LABEL = 40; // one genre, relationship type, language
+const MAX_CHAPTER_TITLE = 200;
+const MAX_CHAPTER_CONTENT = 2_000_000;
+
+function assertStoryLimits(input: {
+  title: string;
+  description: string;
+  genres: string[];
+  relationshipType: string | null;
+  language?: string;
+  announce?: string | null;
+}) {
+  const tooLong =
+    input.title.length > MAX_TITLE ||
+    input.description.length > MAX_DESCRIPTION ||
+    (input.announce?.length ?? 0) > MAX_ANNOUNCE ||
+    input.genres.length > MAX_GENRES ||
+    input.genres.some((g) => g.length > MAX_SHORT_LABEL) ||
+    (input.relationshipType?.length ?? 0) > MAX_SHORT_LABEL ||
+    (input.language?.length ?? 0) > MAX_SHORT_LABEL;
+  if (tooLong) throw new Error("Story field too long");
+}
+
 export interface CreateStoryInput {
   title: string;
   description: string;
@@ -103,6 +133,10 @@ export async function createStory(db: DbOrTx, viewer: Viewer | null, input: Crea
   if (!viewer || viewer.status !== "active") throw new ForbiddenError();
   const title = input.title.trim();
   if (!title) throw new Error("Title is required");
+  assertStoryLimits({ ...input, title, language: input.language.trim() });
+  if (input.chapterTitle.length > MAX_CHAPTER_TITLE || input.chapterText.length > MAX_CHAPTER_CONTENT) {
+    throw new Error("Chapter too long");
+  }
 
   return db.transaction(async (tx) => {
     const requiresReview = await getRequiresReview(tx);
@@ -174,6 +208,7 @@ export async function updateStory(db: DbOrTx, viewer: Viewer | null, storyId: st
   await requireEditableStory(db, viewer, storyId);
   const title = input.title.trim();
   if (!title) throw new Error("Title is required");
+  assertStoryLimits({ ...input, title });
 
   await db.transaction(async (tx) => {
     await tx
@@ -210,10 +245,24 @@ export async function submitStoryForReview(db: DbOrTx, viewer: Viewer | null, st
   if (!story) throw new NotFoundError("Story");
   if (!canSubmitStoryForReview(viewer, story)) throw new ForbiddenError();
 
-  const requiresReview = await getRequiresReview(db);
+  // rejection_reason is set when staff rejected or hid the story — then it
+  // goes back to the moderation queue even when pre-moderation is off, so an
+  // author can't undo a takedown with one click. A story created as a
+  // private draft becomes public when it's published.
+  const [row] = await db
+    .select({ rejection_reason: stories.rejection_reason })
+    .from(stories)
+    .where(eq(stories.id, storyId))
+    .limit(1);
+  const requiresReview = (await getRequiresReview(db)) || Boolean(row?.rejection_reason);
   const status = requiresReview ? "pending_review" : "published";
   await db
     .update(stories)
-    .set({ status, published_at: status === "published" ? new Date() : null, rejection_reason: null })
-    .where(eq(stories.id, storyId));
+    .set({
+      status,
+      published_at: status === "published" ? new Date() : null,
+      rejection_reason: null,
+      ...(story.visibility === "draft" ? { visibility: "public" as const } : {}),
+    })
+    .where(and(eq(stories.id, storyId), eq(stories.status, "draft"), isNull(stories.deleted_at)));
 }

@@ -32,7 +32,9 @@ export function AdminBadgesPanel({
   }
 
   function handleSave() {
-    startTransition(() => updateUserAchievements(userId, [...checked]));
+    startTransition(async () => {
+      if (!(await updateUserAchievements(userId, [...checked]))) window.alert(t.admin.actionRefused);
+    });
   }
 
   return (

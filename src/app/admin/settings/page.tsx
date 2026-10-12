@@ -22,12 +22,6 @@ export default async function AdminSettingsPage() {
             <h3 className="mb-5 text-[17px] font-extrabold">{t.admin.moderationTitle}</h3>
             <div className="flex flex-col gap-4">
               <ToggleRow
-                name="commentsRequireApproval"
-                title={t.admin.moderationCommentsTitle}
-                desc={t.admin.moderationCommentsDesc}
-                defaultChecked={settings?.comments_require_approval ?? false}
-              />
-              <ToggleRow
                 name="newStoryRequiresReview"
                 title={t.admin.moderationStoriesTitle}
                 desc={t.admin.moderationStoriesDesc}

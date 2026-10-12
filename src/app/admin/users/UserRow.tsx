@@ -48,7 +48,10 @@ export function UserRow({
 
   function handleSave() {
     startTransition(async () => {
-      await updateUserAchievements(user.id, [...checked]);
+      if (!(await updateUserAchievements(user.id, [...checked]))) {
+        window.alert(t.admin.actionRefused);
+        return;
+      }
       setBadgesOpen(false);
     });
   }

@@ -7,7 +7,9 @@ import sanitizeHtmlLib from "sanitize-html";
 // would let them track every reader's IP, and the .docx export
 // (src/lib/docx/htmlToDocx.ts) would otherwise fetch arbitrary URLs from the
 // server.
-const SUPABASE_PUBLIC_IMAGE = /^https:\/\/[a-z0-9]+\.supabase\.co\/storage\/v1\/object\/public\/[^\s"'<>]+$/i;
+// Only Hikoya's own (old) Supabase project — not any *.supabase.co, which
+// anyone can create for free and use to log every reader's IP address.
+const SUPABASE_PUBLIC_IMAGE = /^https:\/\/krmyymorexsfwpvkfqzq\.supabase\.co\/storage\/v1\/object\/public\/[^\s"'<>]+$/i;
 const LOCAL_UPLOAD_IMAGE = /^\/uploads\/[a-z-]+\/[A-Za-z0-9-]+\/[A-Za-z0-9.-]+$/;
 
 export function isAllowedImageSrc(src: string | undefined | null): boolean {

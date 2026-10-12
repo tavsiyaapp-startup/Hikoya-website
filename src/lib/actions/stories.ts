@@ -11,7 +11,7 @@ import { loadViewer } from "@/server/data/viewer";
 import { getRequiresReview } from "@/server/data/settings";
 import * as storiesData from "@/server/data/stories";
 import * as chaptersData from "@/server/data/chapters";
-import { notifyApprovedChapterEdited, notifyPendingReview } from "@/lib/telegram";
+import { notifyPendingReview } from "@/lib/telegram";
 import { uploadUrlPrefix } from "@/server/storage/local";
 import { ROUTES } from "@/lib/constants";
 import type { AgeRating, StoryProgressStatus, StoryVisibility } from "@/types/database";
@@ -51,6 +51,9 @@ async function getAuthorDisplayName(db: DbOrTx, userId: string): Promise<string>
 // data layer itself (server/data/stories.ts's createStory doesn't do this).
 async function registerCustomLanguage(db: DbOrTx, language: string) {
   if (language === "ru" || language === "uz") return;
+  // Becomes a chip every author sees — only something that looks like a
+  // language name (letters, spaces, hyphens) gets registered.
+  if (!/^[\p{L}][\p{L} -]{1,39}$/u.test(language)) return;
   await db.insert(customLanguages).values({ label: language }).onConflictDoNothing({ target: customLanguages.label });
   updateTag("custom-languages");
 }
@@ -156,45 +159,52 @@ export async function updateStory(storyId: string, storySlug: string, input: Upd
   return true;
 }
 
-export async function updateChapter(chapterId: string, storyId: string, storySlug: string, formData: FormData) {
+// "saved" | "review" (saved, and sent back to moderation because an
+// approved chapter was edited while pre-moderation is on) | false (not
+// saved: empty, too long, forbidden, database error). The edit form stays
+// open with the text on false.
+export async function updateChapter(
+  chapterId: string,
+  storyId: string,
+  storySlug: string,
+  formData: FormData
+): Promise<"saved" | "review" | false> {
   const { db, viewer } = await requireViewer();
   const title = String(formData.get("title") ?? "").trim();
   const content = String(formData.get("content") ?? "").trim();
-  if (!title || !content) return;
+  if (!title || !content) return false;
 
-  const updated = await chaptersData.updateChapter(db, viewer, chapterId, { title, content });
+  let updated: Awaited<ReturnType<typeof chaptersData.updateChapter>>;
+  try {
+    updated = await chaptersData.updateChapter(db, viewer, chapterId, { title, content });
+  } catch (err) {
+    console.error("[stories] updateChapter failed", chapterId, err);
+    return false;
+  }
 
-  // Staff edits don't need a second look; an author's edit of an approved
-  // chapter does, when the site pre-moderates content.
-  if (updated.status === "published" && viewer.role !== "admin" && viewer.role !== "moderator") {
-    try {
-      if (await getRequiresReview(db)) {
-        const [storyRow] = await db.select({ title: stories.title }).from(stories).where(eq(stories.id, storyId)).limit(1);
-        await notifyApprovedChapterEdited({
-          authorName: await getAuthorDisplayName(db, viewer.id),
-          storyTitle: storyRow?.title ?? "",
-          chapterTitle: title,
-          storyId,
-          chapterId,
-        });
-      }
-    } catch (err) {
-      console.error("[stories] edited-chapter notification failed", chapterId, err);
-    }
+  if (updated.wentBackToReview) {
+    await pingModerators({ kind: "chapter", db, authorId: viewer.id, storyId, chapterTitle: title });
   }
 
   updateTag("stories");
   revalidatePath(ROUTES.manage(storySlug));
   revalidatePath(ROUTES.story(storySlug));
+  return updated.wentBackToReview ? "review" : "saved";
 }
 
-export async function deleteChapter(chapterId: string, storyId: string, storySlug: string) {
+export async function deleteChapter(chapterId: string, storyId: string, storySlug: string): Promise<boolean> {
   const { db, viewer } = await requireViewer();
-  await chaptersData.deleteChapter(db, viewer, chapterId);
+  try {
+    await chaptersData.deleteChapter(db, viewer, chapterId);
+  } catch (err) {
+    console.error("[stories] deleteChapter failed", chapterId, err);
+    return false;
+  }
 
   updateTag("stories");
   revalidatePath(ROUTES.manage(storySlug));
   revalidatePath(ROUTES.story(storySlug));
+  return true;
 }
 
 // Returns false when the chapter wasn't saved (empty, forbidden, database
@@ -217,19 +227,7 @@ export async function addChapter(storyId: string, storySlug: string, formData: F
   // The chapter is already saved — a failing moderator ping must not make
   // the caller think otherwise and retry (that would create a duplicate).
   if (chapter.status === "pending_review") {
-    try {
-      const [storyRow] = await db.select({ title: stories.title }).from(stories).where(eq(stories.id, storyId)).limit(1);
-      const authorName = await getAuthorDisplayName(db, viewer.id);
-      await notifyPendingReview({
-        kind: "chapter",
-        authorName,
-        storyTitle: storyRow?.title ?? "",
-        chapterTitle: title,
-        storyId,
-      });
-    } catch (err) {
-      console.error("[stories] pending-review notification failed", storyId, err);
-    }
+    await pingModerators({ kind: "chapter", db, authorId: viewer.id, storyId, chapterTitle: title });
   }
 
   updateTag("stories");
@@ -238,24 +236,52 @@ export async function addChapter(storyId: string, storySlug: string, formData: F
   return true;
 }
 
-export async function submitStoryForReview(storyId: string, storySlug: string) {
+// Moderator ping after something landed in pending_review. Runs after the
+// write already committed, so a Telegram or lookup failure is only logged —
+// throwing here made the client think the action failed, and a retry then
+// produced duplicates.
+async function pingModerators(params: {
+  kind: "story" | "chapter";
+  db: DbOrTx;
+  authorId: string;
+  storyId: string;
+  chapterTitle?: string;
+}) {
+  try {
+    const [storyRow] = await params.db.select({ title: stories.title }).from(stories).where(eq(stories.id, params.storyId)).limit(1);
+    await notifyPendingReview({
+      kind: params.kind,
+      authorName: await getAuthorDisplayName(params.db, params.authorId),
+      storyTitle: storyRow?.title ?? "",
+      chapterTitle: params.chapterTitle,
+      storyId: params.storyId,
+    });
+  } catch (err) {
+    console.error("[stories] pending-review notification failed", params.storyId, err);
+  }
+}
+
+// Returns false when the story wasn't submitted (forbidden, in the trash,
+// database error).
+export async function submitStoryForReview(storyId: string, storySlug: string): Promise<boolean> {
   const { db, viewer } = await requireViewer();
-  const requiresReview = await getRequiresReview(db);
+  try {
+    await storiesData.submitStoryForReview(db, viewer, storyId);
+  } catch (err) {
+    console.error("[stories] submitStoryForReview failed", storyId, err);
+    return false;
+  }
 
-  await storiesData.submitStoryForReview(db, viewer, storyId);
-
-  if (requiresReview) {
-    const [storyRow] = await db.select({ title: stories.title }).from(stories).where(eq(stories.id, storyId)).limit(1);
-    if (storyRow) {
-      const authorName = await getAuthorDisplayName(db, viewer.id);
-      await notifyPendingReview({ kind: "story", authorName, storyTitle: storyRow.title, storyId });
-    }
+  const [row] = await db.select({ status: stories.status }).from(stories).where(eq(stories.id, storyId)).limit(1);
+  if (row?.status === "pending_review") {
+    await pingModerators({ kind: "story", db, authorId: viewer.id, storyId });
   }
 
   updateTag("stories");
   revalidatePath(ROUTES.manage(storySlug));
   revalidatePath(ROUTES.story(storySlug));
   revalidatePath(ROUTES.home);
+  return true;
 }
 
 // Author-only soft delete — moves the story to the admin trash instead of
@@ -263,10 +289,16 @@ export async function submitStoryForReview(storyId: string, storySlug: string) {
 // means every existing status='published' filter across the app already
 // stops surfacing it for free, and if staff later restores it
 // (deleted_at -> null), it's already sitting in drafts for the author to
-// review and republish themselves.
-export async function deleteStory(storyId: string, storySlug: string) {
+// review and republish themselves. Redirects on success; returns false when
+// nothing was deleted so the confirm dialog can say so.
+export async function deleteStory(storyId: string, storySlug: string): Promise<false> {
   const { db, viewer } = await requireViewer();
-  await storiesData.deleteStory(db, viewer, storyId);
+  try {
+    await storiesData.deleteStory(db, viewer, storyId);
+  } catch (err) {
+    console.error("[stories] deleteStory failed", storyId, err);
+    return false;
+  }
 
   updateTag("stories");
   revalidatePath(ROUTES.story(storySlug));
@@ -275,28 +307,26 @@ export async function deleteStory(storyId: string, storySlug: string) {
   redirect(ROUTES.library);
 }
 
-export async function submitChapterForReview(chapterId: string, storyId: string, storySlug: string) {
+export async function submitChapterForReview(chapterId: string, storyId: string, storySlug: string): Promise<boolean> {
   const { db, viewer } = await requireViewer();
-  const requiresReview = await getRequiresReview(db);
+  try {
+    await chaptersData.submitChapterForReview(db, viewer, chapterId);
+  } catch (err) {
+    console.error("[stories] submitChapterForReview failed", chapterId, err);
+    return false;
+  }
 
-  await chaptersData.submitChapterForReview(db, viewer, chapterId);
-
-  if (requiresReview) {
-    const [chapterRow] = await db.select({ title: chapters.title }).from(chapters).where(eq(chapters.id, chapterId)).limit(1);
-    if (chapterRow) {
-      const [storyRow] = await db.select({ title: stories.title }).from(stories).where(eq(stories.id, storyId)).limit(1);
-      const authorName = await getAuthorDisplayName(db, viewer.id);
-      await notifyPendingReview({
-        kind: "chapter",
-        authorName,
-        storyTitle: storyRow?.title ?? "",
-        chapterTitle: chapterRow.title,
-        storyId,
-      });
-    }
+  const [row] = await db
+    .select({ status: chapters.status, title: chapters.title })
+    .from(chapters)
+    .where(eq(chapters.id, chapterId))
+    .limit(1);
+  if (row?.status === "pending_review") {
+    await pingModerators({ kind: "chapter", db, authorId: viewer.id, storyId, chapterTitle: row.title });
   }
 
   updateTag("stories");
   revalidatePath(ROUTES.manage(storySlug));
   revalidatePath(ROUTES.story(storySlug));
+  return true;
 }

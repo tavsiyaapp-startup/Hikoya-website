@@ -164,6 +164,14 @@ describe("отправка на проверку и удаление", () => {
     assert.equal(canSubmitChapterForReview(OTHER, chapter({ status: "draft" }), story()), false);
   });
 
+  test("историю из корзины нельзя редактировать, дополнять и отправлять на проверку", () => {
+    const trashed = story({ status: "draft", deleted_at: new Date() });
+    assert.equal(canSubmitStoryForReview(AUTHOR, trashed), false);
+    assert.equal(canEditStory(AUTHOR, trashed), false);
+    assert.equal(canAddChapter(AUTHOR, trashed), false);
+    assert.equal(canSubmitChapterForReview(AUTHOR, chapter({ status: "draft" }), trashed), false);
+  });
+
   test("удалить историю может только автор, staff не может", () => {
     assert.equal(canDeleteStory(AUTHOR, story()), true);
     assert.equal(canDeleteStory(MODERATOR, story()), false);

@@ -54,7 +54,11 @@ export async function updateProfile(username: string, formData: FormData): Promi
   // is accepted — not an arbitrary URL, which could point at a tracking
   // server or at someone else's file.
   const ownAvatar =
-    typeof avatarUrl === "string" && avatarUrl.startsWith(uploadUrlPrefix("avatars", session.user.id)) ? avatarUrl : null;
+    typeof avatarUrl === "string" &&
+    avatarUrl.startsWith(uploadUrlPrefix("avatars", session.user.id)) &&
+    !avatarUrl.includes("..")
+      ? avatarUrl
+      : null;
 
   await db
     .update(profiles)
@@ -104,7 +108,13 @@ export async function setInitialPassword(password: string): Promise<{ ok: boolea
   // re-verifying rather than trusting silently — sign out everywhere else,
   // keep this session (same reasoning src/app/auth/reset-password already
   // used for the same moment under Supabase).
-  await getAuth().api.revokeOtherSessions({ headers: await headers() });
+  // The password is already saved — a failure here must not report the
+  // whole action as failed (the user would retry and be refused).
+  try {
+    await getAuth().api.revokeOtherSessions({ headers: await headers() });
+  } catch (err) {
+    console.error("[profile] revokeOtherSessions failed", session.user.id, err);
+  }
 
   return { ok: true };
 }

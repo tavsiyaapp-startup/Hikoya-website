@@ -41,6 +41,9 @@ async function ownerTypeFor(db: DbOrTx, userId: string): Promise<"author" | "use
   return row?.role === "author" ? "author" : "user";
 }
 
+const MAX_COLLECTION_TITLE = 120;
+const MAX_COLLECTION_DESCRIPTION = 2000;
+
 export async function createCollection(formData: FormData) {
   const { db, viewer } = await requireViewer();
   if (!canCreateCollection(viewer)) return;
@@ -48,7 +51,7 @@ export async function createCollection(formData: FormData) {
   const title = String(formData.get("title") ?? "").trim();
   const description = String(formData.get("description") ?? "").trim();
   const isPrivate = formData.get("isPrivate") === "on";
-  if (!title) return;
+  if (!title || title.length > MAX_COLLECTION_TITLE || description.length > MAX_COLLECTION_DESCRIPTION) return;
 
   const ownerType = await ownerTypeFor(db, viewer.id);
 
@@ -79,6 +82,7 @@ export async function createCollectionWithStory(
 
   const trimmed = title.trim();
   if (!trimmed) return { error: "empty_title" };
+  if (trimmed.length > MAX_COLLECTION_TITLE) return { error: "failed" };
 
   const story = await getStoryRecord(db, storyId);
   if (!story || !canViewStory(viewer, story)) return { error: "failed" };
@@ -118,7 +122,7 @@ export async function updateCollection(collectionId: string, formData: FormData)
   const title = String(formData.get("title") ?? "").trim();
   const description = String(formData.get("description") ?? "").trim();
   const isPrivate = formData.get("isPrivate") === "on";
-  if (!title) return;
+  if (!title || title.length > MAX_COLLECTION_TITLE || description.length > MAX_COLLECTION_DESCRIPTION) return;
 
   await db
     .update(collections)

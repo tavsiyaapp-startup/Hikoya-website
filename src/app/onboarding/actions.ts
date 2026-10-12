@@ -12,6 +12,11 @@ import { setCredentialPassword } from "@/server/auth/set-password";
 import { LOCALE_COOKIE, isLocale, defaultLocale } from "@/lib/i18n";
 
 const MIN_PASSWORD_LENGTH = 6;
+const MAX_PASSWORD_LENGTH = 128;
+const MAX_DISPLAY_NAME = 60;
+const MAX_BIO = 1000;
+const MAX_INTERESTS = 20;
+const MAX_INTEREST_LENGTH = 40;
 
 export async function completeOnboarding(formData: FormData) {
   const session = await getAuth().api.getSession({ headers: await headers() });
@@ -20,7 +25,24 @@ export async function completeOnboarding(formData: FormData) {
   if (!session) redirect(`/onboarding?next=${encodeURIComponent(next)}`);
   const userId = session.user.id;
 
-  const interests = formData.getAll("interests").map(String);
+  const db = getDb();
+  // Onboarding runs once. Replaying this action for an account that already
+  // finished it must not set a new password (which needs the old one, via
+  // the emailed-code reset) or overwrite the role from the pending-role cookie
+  // — a moderator or admin replaying it would otherwise demote themselves,
+  // and anyone holding a stolen session could take the account over.
+  const [current] = await db
+    .select({ onboarded_at: profiles.onboarded_at })
+    .from(profiles)
+    .where(eq(profiles.id, userId))
+    .limit(1);
+  if (!current || current.onboarded_at) redirect(next);
+
+  const interests = formData
+    .getAll("interests")
+    .map(String)
+    .filter((i) => i.length > 0 && i.length <= MAX_INTEREST_LENGTH)
+    .slice(0, MAX_INTERESTS);
   const localeValue = String(formData.get("locale") ?? "");
   const locale = isLocale(localeValue) ? localeValue : defaultLocale;
   const displayName = String(formData.get("displayName") ?? "").trim();
@@ -28,7 +50,8 @@ export async function completeOnboarding(formData: FormData) {
   // Only an avatar this user uploaded (src/lib/actions/uploads.ts) — never an
   // arbitrary URL from the form. Anything else (e.g. the Google photo the
   // wizard was pre-filled with) just leaves the existing avatar_url as is.
-  const avatarUrl = rawAvatarUrl.startsWith(uploadUrlPrefix("avatars", userId)) ? rawAvatarUrl : "";
+  const avatarUrl =
+    rawAvatarUrl.startsWith(uploadUrlPrefix("avatars", userId)) && !rawAvatarUrl.includes("..") ? rawAvatarUrl : "";
   const bio = String(formData.get("bio") ?? "").trim();
   const password = String(formData.get("password") ?? "");
 
@@ -41,11 +64,15 @@ export async function completeOnboarding(formData: FormData) {
   // onboarding without one. /login's post-sign-in routing would otherwise have to send
   // them to /auth/set-password on their very next visit anyway, since
   // has_password never gets set below without a confirmed password.
-  if (password.length < MIN_PASSWORD_LENGTH) {
+  if (
+    password.length < MIN_PASSWORD_LENGTH ||
+    password.length > MAX_PASSWORD_LENGTH ||
+    displayName.length > MAX_DISPLAY_NAME ||
+    bio.length > MAX_BIO
+  ) {
     redirect(`/onboarding?next=${encodeURIComponent(next)}`);
   }
 
-  const db = getDb();
   await setCredentialPassword(db, userId, password);
 
   const profileFields = {
@@ -75,7 +102,8 @@ export async function completeOnboarding(formData: FormData) {
         .where(eq(profiles.id, userId))
         .returning({ id: profiles.id });
       return Boolean(row);
-    } catch {
+    } catch (err) {
+      console.error("completeOnboarding: profiles update failed", userId, err);
       return false;
     }
   }

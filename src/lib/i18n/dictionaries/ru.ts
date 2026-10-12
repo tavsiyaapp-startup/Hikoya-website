@@ -260,6 +260,7 @@ const ru = {
     editChapter: "Редактировать",
     delete: "Удалить",
     confirmDeleteChapter: "Удалить главу? Это действие нельзя отменить.",
+    chapterBackToReview: "Глава сохранена и снова отправлена на модерацию — до одобрения читатели её не видят.",
     dangerZoneTitle: "Опасная зона",
     deleteStory: "Удалить произведение",
     deleteStoryWarning:
@@ -574,8 +575,6 @@ const ru = {
     moderatorErrorShortPassword: "Пароль должен быть не короче 6 символов.",
     moderatorErrorGeneric: "Не удалось создать модератора. Попробуйте ещё раз.",
     moderatorErrorEmailExists: "Этот email уже принадлежит существующему аккаунту. Чтобы сделать его модератором, смените роль на странице «Пользователи», а не создавайте новый вход здесь.",
-    moderationCommentsTitle: "Модерация комментариев",
-    moderationCommentsDesc: "Комментарии проверяются перед публикацией",
     moderationStoriesTitle: "Проверка новых историй",
     moderationStoriesDesc: "Новые истории проходят проверку перед публикацией",
     readChapter: "Читать",

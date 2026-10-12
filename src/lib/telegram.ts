@@ -27,28 +27,6 @@ async function notifyModerationChat(text: string) {
   }
 }
 
-// An author changed a chapter that moderators had already approved. It stays
-// published (hiding it from readers on every typo fix would be worse), but
-// when pre-moderation is on, staff get a ping to look at the new text.
-export async function notifyApprovedChapterEdited(params: {
-  authorName: string;
-  storyTitle: string;
-  chapterTitle: string;
-  storyId: string;
-  chapterId: string;
-}) {
-  const base = process.env.NEXT_PUBLIC_SITE_URL;
-  const link = base ? `${base}${ROUTES.adminChapter(params.storyId, params.chapterId)}` : null;
-  const text = [
-    `✏️ ${params.authorName} изменил(а) уже одобренную главу «${params.chapterTitle}» в истории «${params.storyTitle}»`,
-    "Глава остаётся опубликованной — проверьте новый текст.",
-    link,
-  ]
-    .filter(Boolean)
-    .join("\n");
-  await notifyModerationChat(text);
-}
-
 // A new story or chapter that landed in 'pending_review' (platform_settings
 // .new_story_requires_review) — nudges staff that something is sitting in
 // the moderation queue instead of them having to notice it in /admin/stories.

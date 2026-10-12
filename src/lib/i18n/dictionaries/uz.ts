@@ -262,6 +262,7 @@ const uz: typeof ru = {
     editChapter: "Tahrirlash",
     delete: "Oʻchirish",
     confirmDeleteChapter: "Bobni oʻchirasizmi? Bu amalni bekor qilib boʻlmaydi.",
+    chapterBackToReview: "Bob saqlandi va qayta moderatsiyaga yuborildi — tasdiqlanmaguncha oʻquvchilarga koʻrinmaydi.",
     dangerZoneTitle: "Xavfli hudud",
     deleteStory: "Asarni oʻchirish",
     deleteStoryWarning:
@@ -576,8 +577,6 @@ const uz: typeof ru = {
     moderatorErrorShortPassword: "Parol kamida 6 ta belgidan iborat boʻlishi kerak.",
     moderatorErrorGeneric: "Moderator yaratib boʻlmadi. Qaytadan urinib koʻring.",
     moderatorErrorEmailExists: "Bu email allaqachon mavjud akkauntga tegishli. Uni moderator qilish uchun «Foydalanuvchilar» sahifasida rolini oʻzgartiring, bu yerda yangi kirish yaratmang.",
-    moderationCommentsTitle: "Izohlarni moderatsiya qilish",
-    moderationCommentsDesc: "Izohlar chop etishdan oldin tekshiriladi",
     moderationStoriesTitle: "Yangi hikoyalarni tekshirish",
     moderationStoriesDesc: "Yangi hikoyalar chop etishdan oldin tekshiruvdan oʻtadi",
     readChapter: "Oʻqish",

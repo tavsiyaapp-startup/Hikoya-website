@@ -9,7 +9,7 @@ import { chapterReads, chapters, readingProgress, readingStatuses, stories } fro
 import { ROUTES, GUEST_READ_COOKIE } from "@/lib/constants";
 import { loadViewer } from "@/server/data/viewer";
 import { getStoryRecord } from "@/server/data/stories";
-import { canViewStory } from "@/server/authz/policy";
+import { canViewChapter, canViewStory } from "@/server/authz/policy";
 import type { ReadingStatus } from "@/types/database";
 
 const GUEST_READ_MAX_CHAPTERS = 50;
@@ -47,6 +47,29 @@ async function bumpViewCounts(chapterId: string, storyId: string, bumpStory: boo
   }
 }
 
+// Resolves everything the view counter needs from the database instead of
+// trusting the client: the chapter must exist, belong to the story it claims,
+// and be readable by this viewer; its position and the story's chapter count
+// come from the rows themselves. Before this, any caller could bump any
+// story's or chapter's view_count (or write reading progress for a draft)
+// by sending made-up ids and numbers.
+async function resolveViewedChapter(chapterId: string, storyId: string, userId: string | undefined) {
+  const db = getDb();
+  const [chapter] = await db
+    .select({ id: chapters.id, story_id: chapters.story_id, status: chapters.status, order_index: chapters.order_index })
+    .from(chapters)
+    .where(eq(chapters.id, chapterId))
+    .limit(1);
+  if (!chapter || chapter.story_id !== storyId) return null;
+  const [viewer, story] = await Promise.all([loadViewer(db, userId), getStoryRecord(db, chapter.story_id)]);
+  if (!story || !canViewChapter(viewer, chapter, story)) return null;
+  const [{ total }] = await db
+    .select({ total: sql<number>`count(*)::int` })
+    .from(chapters)
+    .where(and(eq(chapters.story_id, story.id), eq(chapters.status, "published")));
+  return { chapterId: chapter.id, storyId: story.id, orderIndex: chapter.order_index, totalChapters: total };
+}
+
 // Called once per chapter view from the client. View counters only count
 // unique readers — a reader who reloads/revisits a chapter they've already
 // been counted for doesn't bump it again, and a story's counter only grows
@@ -54,15 +77,27 @@ async function bumpViewCounts(chapterId: string, storyId: string, bumpStory: boo
 // chapter). Logged-in readers are deduped via chapter_reads (insert-only,
 // one row per user+chapter); guests have no profile row to key off, so
 // they're deduped via a cookie listing chapter/story ids already counted
-// for that browser.
-export async function recordChapterView(input: {
+// for that browser. Only chapterId/storyId are taken from the client (and
+// verified); orderIndex/totalChapters are kept in the signature for the
+// existing caller but ignored.
+export async function recordChapterView(raw: {
   chapterId: string;
   storyId: string;
-  orderIndex: number;
-  totalChapters: number;
+  orderIndex?: number;
+  totalChapters?: number;
 }) {
   const session = await getAuth().api.getSession({ headers: await headers() });
   const userId = session?.user.id;
+
+  let input: Awaited<ReturnType<typeof resolveViewedChapter>>;
+  try {
+    if (typeof raw?.chapterId !== "string" || typeof raw?.storyId !== "string") return;
+    input = await resolveViewedChapter(raw.chapterId, raw.storyId, userId);
+  } catch (err) {
+    console.error("[reading] resolving viewed chapter failed", err);
+    return;
+  }
+  if (!input) return;
 
   if (userId) {
     const db = getDb();
@@ -86,8 +121,9 @@ export async function recordChapterView(input: {
       if (newRead) {
         await bumpViewCounts(input.chapterId, input.storyId, !existingStoryRead);
       }
-    } catch {
+    } catch (err) {
       // best-effort — view counts are not load-bearing
+      console.error("[reading] recording chapter read failed", err);
     }
 
     try {
@@ -99,8 +135,9 @@ export async function recordChapterView(input: {
           target: [readingProgress.user_id, readingProgress.story_id],
           set: { chapter_id: input.chapterId, percent: String(percent), updated_at: new Date() },
         });
-    } catch {
+    } catch (err) {
       // best-effort
+      console.error("[reading] saving reading progress failed", err);
     }
     return;
   }
@@ -126,8 +163,9 @@ export async function recordChapterView(input: {
         path: "/",
       });
     }
-  } catch {
+  } catch (err) {
     // best-effort — view counts are not load-bearing
+    console.error("[reading] recording guest view failed", err);
   }
 }
 

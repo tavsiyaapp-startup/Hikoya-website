@@ -32,7 +32,12 @@ export function UserRoleSelect({
     <select
       value={role}
       disabled={pending}
-      onChange={(e) => startTransition(() => updateUserRole(userId, e.target.value as UserRole))}
+      onChange={(e) => {
+        const next = e.target.value as UserRole;
+        startTransition(async () => {
+          if (!(await updateUserRole(userId, next))) window.alert(t.admin.actionRefused);
+        });
+      }}
       className="h-8.5 cursor-pointer rounded-[9px] border border-border bg-card px-2 text-[12.5px] font-bold text-ink-soft disabled:opacity-50"
     >
       {ROLES.map((r) => (

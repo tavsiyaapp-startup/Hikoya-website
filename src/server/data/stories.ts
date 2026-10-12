@@ -65,8 +65,20 @@ async function resolveTagIds(tx: DbOrTx, labels: string[]): Promise<string[]> {
       .insert(tags)
       .values(missing.map((label) => ({ category: "style" as const, label_ru: label, label_uz: label })))
       .onConflictDoNothing({ target: [tags.category, tags.label_ru] })
-      .returning({ id: tags.id });
+      .returning({ id: tags.id, label_ru: tags.label_ru });
     ids.push(...created.map((t) => t.id));
+    // A tag another author created at the same moment hits the conflict and
+    // isn't returned above — read those back instead of silently dropping
+    // the tag from this story.
+    const createdLabels = new Set(created.map((t) => t.label_ru));
+    const raced = missing.filter((label) => !createdLabels.has(label));
+    if (raced.length > 0) {
+      const rows = await tx
+        .select({ id: tags.id })
+        .from(tags)
+        .where(and(eq(tags.category, "style"), inArray(tags.label_ru, raced)));
+      ids.push(...rows.map((t) => t.id));
+    }
   }
   return ids;
 }

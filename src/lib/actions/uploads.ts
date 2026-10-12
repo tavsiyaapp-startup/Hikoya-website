@@ -3,7 +3,11 @@
 import { headers } from "next/headers";
 import { getAuth } from "@/server/auth/config";
 import { getStaffSession } from "@/server/auth/staff";
-import { saveUpload, deleteUpload, uploadUrlPrefix, InvalidUploadError } from "@/server/storage/local";
+import { getDb } from "@/server/db/client";
+import { loadViewer } from "@/server/data/viewer";
+import { isActive } from "@/server/authz/policy";
+import { takeRateLimit } from "@/server/rate-limit";
+import { saveUpload, deleteUpload, uploadUrlPrefix, userUploadBytes, USER_UPLOAD_QUOTA_BYTES, InvalidUploadError } from "@/server/storage/local";
 
 type UploadResult = { url: string } | { error: string };
 
@@ -16,6 +20,10 @@ type StaffBucket = "hero-slides" | "announcements";
 // outside public/uploads, or a regular user could write into a staff bucket.
 const USER_BUCKETS: readonly string[] = ["covers", "avatars", "chapter-images"];
 const STAFF_BUCKETS: readonly string[] = ["hero-slides", "announcements"];
+
+// Burst cap per account per hour; the total-on-disk cap lives in
+// server/storage/local.ts (USER_UPLOAD_QUOTA_BYTES).
+const USER_UPLOADS_PER_HOUR = 60;
 
 async function requireViewerId(): Promise<string | null> {
   const session = await getAuth().api.getSession({ headers: await headers() });
@@ -55,8 +63,13 @@ export async function uploadUserImage(bucket: UserBucket, formData: FormData): P
   const userId = await requireViewerId();
   if (!userId) return { error: "unauthorized" };
   if (!USER_BUCKETS.includes(bucket)) return { error: "invalid_bucket" };
+  // Blocked accounts can't edit stories or their profile, so they have no
+  // use for uploads either.
+  if (!isActive(await loadViewer(getDb(), userId))) return { error: "unauthorized" };
   const file = extractImageFile(formData);
   if (!file) return { error: "invalid_file" };
+  if (!takeRateLimit(`upload:${userId}`, USER_UPLOADS_PER_HOUR, 60 * 60 * 1000)) return { error: "rate_limited" };
+  if ((await userUploadBytes(userId)) + file.size > USER_UPLOAD_QUOTA_BYTES) return { error: "quota_exceeded" };
   return store(bucket, userId, file);
 }
 

@@ -65,6 +65,7 @@ export function EditStoryForm({
   const [progressStatus, setProgressStatus] = useState<StoryProgressStatus>(initialProgressStatus);
   const [isTranslation, setIsTranslation] = useState(initialIsTranslation);
   const [pending, startTransition] = useTransition();
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   async function handleCoverChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -95,8 +96,9 @@ export function EditStoryForm({
   }
 
   function handleSave() {
+    setSaveError(null);
     startTransition(async () => {
-      await updateStory(storyId, storySlug, {
+      const saved = await updateStory(storyId, storySlug, {
         title,
         description,
         coverUrl,
@@ -105,7 +107,11 @@ export function EditStoryForm({
         tags,
         progressStatus,
         isTranslation,
-      });
+      }).catch(() => false);
+      if (!saved) {
+        setSaveError(t.manage.storySaveError);
+        return;
+      }
       if (initialCoverUrl && coverUrl !== initialCoverUrl) {
         await deleteUserImage("covers", initialCoverUrl);
       }
@@ -221,6 +227,7 @@ export function EditStoryForm({
         />
       </div>
 
+      {saveError && <p className="mb-3 text-[13px] text-danger">{saveError}</p>}
       <Button onClick={handleSave} disabled={pending || !title.trim() || genres.length === 0}>
         {pending ? t.common.loading : t.common.save}
       </Button>

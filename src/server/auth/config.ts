@@ -57,11 +57,29 @@ function buildAuth() {
       },
     }),
     user: {
-      // Profile settings' "change email" (EditProfileForm.tsx) — the change
-      // only takes effect once the link mailed to the NEW address is opened
-      // (sendVerificationEmail below), same as Supabase's updateUser({email})
-      // flow it replaces.
-      changeEmail: { enabled: true },
+      // Profile settings' "change email" (EditProfileForm.tsx). For an
+      // account with a verified email, the CURRENT address gets a link first
+      // (sendChangeEmailConfirmation); only once that's opened does Better
+      // Auth mail the new address (sendVerificationEmail below), and the
+      // change takes effect when that second link is opened. Without the
+      // first step, anyone holding a stolen session could move the account
+      // to their own mailbox without the owner ever hearing about it.
+      changeEmail: {
+        enabled: true,
+        async sendChangeEmailConfirmation({ user, newEmail, url }) {
+          await sendMail(
+            user.email,
+            "Подтвердите смену e-mail на Hikoya",
+            `Кто-то запросил смену e-mail вашего аккаунта на Hikoya на адрес ${newEmail}.
+
+Если это вы, перейдите по ссылке — после этого письмо для подтверждения придёт на новый адрес:
+
+${url}
+
+Если вы ничего не меняли, не переходите по ссылке и смените пароль.`
+          );
+        },
+      },
       fields: {
         email: "email",
         emailVerified: "email_verified",

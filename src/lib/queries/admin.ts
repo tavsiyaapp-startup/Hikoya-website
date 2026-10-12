@@ -20,6 +20,12 @@ import {
 } from "@/server/db/schema";
 import type { Achievement, Chapter, Story, StoryTopTier, HeroSlide, Announcement } from "@/types/database";
 
+// Search text is matched literally — % and _ typed into an admin search box
+// used to act as wildcards (Postgres LIKE's default escape is backslash).
+function escapeLike(value: string): string {
+  return value.replace(/[\\%_]/g, "\\$&");
+}
+
 // Admin panel reads used to always use the service-role client — now
 // Drizzle/pg directly (never through Supabase's PostgREST/RLS layer at
 // all), so "staff see everything regardless of RLS" is simply true by
@@ -237,20 +243,23 @@ export async function searchUsersAdmin(query?: string, sort: AdminUserSort = "ne
   try {
     const db = getDb();
     const q = query?.trim();
-    const where = q ? or(ilike(profiles.display_name, `%${q}%`), ilike(profiles.username, `%${q}%`)) : undefined;
+    const where = q ? or(ilike(profiles.display_name, `%${escapeLike(q)}%`), ilike(profiles.username, `%${escapeLike(q)}%`)) : undefined;
 
     if (sort === "newest") {
       const rows = await db.select().from(profiles).where(where).orderBy(desc(profiles.created_at)).limit(100);
       return rows.map((r) => ({ ...r, created_at: toISO(r.created_at), onboarded_at: r.onboarded_at ? toISO(r.onboarded_at) : null }));
     }
 
-    // Profiles don't carry a denormalized follower/story count to order by
-    // in SQL, so popularity sorts rank in JS instead — fetch a generous
-    // window of matching profiles first (same "cap, don't paginate" style as
-    // the rest of this file), then rank the whole window before slicing to
-    // the 100 actually shown, so an older but genuinely popular author isn't
-    // hidden behind a newest-first cutoff.
-    const list = await db.select().from(profiles).where(where).limit(500);
+    // Profiles don't carry a denormalized follower/story count, so the
+    // window is ranked by a correlated count in SQL (an unordered LIMIT used
+    // to keep an arbitrary 500 rows and could drop the most popular
+    // authors), then re-ranked in JS with the same counts before slicing to
+    // the 100 actually shown.
+    const popularity =
+      sort === "followers"
+        ? sql`(select count(*) from ${follows} where ${follows.author_id} = ${profiles.id})`
+        : sql`(select count(*) from ${stories} where ${stories.author_id} = ${profiles.id} and ${stories.deleted_at} is null)`;
+    const list = await db.select().from(profiles).where(where).orderBy(desc(popularity), desc(profiles.created_at)).limit(500);
     if (list.length === 0) return [];
 
     const ids = list.map((p) => p.id);
@@ -364,7 +373,7 @@ export async function searchStoriesForFeaturedAdmin(query?: string) {
     const db = getDb();
     const q = query?.trim();
     const where = q
-      ? and(eq(stories.status, "published"), ilike(stories.title, `%${q}%`))
+      ? and(eq(stories.status, "published"), ilike(stories.title, `%${escapeLike(q)}%`))
       : eq(stories.status, "published");
     const rows = await db
       .select({ id: stories.id, title: stories.title, author: { display_name: profiles.display_name } })
@@ -425,14 +434,23 @@ export async function getAllStoriesAdmin(
         .select({ story: stories, author: { display_name: profiles.display_name } })
         .from(stories)
         .innerJoin(profiles, eq(stories.author_id, profiles.id));
+    // Same order as the JS sort below, applied before STORY_FETCH_LIMIT so the
+    // window that's kept is the newest/most viewed/most liked one rather than
+    // whatever rows Postgres happened to return first.
+    const storyOrder =
+      sort === "views"
+        ? [desc(stories.view_count), desc(stories.created_at)]
+        : sort === "likes"
+          ? [desc(stories.like_count), desc(stories.created_at)]
+          : [desc(stories.created_at)];
 
     // The trash — soft-deleted by their author (deleted_at set, see
     // deleteStory in stories.ts) — is its own tab, kept out of every other
     // tab below rather than mixed into the regular status list.
     if (statusFilter === "deleted") {
       const conds = [isNotNull(stories.deleted_at)];
-      if (title) conds.push(ilike(stories.title, `%${title}%`));
-      const rows = await selectStory().where(and(...conds)).limit(STORY_FETCH_LIMIT);
+      if (title) conds.push(ilike(stories.title, `%${escapeLike(title)}%`));
+      const rows = await selectStory().where(and(...conds)).orderBy(...storyOrder).limit(STORY_FETCH_LIMIT);
       list = rows.map((r) => ({ ...storyRowToStory(r.story), author: r.author }));
     } else if (statusFilter === "pending_review") {
       // A story keeps its own status once published — adding chapters to it
@@ -443,7 +461,7 @@ export async function getAllStoriesAdmin(
       // story that merely *has* a pending chapter, whatever the story's own
       // status is.
       const pendingConds = [eq(stories.status, "pending_review"), isNull(stories.deleted_at)];
-      if (title) pendingConds.push(ilike(stories.title, `%${title}%`));
+      if (title) pendingConds.push(ilike(stories.title, `%${escapeLike(title)}%`));
       const [pendingRows, pendingChapterRows] = await Promise.all([
         selectStory().where(and(...pendingConds)),
         db.select({ story_id: chapters.story_id }).from(chapters).where(eq(chapters.status, "pending_review")),
@@ -455,7 +473,7 @@ export async function getAllStoriesAdmin(
       let extraRows: typeof pendingRows = [];
       if (extraIds.length) {
         const extraConds = [inArray(stories.id, extraIds), isNull(stories.deleted_at)];
-        if (title) extraConds.push(ilike(stories.title, `%${title}%`));
+        if (title) extraConds.push(ilike(stories.title, `%${escapeLike(title)}%`));
         extraRows = await selectStory().where(and(...extraConds));
       }
 
@@ -463,8 +481,8 @@ export async function getAllStoriesAdmin(
     } else {
       const conds = [isNull(stories.deleted_at)];
       if (statusFilter) conds.push(eq(stories.status, statusFilter as Story["status"]));
-      if (title) conds.push(ilike(stories.title, `%${title}%`));
-      const rows = await selectStory().where(and(...conds)).limit(STORY_FETCH_LIMIT);
+      if (title) conds.push(ilike(stories.title, `%${escapeLike(title)}%`));
+      const rows = await selectStory().where(and(...conds)).orderBy(...storyOrder).limit(STORY_FETCH_LIMIT);
       list = rows.map((r) => ({ ...storyRowToStory(r.story), author: r.author }));
     }
 

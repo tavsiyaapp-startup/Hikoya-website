@@ -11,6 +11,7 @@ export function AddChapterForm({ storyId, storySlug }: { storyId: string; storyS
   const { t } = useLocale();
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
 
   if (!open) {
@@ -24,17 +25,27 @@ export function AddChapterForm({ storyId, storySlug }: { storyId: string; storyS
   return (
     <form
       ref={formRef}
-      action={(formData) =>
+      // onSubmit rather than action={...}: React resets a form after its
+      // action runs, which would wipe the title even when the save failed.
+      onSubmit={(e) => {
+        e.preventDefault();
+        const formData = new FormData(e.currentTarget);
         startTransition(async () => {
-          await addChapter(storyId, storySlug, formData);
+          setError(null);
+          const saved = await addChapter(storyId, storySlug, formData).catch(() => false);
+          if (!saved) {
+            setError(t.manage.chapterSaveError);
+            return;
+          }
           formRef.current?.reset();
           setOpen(false);
-        })
-      }
+        });
+      }}
       className="mb-6 w-full rounded-[12px] border border-border bg-card p-5.5"
     >
       <Input name="title" placeholder={t.create.chapterTitlePlaceholder} className="mb-3.5" required />
       <RichTextEditor name="content" placeholder={t.create.chapterTextPlaceholder} />
+      {error && <p className="mt-3 text-[13px] text-danger">{error}</p>}
       <div className="mt-3.5 flex gap-2.5">
         <Button type="submit" disabled={pending}>
           {pending ? t.common.loading : t.common.save}

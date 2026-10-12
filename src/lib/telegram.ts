@@ -11,12 +11,17 @@ const TELEGRAM_API = `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOK
 async function notifyModerationChat(text: string) {
   const chatId = process.env.TELEGRAM_MODERATION_CHAT_ID || process.env.TELEGRAM_SUPPORT_GROUP_CHAT_ID;
   if (!process.env.TELEGRAM_BOT_TOKEN || !chatId) return;
+  // Awaited inside story/chapter creation, so a hung Telegram request must
+  // not hang that too — capped at 5s, and a non-OK reply is logged instead
+  // of being treated as delivered.
   try {
-    await fetch(`${TELEGRAM_API}/sendMessage`, {
+    const res = await fetch(`${TELEGRAM_API}/sendMessage`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ chat_id: chatId, text }),
+      signal: AbortSignal.timeout(5000),
     });
+    if (!res.ok) console.error("telegram moderation notification rejected:", res.status, await res.text().catch(() => ""));
   } catch (err) {
     console.error("telegram moderation notification failed:", err);
   }

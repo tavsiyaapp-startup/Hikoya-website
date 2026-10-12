@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { addChapter } from "@/lib/actions/stories";
 import { DocxImportFlow } from "@/components/manage/DocxImportFlow";
@@ -14,27 +14,34 @@ export function ImportWizard({ storyId, storySlug }: { storyId: string; storySlu
   const [saving, startSaving] = useTransition();
   const [savedCount, setSavedCount] = useState(0);
   const [saveError, setSaveError] = useState<string | null>(null);
+  // How many chapters of the current batch are already saved — a retry
+  // continues from here, so chapters that went through aren't added twice.
+  const savedRef = useRef(0);
 
   function handleConfirm(chapters: SplitChapter[]) {
     setSaveError(null);
     startSaving(async () => {
-      setSavedCount(0);
-      try {
-        // Sequential on purpose — addChapter computes order_index as
-        // max(order_index)+1 via a fresh query each call, so parallel calls
-        // would race and violate the unique(story_id, order_index) constraint.
-        for (const chapter of chapters) {
-          const formData = new FormData();
-          formData.set("title", chapter.title.trim());
-          formData.set("content", chapter.html);
-          await addChapter(storyId, storySlug, formData);
-          setSavedCount((n) => n + 1);
+      setSavedCount(savedRef.current);
+      // Sequential on purpose — addChapter computes order_index as
+      // max(order_index)+1 via a fresh query each call, so parallel calls
+      // would race and violate the unique(story_id, order_index) constraint.
+      for (const chapter of chapters.slice(savedRef.current)) {
+        const formData = new FormData();
+        formData.set("title", chapter.title.trim());
+        formData.set("content", chapter.html);
+        const saved = await addChapter(storyId, storySlug, formData).catch(() => false);
+        if (!saved) {
+          setSaveError(
+            t.manage.importSaveError.replace("{saved}", String(savedRef.current)).replace("{total}", String(chapters.length))
+          );
+          return;
         }
-        router.push(`${ROUTES.manage(storySlug)}?tab=chapters`);
-        router.refresh();
-      } catch {
-        setSaveError(t.manage.importSaveError);
+        savedRef.current += 1;
+        setSavedCount(savedRef.current);
       }
+      savedRef.current = 0;
+      router.push(`${ROUTES.manage(storySlug)}?tab=chapters`);
+      router.refresh();
     });
   }
 

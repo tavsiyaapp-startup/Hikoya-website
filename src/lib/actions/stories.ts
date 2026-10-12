@@ -12,6 +12,7 @@ import { getRequiresReview } from "@/server/data/settings";
 import * as storiesData from "@/server/data/stories";
 import * as chaptersData from "@/server/data/chapters";
 import { notifyPendingReview } from "@/lib/telegram";
+import { uploadUrlPrefix } from "@/server/storage/local";
 import { ROUTES } from "@/lib/constants";
 import type { AgeRating, StoryProgressStatus, StoryVisibility } from "@/types/database";
 
@@ -28,6 +29,14 @@ async function requireViewer() {
   const viewer = await loadViewer(db, session?.user.id);
   if (!viewer) redirect(ROUTES.onboarding);
   return { db, viewer };
+}
+
+// A cover must be a file this user uploaded through uploadUserImage (their
+// own /uploads/covers/<id>/ folder). Anything else — an arbitrary external
+// URL — would let an author embed a tracking image that reports every
+// reader's IP address.
+function isOwnCoverUpload(url: string, userId: string): boolean {
+  return url.startsWith(uploadUrlPrefix("covers", userId)) && !url.includes("..");
 }
 
 async function getAuthorDisplayName(db: DbOrTx, userId: string): Promise<string> {
@@ -66,10 +75,12 @@ export async function createStory(input: CreateStoryInput) {
   const { db, viewer } = await requireViewer();
   const language = input.language.trim() || "ru";
 
+  const coverUrl = input.coverUrl && isOwnCoverUpload(input.coverUrl, viewer.id) ? input.coverUrl : null;
+
   const story = await storiesData.createStory(db, viewer, {
     title: input.title,
     description: input.description,
-    coverUrl: input.coverUrl,
+    coverUrl,
     genres: input.genres,
     relationshipType: input.relationshipType,
     tagLabels: input.tags,
@@ -108,26 +119,41 @@ export interface UpdateStoryInput {
   isTranslation: boolean;
 }
 
-export async function updateStory(storyId: string, storySlug: string, input: UpdateStoryInput) {
+// Returns false when nothing was saved (empty title, foreign cover url,
+// forbidden, database error) — EditStoryForm relies on it to keep the old
+// cover file instead of deleting it after a save that didn't happen.
+export async function updateStory(storyId: string, storySlug: string, input: UpdateStoryInput): Promise<boolean> {
   const { db, viewer } = await requireViewer();
   const title = input.title.trim();
-  if (!title) return;
+  if (!title) return false;
 
-  await storiesData.updateStory(db, viewer, storyId, {
-    title,
-    description: input.description,
-    coverUrl: input.coverUrl,
-    genres: input.genres,
-    relationshipType: input.relationshipType,
-    tagLabels: input.tags,
-    progressStatus: input.progressStatus,
-    isTranslation: input.isTranslation,
-  });
+  try {
+    if (input.coverUrl) {
+      const [current] = await db.select({ cover_url: stories.cover_url }).from(stories).where(eq(stories.id, storyId)).limit(1);
+      // Keeping the cover the story already has (including an older
+      // Supabase-hosted one) is always fine; a new one must be the viewer's own upload.
+      if (input.coverUrl !== current?.cover_url && !isOwnCoverUpload(input.coverUrl, viewer.id)) return false;
+    }
+    await storiesData.updateStory(db, viewer, storyId, {
+      title,
+      description: input.description,
+      coverUrl: input.coverUrl,
+      genres: input.genres,
+      relationshipType: input.relationshipType,
+      tagLabels: input.tags,
+      progressStatus: input.progressStatus,
+      isTranslation: input.isTranslation,
+    });
+  } catch (err) {
+    console.error("[stories] updateStory failed", storyId, err);
+    return false;
+  }
 
   updateTag("stories");
   revalidatePath(ROUTES.manage(storySlug));
   revalidatePath(ROUTES.story(storySlug));
   revalidatePath(ROUTES.home);
+  return true;
 }
 
 export async function updateChapter(chapterId: string, storyId: string, storySlug: string, formData: FormData) {
@@ -152,29 +178,45 @@ export async function deleteChapter(chapterId: string, storyId: string, storySlu
   revalidatePath(ROUTES.story(storySlug));
 }
 
-export async function addChapter(storyId: string, storySlug: string, formData: FormData) {
+// Returns false when the chapter wasn't saved (empty, forbidden, database
+// error) so the form can keep the text and say so — it used to throw or
+// return nothing, and every caller closed the form either way.
+export async function addChapter(storyId: string, storySlug: string, formData: FormData): Promise<boolean> {
   const { db, viewer } = await requireViewer();
   const title = String(formData.get("title") ?? "").trim();
   const content = String(formData.get("content") ?? "").trim();
-  if (!title || !content) return;
+  if (!title || !content) return false;
 
-  const chapter = await chaptersData.addChapter(db, viewer, storyId, { title, content });
+  let chapter: Awaited<ReturnType<typeof chaptersData.addChapter>>;
+  try {
+    chapter = await chaptersData.addChapter(db, viewer, storyId, { title, content });
+  } catch (err) {
+    console.error("[stories] addChapter failed", storyId, err);
+    return false;
+  }
 
+  // The chapter is already saved — a failing moderator ping must not make
+  // the caller think otherwise and retry (that would create a duplicate).
   if (chapter.status === "pending_review") {
-    const [storyRow] = await db.select({ title: stories.title }).from(stories).where(eq(stories.id, storyId)).limit(1);
-    const authorName = await getAuthorDisplayName(db, viewer.id);
-    await notifyPendingReview({
-      kind: "chapter",
-      authorName,
-      storyTitle: storyRow?.title ?? "",
-      chapterTitle: title,
-      storyId,
-    });
+    try {
+      const [storyRow] = await db.select({ title: stories.title }).from(stories).where(eq(stories.id, storyId)).limit(1);
+      const authorName = await getAuthorDisplayName(db, viewer.id);
+      await notifyPendingReview({
+        kind: "chapter",
+        authorName,
+        storyTitle: storyRow?.title ?? "",
+        chapterTitle: title,
+        storyId,
+      });
+    } catch (err) {
+      console.error("[stories] pending-review notification failed", storyId, err);
+    }
   }
 
   updateTag("stories");
   revalidatePath(ROUTES.manage(storySlug));
   revalidatePath(ROUTES.story(storySlug));
+  return true;
 }
 
 export async function submitStoryForReview(storyId: string, storySlug: string) {

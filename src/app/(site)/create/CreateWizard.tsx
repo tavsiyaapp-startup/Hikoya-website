@@ -119,11 +119,18 @@ export function CreateWizard({
         // Sequential on purpose — addChapter derives order_index from a
         // fresh max(order_index)+1 query each call, so parallel inserts
         // would race and violate the unique(story_id, order_index) constraint.
+        const failed: string[] = [];
         for (const chapter of importedChapters.slice(1)) {
           const formData = new FormData();
           formData.set("title", chapter.title.trim());
           formData.set("content", chapter.html);
-          await addChapter(story.id, story.slug, formData);
+          const saved =
+            (await addChapter(story.id, story.slug, formData).catch(() => false)) ||
+            (await addChapter(story.id, story.slug, formData).catch(() => false));
+          if (!saved) failed.push(chapter.title.trim());
+        }
+        if (failed.length > 0) {
+          window.alert(t.create.importPartialError.replace("{titles}", failed.map((title) => `«${title}»`).join(", ")));
         }
       }
 

@@ -2,13 +2,14 @@
 
 import { revalidatePath, updateTag } from "next/cache";
 import { redirect } from "next/navigation";
-import { and, eq, inArray, isNotNull, sql } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, ne, or, sql } from "drizzle-orm";
 import { getDb } from "@/server/db/client";
 import {
   announcements,
   chapters,
   collectionItems,
   collections,
+  comments,
   featuredStories,
   heroSlides,
   likes,
@@ -54,23 +55,44 @@ async function requireAdmin() {
 
 const ROLES = ["reader", "author", "moderator", "admin"] as const;
 
-export async function updateUserRole(userId: string, role: "reader" | "author" | "moderator" | "admin") {
+// Returns false when refused, so the admin UI can say so instead of the
+// change silently not happening.
+export async function updateUserRole(userId: string, role: "reader" | "author" | "moderator" | "admin"): Promise<boolean> {
   const admin = await requireAdmin();
   // An admin demoting themselves could leave the site with no admin at all.
-  if (userId === admin.id || !ROLES.includes(role)) return;
+  if (userId === admin.id || !ROLES.includes(role)) return false;
   const db = getDb();
   await db.update(profiles).set({ role }).where(eq(profiles.id, userId));
   revalidatePath(`${ROUTES.admin}/users`);
+  return true;
 }
 
+// Only a not-yet-published story is approved — re-approving (double click,
+// two moderators at once) used to reset published_at and notify the author
+// again. The story's pending chapters go live with it, and so does its first
+// chapter, which createStory always gives the story's own status (so a
+// story submitted from draft has its first chapter still in draft).
 export async function approveStory(storyId: string, storySlug: string) {
   await requireStaff();
   const db = getDb();
-  const [story] = await db
-    .update(stories)
-    .set({ status: "published", published_at: new Date(), rejection_reason: null })
-    .where(eq(stories.id, storyId))
-    .returning({ author_id: stories.author_id });
+  const story = await db.transaction(async (tx) => {
+    const [updated] = await tx
+      .update(stories)
+      .set({ status: "published", published_at: sql`coalesce(${stories.published_at}, now())`, rejection_reason: null })
+      .where(and(eq(stories.id, storyId), ne(stories.status, "published")))
+      .returning({ author_id: stories.author_id });
+    if (!updated) return null;
+    await tx
+      .update(chapters)
+      .set({ status: "published", published_at: new Date(), rejection_reason: null })
+      .where(
+        and(
+          eq(chapters.story_id, storyId),
+          or(eq(chapters.status, "pending_review"), and(eq(chapters.order_index, 1), eq(chapters.status, "draft")))
+        )
+      );
+    return updated;
+  });
   if (story) {
     await createNotification({ userId: story.author_id, type: "story_approved", storyId });
   }
@@ -86,11 +108,21 @@ export async function approveStory(storyId: string, storySlug: string) {
 export async function rejectStory(storyId: string, storySlug: string, reason: string) {
   await requireStaff();
   const db = getDb();
-  const [story] = await db
-    .update(stories)
-    .set({ status: "draft", rejection_reason: reason })
-    .where(eq(stories.id, storyId))
-    .returning({ author_id: stories.author_id });
+  // Story and its pending chapters change together — a failure between the
+  // two used to leave the story in draft with chapters still pending review.
+  const story = await db.transaction(async (tx) => {
+    const [updated] = await tx
+      .update(stories)
+      .set({ status: "draft", rejection_reason: reason })
+      .where(eq(stories.id, storyId))
+      .returning({ author_id: stories.author_id });
+    if (!updated) return null;
+    await tx
+      .update(chapters)
+      .set({ status: "draft", rejection_reason: reason })
+      .where(and(eq(chapters.story_id, storyId), eq(chapters.status, "pending_review")));
+    return updated;
+  });
   if (story) {
     await createNotification({ userId: story.author_id, type: "story_rejected", storyId, message: reason });
   }
@@ -102,10 +134,6 @@ export async function rejectStory(storyId: string, storySlug: string, reason: st
   // never touches a chapter that's individually pending review on an
   // already-published story (rejectChapter below is the one-chapter path
   // for that case, untouched by this).
-  await db
-    .update(chapters)
-    .set({ status: "draft", rejection_reason: reason })
-    .where(and(eq(chapters.story_id, storyId), eq(chapters.status, "pending_review")));
   updateTag("stories");
   revalidatePath(ROUTES.manage(storySlug));
   revalidatePath(ROUTES.story(storySlug));
@@ -173,19 +201,32 @@ export async function permanentlyDeleteStory(storyId: string) {
   await requireStaff();
   const db = getDb();
 
-  const chapterRows = await db.select({ id: chapters.id }).from(chapters).where(eq(chapters.story_id, storyId));
-  const chapterIds = chapterRows.map((c) => c.id);
+  // likes is polymorphic for comments too (target_type 'comment'), so likes
+  // on the story's comments have to be removed by hand as well — the
+  // comments cascade with the story, their likes don't. One transaction, and
+  // only for a story that is really in the trash, so a failure halfway can't
+  // strip the likes off a story that then doesn't get deleted.
+  await db.transaction(async (tx) => {
+    const [trashed] = await tx
+      .select({ id: stories.id })
+      .from(stories)
+      .where(and(eq(stories.id, storyId), isNotNull(stories.deleted_at)))
+      .for("update")
+      .limit(1);
+    if (!trashed) return;
 
-  await db.delete(likes).where(and(eq(likes.target_type, "story"), eq(likes.target_id, storyId)));
-  if (chapterIds.length > 0) {
-    await db.delete(likes).where(and(eq(likes.target_type, "chapter"), inArray(likes.target_id, chapterIds)));
-  }
-  // Comment likes cascade with the comments themselves (deleted below via
-  // the story's own cascade), so unlike chapters there's no separate
-  // comment-id lookup needed here — only story/chapter likes are
-  // polymorphic references the stories.id cascade can't reach on its own.
+    const chapterIds = (await tx.select({ id: chapters.id }).from(chapters).where(eq(chapters.story_id, storyId))).map((c) => c.id);
+    const commentIds = (await tx.select({ id: comments.id }).from(comments).where(eq(comments.story_id, storyId))).map((c) => c.id);
 
-  await db.delete(stories).where(and(eq(stories.id, storyId), isNotNull(stories.deleted_at)));
+    await tx.delete(likes).where(and(eq(likes.target_type, "story"), eq(likes.target_id, storyId)));
+    if (chapterIds.length > 0) {
+      await tx.delete(likes).where(and(eq(likes.target_type, "chapter"), inArray(likes.target_id, chapterIds)));
+    }
+    if (commentIds.length > 0) {
+      await tx.delete(likes).where(and(eq(likes.target_type, "comment"), inArray(likes.target_id, commentIds)));
+    }
+    await tx.delete(stories).where(eq(stories.id, storyId));
+  });
 
   revalidatePath(`${ROUTES.admin}/stories`);
   revalidatePath(ROUTES.admin);
@@ -245,20 +286,21 @@ async function requireActionOnUser(userId: string, check: typeof canChangeUserSt
   return db;
 }
 
-export async function toggleUserStatus(userId: string, currentStatus: string) {
+export async function toggleUserStatus(userId: string, currentStatus: string): Promise<boolean> {
   const db = await requireActionOnUser(userId, canChangeUserStatus);
-  if (!db) return;
+  if (!db) return false;
   await db
     .update(profiles)
     .set({ status: currentStatus === "active" ? "blocked" : "active" })
     .where(eq(profiles.id, userId));
   revalidatePath(`${ROUTES.admin}/users`);
   revalidatePath(ROUTES.admin);
+  return true;
 }
 
-export async function toggleUserVerified(userId: string, verified: boolean) {
+export async function toggleUserVerified(userId: string, verified: boolean): Promise<boolean> {
   const db = await requireActionOnUser(userId, canVerifyUser);
-  if (!db) return;
+  if (!db) return false;
   const [data] = await db
     .update(profiles)
     .set({ is_verified: verified })
@@ -266,6 +308,7 @@ export async function toggleUserVerified(userId: string, verified: boolean) {
     .returning({ username: profiles.username });
   revalidatePath(`${ROUTES.admin}/users`);
   if (data?.username) revalidatePath(ROUTES.author(data.username));
+  return true;
 }
 
 // The toggle UI always reflects the current DB state, so "turn on" only
@@ -404,12 +447,16 @@ export async function deleteAnnouncement(announcementId: string) {
 export async function updateUserAchievements(userId: string, achievementIds: string[]) {
   await requireStaff();
   const db = getDb();
-  await db.delete(userAchievements).where(eq(userAchievements.user_id, userId));
-  if (achievementIds.length > 0) {
-    await db
-      .insert(userAchievements)
-      .values(achievementIds.map((achievementId) => ({ user_id: userId, achievement_id: achievementId })));
-  }
+  // Delete + insert in one transaction: a failed insert used to leave the
+  // user with all their achievements wiped.
+  await db.transaction(async (tx) => {
+    await tx.delete(userAchievements).where(eq(userAchievements.user_id, userId));
+    if (achievementIds.length > 0) {
+      await tx
+        .insert(userAchievements)
+        .values(achievementIds.map((achievementId) => ({ user_id: userId, achievement_id: achievementId })));
+    }
+  });
   const [data] = await db.select({ username: profiles.username }).from(profiles).where(eq(profiles.id, userId)).limit(1);
   revalidatePath(`${ROUTES.admin}/users`);
   if (data?.username) revalidatePath(ROUTES.author(data.username));
@@ -498,21 +545,27 @@ export async function createModerator(
   const [existing] = await db.select({ id: profiles.id }).from(profiles).where(eq(profiles.email, email.toLowerCase())).limit(1);
   if (existing) return { error: "email_exists" };
 
+  // Profile and password in one transaction — a failed password write used
+  // to leave a password-less profile behind, and every retry then hit
+  // "email exists".
   try {
     const userId = crypto.randomUUID();
     const username = await uniqueUsernameFromEmail(email);
-    await db.insert(profiles).values({
-      id: userId,
-      username,
-      display_name: displayName,
-      role: "moderator",
-      email: email.toLowerCase(),
-      email_verified: true,
-      onboarded_at: new Date(),
-      has_password: true,
+    await db.transaction(async (tx) => {
+      await tx.insert(profiles).values({
+        id: userId,
+        username,
+        display_name: displayName,
+        role: "moderator",
+        email: email.toLowerCase(),
+        email_verified: true,
+        onboarded_at: new Date(),
+        has_password: true,
+      });
+      await setCredentialPassword(tx, userId, password);
     });
-    await setCredentialPassword(db, userId, password);
-  } catch {
+  } catch (err) {
+    console.error("[admin] createModerator failed", err);
     return { error: "unknown" };
   }
 
@@ -535,23 +588,25 @@ export async function createCollectionAdmin(formData: FormData) {
   const { title, description, isFeatured, storyIds } = collectionInputFromForm(formData);
   if (!title) return;
 
-  const [collection] = await db
-    .insert(collections)
-    .values({
-      owner_id: staff.id,
-      owner_type: "moderator",
-      title,
-      description: description || null,
-      is_featured: isFeatured,
-    })
-    .returning({ id: collections.id });
+  const collection = await db.transaction(async (tx) => {
+    const [created] = await tx
+      .insert(collections)
+      .values({
+        owner_id: staff.id,
+        owner_type: "moderator",
+        title,
+        description: description || null,
+        is_featured: isFeatured,
+      })
+      .returning({ id: collections.id });
+    if (created && storyIds.length > 0) {
+      await tx
+        .insert(collectionItems)
+        .values(storyIds.map((storyId, i) => ({ collection_id: created.id, story_id: storyId, position: i })));
+    }
+    return created;
+  });
   if (!collection) return;
-
-  if (storyIds.length > 0) {
-    await db
-      .insert(collectionItems)
-      .values(storyIds.map((storyId, i) => ({ collection_id: collection.id, story_id: storyId, position: i })));
-  }
 
   updateTag("collections");
   revalidatePath(`${ROUTES.admin}/collections`);
@@ -566,17 +621,20 @@ export async function updateCollectionAdmin(collectionId: string, formData: Form
   const { title, description, isFeatured, storyIds } = collectionInputFromForm(formData);
   if (!title) return;
 
-  await db
-    .update(collections)
-    .set({ title, description: description || null, is_featured: isFeatured })
-    .where(eq(collections.id, collectionId));
-
-  await db.delete(collectionItems).where(eq(collectionItems.collection_id, collectionId));
-  if (storyIds.length > 0) {
-    await db
-      .insert(collectionItems)
-      .values(storyIds.map((storyId, i) => ({ collection_id: collectionId, story_id: storyId, position: i })));
-  }
+  // Replace-all in one transaction — a failed insert used to leave the
+  // collection emptied.
+  await db.transaction(async (tx) => {
+    await tx
+      .update(collections)
+      .set({ title, description: description || null, is_featured: isFeatured })
+      .where(eq(collections.id, collectionId));
+    await tx.delete(collectionItems).where(eq(collectionItems.collection_id, collectionId));
+    if (storyIds.length > 0) {
+      await tx
+        .insert(collectionItems)
+        .values(storyIds.map((storyId, i) => ({ collection_id: collectionId, story_id: storyId, position: i })));
+    }
+  });
 
   updateTag("collections");
   revalidatePath(`${ROUTES.admin}/collections`);

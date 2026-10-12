@@ -12,7 +12,12 @@ export function VerifiedToggle({ userId, verified }: { userId: string; verified:
   return (
     <Toggle
       checked={verified}
-      onChange={(next) => !pending && startTransition(() => toggleUserVerified(userId, next))}
+      onChange={(next) =>
+        !pending &&
+        startTransition(async () => {
+          if (!(await toggleUserVerified(userId, next))) window.alert(t.admin.actionRefused);
+        })
+      }
       label={t.admin.colVerified}
     />
   );

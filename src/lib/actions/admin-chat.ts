@@ -10,6 +10,10 @@ import { createNotification } from "@/lib/actions/create-notification";
 import { ROUTES } from "@/lib/constants";
 import { getAuth } from "@/server/auth/config";
 import { getStaffSession } from "@/server/auth/staff";
+import { takeRateLimit } from "@/server/rate-limit";
+
+const MAX_MESSAGE_LENGTH = 4000;
+const USER_MESSAGES_PER_10_MIN = 30;
 
 // The public /chat page moved onto Better Auth along with the rest of the
 // public login (see src/lib/current-user.ts) — so unlike when this file
@@ -38,38 +42,43 @@ export async function sendAdminChatMessage(targetUserId: string, text: string, p
   const sender = await resolveSender();
   if (!sender) redirect(ROUTES.onboarding);
 
-  const trimmed = text.trim();
+  const trimmed = typeof text === "string" ? text.trim().slice(0, MAX_MESSAGE_LENGTH) : "";
   if (!trimmed) return;
 
   if (!sender.isStaff && sender.userId !== targetUserId) return;
+  if (!sender.isStaff && !takeRateLimit(`support-chat:${sender.userId}`, USER_MESSAGES_PER_10_MIN, 10 * 60 * 1000)) return;
 
+  // Message and thread summary together — written separately, a failure in
+  // between left a message the admin chat list never surfaced as unread.
   const db = getDb();
-  await db.insert(adminChatMessages).values({
-    user_id: targetUserId,
-    sender_id: sender.userId,
-    is_admin: sender.isStaff,
-    text: trimmed,
-  });
-  await db
-    .insert(adminChats)
-    .values({
+  await db.transaction(async (tx) => {
+    await tx.insert(adminChatMessages).values({
       user_id: targetUserId,
-      last_message_at: new Date(),
-      last_message_preview: trimmed.slice(0, 140),
-      last_sender_is_admin: sender.isStaff,
-      unread_by_admin: !sender.isStaff,
-      unread_by_user: sender.isStaff,
-    })
-    .onConflictDoUpdate({
-      target: adminChats.user_id,
-      set: {
+      sender_id: sender.userId,
+      is_admin: sender.isStaff,
+      text: trimmed,
+    });
+    await tx
+      .insert(adminChats)
+      .values({
+        user_id: targetUserId,
         last_message_at: new Date(),
         last_message_preview: trimmed.slice(0, 140),
         last_sender_is_admin: sender.isStaff,
         unread_by_admin: !sender.isStaff,
         unread_by_user: sender.isStaff,
-      },
-    });
+      })
+      .onConflictDoUpdate({
+        target: adminChats.user_id,
+        set: {
+          last_message_at: new Date(),
+          last_message_preview: trimmed.slice(0, 140),
+          last_sender_is_admin: sender.isStaff,
+          unread_by_admin: !sender.isStaff,
+          unread_by_user: sender.isStaff,
+        },
+      });
+  });
 
   // No actor_id — same anonymity as story_approved/story_rejected, the
   // recipient sees "support replied", not which specific admin did.

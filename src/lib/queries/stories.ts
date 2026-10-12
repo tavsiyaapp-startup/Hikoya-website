@@ -66,6 +66,9 @@ const CACHE_SECONDS = 300;
 
 const PUBLIC_STORY_FILTER = and(eq(stories.status, "published"), eq(stories.visibility, "public"));
 const AUTHOR_COLUMNS = { username: profiles.username, display_name: profiles.display_name };
+// Postgres sorts NULLs first under DESC, so a story with no published_at
+// floated to the top of "Новые"; nulls last keeps it at the bottom instead.
+const NEWEST_FIRST = sql`${stories.published_at} desc nulls last`;
 
 async function queryPublicStories(
   orderBy: ReturnType<typeof desc>,
@@ -83,7 +86,7 @@ async function queryPublicStories(
         .from(stories)
         .innerJoin(profiles, eq(stories.author_id, profiles.id))
         .where(where)
-        .orderBy(orderBy)
+        .orderBy(orderBy, desc(stories.id))
         .limit(limit)
         .offset(offset),
       db.select({ total: count() }).from(stories).where(where),
@@ -120,7 +123,7 @@ export const getFinishedStories = withFallback(
 export const getNewestStories = withFallback(
   "getNewestStories",
   unstable_cache(
-  (limit = 8, offset = 0) => queryPublicStories(desc(stories.published_at), limit, offset),
+  (limit = 8, offset = 0) => queryPublicStories(NEWEST_FIRST, limit, offset),
   ["newest-stories"],
   { revalidate: CACHE_SECONDS, tags: ["stories"] }
   ),
@@ -143,7 +146,7 @@ export const getFollowingStories = withFallback(
         .where(eq(follows.follower_id, userId));
       const authorIds = followedRows.map((f) => f.author_id);
       if (authorIds.length === 0) return { items: [], total: 0 };
-      return queryPublicStories(desc(stories.published_at), limit, offset, and(inArray(stories.author_id, authorIds)));
+      return queryPublicStories(NEWEST_FIRST, limit, offset, and(inArray(stories.author_id, authorIds)));
     } catch (err) {
       logQueryError("getFollowingStories", err);
       throw err;
@@ -698,7 +701,7 @@ export const searchStories = withFallback(
 
       const orderBy =
         filters.sort === "newest"
-          ? desc(stories.published_at)
+          ? NEWEST_FIRST
           : filters.sort === "views"
             ? desc(stories.view_count)
             : desc(stories.like_count);
@@ -708,7 +711,7 @@ export const searchStories = withFallback(
         .from(stories)
         .innerJoin(profiles, eq(stories.author_id, profiles.id))
         .where(and(...conditions))
-        .orderBy(orderBy)
+        .orderBy(orderBy, desc(stories.id))
         .limit(40);
       const results = rows.map((r) => toStoryCard(r.story, r.author));
       if (results.length === 0) return results;

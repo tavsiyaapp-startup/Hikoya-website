@@ -1,6 +1,6 @@
 import "server-only";
 import { logQueryError } from "@/lib/queries/query-errors";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import { getDb } from "@/server/db/client";
 import { chapters, notifications, profiles, stories } from "@/server/db/schema";
 import type { Notification } from "@/types/database";
@@ -8,11 +8,11 @@ import type { Notification } from "@/types/database";
 export async function getUnreadNotificationCount(userId: string): Promise<number> {
   try {
     const db = getDb();
-    const rows = await db
-      .select({ id: notifications.id })
+    const [row] = await db
+      .select({ total: sql<number>`count(*)::int` })
       .from(notifications)
       .where(and(eq(notifications.user_id, userId), eq(notifications.is_read, false)));
-    return rows.length;
+    return row?.total ?? 0;
   } catch (err) {
     logQueryError("getUnreadNotificationCount", err);
     return 0;

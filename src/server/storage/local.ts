@@ -1,6 +1,7 @@
 import "server-only";
-import { mkdir, unlink, writeFile } from "fs/promises";
+import { mkdir, readdir, stat, unlink, writeFile } from "fs/promises";
 import path from "path";
+import { randomBytes } from "crypto";
 
 // Replaces Supabase Storage now that the public site's auth moved to Better
 // Auth (its browser SDK upload calls relied on a Supabase session that no
@@ -51,7 +52,33 @@ function validatedExtension(buffer: Buffer): string {
 }
 
 function randomSegment(): string {
-  return Math.random().toString(36).slice(2, 10);
+  return randomBytes(6).toString("hex");
+}
+
+// Total bytes one user currently has on disk across the per-user buckets —
+// used by lib/actions/uploads.ts and import-docx.ts to cap how much a single
+// account can store, so nobody can fill the server's disk with 10 MB files.
+export const USER_UPLOAD_QUOTA_BYTES = 300 * 1024 * 1024;
+
+export async function userUploadBytes(ownerId: string): Promise<number> {
+  let total = 0;
+  for (const bucket of ["covers", "avatars", "chapter-images"] as const) {
+    const dir = path.join(UPLOADS_ROOT, bucket, ownerId);
+    let names: string[];
+    try {
+      names = await readdir(dir);
+    } catch {
+      continue; // no uploads in this bucket yet
+    }
+    for (const name of names) {
+      try {
+        total += (await stat(path.join(dir, name))).size;
+      } catch {
+        // deleted between readdir and stat
+      }
+    }
+  }
+  return total;
 }
 
 export function uploadUrlPrefix(bucket: UploadBucket, ownerId: string): string {
@@ -101,7 +128,8 @@ export async function deleteUpload(url: string | null | undefined): Promise<void
   if (!resolved.startsWith(UPLOADS_ROOT + path.sep)) return;
   try {
     await unlink(resolved);
-  } catch {
+  } catch (err) {
     // orphaned file at worst — never surface this to the caller
+    if ((err as NodeJS.ErrnoException).code !== "ENOENT") console.error("[uploads] delete failed", relative, err);
   }
 }

@@ -1,5 +1,5 @@
 import "server-only";
-import { mkdir, readdir, stat, unlink, writeFile } from "fs/promises";
+import { mkdir, readFile, readdir, stat, unlink, writeFile } from "fs/promises";
 import path from "path";
 import { randomBytes } from "crypto";
 
@@ -109,6 +109,31 @@ export async function saveUpload(bucket: UploadBucket, ownerId: string, file: Fi
 // InvalidUploadError and the caller drops it.
 export async function saveUploadBuffer(bucket: UploadBucket, ownerId: string, buffer: Buffer): Promise<string> {
   return writeUpload(bucket, ownerId, buffer, validatedExtension(buffer));
+}
+
+const CONTENT_TYPES: Record<string, string> = {
+  jpg: "image/jpeg",
+  png: "image/png",
+  gif: "image/gif",
+  webp: "image/webp",
+};
+
+// For app/uploads/[...path]/route.ts. `next start` only serves public/ files
+// that existed when the server started, so anything uploaded since the last
+// restart answered 404 until the next one — the route reads the file from
+// disk on each request instead. Same strict path check as deleteUpload.
+export async function readUpload(relative: string): Promise<{ data: Buffer; contentType: string } | null> {
+  if (!UPLOAD_PATH_PATTERN.test(relative)) return null;
+  const resolved = path.join(UPLOADS_ROOT, relative);
+  if (!resolved.startsWith(UPLOADS_ROOT + path.sep)) return null;
+  const contentType = CONTENT_TYPES[relative.slice(relative.lastIndexOf(".") + 1)];
+  if (!contentType) return null;
+  try {
+    return { data: await readFile(resolved), contentType };
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code !== "ENOENT") console.error("[uploads] read failed", relative, err);
+    return null;
+  }
 }
 
 // Best-effort, same tolerance the old Supabase-backed deleteOldStorageFile

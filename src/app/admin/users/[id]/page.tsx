@@ -18,6 +18,7 @@ import { VerifiedIcon, SparkleIcon, MessageIcon } from "@/components/ui/icons";
 import { AdminHeader } from "../../AdminHeader";
 import { UserStatusButton } from "../UserStatusButton";
 import { AdminBadgesPanel } from "./AdminBadgesPanel";
+import { plural } from "@/lib/plural";
 
 const TABS = ["stories", "collections"] as const;
 type Tab = (typeof TABS)[number];
@@ -55,9 +56,9 @@ export default async function AdminUserProfilePage({
   const earnedAchievements = achievements.filter((a) => checkedAchievementIds.includes(a.id));
 
   const stats = [
-    { label: t.author.stories, value: storyCount },
-    { label: t.author.subscribers, value: followerCount },
-    { label: t.author.totalLikes, value: formatCompactCount(totals.totalLikes) },
+    { label: plural(storyCount, t.author.stories), value: storyCount },
+    { label: plural(followerCount, t.author.subscribers), value: followerCount },
+    { label: plural(totals.totalLikes, t.author.totalLikes), value: formatCompactCount(totals.totalLikes) },
   ];
 
   return (

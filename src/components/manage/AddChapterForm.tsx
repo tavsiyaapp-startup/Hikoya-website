@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { addChapter } from "@/lib/actions/stories";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 import { Input } from "@/components/ui/Input";
@@ -9,6 +10,7 @@ import { Button } from "@/components/ui/Button";
 
 export function AddChapterForm({ storyId, storySlug }: { storyId: string; storySlug: string }) {
   const { t } = useLocale();
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -39,6 +41,9 @@ export function AddChapterForm({ storyId, storySlug }: { storyId: string; storyS
           }
           formRef.current?.reset();
           setOpen(false);
+          // revalidatePath alone didn't always redraw the list in place
+          // (seen in QA: the new chapter appeared only after a reload).
+          router.refresh();
         });
       }}
       className="mb-6 w-full rounded-[12px] border border-border bg-card p-5.5"

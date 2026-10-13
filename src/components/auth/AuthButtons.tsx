@@ -65,6 +65,7 @@ export function EmailForm({ next = "/" }: { next?: string; mode?: "login" | "reg
   const [step, setStep] = useState<"email" | "otp">("email");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   async function handleSendOtp(e: React.FormEvent) {
     e.preventDefault();
@@ -85,6 +86,7 @@ export function EmailForm({ next = "/" }: { next?: string; mode?: "login" | "reg
     if (!otp) return;
     setPending(true);
     setError(null);
+    setNotice(null);
     const { error } = await authClient.signIn.emailOtp({ email, otp });
     setPending(false);
     if (error) {
@@ -98,10 +100,12 @@ export function EmailForm({ next = "/" }: { next?: string; mode?: "login" | "reg
   async function handleResendOtp() {
     setPending(true);
     setError(null);
+    setNotice(null);
     setOtp("");
     const { error } = await authClient.emailOtp.sendVerificationOtp({ email, type: "sign-in" });
     setPending(false);
-    setError(error ? t.auth.emailError : t.auth.emailOtpResent);
+    if (error) setError(t.auth.emailError);
+    else setNotice(t.auth.emailOtpResent);
   }
 
   if (step === "otp") {
@@ -127,6 +131,7 @@ export function EmailForm({ next = "/" }: { next?: string; mode?: "login" | "reg
           </Button>
         </div>
         {error && <p className="text-[12.5px] text-danger">{error}</p>}
+        {notice && <p className="text-[12.5px] text-success">{notice}</p>}
         <button
           type="button"
           onClick={handleResendOtp}

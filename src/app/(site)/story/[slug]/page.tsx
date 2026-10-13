@@ -33,6 +33,7 @@ import { ReportCommentButton } from "@/components/story/ReportCommentButton";
 import { LockIcon } from "@/components/ui/icons";
 import type { ReadingStatus } from "@/types/database";
 import { liveImageUrl } from "@/lib/images";
+import { plural } from "@/lib/plural";
 
 function relationshipLabel(value: string, locale: "ru" | "uz"): string {
   if (locale === "ru") return value;
@@ -153,7 +154,7 @@ export default async function StoryPage({
             <div className="min-w-0">
               <div className="text-[14.5px] font-bold">{story.author.display_name}</div>
               <div className="text-[12.5px] text-muted-2">
-                {followerCount} {t.author.subscribers}
+                {followerCount} {plural(followerCount, t.author.subscribers)}
               </div>
             </div>
           </Link>

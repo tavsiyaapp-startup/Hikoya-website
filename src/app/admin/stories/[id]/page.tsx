@@ -15,6 +15,7 @@ import { TrashActions } from "./TrashActions";
 import { ChapterModerateActions } from "./ChapterModerateActions";
 import { StoryCoverAdmin } from "./StoryCoverAdmin";
 import { liveImageUrl } from "@/lib/images";
+import { plural } from "@/lib/plural";
 
 function statusTone(status: string) {
   if (status === "published") return "success" as const;
@@ -137,7 +138,7 @@ export default async function AdminStoryModeratePage({ params }: { params: Promi
                   <div className="min-w-0 flex-1">
                     <div className="text-[14.5px] font-bold">{ch.title}</div>
                     <div className="text-[12.5px] text-muted-3">
-                      {ch.word_count} {t.reader.wordsLabel}
+                      {ch.word_count} {plural(ch.word_count, t.reader.wordsLabel)}
                     </div>
                   </div>
                   <Badge tone={statusTone(ch.status)}>{statusLabel[ch.status] ?? ch.status}</Badge>

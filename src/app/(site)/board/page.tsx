@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { CloseRequestButton } from "@/components/board/CloseRequestButton";
 import { createRequest, respondToRequest } from "@/lib/actions/requests";
+import { plural } from "@/lib/plural";
 
 export default async function BoardPage({
   searchParams,
@@ -107,7 +108,7 @@ export default async function BoardPage({
                   </div>
                   <h3 className="mb-2 text-[17px] font-extrabold leading-snug">{r.title}</h3>
                   <p className="mb-3.5 line-clamp-2 text-[14.5px] leading-relaxed text-ink-soft">{r.text}</p>
-                  <span className="text-[13px] text-muted-2">{responseCount} {t.board.responsesCountSuffix}</span>
+                  <span className="text-[13px] text-muted-2">{responseCount} {plural(responseCount, t.board.responsesCountSuffix)}</span>
                 </Link>
               );
             })

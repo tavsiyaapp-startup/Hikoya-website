@@ -622,6 +622,10 @@ export type ContinueReadingItem = {
 // reader explicitly marks a story's reading status (want to read/read/
 // dropped), it moves out of "Читаю" into that status's own tab instead of
 // lingering in both.
+// The percent is recomputed here from the chapter reached and the story's
+// current number of published chapters (same formula as saveReadingProgress)
+// — the stored value went stale when the author added chapters later, so a
+// finished story kept showing 100%.
 export async function getContinueReading(userId: string, limit = 3): Promise<ContinueReadingItem[]> {
   try {
     const db = getDb();
@@ -630,11 +634,14 @@ export async function getContinueReading(userId: string, limit = 3): Promise<Con
         .select({
           story_id: readingProgress.story_id,
           percent: readingProgress.percent,
+          order_index: chapters.order_index,
+          published_chapters: sql<number>`(select count(*)::int from chapters c where c.story_id = ${stories.id} and c.status = 'published')`,
           updated_at: readingProgress.updated_at,
           story: { id: stories.id, title: stories.title, slug: stories.slug, cover_url: stories.cover_url },
         })
         .from(readingProgress)
         .innerJoin(stories, eq(readingProgress.story_id, stories.id))
+        .leftJoin(chapters, eq(readingProgress.chapter_id, chapters.id))
         .where(
           and(eq(readingProgress.user_id, userId), isNull(stories.deleted_at), eq(stories.status, "published"))
         )
@@ -646,7 +653,14 @@ export async function getContinueReading(userId: string, limit = 3): Promise<Con
     return rows
       .filter((row) => !statusedStoryIds.has(row.story_id))
       .slice(0, limit)
-      .map((row) => ({ ...row, percent: Number(row.percent), updated_at: row.updated_at.toISOString() }));
+      .map(({ order_index, published_chapters, ...row }) => ({
+        ...row,
+        percent:
+          order_index !== null && published_chapters > 0
+            ? Math.min(100, Math.round((order_index / published_chapters) * 100))
+            : Number(row.percent),
+        updated_at: row.updated_at.toISOString(),
+      }));
   } catch (err) {
     logQueryError("getContinueReading", err);
     return [];

@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/Input";
 import { RichTextEditor } from "@/components/ui/RichTextEditor";
 import { Button } from "@/components/ui/Button";
 import type { Chapter } from "@/types/database";
+import { plural } from "@/lib/plural";
 
 export function ChapterRow({
   chapter,
@@ -90,7 +91,7 @@ export function ChapterRow({
         <div className="min-w-0 flex-1 basis-full sm:basis-auto">
           <div className="mb-0.5 text-[15px] font-bold">{chapter.title}</div>
           <div className="text-[12.5px] text-muted-3">
-            {chapter.word_count} {t.reader.wordsLabel}
+            {chapter.word_count} {plural(chapter.word_count, t.reader.wordsLabel)}
           </div>
         </div>
         <div className="w-16 shrink-0 text-[14px] font-bold sm:w-24">{chapter.view_count}</div>

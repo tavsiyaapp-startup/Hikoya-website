@@ -22,6 +22,7 @@ import { ChapterReadingRecorder } from "@/components/story/ChapterReadingRecorde
 import { CommentGuidelines } from "@/components/story/CommentGuidelines";
 import { CommentForm } from "@/components/story/CommentForm";
 import { CommentItem } from "@/components/story/CommentItem";
+import { plural } from "@/lib/plural";
 
 export default async function ReaderPage({
   params,
@@ -87,7 +88,7 @@ export default async function ReaderPage({
         </div>
         <h1 className="mb-4.5 text-[26px] font-extrabold leading-tight tracking-tight sm:text-[32px] lg:text-[40px]">{ch.title}</h1>
         <div className="mb-7.5 flex flex-wrap gap-5 border-b border-border pb-5.5 text-[13.5px] text-muted-2">
-          <span>{ch.word_count} {t.reader.wordsLabel}</span>
+          <span>{ch.word_count} {plural(ch.word_count, t.reader.wordsLabel)}</span>
           <span>{readMinutes} {t.reader.readTimeLabel}</span>
           {isUnlocked && !user && (
             <span className="font-bold text-success">{t.reader.freeLabel}</span>
@@ -147,7 +148,7 @@ export default async function ReaderPage({
             <div className="min-w-0">
               <div className="truncate text-[14.5px] font-bold">{story.author.display_name}</div>
               <div className="text-[12.5px] text-muted-2">
-                {followerCount} {t.author.subscribers}
+                {followerCount} {plural(followerCount, t.author.subscribers)}
               </div>
             </div>
           </Link>

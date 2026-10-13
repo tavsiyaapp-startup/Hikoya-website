@@ -23,6 +23,7 @@ import { CloseRequestButton } from "@/components/board/CloseRequestButton";
 import { CollectionCard } from "@/components/collections/CollectionCard";
 import { ChatWithAdminButton } from "@/components/chat/ChatWithAdminButton";
 import { VerifiedIcon, SparkleIcon, InstagramIcon, SendIcon } from "@/components/ui/icons";
+import { plural } from "@/lib/plural";
 
 const TABS = ["stories", "collections", "myRequests", "notifications"] as const;
 type Tab = (typeof TABS)[number];
@@ -61,9 +62,9 @@ export default async function AuthorPage({
     ]);
 
   const stats = [
-    { label: t.author.stories, value: storyCount },
-    { label: t.author.subscribers, value: followerCount },
-    { label: t.author.totalLikes, value: formatCompactCount(totals.totalLikes) },
+    { label: plural(storyCount, t.author.stories), value: storyCount },
+    { label: plural(followerCount, t.author.subscribers), value: followerCount },
+    { label: plural(totals.totalLikes, t.author.totalLikes), value: formatCompactCount(totals.totalLikes) },
   ];
 
   return (
@@ -216,7 +217,7 @@ export default async function AuthorPage({
                   <div className="mb-2.5 flex items-center gap-2.5">
                     <Badge tone={requestStatusTone(r.status)}>{requestStatusLabel(t, r.status)}</Badge>
                     <span className="text-[12.5px] text-muted-2">
-                      {responseCount} {t.board.responsesCountSuffix}
+                      {responseCount} {plural(responseCount, t.board.responsesCountSuffix)}
                     </span>
                     {r.status !== "closed" && <CloseRequestButton requestId={r.id} />}
                   </div>

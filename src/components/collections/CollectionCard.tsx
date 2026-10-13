@@ -6,6 +6,7 @@ import { ROUTES } from "@/lib/constants";
 import { Badge } from "@/components/ui/Chip";
 import { CollectionsIcon } from "@/components/ui/icons";
 import type { CollectionCardData } from "@/lib/queries/stories";
+import { plural } from "@/lib/plural";
 
 const STACK_POSITIONS: Record<number, string[]> = {
   1: ["left-1/2 top-1 -translate-x-1/2"],
@@ -38,7 +39,7 @@ export async function CollectionCard({ collection }: { collection: CollectionCar
       <h3 className="mb-1.5 text-[17px] font-extrabold">{collection.title}</h3>
       <p className="line-clamp-2 text-[13.5px] leading-relaxed text-muted">{collection.description}</p>
       <div className="mt-3 text-[12.5px] text-muted-2">
-        {collection.storyCount} {t.collections.storiesCountSuffix}
+        {collection.storyCount} {plural(collection.storyCount, t.collections.storiesCountSuffix)}
         {ownerLabel && <> &nbsp;•&nbsp; {ownerLabel}</>}
       </div>
     </Link>

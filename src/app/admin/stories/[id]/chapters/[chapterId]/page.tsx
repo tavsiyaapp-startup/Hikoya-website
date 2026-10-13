@@ -8,6 +8,7 @@ import { ROUTES } from "@/lib/constants";
 import { Badge } from "@/components/ui/Chip";
 import { ChevronLeftIcon } from "@/components/ui/icons";
 import { ChapterModerateActions } from "../../ChapterModerateActions";
+import { plural } from "@/lib/plural";
 
 export default async function AdminChapterModeratePage({
   params,
@@ -52,7 +53,7 @@ export default async function AdminChapterModeratePage({
             {statusLabel[chapter.status] ?? chapter.status}
           </Badge>
           <span>
-            {chapter.word_count} {t.reader.wordsLabel}
+            {chapter.word_count} {plural(chapter.word_count, t.reader.wordsLabel)}
           </span>
         </div>
 

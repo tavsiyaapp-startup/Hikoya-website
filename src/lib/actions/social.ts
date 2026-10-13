@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidateClientPath } from "@/lib/revalidate-client-path";
 import { headers } from "next/headers";
 import { and, eq } from "drizzle-orm";
 import { createNotification } from "@/lib/actions/create-notification";
@@ -62,7 +62,7 @@ export async function toggleStoryLike(storyId: string, path: string): Promise<To
     .where(and(eq(likes.user_id, viewer.id), eq(likes.target_type, "story"), eq(likes.target_id, storyId)))
     .returning({ id: likes.id });
   if (removed.length > 0) {
-    revalidatePath(path);
+    revalidateClientPath(path);
     return false;
   }
 
@@ -76,10 +76,10 @@ export async function toggleStoryLike(storyId: string, path: string): Promise<To
     .values({ user_id: viewer.id, target_type: "story", target_id: storyId })
     .onConflictDoNothing()
     .returning({ id: likes.id });
-  revalidatePath(path);
+  revalidateClientPath(path);
 
   if (inserted.length > 0 && storyRecord.author_id !== viewer.id) {
-    await createNotification({ userId: storyRecord.author_id, actorId: viewer.id, type: "story_like", storyId });
+    await createNotification({ userId: storyRecord.author_id, actorId: viewer.id, type: "story_like", storyId, once: true });
   }
   return true;
 }
@@ -97,7 +97,7 @@ export async function toggleStoryBookmark(storyId: string, path: string): Promis
     .where(and(eq(bookmarks.user_id, viewer.id), eq(bookmarks.story_id, storyId)))
     .returning({ id: bookmarks.id });
   if (removed.length > 0) {
-    revalidatePath(path);
+    revalidateClientPath(path);
     return false;
   }
 
@@ -105,7 +105,7 @@ export async function toggleStoryBookmark(storyId: string, path: string): Promis
   if (!storyRecord || !canViewStory(viewer, storyRecord)) return null;
 
   await db.insert(bookmarks).values({ user_id: viewer.id, story_id: storyId }).onConflictDoNothing();
-  revalidatePath(path);
+  revalidateClientPath(path);
   return true;
 }
 
@@ -121,7 +121,7 @@ export async function toggleFollowAuthor(authorId: string, path: string): Promis
   if (removed.length === 0) {
     await db.insert(follows).values({ follower_id: viewer.id, author_id: authorId }).onConflictDoNothing();
   }
-  revalidatePath(path);
+  revalidateClientPath(path);
   return removed.length === 0;
 }
 
@@ -182,7 +182,7 @@ export async function postComment(
       is_spoiler: Boolean(isSpoiler),
     })
     .returning({ id: comments.id });
-  revalidatePath(path);
+  revalidateClientPath(path);
 
   if (parentAuthorId && parentAuthorId !== viewer.id) {
     await createNotification({
@@ -219,7 +219,7 @@ export async function toggleCommentLike(commentId: string, path: string): Promis
     .where(and(eq(likes.user_id, viewer.id), eq(likes.target_type, "comment"), eq(likes.target_id, commentId)))
     .returning({ id: likes.id });
   if (removed.length > 0) {
-    revalidatePath(path);
+    revalidateClientPath(path);
     return false;
   }
 
@@ -254,7 +254,7 @@ export async function toggleCommentLike(commentId: string, path: string): Promis
     .values({ user_id: viewer.id, target_type: "comment", target_id: commentId })
     .onConflictDoNothing()
     .returning({ id: likes.id });
-  revalidatePath(path);
+  revalidateClientPath(path);
 
   if (inserted.length > 0 && target.user_id !== viewer.id) {
     await createNotification({
@@ -264,6 +264,7 @@ export async function toggleCommentLike(commentId: string, path: string): Promis
       storyId: target.story_id,
       chapterId: target.chapter_id,
       commentId,
+      once: true,
     });
   }
   return true;

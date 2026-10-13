@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { revalidateClientPath } from "@/lib/revalidate-client-path";
 import { cookies, headers } from "next/headers";
 import { and, eq, sql } from "drizzle-orm";
 import { getAuth } from "@/server/auth/config";
@@ -195,7 +196,7 @@ export async function setReadingStatus(storyId: string, status: ReadingStatus | 
       });
   }
 
-  revalidatePath(path);
+  revalidateClientPath(path);
   revalidatePath(ROUTES.library);
   return true;
 }

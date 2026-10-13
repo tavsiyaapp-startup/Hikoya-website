@@ -25,7 +25,9 @@ async function requireViewer() {
 
 export async function createRequest(formData: FormData) {
   const { db, viewer } = await requireViewer();
-  if (!isActive(viewer)) return;
+  // A blocked account lands back on the board with a note instead of the
+  // form just doing nothing.
+  if (!isActive(viewer)) redirect(`${ROUTES.board}?error=blocked`);
 
   const title = String(formData.get("title") ?? "").trim();
   const text = String(formData.get("text") ?? "").trim();
@@ -38,7 +40,9 @@ export async function createRequest(formData: FormData) {
 
 export async function respondToRequest(requestId: string, formData: FormData) {
   const { db, viewer } = await requireViewer();
-  if (!isActive(viewer)) return;
+  // A blocked account lands back on the board with a note instead of the
+  // form just doing nothing.
+  if (!isActive(viewer)) redirect(`${ROUTES.board}?error=blocked`);
 
   const text = String(formData.get("text") ?? "").trim();
   if (!text || text.length > MAX_TEXT_LENGTH) return;

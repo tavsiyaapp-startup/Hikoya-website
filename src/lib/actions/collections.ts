@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath, updateTag } from "next/cache";
+import { revalidateClientPath } from "@/lib/revalidate-client-path";
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { and, eq } from "drizzle-orm";
@@ -46,7 +47,7 @@ const MAX_COLLECTION_DESCRIPTION = 2000;
 
 export async function createCollection(formData: FormData) {
   const { db, viewer } = await requireViewer();
-  if (!canCreateCollection(viewer)) return;
+  if (!canCreateCollection(viewer)) redirect(`${ROUTES.collections}?error=blocked`);
 
   const title = String(formData.get("title") ?? "").trim();
   const description = String(formData.get("description") ?? "").trim();
@@ -107,7 +108,7 @@ export async function createCollectionWithStory(
   }
 
   updateTag("collections");
-  revalidatePath(path);
+  revalidateClientPath(path);
   revalidatePath(ROUTES.collections);
   revalidatePath(ROUTES.library);
 
@@ -149,7 +150,7 @@ export async function toggleSavedCollection(collectionId: string, path: string):
     await db.insert(savedCollections).values({ user_id: viewer.id, collection_id: collectionId }).onConflictDoNothing();
   }
 
-  revalidatePath(path);
+  revalidateClientPath(path);
   revalidatePath(ROUTES.collections);
   return removed.length === 0;
 }
@@ -173,7 +174,7 @@ export async function toggleStoryInCollection(collectionId: string, storyId: str
   }
 
   updateTag("collections");
-  revalidatePath(path);
+  revalidateClientPath(path);
   revalidatePath(ROUTES.library);
   return removed.length === 0;
 }

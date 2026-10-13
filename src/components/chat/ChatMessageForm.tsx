@@ -10,39 +10,49 @@ export function ChatMessageForm({ targetUserId, path }: { targetUserId: string; 
   const { t } = useLocale();
   const [text, setText] = useState("");
   const [pending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
 
   function submit() {
     if (!text.trim()) return;
+    setError(null);
     startTransition(async () => {
-      await sendAdminChatMessage(targetUserId, text, path);
+      const result = await sendAdminChatMessage(targetUserId, text, path);
+      // Not sent: keep the text so it can be sent again.
+      if (result !== "sent") {
+        setError(result === "rate_limited" ? t.chat.rateLimited : t.common.error);
+        return;
+      }
       setText("");
     });
   }
 
   return (
-    <form
-      onSubmit={(e) => {
-        e.preventDefault();
-        submit();
-      }}
-      className="flex items-end gap-3"
-    >
-      <Textarea
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        placeholder={t.chat.placeholder}
-        rows={2}
-        className="flex-1"
-        onKeyDown={(e) => {
-          if (e.key === "Enter" && !e.shiftKey) {
-            e.preventDefault();
-            submit();
-          }
+    <>
+      {error && <p className="mb-2 text-[13px] font-semibold text-danger">{error}</p>}
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          submit();
         }}
-      />
-      <Button type="submit" disabled={pending || !text.trim()} className="shrink-0">
-        {t.chat.send}
-      </Button>
-    </form>
+        className="flex items-end gap-3"
+      >
+        <Textarea
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder={t.chat.placeholder}
+          rows={2}
+          className="flex-1"
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              submit();
+            }
+          }}
+        />
+        <Button type="submit" disabled={pending || !text.trim()} className="shrink-0">
+          {t.chat.send}
+        </Button>
+      </form>
+    </>
   );
 }

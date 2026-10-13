@@ -9,7 +9,7 @@ import { reportComment as reportCommentData, resolveReport } from "@/server/data
 import { AlreadyResolvedError, ForbiddenError, NotFoundError } from "@/server/data/errors";
 import { getStaffSession } from "@/server/auth/staff";
 import { takeRateLimit } from "@/server/rate-limit";
-import type { ReportAction } from "@/server/data/logic";
+import { isValidReportReason, type ReportAction } from "@/server/data/logic";
 import { ROUTES } from "@/lib/constants";
 
 const MAX_DETAILS_LENGTH = 500;
@@ -27,19 +27,21 @@ export type ReportCommentResult =
 export async function reportComment(commentId: string, reason: string, details?: string): Promise<ReportCommentResult> {
   const session = await getAuth().api.getSession({ headers: await headers() });
   if (!session) return { error: "unauthorized" };
-  if (typeof commentId !== "string" || typeof reason !== "string") return { error: "invalid" };
+  if (typeof commentId !== "string" || typeof reason !== "string" || !isValidReportReason(reason)) {
+    return { error: "invalid" };
+  }
   const cleanDetails = typeof details === "string" ? details.trim().slice(0, MAX_DETAILS_LENGTH) : undefined;
 
   const db = getDb();
   const viewer = await loadViewer(db, session.user.id);
   if (!viewer) return { error: "unauthorized" };
+  // After the cheap checks, so a malformed request doesn't use up the quota.
   if (!takeRateLimit(`report:${viewer.id}`, REPORTS_PER_HOUR, 60 * 60 * 1000)) return { error: "rate_limited" };
 
   try {
     await reportCommentData(db, viewer, commentId, reason, cleanDetails);
   } catch (err) {
     if (err instanceof ForbiddenError || err instanceof NotFoundError) return { error: "not_allowed" };
-    if (err instanceof Error && err.message === "Invalid reason") return { error: "invalid" };
     console.error("[reports] reportComment failed", commentId, err);
     return { error: "failed" };
   }

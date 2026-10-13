@@ -42,7 +42,7 @@ export function CreateWizard({
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [genres, setGenres] = useState<string[]>([t.genres[0]]);
+  const [genres, setGenres] = useState<string[]>([]);
   const [customGenres, setCustomGenres] = useState<string[]>([]);
 
   function toggleGenre(g: string) {
@@ -62,6 +62,7 @@ export function CreateWizard({
 
   const [visibility, setVisibility] = useState<StoryVisibility>("public");
   const [announce, setAnnounce] = useState("");
+  const [publishFailed, setPublishFailed] = useState(false);
 
   const [pending, startTransition] = useTransition();
 
@@ -92,6 +93,7 @@ export function CreateWizard({
       : importedChapters.length > 0 && importedChapters.every((c) => c.title.trim().length > 0);
 
   function handlePublish() {
+    setPublishFailed(false);
     startTransition(async () => {
       const firstChapter =
         chapterMode === "manual"
@@ -113,7 +115,11 @@ export function CreateWizard({
         visibility,
         announce: announce || null,
       });
-      if (!story) return;
+      // null: nothing was created — the form keeps everything typed so far.
+      if (!story) {
+        setPublishFailed(true);
+        return;
+      }
 
       if (chapterMode === "import") {
         // Sequential on purpose — addChapter derives order_index from a
@@ -437,6 +443,9 @@ export function CreateWizard({
               {step < 3 ? t.common.next : pending ? t.common.loading : t.create.publish}
             </button>
           </div>
+          {publishFailed && step === 3 && (
+            <p className="mt-3 text-[13px] font-semibold text-danger">{t.create.publishFailed}</p>
+          )}
         </div>
 
         <div className="w-full rounded-[14px] border border-border bg-card p-5.5 lg:sticky lg:top-26 lg:w-75 lg:shrink-0">

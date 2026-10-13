@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { approveChapter, rejectChapter } from "@/lib/actions/admin";
+import { useRouter } from "next/navigation";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 import { Textarea } from "@/components/ui/Textarea";
 import { Button } from "@/components/ui/Button";
@@ -16,9 +17,21 @@ export function ChapterModerateActions({
   storySlug: string;
 }) {
   const { t } = useLocale();
+  const router = useRouter();
   const [rejecting, setRejecting] = useState(false);
   const [reason, setReason] = useState("");
   const [pending, startTransition] = useTransition();
+
+  function run(action: () => Promise<boolean>) {
+    startTransition(async () => {
+      // false: nothing changed — someone else already handled it, or the
+      // status moved on since this page was loaded.
+      if (!(await action())) {
+        window.alert(t.admin.actionStale);
+        router.refresh();
+      }
+    });
+  }
 
   if (rejecting) {
     return (
@@ -34,7 +47,7 @@ export function ChapterModerateActions({
             size="sm"
             variant="danger"
             disabled={pending || !reason.trim()}
-            onClick={() => startTransition(() => rejectChapter(chapterId, storyId, storySlug, reason.trim()))}
+            onClick={() => run(() => rejectChapter(chapterId, storyId, storySlug, reason.trim()))}
           >
             {pending ? t.common.loading : t.admin.confirmReject}
           </Button>
@@ -51,7 +64,7 @@ export function ChapterModerateActions({
       <Button
         size="sm"
         disabled={pending}
-        onClick={() => startTransition(() => approveChapter(chapterId, storyId, storySlug))}
+        onClick={() => run(() => approveChapter(chapterId, storyId, storySlug))}
       >
         {t.manage.approve}
       </Button>

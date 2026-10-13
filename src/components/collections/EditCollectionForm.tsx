@@ -35,8 +35,8 @@ export function EditCollectionForm({ collection }: { collection: Collection }) {
       }
       className="mb-7 rounded-[16px] border border-border bg-card p-4.5 sm:p-6.5"
     >
-      <Input name="title" defaultValue={collection.title} required className="mb-3.5" />
-      <Textarea name="description" defaultValue={collection.description ?? ""} rows={2} className="mb-3.5" />
+      <Input name="title" defaultValue={collection.title} required maxLength={120} className="mb-3.5" />
+      <Textarea name="description" defaultValue={collection.description ?? ""} rows={2} maxLength={2000} className="mb-3.5" />
       <label className="mb-4 flex items-center gap-2 text-[13.5px] text-ink-soft">
         <input type="checkbox" name="isPrivate" defaultChecked={collection.is_private} className="h-4 w-4" />
         {t.collections.private}

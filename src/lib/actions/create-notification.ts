@@ -1,4 +1,5 @@
 import "server-only";
+import { and, eq, isNull } from "drizzle-orm";
 import { getDb } from "@/server/db/client";
 import { notifications } from "@/server/db/schema";
 import type { NotificationType } from "@/types/database";
@@ -11,6 +12,10 @@ interface NotifyInput {
   chapterId?: string | null;
   commentId?: string | null;
   message?: string | null;
+  // Skip when the same actor already notified the same user about the same
+  // thing — like, unlike, like again would otherwise send one notification
+  // per click.
+  once?: boolean;
 }
 
 // Shared by src/lib/actions/social.ts (comments/likes) and
@@ -27,6 +32,22 @@ export async function createNotification(input: NotifyInput) {
   if (input.actorId && input.actorId === input.userId) return;
   try {
     const db = getDb();
+    if (input.once && input.actorId) {
+      const [existing] = await db
+        .select({ id: notifications.id })
+        .from(notifications)
+        .where(
+          and(
+            eq(notifications.user_id, input.userId),
+            eq(notifications.actor_id, input.actorId),
+            eq(notifications.type, input.type),
+            input.storyId ? eq(notifications.story_id, input.storyId) : isNull(notifications.story_id),
+            input.commentId ? eq(notifications.comment_id, input.commentId) : isNull(notifications.comment_id)
+          )
+        )
+        .limit(1);
+      if (existing) return;
+    }
     await db.insert(notifications).values({
       user_id: input.userId,
       actor_id: input.actorId ?? null,

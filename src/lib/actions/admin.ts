@@ -80,7 +80,7 @@ export async function updateUserRole(userId: string, role: "reader" | "author" |
 // again. The story's pending chapters go live with it, and so does its first
 // chapter, which createStory always gives the story's own status (so a
 // story submitted from draft has its first chapter still in draft).
-export async function approveStory(storyId: string, storySlug: string) {
+export async function approveStory(storyId: string, storySlug: string): Promise<boolean> {
   await requireStaff();
   const db = getDb();
   const story = await db.transaction(async (tx) => {
@@ -103,9 +103,8 @@ export async function approveStory(storyId: string, storySlug: string) {
       );
     return updated;
   });
-  if (story) {
-    await createNotification({ userId: story.author_id, type: "story_approved", storyId });
-  }
+  if (!story) return false;
+  await createNotification({ userId: story.author_id, type: "story_approved", storyId });
   updateTag("stories");
   revalidatePath(ROUTES.manage(storySlug));
   revalidatePath(ROUTES.story(storySlug));
@@ -113,6 +112,7 @@ export async function approveStory(storyId: string, storySlug: string) {
   revalidatePath(ROUTES.adminStory(storyId));
   revalidatePath(ROUTES.admin);
   revalidatePath(ROUTES.home);
+  return true;
 }
 
 // Staff can set or replace any story's cover from /admin/stories/[id] —
@@ -169,9 +169,13 @@ function revalidateStoryCover(storyId: string, storySlug: string) {
   revalidatePath(ROUTES.home);
 }
 
-export async function rejectStory(storyId: string, storySlug: string, rawReason: string) {
+// Returns false when nothing changed: no reason given (the reason is what
+// sends a resubmission back through review), or the story is no longer
+// waiting for review.
+export async function rejectStory(storyId: string, storySlug: string, rawReason: string): Promise<boolean> {
   await requireStaff();
   const reason = cleanReason(rawReason);
+  if (!reason) return false;
   const db = getDb();
   // Story and its pending chapters change together — a failure between the
   // two used to leave the story in draft with chapters still pending review.
@@ -179,7 +183,7 @@ export async function rejectStory(storyId: string, storySlug: string, rawReason:
     const [updated] = await tx
       .update(stories)
       .set({ status: "draft", rejection_reason: reason })
-      .where(eq(stories.id, storyId))
+      .where(and(eq(stories.id, storyId), eq(stories.status, "pending_review")))
       .returning({ author_id: stories.author_id });
     if (!updated) return null;
     await tx
@@ -188,9 +192,8 @@ export async function rejectStory(storyId: string, storySlug: string, rawReason:
       .where(and(eq(chapters.story_id, storyId), eq(chapters.status, "pending_review")));
     return updated;
   });
-  if (story) {
-    await createNotification({ userId: story.author_id, type: "story_rejected", storyId, message: reason });
-  }
+  if (!story) return false;
+  await createNotification({ userId: story.author_id, type: "story_rejected", storyId, message: reason });
   // Rejecting the story's own pending submission drags its still-pending
   // chapters back to draft too — otherwise they'd be stuck at
   // pending_review forever with no way back in, and keep resurfacing the
@@ -205,6 +208,7 @@ export async function rejectStory(storyId: string, storySlug: string, rawReason:
   revalidatePath(`${ROUTES.admin}/stories`);
   revalidatePath(ROUTES.adminStory(storyId));
   revalidatePath(ROUTES.admin);
+  return true;
 }
 
 // Same status/reason fields as rejectStory, applied to an already-live
@@ -213,18 +217,18 @@ export async function rejectStory(storyId: string, storySlug: string, rawReason:
 // see migration 0027 — now this is simply the only code path that exists).
 // Distinct notification type from story_rejected so the author isn't told
 // a live story was "rejected".
-export async function hideStory(storyId: string, storySlug: string, rawReason: string) {
+export async function hideStory(storyId: string, storySlug: string, rawReason: string): Promise<boolean> {
   await requireStaff();
   const reason = cleanReason(rawReason);
+  if (!reason) return false;
   const db = getDb();
   const [story] = await db
     .update(stories)
     .set({ status: "draft", rejection_reason: reason })
-    .where(eq(stories.id, storyId))
+    .where(and(eq(stories.id, storyId), inArray(stories.status, ["published", "unlisted"])))
     .returning({ author_id: stories.author_id });
-  if (story) {
-    await createNotification({ userId: story.author_id, type: "story_hidden", storyId, message: reason });
-  }
+  if (!story) return false;
+  await createNotification({ userId: story.author_id, type: "story_hidden", storyId, message: reason });
   updateTag("stories");
   revalidatePath(ROUTES.manage(storySlug));
   revalidatePath(ROUTES.story(storySlug));
@@ -233,6 +237,7 @@ export async function hideStory(storyId: string, storySlug: string, rawReason: s
   revalidatePath(ROUTES.admin);
   revalidatePath(ROUTES.home);
   revalidatePath(ROUTES.search);
+  return true;
 }
 
 // Trash (deleted_at set by the author's own soft-delete, see deleteStory in
@@ -301,7 +306,7 @@ export async function permanentlyDeleteStory(storyId: string) {
 // Both only act on a chapter that is actually in the matching state — a
 // double click or two moderators at once used to reset published_at and
 // send the author the same notification twice.
-export async function approveChapter(chapterId: string, storyId: string, storySlug: string) {
+export async function approveChapter(chapterId: string, storyId: string, storySlug: string): Promise<boolean> {
   await requireStaff();
   const db = getDb();
   const [updated] = await db
@@ -320,11 +325,18 @@ export async function approveChapter(chapterId: string, storyId: string, storySl
   revalidatePath(ROUTES.story(storySlug));
   revalidatePath(ROUTES.adminStory(storyId));
   revalidatePath(ROUTES.adminChapter(storyId, chapterId));
+  return Boolean(updated);
 }
 
-export async function rejectChapter(chapterId: string, storyId: string, storySlug: string, rawReason: string) {
+export async function rejectChapter(
+  chapterId: string,
+  storyId: string,
+  storySlug: string,
+  rawReason: string
+): Promise<boolean> {
   await requireStaff();
   const reason = cleanReason(rawReason);
+  if (!reason) return false;
   const db = getDb();
   const [updated] = await db
     .update(chapters)
@@ -348,6 +360,7 @@ export async function rejectChapter(chapterId: string, storyId: string, storySlu
   revalidatePath(ROUTES.story(storySlug));
   revalidatePath(ROUTES.adminStory(storyId));
   revalidatePath(ROUTES.adminChapter(storyId, chapterId));
+  return Boolean(updated);
 }
 
 // Who may act on whom (src/server/authz/policy.ts): never yourself, and a

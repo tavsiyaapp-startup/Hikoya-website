@@ -38,47 +38,61 @@ async function resolveSender(): Promise<{ userId: string; isStaff: boolean } | n
 // staff member — whoever's staff can send here, and it's the same
 // conversation regardless of which admin replies. A regular user may only
 // send into their own thread.
-export async function sendAdminChatMessage(targetUserId: string, text: string, path: string) {
+// Returns what happened so the form keeps the typed text when it wasn't
+// sent. The page to refresh is decided here from who is sending — the
+// client-supplied path is no longer trusted.
+export async function sendAdminChatMessage(
+  targetUserId: string,
+  text: string,
+  _path?: string,
+): Promise<"sent" | "rate_limited" | "failed"> {
   const sender = await resolveSender();
   if (!sender) redirect(ROUTES.onboarding);
 
   const trimmed = typeof text === "string" ? text.trim().slice(0, MAX_MESSAGE_LENGTH) : "";
-  if (!trimmed) return;
+  if (!trimmed) return "failed";
 
-  if (!sender.isStaff && sender.userId !== targetUserId) return;
-  if (!sender.isStaff && !takeRateLimit(`support-chat:${sender.userId}`, USER_MESSAGES_PER_10_MIN, 10 * 60 * 1000)) return;
+  if (!sender.isStaff && sender.userId !== targetUserId) return "failed";
+  if (!sender.isStaff && !takeRateLimit(`support-chat:${sender.userId}`, USER_MESSAGES_PER_10_MIN, 10 * 60 * 1000)) {
+    return "rate_limited";
+  }
 
   // Message and thread summary together — written separately, a failure in
   // between left a message the admin chat list never surfaced as unread.
   const db = getDb();
-  await db.transaction(async (tx) => {
-    await tx.insert(adminChatMessages).values({
-      user_id: targetUserId,
-      sender_id: sender.userId,
-      is_admin: sender.isStaff,
-      text: trimmed,
-    });
-    await tx
-      .insert(adminChats)
-      .values({
+  try {
+    await db.transaction(async (tx) => {
+      await tx.insert(adminChatMessages).values({
         user_id: targetUserId,
-        last_message_at: new Date(),
-        last_message_preview: trimmed.slice(0, 140),
-        last_sender_is_admin: sender.isStaff,
-        unread_by_admin: !sender.isStaff,
-        unread_by_user: sender.isStaff,
-      })
-      .onConflictDoUpdate({
-        target: adminChats.user_id,
-        set: {
+        sender_id: sender.userId,
+        is_admin: sender.isStaff,
+        text: trimmed,
+      });
+      await tx
+        .insert(adminChats)
+        .values({
+          user_id: targetUserId,
           last_message_at: new Date(),
           last_message_preview: trimmed.slice(0, 140),
           last_sender_is_admin: sender.isStaff,
           unread_by_admin: !sender.isStaff,
           unread_by_user: sender.isStaff,
-        },
-      });
-  });
+        })
+        .onConflictDoUpdate({
+          target: adminChats.user_id,
+          set: {
+            last_message_at: new Date(),
+            last_message_preview: trimmed.slice(0, 140),
+            last_sender_is_admin: sender.isStaff,
+            unread_by_admin: !sender.isStaff,
+            unread_by_user: sender.isStaff,
+          },
+        });
+    });
+  } catch (err) {
+    console.error("[admin-chat] send failed", targetUserId, err);
+    return "failed";
+  }
 
   // No actor_id — same anonymity as story_approved/story_rejected, the
   // recipient sees "support replied", not which specific admin did.
@@ -86,7 +100,8 @@ export async function sendAdminChatMessage(targetUserId: string, text: string, p
     await createNotification({ userId: targetUserId, type: "admin_message" });
   }
 
-  revalidatePath(path);
+  revalidatePath(sender.isStaff ? ROUTES.adminChats() : ROUTES.chat);
+  return "sent";
 }
 
 export async function markAdminChatReadByUser() {

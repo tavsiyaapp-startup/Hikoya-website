@@ -2,15 +2,28 @@
 
 import { useState, useTransition } from "react";
 import { hideStory } from "@/lib/actions/admin";
+import { useRouter } from "next/navigation";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 import { Textarea } from "@/components/ui/Textarea";
 import { Button } from "@/components/ui/Button";
 
 export function StoryHideAction({ storyId, storySlug }: { storyId: string; storySlug: string }) {
   const { t } = useLocale();
+  const router = useRouter();
   const [hiding, setHiding] = useState(false);
   const [reason, setReason] = useState("");
   const [pending, startTransition] = useTransition();
+
+  function run(action: () => Promise<boolean>) {
+    startTransition(async () => {
+      // false: nothing changed — someone else already handled it, or the
+      // status moved on since this page was loaded.
+      if (!(await action())) {
+        window.alert(t.admin.actionStale);
+        router.refresh();
+      }
+    });
+  }
 
   if (!hiding) {
     return (
@@ -33,7 +46,7 @@ export function StoryHideAction({ storyId, storySlug }: { storyId: string; story
           size="sm"
           variant="danger"
           disabled={pending || !reason.trim()}
-          onClick={() => startTransition(() => hideStory(storyId, storySlug, reason.trim()))}
+          onClick={() => run(() => hideStory(storyId, storySlug, reason.trim()))}
         >
           {pending ? t.common.loading : t.admin.confirmHide}
         </Button>

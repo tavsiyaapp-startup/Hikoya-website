@@ -74,33 +74,44 @@ export interface CreateStoryInput {
   announce: string | null;
 }
 
-export async function createStory(input: CreateStoryInput) {
+// Returns null when nothing was created (blocked, a field too long, database
+// error) — it used to throw, and the wizard just stopped with no message.
+export async function createStory(input: CreateStoryInput): Promise<{ id: string; slug: string } | null> {
   const { db, viewer } = await requireViewer();
   const language = input.language.trim() || "ru";
 
   const coverUrl = input.coverUrl && isOwnCoverUpload(input.coverUrl, viewer.id) ? input.coverUrl : null;
 
-  const story = await storiesData.createStory(db, viewer, {
-    title: input.title,
-    description: input.description,
-    coverUrl,
-    genres: input.genres,
-    relationshipType: input.relationshipType,
-    tagLabels: input.tags,
-    language,
-    ageRating: input.ageRating,
-    isTranslation: input.isTranslation,
-    chapterTitle: input.chapterTitle,
-    chapterText: input.chapterText,
-    visibility: input.visibility,
-    announce: input.announce,
-  });
+  let story: Awaited<ReturnType<typeof storiesData.createStory>>;
+  try {
+    story = await storiesData.createStory(db, viewer, {
+      title: input.title,
+      description: input.description,
+      coverUrl,
+      genres: input.genres,
+      relationshipType: input.relationshipType,
+      tagLabels: input.tags,
+      language,
+      ageRating: input.ageRating,
+      isTranslation: input.isTranslation,
+      chapterTitle: input.chapterTitle,
+      chapterText: input.chapterText,
+      visibility: input.visibility,
+      announce: input.announce,
+    });
+  } catch (err) {
+    console.error("[stories] createStory failed", viewer.id, err);
+    return null;
+  }
 
-  await registerCustomLanguage(db, language);
-
+  // The story is saved from here on; these are extras and only logged.
+  try {
+    await registerCustomLanguage(db, language);
+  } catch (err) {
+    console.error("[stories] registerCustomLanguage failed", language, err);
+  }
   if (story.status === "pending_review") {
-    const authorName = await getAuthorDisplayName(db, viewer.id);
-    await notifyPendingReview({ kind: "story", authorName, storyTitle: input.title, storyId: story.id });
+    await pingModerators({ kind: "story", db, authorId: viewer.id, storyId: story.id });
   }
 
   updateTag("stories");

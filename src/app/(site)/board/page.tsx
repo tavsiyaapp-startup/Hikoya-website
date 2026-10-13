@@ -19,9 +19,9 @@ import { createRequest, respondToRequest } from "@/lib/actions/requests";
 export default async function BoardPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string; selected?: string; new?: string }>;
+  searchParams: Promise<{ status?: string; selected?: string; new?: string; error?: string }>;
 }) {
-  const { status, selected, new: showNew } = await searchParams;
+  const { status, selected, new: showNew, error } = await searchParams;
   const locale = await getServerLocale();
   const t = getDictionary(locale);
   const user = await getCurrentUser();
@@ -58,10 +58,23 @@ export default async function BoardPage({
         ))}
       </div>
 
+      {error === "blocked" && (
+        <p className="mb-5 rounded-[12px] bg-danger-bg px-4 py-3 text-[13.5px] font-semibold text-danger">
+          {t.reader.commentsBlocked}
+        </p>
+      )}
+
       {showNew && user && (
         <form action={createRequest} className="mb-6.5 rounded-[16px] border border-border bg-card p-4.5 sm:p-6.5">
-          <Input name="title" placeholder={t.board.newRequestTitlePlaceholder} required className="mb-3.5" />
-          <Textarea name="text" placeholder={t.board.newRequestTextPlaceholder} rows={3} required className="mb-3.5" />
+          <Input name="title" placeholder={t.board.newRequestTitlePlaceholder} required maxLength={200} className="mb-3.5" />
+          <Textarea
+            name="text"
+            placeholder={t.board.newRequestTextPlaceholder}
+            rows={3}
+            required
+            maxLength={5000}
+            className="mb-3.5"
+          />
           <Button type="submit">{t.board.leaveRequest}</Button>
         </form>
       )}
@@ -138,7 +151,7 @@ export default async function BoardPage({
                   action={respondToRequest.bind(null, selectedRequest.id)}
                   className="mb-5 flex flex-col gap-2.5"
                 >
-                  <Textarea name="text" placeholder={t.board.responseTextPlaceholder} rows={3} required />
+                  <Textarea name="text" placeholder={t.board.responseTextPlaceholder} rows={3} required maxLength={5000} />
                   {myStories.length > 0 && (
                     <div>
                       <label className="mb-1.5 block text-[12.5px] font-bold text-muted-2">

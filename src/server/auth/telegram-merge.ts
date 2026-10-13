@@ -4,6 +4,7 @@ import { and, eq, gt } from "drizzle-orm";
 import { getDb } from "@/server/db/client";
 import { baSessions, baVerifications, collections, comments, profiles, stories } from "@/server/db/schema";
 import { isTelegramPlaceholderEmail } from "@/lib/telegram-account";
+import { sendMail } from "@/server/auth/mailer";
 
 // Joining a Telegram-only account to the person's older email account.
 //
@@ -57,6 +58,27 @@ export async function readMergeToken(token: string): Promise<MergeRequest | null
   } catch {
     return null;
   }
+}
+
+// The letter to an email that a Telegram-only account tried to link while
+// another account already uses it. Its link joins the two accounts — and
+// only works in the browser signed in to that Telegram account.
+export async function sendMergeOffer(params: { telegramUserId: string; telegramName: string; email: string }) {
+  const token = await createMergeToken({ telegramUserId: params.telegramUserId, email: params.email });
+  const site = process.env.NEXT_PUBLIC_SITE_URL ?? "https://hikoya.org";
+  await sendMail(
+    params.email,
+    "Объединение аккаунтов на Hikoya",
+    `Кто-то вошёл на Hikoya через Telegram (имя: ${params.telegramName}) и хочет привязать этот адрес. На него уже зарегистрирован ваш аккаунт.
+
+Если это вы, откройте ссылку на том же устройстве и в том же браузере, где вы только что вошли через Telegram:
+
+${site}/account/merge?token=${token}
+
+Аккаунт с этой почтой останется со всеми вашими произведениями, лайками, закладками и подписками и получит вход через Telegram. Ссылка действует 1 час.
+
+Если это были не вы, ничего не делайте — без входа через тот Telegram ссылка не сработает, и с вашим аккаунтом ничего не произойдёт. Войти в свой аккаунт вы можете как обычно, по коду из письма на ${site}/login`
+  );
 }
 
 // What the confirmation page shows before the person agrees.

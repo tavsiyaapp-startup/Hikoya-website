@@ -9,6 +9,13 @@ export function telegramPlaceholderEmail(telegramId: number | string): string {
   return `tg${telegramId}@${TELEGRAM_EMAIL_DOMAIN}`;
 }
 
+// Accounts that signed up with Telegram on the old (Supabase-era) site got
+// "tg-<id>@telegram.hikoya.local" instead — same meaning: no real mailbox,
+// Telegram is their only way in.
+const LEGACY_TELEGRAM_EMAIL_DOMAIN = "telegram.hikoya.local";
+
 export function isTelegramPlaceholderEmail(email: string | null | undefined): boolean {
-  return typeof email === "string" && email.toLowerCase().endsWith(`@${TELEGRAM_EMAIL_DOMAIN}`);
+  if (typeof email !== "string") return false;
+  const lower = email.toLowerCase();
+  return lower.endsWith(`@${TELEGRAM_EMAIL_DOMAIN}`) || lower.endsWith(`@${LEGACY_TELEGRAM_EMAIL_DOMAIN}`);
 }

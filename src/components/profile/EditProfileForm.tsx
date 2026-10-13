@@ -116,9 +116,22 @@ export function EditProfileForm({
         // Better Auth emails a confirmation link to the new address; the
         // email only actually changes once that link is opened (see
         // emailVerification in src/server/auth/config.ts).
-        const { error } = await authClient.changeEmail({ newEmail, callbackURL: window.location.pathname });
-        if (error) errors.push(t.profile.emailChangeError);
-        else messages.push(telegramOnly ? t.profile.emailLinkSent : t.profile.emailChangeSent);
+        if (telegramOnly) {
+          // A Telegram-only account links its first real email through its
+          // own endpoint (src/server/auth/telegram-plugin.ts, /telegram/link-email).
+          const res = await fetch("/api/auth/telegram/link-email", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "same-origin",
+            body: JSON.stringify({ email: newEmail, callbackURL: window.location.pathname }),
+          }).catch(() => null);
+          if (res?.ok) messages.push(t.profile.emailLinkSent);
+          else errors.push(t.profile.emailChangeError);
+        } else {
+          const { error } = await authClient.changeEmail({ newEmail, callbackURL: window.location.pathname });
+          if (error) errors.push(t.profile.emailChangeError);
+          else messages.push(t.profile.emailChangeSent);
+        }
       }
 
       setAccountMessages(messages);

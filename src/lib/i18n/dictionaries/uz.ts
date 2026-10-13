@@ -686,6 +686,8 @@ const uz: typeof ru = {
     failed: "Akkauntlarni birlashtirib boʻlmadi. Qaytadan urinib koʻring yoki qoʻllab-quvvatlashga yozing.",
   },
   auth: {
+    telegramSignIn: "Telegram bilan kirish",
+    telegramLink: "Telegramni ulash",
     telegramError: "Telegram orqali kirib boʻlmadi. Qaytadan urinib koʻring.",
     telegramTaken: "Bu Telegram boshqa Hikoya akkauntiga ulangan.",
     googleError: "Kirish serveriga ulanib boʻlmadi. Birozdan keyin qayta urinib koʻring.",
@@ -701,8 +703,6 @@ const uz: typeof ru = {
     emailAlreadyRegistered: "Bu email allaqachon roʻyxatdan oʻtgan.",
     goToLoginWithPassword: "Parol bilan kirish →",
     loginWithEmail: "Email orqali kirish",
-    telegramRemovedNotice:
-      "Telegram orqali kirish endi qoʻllab-quvvatlanmaydi. Agar Telegram orqali roʻyxatdan oʻtgan boʻlsangiz, Google yoki email orqali qaytadan roʻyxatdan oʻting.",
     loginPageTitle: "Xush kelibsiz",
     loginPageBody: "Email va parol orqali kiring.",
     noAccount: "Akkountingiz yoʻqmi?",

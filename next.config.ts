@@ -1,6 +1,12 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  env: {
+    // Telegram's sign-in popup needs the bot's numeric id — the public part
+    // of the token before ":". Only that number reaches the browser, never
+    // the token itself (src/components/auth/TelegramLoginButton.tsx).
+    NEXT_PUBLIC_TELEGRAM_BOT_ID: (process.env.TELEGRAM_BOT_TOKEN ?? "").split(":")[0],
+  },
   // Self-hosted: a user with a page open from just before a deploy would
   // otherwise silently fail on stale asset/Server Action requests. Tagging
   // each build with the commit SHA lets Next.js detect that mismatch and

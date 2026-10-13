@@ -684,6 +684,8 @@ const ru = {
     failed: "Не удалось объединить аккаунты. Попробуйте ещё раз или напишите в поддержку.",
   },
   auth: {
+    telegramSignIn: "Войти через Telegram",
+    telegramLink: "Привязать Telegram",
     telegramError: "Не удалось войти через Telegram. Попробуйте ещё раз.",
     telegramTaken: "Этот Telegram уже привязан к другому аккаунту Hikoya.",
     googleError: "Не удалось связаться с сервером входа. Попробуйте ещё раз позже.",
@@ -699,8 +701,6 @@ const ru = {
     emailAlreadyRegistered: "Этот email уже зарегистрирован.",
     goToLoginWithPassword: "Войти с паролем →",
     loginWithEmail: "Войти через email",
-    telegramRemovedNotice:
-      "Вход через Telegram больше не поддерживается. Если вы регистрировались через Telegram, зарегистрируйтесь заново через Google или email.",
     loginPageTitle: "С возвращением",
     loginPageBody: "Войдите по email и паролю.",
     noAccount: "Нет аккаунта?",

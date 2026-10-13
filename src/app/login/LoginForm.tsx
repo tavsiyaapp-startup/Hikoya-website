@@ -55,10 +55,6 @@ export function LoginForm({ next, initialFallback = false }: { next: string; ini
             </button>
           </p>
 
-          <p className="mb-5 text-center text-[12.5px] leading-relaxed text-muted-2">
-            {t.auth.telegramRemovedNotice}
-          </p>
-
           <p className="text-center text-[13px] text-muted-2">
             {t.auth.noAccount}{" "}
             <Link

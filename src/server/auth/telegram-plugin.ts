@@ -8,6 +8,7 @@ import { profiles } from "@/server/db/schema";
 import { uniqueUsernameFromEmail } from "@/server/data/username";
 import { isTelegramPlaceholderEmail, telegramPlaceholderEmail } from "@/lib/telegram-account";
 import { verifyTelegramLogin, type TelegramLoginData } from "@/server/auth/telegram-verify";
+import { mergeTelegramAccount } from "@/server/auth/telegram-merge";
 
 // Sign-in with the Telegram Login Widget, as a Better Auth plugin so the
 // session it starts is an ordinary Better Auth session (same cookie, same
@@ -95,6 +96,25 @@ export function telegramAuth(): BetterAuthPlugin {
           const owner = await findByTelegramId(data.id);
           if (owner && owner.id !== userId) throw new APIError("CONFLICT", { message: "TELEGRAM_TAKEN" });
           await getDb().update(profiles).set({ telegram_id: data.id }).where(eq(profiles.id, userId));
+          return ctx.json({ ok: true });
+        }
+      ),
+
+      // The join confirmed from the emailed link (see telegram-merge.ts).
+      // Runs as the Telegram account's own session; on success that session
+      // is gone and this browser is signed in to the kept email account.
+      mergeTelegram: createAuthEndpoint(
+        "/telegram/merge",
+        { method: "POST", use: [sessionMiddleware] },
+        async (ctx) => {
+          const token = typeof ctx.body?.token === "string" ? ctx.body.token : "";
+          const result = await mergeTelegramAccount(token, ctx.context.session.user.id);
+          if ("error" in result) throw new APIError("BAD_REQUEST", { message: result.error });
+          const user = await ctx.context.internalAdapter.findUserById(result.targetUserId);
+          if (!user) throw new APIError("INTERNAL_SERVER_ERROR", { message: "target_missing" });
+          const session = await ctx.context.internalAdapter.createSession(user.id);
+          if (!session) throw new APIError("INTERNAL_SERVER_ERROR", { message: "TELEGRAM_SESSION_FAILED" });
+          await setSessionCookie(ctx, { session, user });
           return ctx.json({ ok: true });
         }
       ),

@@ -11,6 +11,7 @@ import { hashPassword, verifyPassword } from "@/server/auth/password";
 import { sendMail } from "@/server/auth/mailer";
 import { uniqueUsernameFromEmail } from "@/server/data/username";
 import { telegramAuth } from "@/server/auth/telegram-plugin";
+import { createMergeToken } from "@/server/auth/telegram-merge";
 import { isTelegramPlaceholderEmail } from "@/lib/telegram-account";
 import { takeRateLimit } from "@/server/rate-limit";
 
@@ -69,12 +70,35 @@ async function mailOwnerOfTakenEmail(ctx: Parameters<Parameters<typeof createAut
       .limit(1);
     if (!owner || owner.id === session.user.id) return;
     if (!takeRateLimit(`taken-email:${newEmail}`, 3, 24 * 60 * 60 * 1000)) return;
+
+    // Asked from a Telegram-only account: the letter carries a link that
+    // joins the two accounts — it only works in the browser signed in to
+    // that Telegram account (src/server/auth/telegram-merge.ts).
+    if (isTelegramPlaceholderEmail(session.user.email)) {
+      const token = await createMergeToken({ telegramUserId: session.user.id, email: newEmail });
+      const site = process.env.NEXT_PUBLIC_SITE_URL ?? "https://hikoya.org";
+      await sendMail(
+        newEmail,
+        "Объединение аккаунтов на Hikoya",
+        `Кто-то вошёл на Hikoya через Telegram (имя: ${session.user.name}) и хочет привязать этот адрес. На него уже зарегистрирован ваш аккаунт.
+
+Если это вы, откройте ссылку на том же устройстве и в том же браузере, где вы только что вошли через Telegram:
+
+${site}/account/merge?token=${token}
+
+Аккаунт с этой почтой останется со всеми вашими произведениями, лайками, закладками и подписками и получит вход через Telegram. Ссылка действует 1 час.
+
+Если это были не вы, ничего не делайте — без входа через тот Telegram ссылка не сработает, и с вашим аккаунтом ничего не произойдёт. Войти в свой аккаунт вы можете как обычно, по коду из письма на ${site}/login`
+      );
+      return;
+    }
+
     await sendMail(
       newEmail,
       "Привязка e-mail на Hikoya",
       `Кто-то попытался привязать этот адрес к другому аккаунту Hikoya, но на него уже зарегистрирован аккаунт.
 
-Если это были вы (например, вошли через Telegram и хотите объединить аккаунты), напишите в поддержку сайта (раздел «Чат с поддержкой» или https://t.me/hikoya_yoz) — администратор может перенести ваши произведения на нужный аккаунт.
+Если это были вы, напишите в поддержку сайта (раздел «Чат с поддержкой» или https://t.me/hikoya_yoz) — администратор может перенести ваши произведения на нужный аккаунт.
 
 Если это были не вы, просто проигнорируйте это письмо — с вашим аккаунтом ничего не произошло.`
     );

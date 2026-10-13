@@ -3,13 +3,16 @@ import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "@better-auth/drizzle-adapter";
 import { emailOTP } from "better-auth/plugins";
 import { nextCookies } from "better-auth/next-js";
-import { APIError, createAuthMiddleware } from "better-auth/api";
+import { APIError, createAuthMiddleware, getSessionFromCtx } from "better-auth/api";
 import { eq } from "drizzle-orm";
 import { getDb } from "@/server/db/client";
 import * as schema from "@/server/db/schema";
 import { hashPassword, verifyPassword } from "@/server/auth/password";
 import { sendMail } from "@/server/auth/mailer";
 import { uniqueUsernameFromEmail } from "@/server/data/username";
+import { telegramAuth } from "@/server/auth/telegram-plugin";
+import { isTelegramPlaceholderEmail } from "@/lib/telegram-account";
+import { takeRateLimit } from "@/server/rate-limit";
 
 // profiles plays Better Auth's "user" role directly — same id as the old
 // auth.users (so every existing FK into profiles.id keeps working, no
@@ -46,6 +49,39 @@ const BLOCKED_AUTH_PATHS = new Set([
   "/unlink-account",
   "/sign-up/email",
 ]);
+
+// Linking an email that already belongs to another account: Better Auth
+// answers "sent" either way and mails nothing (so the form can't be used to
+// find out who is registered). Typical case — someone signed in with
+// Telegram and owns an older email account. The address's owner gets a note
+// on how to have their works moved; the person filling in the form learns
+// nothing they couldn't read in their own inbox. Never throws.
+async function mailOwnerOfTakenEmail(ctx: Parameters<Parameters<typeof createAuthMiddleware>[0]>[0]) {
+  try {
+    const newEmail = typeof ctx.body?.newEmail === "string" ? ctx.body.newEmail.trim().toLowerCase() : "";
+    if (!newEmail || isTelegramPlaceholderEmail(newEmail)) return;
+    const session = await getSessionFromCtx(ctx);
+    if (!session) return;
+    const [owner] = await getDb()
+      .select({ id: schema.profiles.id })
+      .from(schema.profiles)
+      .where(eq(schema.profiles.email, newEmail))
+      .limit(1);
+    if (!owner || owner.id === session.user.id) return;
+    if (!takeRateLimit(`taken-email:${newEmail}`, 3, 24 * 60 * 60 * 1000)) return;
+    await sendMail(
+      newEmail,
+      "Привязка e-mail на Hikoya",
+      `Кто-то попытался привязать этот адрес к другому аккаунту Hikoya, но на него уже зарегистрирован аккаунт.
+
+Если это были вы (например, вошли через Telegram и хотите объединить аккаунты), напишите в поддержку сайта (раздел «Чат с поддержкой» или https://t.me/hikoya_yoz) — администратор может перенести ваши произведения на нужный аккаунт.
+
+Если это были не вы, просто проигнорируйте это письмо — с вашим аккаунтом ничего не произошло.`
+    );
+  } catch (err) {
+    console.error("[auth] taken-email notice failed", err);
+  }
+}
 
 function buildAuth() {
   return betterAuth({
@@ -245,6 +281,7 @@ ${url}
         if (BLOCKED_AUTH_PATHS.has(ctx.path)) {
           throw new APIError("NOT_FOUND", { message: "Not available" });
         }
+        if (ctx.path === "/change-email") await mailOwnerOfTakenEmail(ctx);
       }),
       after: createAuthMiddleware(async (ctx) => {
         if (ctx.path !== "/email-otp/reset-password" && ctx.path !== "/sign-in/email") return;
@@ -264,6 +301,9 @@ ${url}
     plugins: [
       emailOTP({
         async sendVerificationOTP({ email, otp, type }) {
+          // A Telegram-only account's placeholder address can't receive mail
+          // (and nobody owns it) — there is no code to send.
+          if (isTelegramPlaceholderEmail(email)) return;
           // Same plugin instance handles sign-in codes and the admin
           // forgot-password flow (src/app/admin-login/AdminLoginForm.tsx,
           // via authClient.emailOtp.requestPasswordReset) — the wording
@@ -277,6 +317,7 @@ ${url}
           await sendMail(email, subject, body);
         },
       }),
+      telegramAuth(),
       // Must be last — it hooks "after" every endpoint to write the session
       // cookie via Next.js's own cookies() API, which only works from a
       // Server Action or Route Handler. Earlier plugins' after-hooks still

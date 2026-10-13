@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { safeNext } from "@/lib/safe-next";
 import { getCurrentUser } from "@/lib/current-user";
+import { isTelegramPlaceholderEmail } from "@/lib/telegram-account";
 import { OnboardingWizard } from "./OnboardingWizard";
 
 export default async function OnboardingPage({
@@ -24,6 +25,7 @@ export default async function OnboardingPage({
       initialDisplayName={user?.profile?.display_name ?? ""}
       initialAvatarUrl={user?.profile?.avatar_url ?? null}
       initialBio={user?.profile?.bio ?? ""}
+      needsPassword={!isTelegramPlaceholderEmail(user?.email)}
       error={error === "save" || error === "auth" ? error : null}
     />
   );

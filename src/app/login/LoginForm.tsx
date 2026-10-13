@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 import { ROUTES } from "@/lib/constants";
 import { GoogleButton, EmailForm, PasswordLoginForm } from "@/components/auth/AuthButtons";
+import { TelegramLoginButton } from "@/components/auth/TelegramLoginButton";
 
 // Password (email + password) is the primary path — email-link and Google
 // are secondary, reached only via "forgot email or password?", since both
@@ -32,10 +33,15 @@ export function LoginForm({ next, initialFallback = false }: { next: string; ini
             {fallback ? (
               <>
                 <GoogleButton next={next} />
+                <TelegramLoginButton next={next} />
                 <EmailForm next={next} />
               </>
             ) : (
-              <PasswordLoginForm next={next} />
+              <>
+                <PasswordLoginForm next={next} />
+                {/* Telegram accounts have no password — their only way in. */}
+                <TelegramLoginButton next={next} />
+              </>
             )}
           </div>
 

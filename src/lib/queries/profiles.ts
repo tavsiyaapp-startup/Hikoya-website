@@ -1,4 +1,5 @@
 import "server-only";
+import { isTelegramPlaceholderEmail } from "@/lib/telegram-account";
 import { logQueryError } from "@/lib/queries/query-errors";
 import { and, eq, count, sql } from "drizzle-orm";
 import { getDb } from "@/server/db/client";
@@ -33,6 +34,27 @@ export async function getProfileById(id: string): Promise<Profile | null> {
   } catch (err) {
     logQueryError("getProfileById", err);
     return null;
+  }
+}
+
+// How an account signs in, for the admin user page: its email (null for a
+// Telegram-only account, whose stored address is only a placeholder) and
+// whether a Telegram account is linked.
+export async function getProfileLogin(id: string): Promise<{ email: string | null; telegramLinked: boolean }> {
+  try {
+    const db = getDb();
+    const [row] = await db
+      .select({ email: profiles.email, telegram_id: profiles.telegram_id })
+      .from(profiles)
+      .where(eq(profiles.id, id))
+      .limit(1);
+    return {
+      email: row?.email && !isTelegramPlaceholderEmail(row.email) ? row.email : null,
+      telegramLinked: row?.telegram_id != null,
+    };
+  } catch (err) {
+    logQueryError("getProfileLogin", err);
+    return { email: null, telegramLinked: false };
   }
 }
 

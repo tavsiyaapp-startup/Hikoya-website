@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { safeNext } from "@/lib/safe-next";
 import { getCurrentUser } from "@/lib/current-user";
 import { ROUTES } from "@/lib/constants";
+import { isTelegramPlaceholderEmail } from "@/lib/telegram-account";
 import { SetPasswordForm } from "./SetPasswordForm";
 
 export default async function SetPasswordPage({
@@ -17,7 +18,7 @@ export default async function SetPasswordPage({
   if (!user.profile?.onboarded_at) {
     redirect(`${ROUTES.onboarding}?next=${encodeURIComponent(next)}`);
   }
-  if (user.profile.has_password) redirect(next);
+  if (user.profile.has_password || isTelegramPlaceholderEmail(user.email)) redirect(next);
 
   return <SetPasswordForm next={next} email={user.email ?? ""} />;
 }

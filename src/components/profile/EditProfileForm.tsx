@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 import { useTheme } from "@/lib/ThemeProvider";
 import { authClient } from "@/lib/auth-client";
@@ -15,6 +16,8 @@ import { Textarea } from "@/components/ui/Textarea";
 import { Button } from "@/components/ui/Button";
 import { Toggle } from "@/components/ui/Toggle";
 import { SignOutButton } from "@/components/profile/SignOutButton";
+import { TelegramLoginButton } from "@/components/auth/TelegramLoginButton";
+import { isTelegramPlaceholderEmail } from "@/lib/telegram-account";
 
 export function EditProfileForm({
   userId,
@@ -25,6 +28,7 @@ export function EditProfileForm({
   bio,
   instagramHandle,
   telegramHandle,
+  telegramLinked,
 }: {
   userId: string;
   username: string;
@@ -34,15 +38,21 @@ export function EditProfileForm({
   bio: string | null;
   instagramHandle: string | null;
   telegramHandle: string | null;
+  telegramLinked: boolean;
 }) {
   const { t } = useLocale();
+  const router = useRouter();
   const { theme, setTheme } = useTheme();
   const [open, setOpen] = useState(false);
   const boxRef = useRef<HTMLDivElement>(null);
   const [preview, setPreview] = useState<string | null>(avatarUrl);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [newEmail, setNewEmail] = useState(email ?? "");
+  // A Telegram-only account's placeholder address is never shown — the field
+  // starts empty, as an offer to link a real email.
+  const telegramOnly = isTelegramPlaceholderEmail(email);
+  const [newEmail, setNewEmail] = useState(telegramOnly ? "" : (email ?? ""));
+  const [telegramError, setTelegramError] = useState(false);
   const [accountMessages, setAccountMessages] = useState<string[]>([]);
   const [accountErrors, setAccountErrors] = useState<string[]>([]);
   const [pending, startTransition] = useTransition();
@@ -108,7 +118,7 @@ export function EditProfileForm({
         // emailVerification in src/server/auth/config.ts).
         const { error } = await authClient.changeEmail({ newEmail, callbackURL: window.location.pathname });
         if (error) errors.push(t.profile.emailChangeError);
-        else messages.push(t.profile.emailChangeSent);
+        else messages.push(telegramOnly ? t.profile.emailLinkSent : t.profile.emailChangeSent);
       }
 
       setAccountMessages(messages);
@@ -184,9 +194,46 @@ export function EditProfileForm({
       </div>
 
       <div>
-        <label className="mb-1.5 block text-[13px] font-bold">{t.profile.emailLabel}</label>
+        <label className="mb-1.5 block text-[13px] font-bold">
+          {telegramOnly ? t.profile.emailLinkLabel : t.profile.emailLabel}
+        </label>
         <Input type="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} />
-        <p className="mt-1 text-[12px] text-muted-2">{t.profile.emailHint}</p>
+        <p className="mt-1 text-[12px] text-muted-2">{telegramOnly ? t.profile.emailLinkHint : t.profile.emailHint}</p>
+      </div>
+
+      <div>
+        <div className="mb-1.5 text-[13px] font-bold">{t.profile.telegramLoginTitle}</div>
+        {telegramLinked ? (
+          <div className="flex flex-wrap items-center gap-3">
+            <p className="text-[12.5px] text-muted-2">{t.profile.telegramLinked}</p>
+            {/* A Telegram-only account keeps its only way in. */}
+            {!telegramOnly && (
+              <button
+                type="button"
+                disabled={pending}
+                onClick={() =>
+                  startTransition(async () => {
+                    setTelegramError(false);
+                    const res = await fetch("/api/auth/telegram/unlink", { method: "POST", credentials: "same-origin" });
+                    if (!res.ok) setTelegramError(true);
+                    else router.refresh();
+                  })
+                }
+                className="cursor-pointer text-[12.5px] font-bold text-danger disabled:opacity-50"
+              >
+                {t.profile.telegramUnlink}
+              </button>
+            )}
+          </div>
+        ) : (
+          <>
+            <p className="mb-2 text-[12px] text-muted-2">{t.profile.telegramLinkHint}</p>
+            <div className="flex justify-start">
+              <TelegramLoginButton mode="link" />
+            </div>
+          </>
+        )}
+        {telegramError && <p className="mt-1 text-[12.5px] text-danger">{t.common.error}</p>}
       </div>
 
       {accountMessages.map((msg) => (

@@ -643,6 +643,57 @@ export async function updateStoryStatusAdmin(storyId: string, status: "draft" | 
   revalidatePath(`${ROUTES.admin}/stories`);
 }
 
+// Moves every work of one account to another — for a person who ended up
+// with two accounts (e.g. an old email one and a new Telegram one) and asked
+// support to put their works on the account they now use. Admin only. Only
+// the stories (with their chapters, comments and likes, which belong to the
+// story) move; the old account's own likes, bookmarks, follows, reading
+// progress and collections stay where they are. `target` is the receiving
+// account's username (with or without @) or email.
+export type TransferStoriesResult =
+  | { ok: true; moved: number; targetUsername: string }
+  | { error: "not_found" | "same_user" | "no_stories" };
+
+export async function transferStoriesAdmin(fromUserId: string, target: string): Promise<TransferStoriesResult> {
+  await requireAdmin();
+  const query = String(target ?? "").trim().replace(/^@/, "").toLowerCase();
+  if (!query || typeof fromUserId !== "string") return { error: "not_found" };
+
+  const db = getDb();
+  const [to] = await db
+    .select({ id: profiles.id, username: profiles.username })
+    .from(profiles)
+    .where(or(eq(sql`lower(${profiles.username})`, query), eq(profiles.email, query)))
+    .limit(1);
+  const [from] = await db.select({ username: profiles.username }).from(profiles).where(eq(profiles.id, fromUserId)).limit(1);
+  if (!to || !from) return { error: "not_found" };
+  if (to.id === fromUserId) return { error: "same_user" };
+
+  const moved = await db.transaction(async (tx) => {
+    const rows = await tx
+      .update(stories)
+      .set({ author_id: to.id, updated_at: new Date() })
+      .where(eq(stories.author_id, fromUserId))
+      .returning({ slug: stories.slug });
+    // Same rule as a first story: a reader becomes an author, nobody else changes.
+    if (rows.length > 0) {
+      await tx.update(profiles).set({ role: "author" }).where(and(eq(profiles.id, to.id), eq(profiles.role, "reader")));
+    }
+    return rows;
+  });
+  if (moved.length === 0) return { error: "no_stories" };
+
+  console.info(`[admin] moved ${moved.length} stories from ${fromUserId} to ${to.id}`);
+  updateTag("stories");
+  updateTag("collections");
+  revalidatePath(ROUTES.adminUser(fromUserId));
+  revalidatePath(ROUTES.adminUser(to.id));
+  revalidatePath(ROUTES.author(from.username));
+  revalidatePath(ROUTES.author(to.username));
+  for (const { slug } of moved) revalidatePath(ROUTES.story(slug));
+  return { ok: true, moved: moved.length, targetUsername: to.username };
+}
+
 // Moderators may change the number of free guest chapters; switching
 // pre-moderation of stories on or off is site policy and stays with admins —
 // a moderator's submitted value for it is ignored. (comments_require_approval

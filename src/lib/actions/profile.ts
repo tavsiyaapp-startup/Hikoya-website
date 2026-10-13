@@ -1,5 +1,6 @@
 "use server";
 
+import { isTelegramPlaceholderEmail } from "@/lib/telegram-account";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
@@ -87,6 +88,9 @@ export async function setInitialPassword(password: string): Promise<{ ok: boolea
   // Same minimum the forms enforce (MIN_PASSWORD_LENGTH = 6), now also on
   // the server; 128 caps the bcrypt input.
   if (typeof password !== "string" || password.length < 6 || password.length > 128) return { ok: false };
+
+  // A Telegram-only account has no email to sign in with a password yet.
+  if (isTelegramPlaceholderEmail(session.user.email)) return { ok: false };
 
   const db = getDb();
   // Only for an account that has no password yet. Changing an existing one

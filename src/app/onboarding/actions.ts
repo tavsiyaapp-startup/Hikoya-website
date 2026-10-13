@@ -8,6 +8,7 @@ import { eq } from "drizzle-orm";
 import { getAuth } from "@/server/auth/config";
 import { getDb } from "@/server/db/client";
 import { profiles } from "@/server/db/schema";
+import { isTelegramPlaceholderEmail } from "@/lib/telegram-account";
 import { setCredentialPassword } from "@/server/auth/set-password";
 import { LOCALE_COOKIE, isLocale, defaultLocale } from "@/lib/i18n";
 
@@ -32,7 +33,7 @@ export async function completeOnboarding(formData: FormData) {
   // — a moderator or admin replaying it would otherwise demote themselves,
   // and anyone holding a stolen session could take the account over.
   const [current] = await db
-    .select({ onboarded_at: profiles.onboarded_at })
+    .select({ onboarded_at: profiles.onboarded_at, email: profiles.email })
     .from(profiles)
     .where(eq(profiles.id, userId))
     .limit(1);
@@ -64,23 +65,25 @@ export async function completeOnboarding(formData: FormData) {
   // onboarding without one. /login's post-sign-in routing would otherwise have to send
   // them to /auth/set-password on their very next visit anyway, since
   // has_password never gets set below without a confirmed password.
+  // A Telegram-only account has no email to pair a password with — it skips
+  // the password until an email is linked (then /login asks for one).
+  const telegramOnly = isTelegramPlaceholderEmail(current.email);
   if (
-    password.length < MIN_PASSWORD_LENGTH ||
-    password.length > MAX_PASSWORD_LENGTH ||
+    (!telegramOnly && (password.length < MIN_PASSWORD_LENGTH || password.length > MAX_PASSWORD_LENGTH)) ||
     displayName.length > MAX_DISPLAY_NAME ||
     bio.length > MAX_BIO
   ) {
     redirect(`/onboarding?next=${encodeURIComponent(next)}`);
   }
 
-  await setCredentialPassword(db, userId, password);
+  if (!telegramOnly) await setCredentialPassword(db, userId, password);
 
   const profileFields = {
     role,
     interests,
     locale_pref: locale,
     onboarded_at: new Date(),
-    has_password: true,
+    has_password: !telegramOnly,
     ...(displayName ? { display_name: displayName } : {}),
     ...(avatarUrl ? { avatar_url: avatarUrl } : {}),
     ...(bio ? { bio } : {}),

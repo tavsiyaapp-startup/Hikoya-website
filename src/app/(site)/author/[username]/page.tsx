@@ -162,6 +162,7 @@ export default async function AuthorPage({
             bio={profile.bio}
             instagramHandle={profile.instagram_handle}
             telegramHandle={profile.telegram_handle}
+            telegramLinked={user?.profile?.telegram_id != null}
           />
         </div>
       )}

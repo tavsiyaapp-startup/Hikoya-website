@@ -2,7 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getServerLocale } from "@/lib/i18n/locale-server";
 import { getDictionary } from "@/lib/i18n";
-import { getProfileById, getAuthorStoryCount, getAuthorTotals } from "@/lib/queries/profiles";
+import { getProfileById, getAuthorStoryCount, getAuthorTotals, getProfileLogin } from "@/lib/queries/profiles";
+import { getStaffSession } from "@/server/auth/staff";
 import { getAuthorStories, getCollectionsFeaturingAuthor } from "@/lib/queries/stories";
 import { getFollowerCount } from "@/lib/queries/social";
 import { getAllAchievements, getUserAchievementsMap } from "@/lib/queries/admin";
@@ -18,6 +19,7 @@ import { VerifiedIcon, SparkleIcon, MessageIcon } from "@/components/ui/icons";
 import { AdminHeader } from "../../AdminHeader";
 import { UserStatusButton } from "../UserStatusButton";
 import { AdminBadgesPanel } from "./AdminBadgesPanel";
+import { TransferStoriesPanel } from "./TransferStoriesPanel";
 import { plural } from "@/lib/plural";
 
 const TABS = ["stories", "collections"] as const;
@@ -39,6 +41,9 @@ export default async function AdminUserProfilePage({
 
   const profile = await getProfileById(id);
   if (!profile) notFound();
+
+  const [staff, login] = await Promise.all([getStaffSession(), getProfileLogin(profile.id)]);
+  const isAdmin = staff.status === "staff" && staff.staff.isAdmin;
 
   const [storyCount, followerCount, stories, totals, featuringCollections, achievements, achievementsMap] = await Promise.all([
     getAuthorStoryCount(profile.id),
@@ -74,7 +79,11 @@ export default async function AdminUserProfilePage({
                 <VerifiedIcon className="shrink-0 text-primary-600" aria-label={t.author.verified} />
               )}
             </h1>
-            <div className="mb-2.5 text-[13.5px] text-muted-2">@{profile.username}</div>
+            <div className="mb-2.5 text-[13.5px] text-muted-2">
+              @{profile.username}
+              {" · "}
+              {[login.email, login.telegramLinked ? "Telegram" : null].filter(Boolean).join(" · ") || "—"}
+            </div>
             {profile.bio && <p className="mb-4 max-w-155 text-[15px] leading-relaxed text-ink-soft">{profile.bio}</p>}
             <div className="mb-4.5 flex flex-wrap gap-6 sm:gap-8.5">
               {stats.map((s) => (
@@ -120,6 +129,8 @@ export default async function AdminUserProfilePage({
           initialCheckedIds={checkedAchievementIds}
           locale={locale}
         />
+
+        {isAdmin && <TransferStoriesPanel userId={profile.id} displayName={profile.display_name} />}
 
         <div className="mb-5.5 flex gap-2.5 overflow-x-auto">
           {TABS.map((key) => (

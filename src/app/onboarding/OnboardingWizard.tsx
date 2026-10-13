@@ -8,6 +8,7 @@ import { ROUTES } from "@/lib/constants";
 import { resizeImageFile } from "@/lib/image-resize";
 import { uploadUserImage, deleteUserImage } from "@/lib/actions/uploads";
 import { GoogleButton, EmailLoginToggle } from "@/components/auth/AuthButtons";
+import { TelegramLoginButton } from "@/components/auth/TelegramLoginButton";
 import { CloseIcon } from "@/components/ui/icons";
 import { Avatar } from "@/components/ui/Avatar";
 import { Input } from "@/components/ui/Input";
@@ -25,6 +26,7 @@ export function OnboardingWizard({
   initialDisplayName,
   initialAvatarUrl,
   initialBio,
+  needsPassword,
   error,
 }: {
   initialStep: 1 | 3;
@@ -33,6 +35,9 @@ export function OnboardingWizard({
   initialDisplayName: string;
   initialAvatarUrl: string | null;
   initialBio: string;
+  // false for a Telegram-only account: it has no email, so a password
+  // would have nothing to sign in with until an email is linked.
+  needsPassword: boolean;
   error: "save" | "auth" | null;
 }) {
   const { t, locale, setLocale } = useLocale();
@@ -86,7 +91,7 @@ export function OnboardingWizard({
   // which sets a password — without one, the only way back in later is the
   // same OAuth/magic-link flow every time. No skip option on purpose.
   function handleContinueFromName() {
-    if (password.length < MIN_PASSWORD_LENGTH) {
+    if (needsPassword && password.length < MIN_PASSWORD_LENGTH) {
       setPasswordError(true);
       return;
     }
@@ -201,6 +206,7 @@ export function OnboardingWizard({
 
             <div className="mb-6.5 flex flex-col gap-3">
               <GoogleButton next={next} />
+              <TelegramLoginButton next={next} />
               <EmailLoginToggle next={next} mode="register" />
             </div>
 
@@ -252,6 +258,7 @@ export function OnboardingWizard({
               />
             </div>
 
+            {needsPassword && (
             <div className="mb-2">
               <label className="mb-1.5 block text-[13px] font-bold">{t.onboarding.passwordLabel}</label>
               <PasswordInput
@@ -268,6 +275,7 @@ export function OnboardingWizard({
                 <p className="mt-1.5 text-[12px] text-danger">{t.onboarding.passwordTooShort}</p>
               )}
             </div>
+            )}
 
             <div className="mt-6.5 flex gap-3">
               <button

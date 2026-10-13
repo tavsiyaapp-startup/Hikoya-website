@@ -44,12 +44,17 @@ export function Header({ user, unreadCount = 0 }: { user: CurrentUser | null; un
       <Link
         href={ROUTES.search}
         aria-label={t.nav.search}
-        className="ml-auto flex h-10 w-10 shrink-0 items-center justify-center rounded-[12px] text-ink-soft transition hover:bg-surface md:hidden"
+        className={clsx(
+          "ml-auto flex h-10 w-10 shrink-0 items-center justify-center rounded-[12px] text-ink-soft transition hover:bg-surface md:hidden",
+          // Guests on the narrowest phones need the room for both sign-in
+          // buttons; search stays in the floating menu (TopNav).
+          !user && "max-[359px]:hidden"
+        )}
       >
         <SearchIcon />
       </Link>
 
-      <div className="flex items-center gap-1.5 sm:ml-auto sm:gap-2.5">
+      <div className={clsx("flex items-center gap-1.5 sm:ml-auto sm:gap-2.5", !user && "max-[359px]:ml-auto")}>
         <div className="hidden gap-0.5 rounded-xl border border-border bg-primary-50 p-[3px] xs:flex">
           {(["uz", "ru"] as const).map((code) => (
             <button
@@ -71,7 +76,8 @@ export function Header({ user, unreadCount = 0 }: { user: CurrentUser | null; un
           title={user ? t.nav.notifications : t.common.guestLockedTitle}
           className={clsx(
             "relative flex h-10 w-10 shrink-0 items-center justify-center rounded-[13px] border border-border bg-card text-ink-soft transition sm:h-11 sm:w-11",
-            !user && "cursor-not-allowed opacity-50"
+            // A guest's bell does nothing; on phones its place goes to "Войти".
+            !user && "hidden cursor-not-allowed opacity-50 sm:flex"
           )}
         >
           <BellIcon />
@@ -84,13 +90,21 @@ export function Header({ user, unreadCount = 0 }: { user: CurrentUser | null; un
           <UserMenu user={user} />
         ) : (
           <>
-            <Link href={ROUTES.login} className="hidden sm:block">
-              <Button variant="secondary" size="sm" className="sm:h-[46px] sm:px-5 sm:text-[14.5px]">
+            <Link href={ROUTES.login}>
+              <Button
+                variant="secondary"
+                size="sm"
+                className="whitespace-nowrap px-3 sm:h-[46px] sm:px-5 sm:text-[14.5px]"
+              >
                 {t.common.login}
               </Button>
             </Link>
             <Link href={ROUTES.onboarding}>
-              <Button variant="primary" size="sm" className="sm:h-[46px] sm:px-5 sm:text-[14.5px]">
+              <Button
+                variant="primary"
+                size="sm"
+                className="whitespace-nowrap px-3 sm:h-[46px] sm:px-5 sm:text-[14.5px]"
+              >
                 {t.common.register}
               </Button>
             </Link>

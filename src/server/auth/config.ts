@@ -170,6 +170,11 @@ ${url}
       // every request. Kept short: until it expires, a signed-out or
       // revoked session still passes in whatever browser holds the cookie.
       cookieCache: { enabled: true, maxAge: 60 },
+      // Readers come back every few days or weeks; the 7-day default sent
+      // them through the emailed code again far too often. Each visit after
+      // a day moves the expiry forward again (updateAge).
+      expiresIn: 60 * 60 * 24 * 30,
+      updateAge: 60 * 60 * 24,
     },
     verification: {
       fields: {

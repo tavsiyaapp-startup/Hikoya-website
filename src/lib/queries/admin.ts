@@ -14,6 +14,7 @@ import {
   follows,
   heroSlides,
   announcements as announcementsTable,
+  notifications,
   platformSettings,
   profiles,
   requests,
@@ -277,6 +278,36 @@ export async function countAnnouncementRecipients(): Promise<{ authors: number; 
   } catch (err) {
     logQueryError("countAnnouncementRecipients", err);
     return { authors: 0, readers: 0, all: 0 };
+  }
+}
+
+// History for /admin/broadcast. There's no table of sent announcements: one
+// broadcast inserts all its notifications in a single transaction, so they
+// share created_at (now() is fixed per transaction) — grouping by text +
+// created_at gives one row per broadcast, with how many got it and how many
+// have read it. Who it was addressed to isn't stored.
+export type SentAnnouncement = { message: string; sentAt: string; recipients: number; read: number };
+
+export async function getSentAnnouncements(limit = 50): Promise<SentAnnouncement[]> {
+  try {
+    const db = getDb();
+    const rows = await db
+      .select({
+        message: notifications.message,
+        sentAt: notifications.created_at,
+        recipients: sql<number>`count(*)::int`,
+        read: sql<number>`count(*) filter (where ${notifications.is_read})::int`,
+      })
+      .from(notifications)
+      .where(eq(notifications.type, "announcement"))
+      .groupBy(notifications.message, notifications.created_at)
+      .orderBy(desc(notifications.created_at))
+      .limit(limit);
+    return rows.map((r) => ({ message: r.message ?? "", sentAt: toISO(r.sentAt), recipients: r.recipients, read: r.read }));
+  } catch (err) {
+    // Also the case before notification_type_announcement.sql is run.
+    logQueryError("getSentAnnouncements", err);
+    return [];
   }
 }
 

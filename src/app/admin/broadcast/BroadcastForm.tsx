@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { sendAnnouncement, type AnnouncementAudience } from "@/lib/actions/admin";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 import { Textarea } from "@/components/ui/Textarea";
@@ -9,15 +10,10 @@ import { AnnouncementBody } from "@/components/notifications/AnnouncementBody";
 
 const AUDIENCES: AnnouncementAudience[] = ["authors", "readers", "all"];
 
-export function BroadcastForm({
-  counts,
-  defaultText,
-}: {
-  counts: Record<AnnouncementAudience, number>;
-  defaultText: string;
-}) {
+export function BroadcastForm({ counts }: { counts: Record<AnnouncementAudience, number> }) {
   const { t } = useLocale();
-  const [text, setText] = useState(defaultText);
+  const router = useRouter();
+  const [text, setText] = useState("");
   const [audience, setAudience] = useState<AnnouncementAudience>("authors");
   const recipients = counts[audience];
   const audienceLabel: Record<AnnouncementAudience, string> = {
@@ -40,6 +36,9 @@ export function BroadcastForm({
       const res = await sendAnnouncement(message, audience);
       if ("ok" in res) {
         setResult({ ok: true, text: t.admin.broadcastSent.replace("{count}", String(res.sent)) });
+        // Empty form for the next one; the "Sent" list below picks this one up.
+        setText("");
+        router.refresh();
         return;
       }
       setResult({
@@ -78,14 +77,22 @@ export function BroadcastForm({
         </div>
       </div>
 
-      <Textarea value={text} onChange={(e) => setText(e.target.value)} rows={5} maxLength={2000} />
+      <Textarea
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        rows={5}
+        maxLength={2000}
+        placeholder={t.admin.broadcastPlaceholder}
+      />
 
-      <div>
-        <div className="mb-2 text-[12.5px] font-bold uppercase tracking-wide text-muted-2">{t.admin.broadcastPreview}</div>
-        <div className="rounded-[14px] border border-border-soft bg-surface p-4.5">
-          <AnnouncementBody message={text} />
+      {text.trim() && (
+        <div>
+          <div className="mb-2 text-[12.5px] font-bold uppercase tracking-wide text-muted-2">{t.admin.broadcastPreview}</div>
+          <div className="rounded-[14px] border border-border-soft bg-surface p-4.5">
+            <AnnouncementBody message={text} />
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="flex flex-wrap items-center gap-3">
         <Button onClick={send} disabled={pending || !text.trim() || recipients === 0}>

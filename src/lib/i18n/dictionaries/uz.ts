@@ -114,7 +114,7 @@ const uz: typeof ru = {
     showLess: "Yigʻish",
     sortNewest: "Avval yangilari",
     sortOldest: "Avval eskilari",
-    authorCta: "Siz mualifmisiz?",
+    authorCta: "Siz muallifmisiz?",
     authorCtaBody:
       "Hikoyalaringizni chop eting va oʻquvchilaringizni toping — birinchi bob bir kechada yoziladi.",
     authorCtaButton: "Chop etish",
@@ -463,7 +463,7 @@ const uz: typeof ru = {
     welcomeBody: "Nima uchun bu yerdaligingizni tanlang. Buni sozlamalarda oʻzgartirish mumkin.",
     roleReaderTitle: "Hikoya oʻqish",
     roleReaderDesc: "Yangi hikoyalarni oching, mualliflarni kuzating, sevimlilaringizni saqlang.",
-    roleAuthorTitle: "Men mualifman",
+    roleAuthorTitle: "Men muallifman",
     roleAuthorDesc: "Boblar chop eting va oʻz oʻquvchilaringizni toping.",
     continueVia: "Davom eting",
     haveAccount: "Akkountingiz bormi?",

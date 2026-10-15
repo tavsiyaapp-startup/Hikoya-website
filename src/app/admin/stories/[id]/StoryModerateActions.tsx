@@ -7,7 +7,17 @@ import { useLocale } from "@/lib/i18n/LocaleProvider";
 import { Textarea } from "@/components/ui/Textarea";
 import { Button } from "@/components/ui/Button";
 
-export function StoryModerateActions({ storyId, storySlug }: { storyId: string; storySlug: string }) {
+// approveOnly: the story was rejected/hidden earlier — staff can approve it
+// right away; rejecting it again would change nothing.
+export function StoryModerateActions({
+  storyId,
+  storySlug,
+  approveOnly = false,
+}: {
+  storyId: string;
+  storySlug: string;
+  approveOnly?: boolean;
+}) {
   const { t } = useLocale();
   const router = useRouter();
   const [rejecting, setRejecting] = useState(false);
@@ -56,9 +66,11 @@ export function StoryModerateActions({ storyId, storySlug }: { storyId: string; 
       <Button size="sm" disabled={pending} onClick={() => run(() => approveStory(storyId, storySlug))}>
         {t.manage.approve}
       </Button>
-      <Button type="button" variant="ghost" size="sm" onClick={() => setRejecting(true)}>
-        {t.manage.reject}
-      </Button>
+      {!approveOnly && (
+        <Button type="button" variant="ghost" size="sm" onClick={() => setRejecting(true)}>
+          {t.manage.reject}
+        </Button>
+      )}
     </div>
   );
 }

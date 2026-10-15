@@ -87,9 +87,17 @@ export async function approveStory(storyId: string, storySlug: string): Promise<
     const [updated] = await tx
       .update(stories)
       .set({ status: "published", published_at: sql`coalesce(${stories.published_at}, now())`, rejection_reason: null })
-      // A story in the trash stays there — approving it would publish a
-      // story its author deleted.
-      .where(and(eq(stories.id, storyId), ne(stories.status, "published"), isNull(stories.deleted_at)))
+      // Only a story waiting for review, or one staff rejected/hid earlier
+      // (draft with a reason) — approvable right away, without the author
+      // resubmitting. Never an author's own unsubmitted draft, and never one
+      // in the trash.
+      .where(
+        and(
+          eq(stories.id, storyId),
+          or(eq(stories.status, "pending_review"), and(eq(stories.status, "draft"), isNotNull(stories.rejection_reason))),
+          isNull(stories.deleted_at)
+        )
+      )
       .returning({ author_id: stories.author_id });
     if (!updated) return null;
     await tx
@@ -98,7 +106,14 @@ export async function approveStory(storyId: string, storySlug: string): Promise<
       .where(
         and(
           eq(chapters.story_id, storyId),
-          or(eq(chapters.status, "pending_review"), and(eq(chapters.order_index, 1), eq(chapters.status, "draft")))
+          or(
+            eq(chapters.status, "pending_review"),
+            and(eq(chapters.order_index, 1), eq(chapters.status, "draft")),
+            // Chapters rejected earlier go live with the story instead of
+            // each needing its own resubmission; an author's own unsubmitted
+            // drafts (no reason) stay drafts.
+            and(eq(chapters.status, "draft"), isNotNull(chapters.rejection_reason))
+          )
         )
       );
     return updated;
@@ -312,7 +327,15 @@ export async function approveChapter(chapterId: string, storyId: string, storySl
   const [updated] = await db
     .update(chapters)
     .set({ status: "published", published_at: sql`coalesce(${chapters.published_at}, now())`, rejection_reason: null })
-    .where(and(eq(chapters.id, chapterId), eq(chapters.story_id, storyId), ne(chapters.status, "published")))
+    // Waiting for review, or rejected earlier (approvable right away) —
+    // never an author's own unsubmitted draft.
+    .where(
+      and(
+        eq(chapters.id, chapterId),
+        eq(chapters.story_id, storyId),
+        or(eq(chapters.status, "pending_review"), and(eq(chapters.status, "draft"), isNotNull(chapters.rejection_reason)))
+      )
+    )
     .returning({ id: chapters.id });
   const [story] = updated
     ? await db.select({ author_id: stories.author_id }).from(stories).where(eq(stories.id, storyId)).limit(1)

@@ -117,6 +117,11 @@ export default async function AdminStoryModeratePage({ params }: { params: Promi
             {!story.deleted_at && story.status === "pending_review" && (
               <StoryModerateActions storyId={story.id} storySlug={story.slug} />
             )}
+            {/* Rejected or hidden earlier: can be approved right here, without
+                waiting for the author to resubmit. */}
+            {!story.deleted_at && story.status === "draft" && story.rejection_reason && (
+              <StoryModerateActions storyId={story.id} storySlug={story.slug} approveOnly />
+            )}
             {!story.deleted_at && (story.status === "published" || story.status === "unlisted") && (
               <StoryHideAction storyId={story.id} storySlug={story.slug} />
             )}
@@ -157,6 +162,9 @@ export default async function AdminStoryModeratePage({ params }: { params: Promi
                 )}
                 {ch.status === "pending_review" && (
                   <ChapterModerateActions chapterId={ch.id} storyId={story.id} storySlug={story.slug} />
+                )}
+                {ch.status === "draft" && ch.rejection_reason && (
+                  <ChapterModerateActions chapterId={ch.id} storyId={story.id} storySlug={story.slug} approveOnly />
                 )}
               </div>
             ))

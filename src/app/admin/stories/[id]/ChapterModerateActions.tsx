@@ -11,10 +11,13 @@ export function ChapterModerateActions({
   chapterId,
   storyId,
   storySlug,
+  approveOnly = false,
 }: {
   chapterId: string;
   storyId: string;
   storySlug: string;
+  // Already rejected: it can only be approved (rejecting again changes nothing).
+  approveOnly?: boolean;
 }) {
   const { t } = useLocale();
   const router = useRouter();
@@ -68,9 +71,11 @@ export function ChapterModerateActions({
       >
         {t.manage.approve}
       </Button>
-      <Button type="button" variant="ghost" size="sm" onClick={() => setRejecting(true)}>
-        {t.manage.reject}
-      </Button>
+      {!approveOnly && (
+        <Button type="button" variant="ghost" size="sm" onClick={() => setRejecting(true)}>
+          {t.manage.reject}
+        </Button>
+      )}
     </div>
   );
 }

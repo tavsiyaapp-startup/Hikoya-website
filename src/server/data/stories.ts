@@ -1,5 +1,5 @@
 import "server-only";
-import { and, eq, inArray, isNull } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, isNull } from "drizzle-orm";
 import { sanitizeHtml } from "@/lib/sanitize";
 import { slugify, withRandomSuffix } from "@/lib/slug";
 import type { AgeRating, StoryProgressStatus, StoryVisibility } from "@/types/database";
@@ -256,7 +256,7 @@ export async function submitStoryForReview(db: DbOrTx, viewer: Viewer | null, st
     .limit(1);
   const requiresReview = (await getRequiresReview(db)) || Boolean(row?.rejection_reason);
   const status = requiresReview ? "pending_review" : "published";
-  await db
+  const [submitted] = await db
     .update(stories)
     .set({
       status,
@@ -264,5 +264,18 @@ export async function submitStoryForReview(db: DbOrTx, viewer: Viewer | null, st
       rejection_reason: null,
       ...(story.visibility === "draft" ? { visibility: "public" as const } : {}),
     })
-    .where(and(eq(stories.id, storyId), eq(stories.status, "draft"), isNull(stories.deleted_at)));
+    .where(and(eq(stories.id, storyId), eq(stories.status, "draft"), isNull(stories.deleted_at)))
+    .returning({ id: stories.id });
+  if (!submitted) return;
+
+  // Chapters rejected earlier (draft with a reason) go back to the queue with
+  // the story, so the moderator sees them and approving the story publishes
+  // them too — the author no longer has to resubmit each chapter. Their own
+  // unsubmitted drafts (no reason) stay drafts.
+  if (status === "pending_review") {
+    await db
+      .update(chapters)
+      .set({ status: "pending_review" })
+      .where(and(eq(chapters.story_id, storyId), eq(chapters.status, "draft"), isNotNull(chapters.rejection_reason)));
+  }
 }

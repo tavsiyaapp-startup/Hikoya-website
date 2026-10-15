@@ -3,11 +3,14 @@ import { TopNav } from "@/components/layout/TopNav";
 import { Footer } from "@/components/layout/Footer";
 import { BackButton } from "@/components/layout/BackButton";
 import { getCurrentUser } from "@/lib/current-user";
-import { getUnreadNotificationCount } from "@/lib/queries/notifications";
+import { getPendingAnnouncement, getUnreadNotificationCount } from "@/lib/queries/notifications";
+import { AnnouncementPopup } from "@/components/notifications/AnnouncementPopup";
 
 export default async function SiteLayout({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUser();
-  const unreadCount = user ? await getUnreadNotificationCount(user.id) : 0;
+  const [unreadCount, announcement] = user
+    ? await Promise.all([getUnreadNotificationCount(user.id), getPendingAnnouncement(user.id)])
+    : [0, null];
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -19,6 +22,7 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
         {children}
       </main>
       <Footer />
+      {announcement && <AnnouncementPopup id={announcement.id} message={announcement.message} />}
     </div>
   );
 }

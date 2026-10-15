@@ -27,7 +27,8 @@ export type NotificationType =
   | "chapter_rejected"
   | "story_like"
   | "story_restored"
-  | "admin_message";
+  | "admin_message"
+  | "announcement";
 
 export interface Profile {
   id: string; // references auth.users.id

@@ -19,6 +19,26 @@ export async function getUnreadNotificationCount(userId: string): Promise<number
   }
 }
 
+// The oldest unread staff announcement, shown once as a popup on the next
+// page view (closing it marks it read — see AnnouncementPopup).
+export async function getPendingAnnouncement(userId: string): Promise<{ id: string; message: string } | null> {
+  try {
+    const db = getDb();
+    const [row] = await db
+      .select({ id: notifications.id, message: notifications.message })
+      .from(notifications)
+      .where(
+        and(eq(notifications.user_id, userId), eq(notifications.type, "announcement"), eq(notifications.is_read, false))
+      )
+      .orderBy(notifications.created_at)
+      .limit(1);
+    return row?.message ? { id: row.id, message: row.message } : null;
+  } catch (err) {
+    logQueryError("getPendingAnnouncement", err);
+    return null;
+  }
+}
+
 export type NotificationWithContext = Notification & {
   actor: { display_name: string } | null;
   story: { title: string; slug: string } | null;

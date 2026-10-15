@@ -13,6 +13,7 @@ import {
   featuredStories,
   heroSlides,
   likes,
+  notifications,
   platformSettings,
   profiles,
   requests,
@@ -715,6 +716,49 @@ export async function transferStoriesAdmin(fromUserId: string, target: string): 
   revalidatePath(ROUTES.author(to.username));
   for (const { slug } of moved) revalidatePath(ROUTES.story(slug));
   return { ok: true, moved: moved.length, targetUsername: to.username };
+}
+
+// Announcement to every author with at least one published story (not in
+// the trash): one "announcement" notification each, which also pops up once
+// on their next visit (AnnouncementPopup). Admin only. Recipients are taken
+// at the moment of sending — later authors don't get it.
+const MAX_ANNOUNCEMENT = 2000;
+
+export async function sendAuthorAnnouncement(
+  rawMessage: string
+): Promise<{ ok: true; sent: number } | { error: "empty" | "too_long" | "no_recipients" | "failed" }> {
+  await requireAdmin();
+  const message = String(rawMessage ?? "").trim();
+  if (!message) return { error: "empty" };
+  if (message.length > MAX_ANNOUNCEMENT) return { error: "too_long" };
+
+  const db = getDb();
+  const authors = await db
+    .selectDistinct({ id: stories.author_id })
+    .from(stories)
+    .where(and(eq(stories.status, "published"), isNull(stories.deleted_at)));
+  if (authors.length === 0) return { error: "no_recipients" };
+
+  try {
+    // One transaction: either everyone gets it or nobody does, so a retry
+    // after a failure can't send it twice to part of the list.
+    await db.transaction(async (tx) => {
+      for (let i = 0; i < authors.length; i += 500) {
+        await tx.insert(notifications).values(
+          authors.slice(i, i + 500).map((a) => ({ user_id: a.id, type: "announcement" as const, message }))
+        );
+      }
+    });
+  } catch (err) {
+    // Most likely the database doesn't know the "announcement" type yet
+    // (backups/notification_type_announcement.sql not run).
+    console.error("[admin] sendAuthorAnnouncement failed", err);
+    return { error: "failed" };
+  }
+
+  console.info(`[admin] announcement sent to ${authors.length} authors`);
+  revalidatePath("/", "layout");
+  return { ok: true, sent: authors.length };
 }
 
 // Moderators may change the number of free guest chapters; switching

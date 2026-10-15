@@ -259,6 +259,22 @@ export async function getActivityCounts(range?: { from?: string; to?: string }):
   }
 }
 
+// Who an author announcement (/admin/broadcast) goes to: everyone with at
+// least one published story that isn't in the trash.
+export async function countAnnouncementRecipients(): Promise<number> {
+  try {
+    const db = getDb();
+    const [row] = await db
+      .select({ total: sql<number>`count(distinct ${stories.author_id})::int` })
+      .from(stories)
+      .where(and(eq(stories.status, "published"), isNull(stories.deleted_at)));
+    return row?.total ?? 0;
+  } catch (err) {
+    logQueryError("countAnnouncementRecipients", err);
+    return 0;
+  }
+}
+
 // Badge on the admin menu's "Жалобы" item.
 export async function getOpenReportsCount(): Promise<number> {
   try {

@@ -7,7 +7,7 @@ import { getDictionary } from "@/lib/i18n";
 import { getUnreadAdminChatsCount } from "@/lib/queries/chat";
 import { getOpenReportsCount } from "@/lib/queries/admin";
 import { ROUTES } from "@/lib/constants";
-import { ShieldIcon, UserIcon, CollectionsIcon, BoardIcon, HomeIcon, LibraryIcon, SparkleIcon, ImageIcon, ClockIcon, MessageIcon, CommentsIcon, BellIcon } from "@/components/ui/icons";
+import { ShieldIcon, UserIcon, CollectionsIcon, BoardIcon, HomeIcon, LibraryIcon, SparkleIcon, ImageIcon, ClockIcon, MessageIcon, CommentsIcon, BellIcon, SendIcon } from "@/components/ui/icons";
 import { AdminNavLink } from "./AdminNavLink";
 import { AdminSignOutLink } from "./AdminSignOutLink";
 
@@ -34,6 +34,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     { href: `${ROUTES.admin}/featured`, icon: SparkleIcon, label: t.admin.featured },
     { href: `${ROUTES.admin}/banner`, icon: ImageIcon, label: t.admin.banner },
     { href: `${ROUTES.admin}/announcements`, icon: BellIcon, label: t.admin.announcements },
+    { href: `${ROUTES.admin}/broadcast`, icon: SendIcon, label: t.admin.broadcastTitle },
     { href: `${ROUTES.admin}/requests`, icon: BoardIcon, label: t.admin.requests },
     { href: `${ROUTES.admin}/collections`, icon: LibraryIcon, label: t.admin.collections },
     { href: `${ROUTES.admin}/settings`, icon: ShieldIcon, label: t.admin.settings },

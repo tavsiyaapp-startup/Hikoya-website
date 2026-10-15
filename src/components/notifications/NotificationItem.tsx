@@ -8,6 +8,7 @@ import { useLocale } from "@/lib/i18n/LocaleProvider";
 import { ROUTES } from "@/lib/constants";
 import { HeartIcon, MessageIcon, ShieldIcon } from "@/components/ui/icons";
 import type { NotificationWithContext } from "@/lib/queries/notifications";
+import { AnnouncementBody } from "./AnnouncementBody";
 
 function notificationHref(n: NotificationWithContext): string {
   if (n.type === "admin_message") return ROUTES.chat;
@@ -57,6 +58,41 @@ export function NotificationItem({
   function handleMarkRead() {
     setIsRead(true);
     startTransition(() => markNotificationRead(n.id));
+  }
+
+  // A staff announcement isn't about any story — it shows its own text (with
+  // links and a Telegram button) instead of linking somewhere as a whole.
+  if (n.type === "announcement") {
+    return (
+      <div
+        className={`flex items-start gap-3.5 rounded-[12px] border p-4.5 transition ${
+          isRead ? "border-border bg-card" : "border-primary-200 bg-primary-50"
+        }`}
+      >
+        <span className="flex h-9.5 w-9.5 shrink-0 items-center justify-center rounded-full bg-card">
+          <NotificationIcon type={n.type} />
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="mb-1 text-[12.5px] font-bold uppercase tracking-wide text-primary-800">
+            {t.notifications.announcement}
+          </div>
+          <AnnouncementBody message={n.message ?? ""} onLinkClick={isRead ? undefined : handleMarkRead} />
+          <span className="mt-1.5 block text-[12.5px] text-muted-3">{formatTimestamp(n.created_at, locale)}</span>
+        </div>
+        {!isRead && (
+          <div className="flex shrink-0 flex-col items-end gap-2">
+            <span className="h-2 w-2 rounded-full bg-danger" />
+            <button
+              type="button"
+              onClick={handleMarkRead}
+              className="cursor-pointer whitespace-nowrap text-[12px] font-bold text-primary-800"
+            >
+              {t.notifications.markRead}
+            </button>
+          </div>
+        )}
+      </div>
+    );
   }
 
   return (

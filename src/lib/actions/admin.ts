@@ -718,47 +718,66 @@ export async function transferStoriesAdmin(fromUserId: string, target: string): 
   return { ok: true, moved: moved.length, targetUsername: to.username };
 }
 
-// Announcement to every author with at least one published story (not in
-// the trash): one "announcement" notification each, which also pops up once
-// on their next visit (AnnouncementPopup). Admin only. Recipients are taken
-// at the moment of sending — later authors don't get it.
+// Staff announcement (/admin/broadcast): one "announcement" notification per
+// recipient, which also pops up once on their next visit (AnnouncementPopup).
+// Admin only. Recipients are taken at the moment of sending.
+//   authors — at least one published story that isn't in the trash
+//   readers — everyone else
+//   all     — everyone
+// Emptied accounts left behind by a Telegram account join (unreachable) are
+// skipped in every case.
 const MAX_ANNOUNCEMENT = 2000;
+export type AnnouncementAudience = "authors" | "readers" | "all";
+const AUDIENCES: readonly AnnouncementAudience[] = ["authors", "readers", "all"];
 
-export async function sendAuthorAnnouncement(
-  rawMessage: string
+async function announcementRecipients(audience: AnnouncementAudience): Promise<string[]> {
+  const db = getDb();
+  const reachable = sql`(${profiles.email} is null or ${profiles.email} not like 'merged-%@telegram.invalid')`;
+  const publishedAuthor = sql`${profiles.id} in (select ${stories.author_id} from ${stories} where ${stories.status} = 'published' and ${stories.deleted_at} is null)`;
+  const where =
+    audience === "authors"
+      ? and(reachable, publishedAuthor)
+      : audience === "readers"
+        ? and(reachable, sql`not ${publishedAuthor}`)
+        : reachable;
+  const rows = await db.select({ id: profiles.id }).from(profiles).where(where);
+  return rows.map((r) => r.id);
+}
+
+export async function sendAnnouncement(
+  rawMessage: string,
+  audience: AnnouncementAudience
 ): Promise<{ ok: true; sent: number } | { error: "empty" | "too_long" | "no_recipients" | "failed" }> {
   await requireAdmin();
+  if (!AUDIENCES.includes(audience)) return { error: "failed" };
   const message = String(rawMessage ?? "").trim();
   if (!message) return { error: "empty" };
   if (message.length > MAX_ANNOUNCEMENT) return { error: "too_long" };
 
-  const db = getDb();
-  const authors = await db
-    .selectDistinct({ id: stories.author_id })
-    .from(stories)
-    .where(and(eq(stories.status, "published"), isNull(stories.deleted_at)));
-  if (authors.length === 0) return { error: "no_recipients" };
+  const recipients = await announcementRecipients(audience);
+  if (recipients.length === 0) return { error: "no_recipients" };
 
+  const db = getDb();
   try {
     // One transaction: either everyone gets it or nobody does, so a retry
     // after a failure can't send it twice to part of the list.
     await db.transaction(async (tx) => {
-      for (let i = 0; i < authors.length; i += 500) {
+      for (let i = 0; i < recipients.length; i += 500) {
         await tx.insert(notifications).values(
-          authors.slice(i, i + 500).map((a) => ({ user_id: a.id, type: "announcement" as const, message }))
+          recipients.slice(i, i + 500).map((id) => ({ user_id: id, type: "announcement" as const, message }))
         );
       }
     });
   } catch (err) {
     // Most likely the database doesn't know the "announcement" type yet
     // (backups/notification_type_announcement.sql not run).
-    console.error("[admin] sendAuthorAnnouncement failed", err);
+    console.error("[admin] sendAnnouncement failed", audience, err);
     return { error: "failed" };
   }
 
-  console.info(`[admin] announcement sent to ${authors.length} authors`);
+  console.info(`[admin] announcement sent to ${recipients.length} (${audience})`);
   revalidatePath("/", "layout");
-  return { ok: true, sent: authors.length };
+  return { ok: true, sent: recipients.length };
 }
 
 // Moderators may change the number of free guest chapters; switching

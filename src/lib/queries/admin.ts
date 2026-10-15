@@ -259,19 +259,24 @@ export async function getActivityCounts(range?: { from?: string; to?: string }):
   }
 }
 
-// Who an author announcement (/admin/broadcast) goes to: everyone with at
-// least one published story that isn't in the trash.
-export async function countAnnouncementRecipients(): Promise<number> {
+// Recipient counts for /admin/broadcast, per audience (same rules as
+// announcementRecipients in lib/actions/admin.ts).
+export async function countAnnouncementRecipients(): Promise<{ authors: number; readers: number; all: number }> {
   try {
     const db = getDb();
     const [row] = await db
-      .select({ total: sql<number>`count(distinct ${stories.author_id})::int` })
-      .from(stories)
-      .where(and(eq(stories.status, "published"), isNull(stories.deleted_at)));
-    return row?.total ?? 0;
+      .select({
+        all: sql<number>`count(*)::int`,
+        authors: sql<number>`count(*) filter (where ${profiles.id} in (select ${stories.author_id} from ${stories} where ${stories.status} = 'published' and ${stories.deleted_at} is null))::int`,
+      })
+      .from(profiles)
+      .where(sql`${profiles.email} is null or ${profiles.email} not like 'merged-%@telegram.invalid'`);
+    const all = row?.all ?? 0;
+    const authors = row?.authors ?? 0;
+    return { authors, readers: all - authors, all };
   } catch (err) {
     logQueryError("countAnnouncementRecipients", err);
-    return 0;
+    return { authors: 0, readers: 0, all: 0 };
   }
 }
 

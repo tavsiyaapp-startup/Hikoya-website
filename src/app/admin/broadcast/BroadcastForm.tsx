@@ -1,25 +1,43 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { sendAuthorAnnouncement } from "@/lib/actions/admin";
+import { sendAnnouncement, type AnnouncementAudience } from "@/lib/actions/admin";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 import { Textarea } from "@/components/ui/Textarea";
 import { Button } from "@/components/ui/Button";
 import { AnnouncementBody } from "@/components/notifications/AnnouncementBody";
 
-export function BroadcastForm({ recipients, defaultText }: { recipients: number; defaultText: string }) {
+const AUDIENCES: AnnouncementAudience[] = ["authors", "readers", "all"];
+
+export function BroadcastForm({
+  counts,
+  defaultText,
+}: {
+  counts: Record<AnnouncementAudience, number>;
+  defaultText: string;
+}) {
   const { t } = useLocale();
   const [text, setText] = useState(defaultText);
+  const [audience, setAudience] = useState<AnnouncementAudience>("authors");
+  const recipients = counts[audience];
+  const audienceLabel: Record<AnnouncementAudience, string> = {
+    authors: t.admin.broadcastToAuthors,
+    readers: t.admin.broadcastToReaders,
+    all: t.admin.broadcastToAll,
+  };
   const [result, setResult] = useState<{ ok: boolean; text: string } | null>(null);
   const [pending, startTransition] = useTransition();
 
   function send() {
     const message = text.trim();
     if (!message) return;
-    if (!window.confirm(t.admin.broadcastConfirm.replace("{count}", String(recipients)))) return;
+    const confirmText = t.admin.broadcastConfirm
+      .replace("{count}", String(recipients))
+      .replace("{audience}", audienceLabel[audience].toLowerCase());
+    if (!window.confirm(confirmText)) return;
     setResult(null);
     startTransition(async () => {
-      const res = await sendAuthorAnnouncement(message);
+      const res = await sendAnnouncement(message, audience);
       if ("ok" in res) {
         setResult({ ok: true, text: t.admin.broadcastSent.replace("{count}", String(res.sent)) });
         return;
@@ -38,6 +56,28 @@ export function BroadcastForm({ recipients, defaultText }: { recipients: number;
 
   return (
     <div className="flex flex-col gap-4">
+      <div>
+        <div className="mb-2 text-[12.5px] font-bold uppercase tracking-wide text-muted-2">{t.admin.broadcastAudience}</div>
+        <div className="flex flex-wrap gap-2">
+          {AUDIENCES.map((a) => (
+            <label key={a} className="cursor-pointer">
+              <input
+                type="radio"
+                name="audience"
+                value={a}
+                checked={audience === a}
+                onChange={() => setAudience(a)}
+                className="peer sr-only"
+              />
+              <span className="flex h-10 items-center gap-2 rounded-[11px] border border-border px-3.5 text-[13.5px] font-bold text-ink-soft peer-checked:border-primary-500 peer-checked:bg-primary-50 peer-checked:text-primary-900">
+                {audienceLabel[a]}
+                <span className="text-[12px] font-semibold text-muted-2">{counts[a]}</span>
+              </span>
+            </label>
+          ))}
+        </div>
+      </div>
+
       <Textarea value={text} onChange={(e) => setText(e.target.value)} rows={5} maxLength={2000} />
 
       <div>
@@ -49,7 +89,7 @@ export function BroadcastForm({ recipients, defaultText }: { recipients: number;
 
       <div className="flex flex-wrap items-center gap-3">
         <Button onClick={send} disabled={pending || !text.trim() || recipients === 0}>
-          {pending ? t.common.loading : t.admin.broadcastSend}
+          {pending ? t.common.loading : t.admin.broadcastSend.replace("{audience}", audienceLabel[audience].toLowerCase())}
         </Button>
         <span className="text-[13px] text-muted-2">{t.admin.broadcastRecipients.replace("{count}", String(recipients))}</span>
       </div>

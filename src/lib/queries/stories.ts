@@ -1,6 +1,7 @@
 import "server-only";
+import { anyTextContains, normalizeSearch } from "@/lib/queries/search-text";
 import { unstable_cache } from "next/cache";
-import { and, arrayOverlaps, asc, count, desc, eq, gte, ilike, inArray, isNull, ne, or, sql } from "drizzle-orm";
+import { and, arrayOverlaps, asc, count, desc, eq, gte, inArray, isNull, ne, or, sql } from "drizzle-orm";
 import { getCurrentUser } from "@/lib/current-user";
 import { logQueryError, withFallback } from "@/lib/queries/query-errors";
 import { getDb } from "@/server/db/client";
@@ -690,10 +691,6 @@ async function storyIdsForTag(category: "style" | "warning", label: string): Pro
 }
 
 // LIKE wildcards in the user's own search text are matched literally.
-function escapeLike(value: string): string {
-  return value.replace(/[\\%_]/g, (c) => `\\${c}`);
-}
-
 export const searchStories = withFallback(
   "searchStories",
   unstable_cache(
@@ -702,7 +699,17 @@ export const searchStories = withFallback(
       const db = getDb();
       const conditions = [PUBLIC_STORY_FILTER];
 
-      if (filters.q) conditions.push(ilike(stories.title, `%${escapeLike(filters.q)}%`));
+      // Title, description, author (name / @username) or a tag — what the
+      // search box's placeholder promises; apostrophe- and case-insensitive.
+      const q = filters.q ? normalizeSearch(filters.q) : "";
+      if (q) {
+        conditions.push(
+          or(
+            anyTextContains([stories.title, stories.description, profiles.display_name, profiles.username], q),
+            sql`${stories.id} in (select ${storyTags.story_id} from ${storyTags} inner join ${tags} on ${tags.id} = ${storyTags.tag_id} where ${anyTextContains([tags.label_ru, tags.label_uz], q)})`
+          )
+        );
+      }
       if (filters.language) conditions.push(eq(stories.language, filters.language));
       if (filters.genre) conditions.push(arrayOverlaps(stories.genres, genreVariants(filters.genre)));
       if (filters.progressStatus)

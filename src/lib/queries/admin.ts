@@ -1,7 +1,8 @@
 import "server-only";
 import { logQueryError } from "@/lib/queries/query-errors";
-import { and, asc, count, desc, eq, gte, ilike, inArray, isNull, isNotNull, lt, or, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, gte, inArray, isNull, isNotNull, lt, sql } from "drizzle-orm";
 import { getDb } from "@/server/db/client";
+import { anyTextContains } from "@/lib/queries/search-text";
 import {
   commentReports,
   achievements,
@@ -40,8 +41,11 @@ function rangeEnd(day: string): Date {
   return end;
 }
 
-function escapeLike(value: string): string {
-  return value.replace(/[\\%_]/g, "\\$&");
+// Admin story search: title or author (name / @username), apostrophe- and
+// case-insensitive (see search-text.ts). Every query using it joins profiles
+// on the story's author.
+function storyMatches(q: string) {
+  return anyTextContains([stories.title, profiles.display_name, profiles.username], q);
 }
 
 // Admin panel reads used to always use the service-role client — now
@@ -273,7 +277,7 @@ export async function searchUsersAdmin(query?: string, sort: AdminUserSort = "ne
   try {
     const db = getDb();
     const q = query?.trim();
-    const where = q ? or(ilike(profiles.display_name, `%${escapeLike(q)}%`), ilike(profiles.username, `%${escapeLike(q)}%`)) : undefined;
+    const where = q ? anyTextContains([profiles.display_name, profiles.username, profiles.email], q) : undefined;
 
     if (sort === "newest") {
       const rows = await db.select().from(profiles).where(where).orderBy(desc(profiles.created_at)).limit(100);
@@ -404,7 +408,7 @@ export async function searchStoriesForFeaturedAdmin(query?: string) {
     const db = getDb();
     const q = query?.trim();
     const where = q
-      ? and(eq(stories.status, "published"), ilike(stories.title, `%${escapeLike(q)}%`))
+      ? and(eq(stories.status, "published"), storyMatches(q))
       : eq(stories.status, "published");
     const rows = await db
       .select({ id: stories.id, title: stories.title, author: { display_name: profiles.display_name } })
@@ -480,7 +484,7 @@ export async function getAllStoriesAdmin(
     // tab below rather than mixed into the regular status list.
     if (statusFilter === "deleted") {
       const conds = [isNotNull(stories.deleted_at)];
-      if (title) conds.push(ilike(stories.title, `%${escapeLike(title)}%`));
+      if (title) conds.push(storyMatches(title));
       const rows = await selectStory().where(and(...conds)).orderBy(...storyOrder).limit(STORY_FETCH_LIMIT);
       list = rows.map((r) => ({ ...storyRowToStory(r.story), author: r.author }));
     } else if (statusFilter === "pending_review") {
@@ -492,7 +496,7 @@ export async function getAllStoriesAdmin(
       // story that merely *has* a pending chapter, whatever the story's own
       // status is.
       const pendingConds = [eq(stories.status, "pending_review"), isNull(stories.deleted_at)];
-      if (title) pendingConds.push(ilike(stories.title, `%${escapeLike(title)}%`));
+      if (title) pendingConds.push(storyMatches(title));
       const [pendingRows, pendingChapterRows] = await Promise.all([
         selectStory().where(and(...pendingConds)),
         db.selectDistinct({ story_id: chapters.story_id }).from(chapters).where(eq(chapters.status, "pending_review")),
@@ -504,7 +508,7 @@ export async function getAllStoriesAdmin(
       let extraRows: typeof pendingRows = [];
       if (extraIds.length) {
         const extraConds = [inArray(stories.id, extraIds), isNull(stories.deleted_at)];
-        if (title) extraConds.push(ilike(stories.title, `%${escapeLike(title)}%`));
+        if (title) extraConds.push(storyMatches(title));
         extraRows = await selectStory().where(and(...extraConds));
       }
 
@@ -512,7 +516,7 @@ export async function getAllStoriesAdmin(
     } else {
       const conds = [isNull(stories.deleted_at)];
       if (statusFilter) conds.push(eq(stories.status, statusFilter as Story["status"]));
-      if (title) conds.push(ilike(stories.title, `%${escapeLike(title)}%`));
+      if (title) conds.push(storyMatches(title));
       const rows = await selectStory().where(and(...conds)).orderBy(...storyOrder).limit(STORY_FETCH_LIMIT);
       list = rows.map((r) => ({ ...storyRowToStory(r.story), author: r.author }));
     }

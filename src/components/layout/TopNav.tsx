@@ -66,7 +66,7 @@ export function TopNav({ user }: { user: CurrentUser | null }) {
               {items.map((item) => {
                 const active = pathname === item.href.split("?")[0];
                 return (
-                  <Link
+                  <Link prefetch={false}
                     key={item.label}
                     href={item.href}
                     title={item.locked ? t.common.guestLockedTitle : undefined}
@@ -129,7 +129,7 @@ export function TopNav({ user }: { user: CurrentUser | null }) {
       {items.map((item, i) => {
         const active = pathname === item.href.split("?")[0];
         return (
-          <Link
+          <Link prefetch={false}
             key={item.label}
             href={item.href}
             onClick={() => setMobileOpen(false)}

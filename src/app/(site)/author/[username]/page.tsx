@@ -222,7 +222,7 @@ export default async function AuthorPage({
                     </span>
                     {r.status !== "closed" && <CloseRequestButton requestId={r.id} />}
                   </div>
-                  <Link
+                  <Link prefetch={false}
                     href={`${ROUTES.board}?selected=${r.id}`}
                     className="mb-1.5 block text-[15px] font-extrabold leading-snug hover:text-primary-800"
                   >

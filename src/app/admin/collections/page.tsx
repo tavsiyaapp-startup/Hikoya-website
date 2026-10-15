@@ -19,7 +19,7 @@ export default async function AdminCollectionsPage() {
       <AdminHeader title={t.admin.collections} />
       <div className="px-4 pb-15 pt-7 sm:px-8.5">
         <div className="mb-5.5 flex justify-end">
-          <Link href={`${ROUTES.admin}/collections/new`}>
+          <Link prefetch={false} href={`${ROUTES.admin}/collections/new`}>
             <Button size="sm">{t.library.createCollection}</Button>
           </Link>
         </div>

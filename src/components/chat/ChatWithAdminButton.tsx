@@ -10,7 +10,7 @@ export async function ChatWithAdminButton({ hasUnread }: { hasUnread: boolean })
   const t = getDictionary(locale);
 
   return (
-    <Link href={ROUTES.chat} className="relative block w-full">
+    <Link prefetch={false} href={ROUTES.chat} className="relative block w-full">
       <Button variant="secondary" className="w-full justify-center whitespace-nowrap">
         <MessageIcon width={17} height={17} className="shrink-0" />
         {t.chat.withAdmin}

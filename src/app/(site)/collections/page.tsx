@@ -58,7 +58,7 @@ export default async function CollectionsPage({
           </LinkChip>
         ))}
         {user && (
-          <Link href="?create=1" className="ml-auto shrink-0">
+          <Link prefetch={false} href="?create=1" className="ml-auto shrink-0">
             <Button size="sm">{t.library.createCollection}</Button>
           </Link>
         )}
@@ -91,7 +91,7 @@ export default async function CollectionsPage({
       {needsLogin ? (
         <div className="rounded-[12px] border border-dashed border-border-soft bg-surface px-6 py-14 text-center text-[14px] text-muted">
           <p className="mb-4">{tab === "mine" ? t.collections.loginToManage : t.collections.loginToSave}</p>
-          <Link href={ROUTES.onboarding} className="inline-block">
+          <Link prefetch={false} href={ROUTES.onboarding} className="inline-block">
             <Button size="sm">{t.common.login}</Button>
           </Link>
         </div>

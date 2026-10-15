@@ -57,7 +57,7 @@ export function LoginForm({ next, initialFallback = false }: { next: string; ini
 
           <p className="text-center text-[13px] text-muted-2">
             {t.auth.noAccount}{" "}
-            <Link
+            <Link prefetch={false}
               href={`${ROUTES.onboarding}?next=${encodeURIComponent(next)}`}
               className="font-bold text-primary-800 hover:underline"
             >

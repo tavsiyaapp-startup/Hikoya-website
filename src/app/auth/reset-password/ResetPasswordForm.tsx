@@ -90,7 +90,7 @@ export function ResetPasswordForm() {
               <p className="mb-6 text-center text-[14.5px] leading-relaxed text-primary-900">
                 {t.profile.passwordChanged}
               </p>
-              <Link href={ROUTES.login}>
+              <Link prefetch={false} href={ROUTES.login}>
                 <Button className="w-full justify-center">{t.common.login}</Button>
               </Link>
             </>

@@ -65,7 +65,7 @@ export function NotificationItem({
         isRead ? "border-border bg-card" : "border-primary-200 bg-primary-50"
       }`}
     >
-      <Link href={notificationHref(n)} className="flex min-w-0 flex-1 gap-3.5">
+      <Link prefetch={false} href={notificationHref(n)} className="flex min-w-0 flex-1 gap-3.5">
         <span className="flex h-9.5 w-9.5 shrink-0 items-center justify-center rounded-full bg-card">
           <NotificationIcon type={n.type} />
         </span>

@@ -12,7 +12,7 @@ export function CollectionActions({ collectionId }: { collectionId: string }) {
 
   return (
     <div className="flex justify-end gap-2">
-      <Link
+      <Link prefetch={false}
         href={`${ROUTES.admin}/collections/${collectionId}/edit`}
         className="flex h-8.5 items-center rounded-[9px] border border-primary-300 bg-card px-3 text-[12.5px] font-bold text-primary-900"
       >

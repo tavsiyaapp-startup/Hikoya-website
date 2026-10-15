@@ -16,7 +16,7 @@ export function Footer() {
     <footer className="mt-14 border-t border-border bg-card">
       <div className="mx-auto flex max-w-[1200px] flex-col gap-8 px-4 py-10 sm:flex-row sm:justify-between sm:px-6 lg:px-9">
         <div className="flex max-w-[320px] flex-col gap-2.5">
-          <Link href={ROUTES.home} className="flex items-center gap-2.5">
+          <Link prefetch={false} href={ROUTES.home} className="flex items-center gap-2.5">
             <Image src="/images/logo.png" alt="" width={30} height={30} className="object-contain" />
             <span className="font-script text-[22px] leading-none text-ink">{t.common.brand}</span>
           </Link>
@@ -26,26 +26,26 @@ export function Footer() {
         <div className="grid grid-cols-2 gap-8 sm:flex sm:gap-16">
           <div className="flex flex-col gap-2.5">
             <div className="text-[12px] font-bold uppercase tracking-wide text-muted-3">{t.footer.aboutTitle}</div>
-            <Link href={ROUTES.mission} className="text-[13.5px] font-semibold text-ink-soft transition hover:text-primary-800">
+            <Link prefetch={false} href={ROUTES.mission} className="text-[13.5px] font-semibold text-ink-soft transition hover:text-primary-800">
               {t.footer.mission}
             </Link>
-            <Link href={ROUTES.rules} className="text-[13.5px] font-semibold text-ink-soft transition hover:text-primary-800">
+            <Link prefetch={false} href={ROUTES.rules} className="text-[13.5px] font-semibold text-ink-soft transition hover:text-primary-800">
               {t.footer.rules}
             </Link>
-            <Link href={ROUTES.news} className="text-[13.5px] font-semibold text-ink-soft transition hover:text-primary-800">
+            <Link prefetch={false} href={ROUTES.news} className="text-[13.5px] font-semibold text-ink-soft transition hover:text-primary-800">
               {t.footer.news}
             </Link>
           </div>
 
           <div className="flex flex-col gap-2.5">
             <div className="text-[12px] font-bold uppercase tracking-wide text-muted-3">{t.footer.legalTitle}</div>
-            <Link href={ROUTES.privacy} className="text-[13.5px] font-semibold text-ink-soft transition hover:text-primary-800">
+            <Link prefetch={false} href={ROUTES.privacy} className="text-[13.5px] font-semibold text-ink-soft transition hover:text-primary-800">
               {t.footer.privacy}
             </Link>
-            <Link href={ROUTES.cookies} className="text-[13.5px] font-semibold text-ink-soft transition hover:text-primary-800">
+            <Link prefetch={false} href={ROUTES.cookies} className="text-[13.5px] font-semibold text-ink-soft transition hover:text-primary-800">
               {t.footer.cookiesPolicy}
             </Link>
-            <Link href={ROUTES.offer} className="text-[13.5px] font-semibold text-ink-soft transition hover:text-primary-800">
+            <Link prefetch={false} href={ROUTES.offer} className="text-[13.5px] font-semibold text-ink-soft transition hover:text-primary-800">
               {t.footer.offer}
             </Link>
           </div>

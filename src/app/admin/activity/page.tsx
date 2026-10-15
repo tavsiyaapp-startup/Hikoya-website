@@ -44,7 +44,7 @@ export default async function AdminActivityPage({
           </div>
           <Button type="submit">{t.admin.filterApply}</Button>
           {(from || to) && (
-            <Link
+            <Link prefetch={false}
               href={`${ROUTES.admin}/activity`}
               className="flex h-[50px] items-center text-[13.5px] font-bold text-muted-2 hover:text-ink"
             >

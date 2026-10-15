@@ -59,7 +59,7 @@ export function UserRow({
   return (
     <div className="border-b border-border-soft py-3.5 last:border-0">
       <div className="flex items-center gap-4">
-        <Link href={ROUTES.adminUser(user.id)} className="min-w-0 flex-[1.4] hover:underline">
+        <Link prefetch={false} href={ROUTES.adminUser(user.id)} className="min-w-0 flex-[1.4] hover:underline">
           <div className="text-[14px] font-bold">{user.display_name}</div>
           <div className="text-[12.5px] text-muted-2">@{user.username}</div>
         </Link>
@@ -87,7 +87,7 @@ export function UserRow({
           </button>
         </span>
         <span className="flex w-30 shrink-0 items-center justify-end gap-1.5">
-          <Link
+          <Link prefetch={false}
             href={ROUTES.adminChats(user.id)}
             title={t.admin.writeMessage}
             className="flex h-8.5 w-8.5 shrink-0 items-center justify-center rounded-[9px] border border-border bg-card text-ink-soft hover:bg-surface"

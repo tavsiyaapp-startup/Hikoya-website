@@ -89,19 +89,46 @@ export default async function SearchPage({
       filters.warnings?.length
   );
 
+  const activeCount = [
+    filters.language,
+    filters.genre,
+    filters.progressStatus,
+    filters.age,
+    filters.relationship,
+    filters.style,
+  ].filter(Boolean).length + (filters.warnings?.length ?? 0);
+
   return (
     <div className="flex flex-col items-start gap-5 lg:flex-row lg:gap-7">
-      <details
-        open
-        className="w-full shrink-0 rounded-[14px] border border-border bg-card p-5.5 lg:sticky lg:top-26 lg:w-73"
-      >
-        <summary className="mb-4.5 flex cursor-pointer list-none items-center marker:hidden lg:pointer-events-none lg:cursor-default [&::-webkit-details-marker]:hidden">
-          <span className="text-[17px] font-extrabold">{t.search.filters}</span>
-          <Link href="/search" className="ml-auto text-[13px] font-semibold text-primary-800 lg:pointer-events-auto">
-            {t.common.reset}
-          </Link>
-        </summary>
+      {/* Phones: folded to one "Фильтры" row (with the number of active
+          filters) so the results show right away; tapping it opens the
+          panel — a CSS-only toggle (peer checkbox), no script needed.
+          Desktop: always open in the side column, stuck below the header
+          (76px) + menu bar (~61px), with its own scroll when taller than
+          the screen so the last filters are reachable without scrolling
+          the whole result list. */}
+      <div className="w-full shrink-0 rounded-[14px] border border-border bg-card p-4.5 sm:p-5.5 lg:sticky lg:top-[150px] lg:max-h-[calc(100vh-166px)] lg:w-73 lg:overflow-y-auto lg:overscroll-contain">
+        <input id="search-filters-toggle" type="checkbox" className="peer sr-only" />
+        <div className="flex items-center peer-checked:mb-4.5 lg:mb-4.5 [&_.chevron]:transition peer-checked:[&_.chevron]:rotate-180">
+          <label htmlFor="search-filters-toggle" className="flex flex-1 cursor-pointer items-center gap-2 lg:pointer-events-none lg:cursor-default">
+            <span className="text-[17px] font-extrabold">{t.search.filters}</span>
+            {activeCount > 0 && (
+              <span className="flex h-5.5 min-w-5.5 items-center justify-center rounded-full bg-primary-100 px-1.5 text-[12px] font-bold text-primary-800">
+                {activeCount}
+              </span>
+            )}
+            <svg className="chevron ml-1 text-muted-2 lg:hidden" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="m6 9 6 6 6-6" />
+            </svg>
+          </label>
+          {hasActive && (
+            <Link prefetch={false} href="/search" className="ml-auto text-[13px] font-semibold text-primary-800">
+              {t.common.reset}
+            </Link>
+          )}
+        </div>
 
+        <div className="hidden peer-checked:block lg:block">
         <FilterGroup label={t.search.language} wrap>
           {["uz", "ru", ...customLanguages].map((code) => (
             <LinkChip key={code} href={buildHref(sp, { lang: filters.language === code ? undefined : code })} active={filters.language === code}>
@@ -177,7 +204,8 @@ export default async function SearchPage({
             </LinkChip>
           ))}
         </FilterGroup>
-      </details>
+        </div>
+      </div>
 
       <div className="min-w-0 w-full flex-1">
         <div className="mb-5 flex flex-wrap items-center gap-3.5">
@@ -225,7 +253,7 @@ export default async function SearchPage({
             )
               .filter(([, v]) => v)
               .map(([key, value]) => (
-                <Link
+                <Link prefetch={false}
                   key={key}
                   href={buildHref(sp, { [key]: undefined })}
                   className="flex items-center gap-1.5 rounded-[10px] border border-primary-300 bg-primary-50 px-3 py-1.5 text-[12.5px] font-semibold text-primary-900"
@@ -241,7 +269,7 @@ export default async function SearchPage({
                 </Link>
               ))}
             {(filters.warnings ?? []).map((w) => (
-              <Link
+              <Link prefetch={false}
                 key={`warn-${w}`}
                 href={buildHref(sp, { warn: toggleInArray(filters.warnings ?? [], w) })}
                 className="flex items-center gap-1.5 rounded-[10px] border border-primary-300 bg-primary-50 px-3 py-1.5 text-[12.5px] font-semibold text-primary-900"
@@ -256,7 +284,7 @@ export default async function SearchPage({
         {results.length > 0 ? (
           <div className="flex flex-col gap-3.5">
             {results.map((story) => (
-              <Link
+              <Link prefetch={false}
                 key={story.id}
                 href={`/story/${story.slug}`}
                 className="flex gap-3.5 rounded-[14px] border border-border bg-card p-3.5 hover:border-primary-300 hover:shadow-[0_12px_28px_rgba(60,40,120,0.09)] sm:gap-5 sm:p-4.5"
@@ -297,7 +325,7 @@ export default async function SearchPage({
           <div className="rounded-[14px] border border-dashed border-border-soft bg-card px-8 py-16 text-center">
             <div className="mb-2 text-[17px] font-bold">{t.search.noResultsTitle}</div>
             <div className="mb-4.5 text-[14px] text-muted-2">{t.search.noResultsBody}</div>
-            <Link href="/search">
+            <Link prefetch={false} href="/search">
               <Button>{t.search.resetFilters}</Button>
             </Link>
           </div>

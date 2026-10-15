@@ -34,7 +34,7 @@ export function Pagination({
   return (
     <nav className={clsx("mt-5 flex items-center justify-center gap-1.5", className)}>
       {page > 1 ? (
-        <Link href={buildHref(page - 1)} scroll={false} aria-label="Previous page" className={arrowClass}>
+        <Link prefetch={false} href={buildHref(page - 1)} scroll={false} aria-label="Previous page" className={arrowClass}>
           <ChevronLeftIcon />
         </Link>
       ) : (
@@ -49,7 +49,7 @@ export function Pagination({
             …
           </span>
         ) : (
-          <Link
+          <Link prefetch={false}
             key={p}
             href={buildHref(p)}
             scroll={false}
@@ -64,7 +64,7 @@ export function Pagination({
       )}
 
       {page < totalPages ? (
-        <Link href={buildHref(page + 1)} scroll={false} aria-label="Next page" className={arrowClass}>
+        <Link prefetch={false} href={buildHref(page + 1)} scroll={false} aria-label="Next page" className={arrowClass}>
           <ChevronRightIcon />
         </Link>
       ) : (

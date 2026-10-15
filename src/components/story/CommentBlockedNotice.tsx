@@ -12,7 +12,7 @@ export function CommentBlockedNotice() {
   return (
     <div className="flex flex-col gap-2 rounded-[13px] border border-border bg-surface px-4 py-3 text-[14px] text-ink-soft">
       <p>{t.reader.commentsBlocked}</p>
-      <Link href={ROUTES.chat} className="font-semibold text-primary-700 hover:underline">
+      <Link prefetch={false} href={ROUTES.chat} className="font-semibold text-primary-700 hover:underline">
         {t.reader.contactAdmin}
       </Link>
     </div>

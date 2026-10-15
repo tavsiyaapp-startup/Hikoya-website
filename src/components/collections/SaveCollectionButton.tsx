@@ -24,7 +24,7 @@ export function SaveCollectionButton({
 
   if (!isAuthenticated) {
     return (
-      <Link
+      <Link prefetch={false}
         href={ROUTES.onboarding}
         className="inline-flex h-10 items-center rounded-xl border border-border bg-card px-4 text-[13.5px] font-bold text-ink-soft"
       >

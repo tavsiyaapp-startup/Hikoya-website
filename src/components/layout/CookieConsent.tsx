@@ -52,7 +52,7 @@ export function CookieConsent() {
         <h2 className="mb-2 text-[17px] font-extrabold">{t.cookieConsent.title}</h2>
         <p className="mb-5 text-[13.5px] leading-relaxed text-muted-2">
           {t.cookieConsent.body}{" "}
-          <Link href={ROUTES.cookies} className="font-semibold text-primary-800 underline underline-offset-2">
+          <Link prefetch={false} href={ROUTES.cookies} className="font-semibold text-primary-800 underline underline-offset-2">
             {t.cookieConsent.learnMore}
           </Link>
         </p>

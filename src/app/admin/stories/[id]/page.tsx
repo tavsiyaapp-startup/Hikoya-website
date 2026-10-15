@@ -42,7 +42,7 @@ export default async function AdminStoryModeratePage({ params }: { params: Promi
   return (
     <div>
       <div className="flex items-center gap-3.5 border-b border-border bg-card px-4 py-5.5 sm:px-8.5">
-        <Link
+        <Link prefetch={false}
           href={`${ROUTES.admin}/stories`}
           className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border text-ink-soft hover:bg-surface"
         >
@@ -88,7 +88,7 @@ export default async function AdminStoryModeratePage({ params }: { params: Promi
             <div className="mb-3.5 text-[13.5px] text-muted-2">
               {t.admin.colAuthor}:{" "}
               {author ? (
-                <Link href={ROUTES.adminUser(author.id)} className="font-semibold text-primary-800 hover:underline">
+                <Link prefetch={false} href={ROUTES.adminUser(author.id)} className="font-semibold text-primary-800 hover:underline">
                   {author.display_name} <span className="text-muted-3">@{author.username}</span>
                 </Link>
               ) : (
@@ -147,7 +147,7 @@ export default async function AdminStoryModeratePage({ params }: { params: Promi
                     </div>
                   </div>
                   <Badge tone={statusTone(ch.status)}>{statusLabel[ch.status] ?? ch.status}</Badge>
-                  <Link
+                  <Link prefetch={false}
                     href={ROUTES.adminChapter(story.id, ch.id)}
                     className="text-[12.5px] font-bold text-primary-800"
                   >

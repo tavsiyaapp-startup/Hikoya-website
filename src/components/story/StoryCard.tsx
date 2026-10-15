@@ -83,7 +83,7 @@ export async function StoryCard({
       >
         {ribbonLabel ?? storyProgressLabel(t, story.progress_status)}
       </span>
-      <Link
+      <Link prefetch={false}
         href={isBlocked && adminHref ? adminHref : (href ?? ROUTES.story(story.slug))}
         className="block overflow-hidden rounded-[12px] border border-border bg-card shadow-[0_2px_10px_rgba(60,40,120,0.05)] transition hover:-translate-y-0.5 hover:shadow-[0_14px_30px_rgba(60,40,120,0.12)]"
       >

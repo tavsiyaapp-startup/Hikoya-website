@@ -31,7 +31,7 @@ export function CommentGuidelines() {
         <ShieldIcon width={16} height={16} className="mt-0.5 shrink-0" />
         <span>
           {t.reader.commentRulesWarning}{" "}
-          <Link href={ROUTES.rules} className="font-bold underline">
+          <Link prefetch={false} href={ROUTES.rules} className="font-bold underline">
             {t.reader.commentRulesLink} »
           </Link>
         </span>

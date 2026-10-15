@@ -50,7 +50,7 @@ export default async function AdminStoriesPage({
         <div className="rounded-[14px] border border-border bg-card p-4.5 sm:p-6.5">
           <div className="mb-5 flex gap-2 overflow-x-auto">
             {[undefined, "pending_review", "published", "draft", "unlisted", "deleted"].map((s) => (
-              <Link key={s ?? "all"} href={buildHref({ status: s })} className="shrink-0">
+              <Link prefetch={false} key={s ?? "all"} href={buildHref({ status: s })} className="shrink-0">
                 <Chip active={status === s || (!status && !s)}>{s === "deleted" ? t.admin.trash : (s ?? t.common.all)}</Chip>
               </Link>
             ))}
@@ -88,7 +88,7 @@ export default async function AdminStoriesPage({
               {stories.map((s) => {
                 const author = s.author as unknown as { display_name: string } | null;
                 return (
-                  <Link
+                  <Link prefetch={false}
                     key={s.id}
                     href={ROUTES.adminStory(s.id)}
                     className="flex items-center gap-4 border-b border-border-soft py-3.5 last:border-0 hover:bg-surface"

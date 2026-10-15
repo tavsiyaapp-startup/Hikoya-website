@@ -49,7 +49,7 @@ export function UserMenu({ user }: { user: CurrentUser }) {
             </div>
           </div>
 
-          <Link
+          <Link prefetch={false}
             href={ROUTES.author(username)}
             onClick={() => setOpen(false)}
             className="block rounded-xl px-2.5 py-2 text-[13.5px] font-semibold text-ink-soft transition hover:bg-surface"

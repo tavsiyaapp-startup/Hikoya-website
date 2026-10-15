@@ -77,7 +77,7 @@ export default async function ManagePage({
               <Badge key={g} tone="pink">{localizeGenre(g, locale)}</Badge>
             ))}
             {linkedRequestId && (
-              <Link href={`${ROUTES.board}?selected=${linkedRequestId}`}>
+              <Link prefetch={false} href={`${ROUTES.board}?selected=${linkedRequestId}`}>
                 <Badge tone="primary">{t.story.requestBadge}</Badge>
               </Link>
             )}
@@ -113,7 +113,7 @@ export default async function ManagePage({
             ["edit", t.manage.editStory],
           ] as const
         ).map(([key, label]) => (
-          <Link key={key} href={`?tab=${key}`}>
+          <Link prefetch={false} key={key} href={`?tab=${key}`}>
             <Chip active={tab === key}>{label}</Chip>
           </Link>
         ))}
@@ -121,7 +121,7 @@ export default async function ManagePage({
 
       {tab === "chapters" && (
         <div className="mb-4.5 flex flex-wrap justify-end gap-2.5">
-          <Link href={`${ROUTES.manage(slug)}/import`}>
+          <Link prefetch={false} href={`${ROUTES.manage(slug)}/import`}>
             <Button variant="secondary">{t.manage.importDocument}</Button>
           </Link>
           <AddChapterForm storyId={story.id} storySlug={slug} />

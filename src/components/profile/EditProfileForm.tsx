@@ -281,7 +281,7 @@ export function EditProfileForm({
       <div className="border-t border-border-soft pt-4">
         <div className="mb-1 text-[13px] font-bold">{t.profile.changePassword}</div>
         <p className="mb-3 text-[12px] text-muted-2">{t.profile.changePasswordHint}</p>
-        <Link href={ROUTES.resetPassword}>
+        <Link prefetch={false} href={ROUTES.resetPassword}>
           <Button type="button" variant="secondary" size="sm">
             {t.profile.changePassword}
           </Button>

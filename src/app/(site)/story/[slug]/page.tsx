@@ -120,7 +120,7 @@ export default async function StoryPage({
         </div>
 
         {readCta ? (
-          <Link href={ROUTES.chapter(slug, readCta.order_index)}>
+          <Link prefetch={false} href={ROUTES.chapter(slug, readCta.order_index)}>
             <Button size="lg" className="mb-2.5 w-full justify-center">
               {continueChapter ? t.story.continueReading : t.story.read}
             </Button>
@@ -149,7 +149,7 @@ export default async function StoryPage({
         )}
 
         <div className="rounded-[12px] border border-border bg-card p-4.5">
-          <Link href={ROUTES.author(story.author.username)} className="mb-3.5 flex items-center gap-2.5">
+          <Link prefetch={false} href={ROUTES.author(story.author.username)} className="mb-3.5 flex items-center gap-2.5">
             <Avatar name={story.author.display_name} src={story.author.avatar_url} />
             <div className="min-w-0">
               <div className="text-[14.5px] font-bold">{story.author.display_name}</div>
@@ -180,12 +180,12 @@ export default async function StoryPage({
           <Badge tone="neutral">{languageLabel(t, story.language)}</Badge>
           {story.is_translation && <Badge tone="neutral">{t.story.translationBadge}</Badge>}
           {linkedRequestId && (
-            <Link href={`${ROUTES.board}?selected=${linkedRequestId}`}>
+            <Link prefetch={false} href={`${ROUTES.board}?selected=${linkedRequestId}`}>
               <Badge tone="primary">{t.story.requestBadge}</Badge>
             </Link>
           )}
           {canManage && (
-            <Link href={ROUTES.manage(slug)} className="ml-auto">
+            <Link prefetch={false} href={ROUTES.manage(slug)} className="ml-auto">
               <Button variant="secondary" size="sm">
                 {t.story.manageCta}
               </Button>
@@ -224,7 +224,7 @@ export default async function StoryPage({
               chapters.map((ch, i) => {
                 const isRead = readChapterIds.has(ch.id);
                 return (
-                  <Link
+                  <Link prefetch={false}
                     key={ch.id}
                     href={ROUTES.chapter(slug, ch.order_index)}
                     className={clsxRow(i, chapters.length)}
@@ -267,7 +267,7 @@ export default async function StoryPage({
               <div className="mb-1.5 flex flex-wrap items-center gap-3 rounded-[12px] border border-dashed border-primary-300 bg-card px-5 py-4">
                 <LockIcon className="text-muted-2" />
                 <span className="text-[14px] text-ink-soft">{t.reader.commentsLocked}</span>
-                <Link href={ROUTES.onboarding} className="ml-auto">
+                <Link prefetch={false} href={ROUTES.onboarding} className="ml-auto">
                   <Button size="sm">{t.common.login}</Button>
                 </Link>
               </div>
@@ -299,7 +299,7 @@ export default async function StoryPage({
               <div className="mb-1 text-[17px] font-extrabold">{t.story.authorCta}</div>
               <div className="text-[14px] leading-relaxed text-ink-soft">{t.story.authorCtaBody}</div>
             </div>
-            <Link href={ROUTES.onboarding} className="w-full shrink-0 sm:w-auto">
+            <Link prefetch={false} href={ROUTES.onboarding} className="w-full shrink-0 sm:w-auto">
               <Button className="w-full justify-center sm:w-auto">{t.story.authorCtaButton}</Button>
             </Link>
           </div>
@@ -362,7 +362,7 @@ function StoryCommentCard({
   }
 
   return (
-    <Link
+    <Link prefetch={false}
       href={`${ROUTES.chapter(slug, comment.chapter.order_index)}#comment-${comment.id}`}
       className={`${className} hover:border-primary-300`}
     >

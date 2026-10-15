@@ -112,7 +112,7 @@ export function OnboardingWizard({
           <span className="text-[13px] font-bold text-muted-2">
             {step} / {TOTAL_STEPS}
           </span>
-          <Link
+          <Link prefetch={false}
             href={ROUTES.home}
             aria-label={t.common.close}
             className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-[11px] text-ink-soft transition hover:bg-surface"
@@ -212,7 +212,7 @@ export function OnboardingWizard({
 
             <p className="text-center text-[13px] text-muted-2">
               {t.onboarding.haveAccount}{" "}
-              <Link
+              <Link prefetch={false}
                 href={`${ROUTES.login}?next=${encodeURIComponent(next)}`}
                 className="font-bold text-primary-800 hover:underline"
               >

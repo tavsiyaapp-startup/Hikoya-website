@@ -113,7 +113,7 @@ export default async function AdminUserProfilePage({
             </div>
           </div>
           <div className="flex w-full shrink-0 flex-col gap-2 sm:w-47.5">
-            <Link href={ROUTES.adminChats(profile.id)}>
+            <Link prefetch={false} href={ROUTES.adminChats(profile.id)}>
               <Button variant="secondary" className="w-full justify-center">
                 <MessageIcon width={16} height={16} />
                 {t.admin.writeMessage}

@@ -24,7 +24,7 @@ export default async function MergeAccountsPage({ searchParams }: { searchParams
     body = (
       <>
         <p className="mb-5 text-[14.5px] leading-relaxed text-ink-soft">{t.merge.signInFirst}</p>
-        <Link href={`${ROUTES.login}?next=${encodeURIComponent(here)}`}>
+        <Link prefetch={false} href={`${ROUTES.login}?next=${encodeURIComponent(here)}`}>
           <Button>{t.common.login}</Button>
         </Link>
       </>

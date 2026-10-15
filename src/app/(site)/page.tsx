@@ -140,7 +140,7 @@ async function HomeSections({
         <h2 className="text-2xl font-extrabold tracking-tight">{t.home.topTitle}</h2>
         <div className="ml-auto flex gap-1.5">
           {TOP_TIERS.map((tier) => (
-            <Link
+            <Link prefetch={false}
               key={tier}
               href={`?tab=${tab}&genre=${encodeURIComponent(genre)}&topTier=${tier}`}
               scroll={false}
@@ -168,7 +168,7 @@ async function HomeSections({
             <div>
               <div className="mb-4.5 flex items-baseline gap-3.5">
                 <h2 className="text-2xl font-extrabold tracking-tight">{t.home.tabs[key]}</h2>
-                <Link href={ROUTES.allStories(key)} className="ml-auto text-[14px] font-semibold">
+                <Link prefetch={false} href={ROUTES.allStories(key)} className="ml-auto text-[14px] font-semibold">
                   {t.common.all}
                 </Link>
               </div>
@@ -191,7 +191,7 @@ async function HomeSections({
               <div>
                 <div className="mb-4.5 flex items-baseline gap-3.5">
                   <h2 className="text-2xl font-extrabold tracking-tight">{t.home.finishedTitle}</h2>
-                  <Link href={`${ROUTES.search}?progress=finished`} className="ml-auto text-[14px] font-semibold">
+                  <Link prefetch={false} href={`${ROUTES.search}?progress=finished`} className="ml-auto text-[14px] font-semibold">
                     {t.common.all}
                   </Link>
                 </div>
@@ -214,7 +214,7 @@ async function HomeSections({
 
       <div className="mb-4.5 flex items-baseline gap-3.5">
         <h2 className="text-2xl font-extrabold tracking-tight">{t.home.weekTitle}</h2>
-        <Link href={ROUTES.search} className="ml-auto text-[14px] font-semibold">
+        <Link prefetch={false} href={ROUTES.search} className="ml-auto text-[14px] font-semibold">
           {t.common.all}
         </Link>
       </div>
@@ -245,7 +245,7 @@ async function HomeSections({
           <SparkleIcon />
           <span>{t.home.editorialBadge}</span>
         </Badge>
-        <Link href={ROUTES.collections} className="ml-auto text-[14px] font-semibold">
+        <Link prefetch={false} href={ROUTES.collections} className="ml-auto text-[14px] font-semibold">
           {t.common.all}
         </Link>
       </div>
@@ -275,7 +275,7 @@ async function HomeSections({
             <div className="mb-1 text-[18px] font-extrabold">{t.home.gateTitle}</div>
             <div className="text-[14px] leading-relaxed text-primary-200">{t.home.gateBody}</div>
           </div>
-          <Link href={ROUTES.onboarding} className="w-full shrink-0 sm:w-auto">
+          <Link prefetch={false} href={ROUTES.onboarding} className="w-full shrink-0 sm:w-auto">
             <Button
               className="w-full justify-center border-none shadow-none sm:w-auto"
               style={{ background: "#fff", color: "#4C1D95" }}

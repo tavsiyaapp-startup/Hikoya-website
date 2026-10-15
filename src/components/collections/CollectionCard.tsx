@@ -26,7 +26,7 @@ export async function CollectionCard({ collection }: { collection: CollectionCar
     collection.owner_type === "moderator" ? t.collections.hikoyaTeam : collection.owner?.display_name;
 
   return (
-    <Link
+    <Link prefetch={false}
       href={ROUTES.collection(collection.id)}
       className="rounded-[14px] border border-border bg-card p-5 hover:border-primary-300 hover:shadow-[0_14px_30px_rgba(60,40,120,0.1)]"
     >

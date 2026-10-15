@@ -41,14 +41,14 @@ export function LikeBookmarkRow({
   if (!isAuthenticated) {
     return (
       <div className="mb-4.5 flex gap-2.5">
-        <Link
+        <Link prefetch={false}
           href={signInHref(path)}
           className="flex h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-border bg-card text-[13.5px] font-bold text-ink-soft"
         >
           <HeartIcon />
           <span>{t.common.like}</span>
         </Link>
-        <Link
+        <Link prefetch={false}
           href={signInHref(path)}
           className="flex h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-border bg-card text-[13.5px] font-bold text-ink-soft"
         >
@@ -155,7 +155,7 @@ function CollectionPickerButton({
 
   if (!isAuthenticated) {
     return (
-      <Link
+      <Link prefetch={false}
         href={signInHref(path)}
         title={t.story.addToCollection}
         className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-border bg-card text-ink-soft"
@@ -346,7 +346,7 @@ export function FollowButton({
 
   if (!isAuthenticated) {
     return (
-      <Link
+      <Link prefetch={false}
         href={signInHref(path)}
         className="flex h-10.5 w-full items-center justify-center rounded-xl border border-primary-200 bg-primary-50 text-[14px] font-bold text-primary-900"
       >

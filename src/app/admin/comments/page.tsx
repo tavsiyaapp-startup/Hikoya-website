@@ -79,7 +79,7 @@ function CommentMeta({
         {!isReply && (
           <div className="mb-2 flex flex-wrap items-center gap-1.5">
             {comment.story && (
-              <Link
+              <Link prefetch={false}
                 href={ROUTES.adminStory(comment.story.id)}
                 className="rounded-full bg-primary-50 px-2.5 py-1 text-[12px] font-bold text-primary-800 hover:bg-primary-100"
               >
@@ -87,7 +87,7 @@ function CommentMeta({
               </Link>
             )}
             {comment.story && comment.chapter ? (
-              <Link
+              <Link prefetch={false}
                 href={ROUTES.adminChapter(comment.story.id, comment.chapter.id)}
                 className="rounded-full bg-surface px-2.5 py-1 text-[12px] font-semibold text-ink-soft hover:bg-border-soft"
               >

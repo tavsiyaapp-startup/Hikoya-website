@@ -75,7 +75,7 @@ export default async function AdminDashboardPage() {
                 <EmptyLine text={t.admin.noActivityYet} />
               )}
             </div>
-            <Link href={`${ROUTES.admin}/activity`} className="mt-4 inline-block text-[13.5px] font-bold">
+            <Link prefetch={false} href={`${ROUTES.admin}/activity`} className="mt-4 inline-block text-[13.5px] font-bold">
               {t.admin.allActivity} →
             </Link>
           </div>
@@ -97,7 +97,7 @@ export default async function AdminDashboardPage() {
                 <EmptyLine text={t.admin.emptyGeneric} />
               )}
             </div>
-            <Link href={`${ROUTES.admin}/users`} className="mt-4 inline-block text-[13.5px] font-bold">
+            <Link prefetch={false} href={`${ROUTES.admin}/users`} className="mt-4 inline-block text-[13.5px] font-bold">
               {t.admin.allUsers} →
             </Link>
           </div>
@@ -126,7 +126,7 @@ export default async function AdminDashboardPage() {
               <EmptyLine text={t.admin.emptyGeneric} />
             )}
           </div>
-          <Link href={`${ROUTES.admin}/stories`} className="mt-4 inline-block text-[13.5px] font-bold">
+          <Link prefetch={false} href={`${ROUTES.admin}/stories`} className="mt-4 inline-block text-[13.5px] font-bold">
             {t.admin.allStories} →
           </Link>
         </div>

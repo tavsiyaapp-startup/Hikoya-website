@@ -19,7 +19,7 @@ export function AdminNavLink({
   const active = pathname === href;
 
   return (
-    <Link
+    <Link prefetch={false}
       href={href}
       className={clsx(
         "flex h-11.5 shrink-0 items-center gap-3 whitespace-nowrap rounded-xl px-3.5 text-[14.5px] font-semibold transition",

@@ -65,10 +65,10 @@ export default async function AdminReportsPage({ searchParams }: { searchParams:
       <AdminHeader title={t.admin.reports} />
       <div className="px-4 pb-15 pt-7 sm:px-8.5">
         <div className="mb-5 flex gap-2">
-          <Link href={ROUTES.adminReports} className={tabClass(tab === "open")}>
+          <Link prefetch={false} href={ROUTES.adminReports} className={tabClass(tab === "open")}>
             {t.admin.reportsTabOpen}
           </Link>
-          <Link href={`${ROUTES.adminReports}?tab=resolved`} className={tabClass(tab === "resolved")}>
+          <Link prefetch={false} href={`${ROUTES.adminReports}?tab=resolved`} className={tabClass(tab === "resolved")}>
             {t.admin.reportsTabResolved}
           </Link>
         </div>
@@ -102,7 +102,7 @@ export default async function AdminReportsPage({ searchParams }: { searchParams:
                   </p>
                   {r.details && <p className="mb-2 text-[13px] italic text-muted-2">«{r.details}»</p>}
                   <div className="flex flex-wrap items-center justify-between gap-3">
-                    <Link
+                    <Link prefetch={false}
                       href={r.chapter_id ? ROUTES.adminChapter(r.story_id, r.chapter_id) : ROUTES.adminStory(r.story_id)}
                       className="text-[13px] font-bold text-primary-800 hover:underline"
                     >
@@ -147,7 +147,7 @@ export default async function AdminReportsPage({ searchParams }: { searchParams:
                     {t.admin.reportResolvedBy}: <b className="text-ink-soft">{r.resolver_username ? `@${r.resolver_username}` : "—"}</b>
                     {r.resolved_at && ` · ${formatDateTime(r.resolved_at.toISOString(), locale)}`}
                   </span>
-                  <Link
+                  <Link prefetch={false}
                     href={r.chapter_id ? ROUTES.adminChapter(r.story_id, r.chapter_id) : ROUTES.adminStory(r.story_id)}
                     className="text-[13px] font-bold text-primary-800 hover:underline"
                   >

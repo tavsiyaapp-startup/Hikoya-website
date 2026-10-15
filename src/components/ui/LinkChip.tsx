@@ -32,7 +32,7 @@ export function LinkChip({
   className?: string;
 }) {
   return (
-    <Link href={href} replace scroll={scroll} className={clsx("inline-flex", shrink && "shrink-0")}>
+    <Link prefetch={false} href={href} replace scroll={scroll} className={clsx("inline-flex", shrink && "shrink-0")}>
       <PendingChip active={active} className={className}>
         {children}
       </PendingChip>

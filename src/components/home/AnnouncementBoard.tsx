@@ -78,7 +78,7 @@ export function AnnouncementBoard({ announcements }: { announcements: Announceme
           // hero_slides' cta_url — no separate button, since a small
           // announcement card has no room for one.
           return announcement.link_url ? (
-            <Link key={announcement.id} href={announcement.link_url} className={cardClassName}>
+            <Link prefetch={false} key={announcement.id} href={announcement.link_url} className={cardClassName}>
               {cardContent}
             </Link>
           ) : (

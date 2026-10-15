@@ -60,7 +60,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           ))}
         </nav>
 
-        <Link
+        <Link prefetch={false}
           href={ROUTES.home}
           className="mt-3 flex h-11.5 shrink-0 items-center gap-3 rounded-xl px-3.5 text-[14.5px] font-semibold text-[#8B82A8] hover:bg-white/6 lg:mt-auto"
         >

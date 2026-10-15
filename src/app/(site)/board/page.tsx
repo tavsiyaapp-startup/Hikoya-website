@@ -41,7 +41,7 @@ export default async function BoardPage({
           <h1 className="mb-2 text-[26px] font-extrabold tracking-tight sm:text-[32px]">{t.board.title}</h1>
           <p className="max-w-160 text-[15px] leading-relaxed text-muted">{t.board.body}</p>
         </div>
-        <Link href={user ? "?new=1" : ROUTES.onboarding} className="w-full shrink-0 sm:w-auto">
+        <Link prefetch={false} href={user ? "?new=1" : ROUTES.onboarding} className="w-full shrink-0 sm:w-auto">
           <Button size="lg" className="w-full justify-center sm:w-auto">{t.board.leaveRequest}</Button>
         </Link>
       </div>
@@ -87,7 +87,7 @@ export default async function BoardPage({
               const from = r.from_user as unknown as { display_name: string } | null;
               const responseCount = (r.responses as unknown as unknown[] | null)?.length ?? 0;
               return (
-                <Link
+                <Link prefetch={false}
                   key={r.id}
                   href={`?selected=${r.id}${status ? `&status=${status}` : ""}`}
                   className={`rounded-[14px] border bg-card p-5.5 ${
@@ -177,7 +177,7 @@ export default async function BoardPage({
                   </Button>
                 </form>
               ) : (
-                <Link href={ROUTES.onboarding} className="mb-5 block">
+                <Link prefetch={false} href={ROUTES.onboarding} className="mb-5 block">
                   <Button size="sm" className="w-full justify-center">
                     {t.common.login}
                   </Button>
@@ -196,7 +196,7 @@ export default async function BoardPage({
                       </div>
                       <p className="text-[13.5px] leading-relaxed text-ink-soft">{r.text}</p>
                       {linkedStory && (
-                        <Link
+                        <Link prefetch={false}
                           href={ROUTES.story(linkedStory.slug)}
                           className="mt-1.5 inline-block text-[12.5px] font-bold text-primary-800"
                         >

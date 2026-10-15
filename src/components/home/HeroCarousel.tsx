@@ -132,7 +132,7 @@ function Slide({ slide, locale, isFirst }: { slide: HeroSlide; locale: "ru" | "u
                 </p>
               )}
               {ctaLabel && slide.cta_url && (
-                <Link href={slide.cta_url} className="mt-4 inline-block">
+                <Link prefetch={false} href={slide.cta_url} className="mt-4 inline-block">
                   <Button size="lg">{ctaLabel}</Button>
                 </Link>
               )}
@@ -153,7 +153,7 @@ function Slide({ slide, locale, isFirst }: { slide: HeroSlide; locale: "ru" | "u
             </p>
           )}
           {ctaLabel && slide.cta_url && (
-            <Link href={slide.cta_url}>
+            <Link prefetch={false} href={slide.cta_url}>
               <Button size="lg">{ctaLabel}</Button>
             </Link>
           )}

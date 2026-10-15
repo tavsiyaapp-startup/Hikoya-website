@@ -24,7 +24,7 @@ export function Header({ user, unreadCount = 0 }: { user: CurrentUser | null; un
 
   return (
     <header className="sticky top-0 z-20 flex h-[64px] items-center gap-3 border-b border-border bg-card/92 px-3 backdrop-blur-md sm:h-[76px] sm:gap-5 sm:px-5 lg:gap-7 lg:px-8">
-      <Link href={ROUTES.home} className="flex shrink-0 items-center gap-2.5 lg:w-52 lg:gap-3">
+      <Link prefetch={false} href={ROUTES.home} className="flex shrink-0 items-center gap-2.5 lg:w-52 lg:gap-3">
         <Image src="/images/logo.png" alt="Hikoya" width={36} height={36} className="object-contain sm:h-11 sm:w-11" />
         <span className="hidden font-script text-[24px] leading-none text-ink sm:inline sm:text-[30px]">
           {t.common.brand}
@@ -41,7 +41,7 @@ export function Header({ user, unreadCount = 0 }: { user: CurrentUser | null; un
         />
       </form>
 
-      <Link
+      <Link prefetch={false}
         href={ROUTES.search}
         aria-label={t.nav.search}
         className={clsx(
@@ -71,7 +71,7 @@ export function Header({ user, unreadCount = 0 }: { user: CurrentUser | null; un
           ))}
         </div>
 
-        <Link
+        <Link prefetch={false}
           href={user ? `${ROUTES.author(user.profile?.username ?? "")}?tab=notifications` : ROUTES.onboarding}
           title={user ? t.nav.notifications : t.common.guestLockedTitle}
           className={clsx(
@@ -90,7 +90,7 @@ export function Header({ user, unreadCount = 0 }: { user: CurrentUser | null; un
           <UserMenu user={user} />
         ) : (
           <>
-            <Link href={ROUTES.login}>
+            <Link prefetch={false} href={ROUTES.login}>
               <Button
                 variant="secondary"
                 size="sm"
@@ -99,7 +99,7 @@ export function Header({ user, unreadCount = 0 }: { user: CurrentUser | null; un
                 {t.common.login}
               </Button>
             </Link>
-            <Link href={ROUTES.onboarding}>
+            <Link prefetch={false} href={ROUTES.onboarding}>
               <Button
                 variant="primary"
                 size="sm"

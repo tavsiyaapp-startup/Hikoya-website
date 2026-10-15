@@ -52,7 +52,7 @@ export default async function AdminChatsPage({
           <div className="grid w-full min-w-0 grid-cols-1 gap-3 lg:w-80 lg:shrink-0">
             {chats.length > 0 ? (
               chats.map((c) => (
-                <Link
+                <Link prefetch={false}
                   key={c.user_id}
                   href={ROUTES.adminChats(c.user_id)}
                   className={`flex items-center gap-3.5 rounded-[12px] border bg-card p-4 ${

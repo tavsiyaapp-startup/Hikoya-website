@@ -84,7 +84,7 @@ export default async function LibraryPage({
               } | null;
               if (!story) return null;
               return (
-                <Link
+                <Link prefetch={false}
                   key={i}
                   href={ROUTES.story(story.slug)}
                   className="flex items-center gap-3 rounded-[14px] border border-border bg-card p-3.5 hover:border-primary-300 sm:gap-4.5 sm:p-4.5"
@@ -129,7 +129,7 @@ export default async function LibraryPage({
           <div className="flex flex-col gap-9">
             {following.map((group) => (
               <div key={group.author.id}>
-                <Link
+                <Link prefetch={false}
                   href={ROUTES.author(group.author.username)}
                   className="mb-3.5 flex items-center gap-2.5"
                 >

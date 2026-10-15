@@ -75,7 +75,7 @@ export default async function ReaderPage({
       )}
 
       <div className="min-w-0 w-full lg:max-w-[70vw] lg:flex-1">
-        <Link
+        <Link prefetch={false}
           href={ROUTES.story(slug)}
           className="mb-5 inline-flex items-center gap-2 text-[14px] font-semibold"
         >
@@ -113,7 +113,7 @@ export default async function ReaderPage({
             <p className="mb-6 max-w-130 text-[15px] leading-relaxed text-primary-200">
               {t.reader.gateBody}
             </p>
-            <Link href={`${ROUTES.onboarding}?next=${encodeURIComponent(ROUTES.chapter(slug, orderIndex))}`}>
+            <Link prefetch={false} href={`${ROUTES.onboarding}?next=${encodeURIComponent(ROUTES.chapter(slug, orderIndex))}`}>
               <Button style={{ background: "#fff", color: "#3B2568" }} className="border-none">
                 {t.common.createAccount}
               </Button>
@@ -124,7 +124,7 @@ export default async function ReaderPage({
         {isUnlocked && (prevChapter || nextChapter) && (
           <div className="mt-9 flex flex-col gap-3 sm:flex-row">
             {prevChapter && (
-              <Link
+              <Link prefetch={false}
                 href={ROUTES.chapter(slug, prevChapter.order_index)}
                 className="flex w-full items-center justify-center gap-3 rounded-[12px] border border-border bg-card py-5 text-[15px] font-bold text-ink-soft sm:flex-1"
               >
@@ -132,7 +132,7 @@ export default async function ReaderPage({
               </Link>
             )}
             {nextChapter && (
-              <Link
+              <Link prefetch={false}
                 href={ROUTES.chapter(slug, nextChapter.order_index)}
                 className="flex w-full items-center justify-center gap-3 rounded-[12px] border border-primary-200 bg-primary-50 py-5 text-[16px] font-bold text-primary-900 sm:flex-1"
               >
@@ -143,7 +143,7 @@ export default async function ReaderPage({
         )}
 
         <div className="mt-9 flex items-center gap-3.5 rounded-[14px] border border-border bg-card p-4.5">
-          <Link href={ROUTES.author(story.author.username)} className="flex min-w-0 flex-1 items-center gap-3">
+          <Link prefetch={false} href={ROUTES.author(story.author.username)} className="flex min-w-0 flex-1 items-center gap-3">
             <Avatar name={story.author.display_name} src={story.author.avatar_url} />
             <div className="min-w-0">
               <div className="truncate text-[14.5px] font-bold">{story.author.display_name}</div>
@@ -178,7 +178,7 @@ export default async function ReaderPage({
               <div className="mb-5 flex flex-wrap items-center gap-3 rounded-[12px] border border-dashed border-primary-300 bg-card px-5 py-4">
                 <LockIcon className="text-muted-2" />
                 <span className="text-[14px] text-ink-soft">{t.reader.commentsLocked}</span>
-                <Link href={ROUTES.onboarding} className="ml-auto">
+                <Link prefetch={false} href={ROUTES.onboarding} className="ml-auto">
                   <Button size="sm">{t.common.login}</Button>
                 </Link>
               </div>

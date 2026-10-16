@@ -23,6 +23,7 @@ import {
 import { setCredentialPassword } from "@/server/auth/set-password";
 import { uniqueUsernameFromEmail } from "@/server/data/username";
 import { createNotification } from "@/lib/actions/create-notification";
+import { encodeAnnouncement, normalizeButtonUrl } from "@/lib/announcement";
 import { ROUTES } from "@/lib/constants";
 import { getStaffSession } from "@/server/auth/staff";
 import { canChangeUserStatus, canVerifyUser } from "@/server/authz/policy";
@@ -744,15 +745,27 @@ async function announcementRecipients(audience: AnnouncementAudience): Promise<s
   return rows.map((r) => r.id);
 }
 
+// `button` is optional: a link (https URL, a site page like /collections, or
+// a Telegram @handle) and its label, shown as a button under the text.
 export async function sendAnnouncement(
   rawMessage: string,
-  audience: AnnouncementAudience
-): Promise<{ ok: true; sent: number } | { error: "empty" | "too_long" | "no_recipients" | "failed" }> {
+  audience: AnnouncementAudience,
+  button?: { url: string; label: string } | null
+): Promise<{ ok: true; sent: number } | { error: "empty" | "too_long" | "bad_link" | "no_recipients" | "failed" }> {
   await requireAdmin();
   if (!AUDIENCES.includes(audience)) return { error: "failed" };
-  const message = String(rawMessage ?? "").trim();
-  if (!message) return { error: "empty" };
-  if (message.length > MAX_ANNOUNCEMENT) return { error: "too_long" };
+  const text = String(rawMessage ?? "").trim();
+  if (!text) return { error: "empty" };
+  if (text.length > MAX_ANNOUNCEMENT) return { error: "too_long" };
+  let buttonUrl: string | null = null;
+  if (button && String(button.url ?? "").trim()) {
+    buttonUrl = normalizeButtonUrl(String(button.url));
+    if (!buttonUrl) return { error: "bad_link" };
+  }
+  const message = encodeAnnouncement(
+    text,
+    buttonUrl ? { url: buttonUrl, label: String(button?.label ?? "") } : null
+  );
 
   const recipients = await announcementRecipients(audience);
   if (recipients.length === 0) return { error: "no_recipients" };

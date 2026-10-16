@@ -7,6 +7,8 @@ import { useLocale } from "@/lib/i18n/LocaleProvider";
 import { Textarea } from "@/components/ui/Textarea";
 import { Button } from "@/components/ui/Button";
 import { AnnouncementBody } from "@/components/notifications/AnnouncementBody";
+import { Input } from "@/components/ui/Input";
+import { encodeAnnouncement, normalizeButtonUrl } from "@/lib/announcement";
 
 const AUDIENCES: AnnouncementAudience[] = ["authors", "readers", "all"];
 
@@ -14,6 +16,11 @@ export function BroadcastForm({ counts }: { counts: Record<AnnouncementAudience,
   const { t } = useLocale();
   const router = useRouter();
   const [text, setText] = useState("");
+  const [buttonUrl, setButtonUrl] = useState("");
+  const [buttonLabel, setButtonLabel] = useState("");
+  const normalizedUrl = buttonUrl.trim() ? normalizeButtonUrl(buttonUrl) : null;
+  const badLink = Boolean(buttonUrl.trim()) && !normalizedUrl;
+  const preview = encodeAnnouncement(text, normalizedUrl ? { url: normalizedUrl, label: buttonLabel } : null);
   const [audience, setAudience] = useState<AnnouncementAudience>("authors");
   const recipients = counts[audience];
   const audienceLabel: Record<AnnouncementAudience, string> = {
@@ -33,11 +40,13 @@ export function BroadcastForm({ counts }: { counts: Record<AnnouncementAudience,
     if (!window.confirm(confirmText)) return;
     setResult(null);
     startTransition(async () => {
-      const res = await sendAnnouncement(message, audience);
+      const res = await sendAnnouncement(message, audience, buttonUrl.trim() ? { url: buttonUrl, label: buttonLabel } : null);
       if ("ok" in res) {
         setResult({ ok: true, text: t.admin.broadcastSent.replace("{count}", String(res.sent)) });
         // Empty form for the next one; the "Sent" list below picks this one up.
         setText("");
+        setButtonUrl("");
+        setButtonLabel("");
         router.refresh();
         return;
       }
@@ -46,6 +55,8 @@ export function BroadcastForm({ counts }: { counts: Record<AnnouncementAudience,
         text:
           res.error === "too_long"
             ? t.admin.broadcastTooLong
+            : res.error === "bad_link"
+              ? t.admin.broadcastBadLink
             : res.error === "no_recipients"
               ? t.admin.broadcastNoRecipients
               : t.admin.broadcastFailed,
@@ -85,17 +96,40 @@ export function BroadcastForm({ counts }: { counts: Record<AnnouncementAudience,
         placeholder={t.admin.broadcastPlaceholder}
       />
 
+      <div className="grid gap-3 sm:grid-cols-[1fr_220px]">
+        <div>
+          <label className="mb-1.5 block text-[13px] font-bold">
+            {t.admin.broadcastButtonUrl} <span className="font-medium text-muted-2">{t.common.optional}</span>
+          </label>
+          <Input
+            value={buttonUrl}
+            onChange={(e) => setButtonUrl(e.target.value)}
+            placeholder="https://t.me/hikoya_auth_bot · @hikoya_auth_bot · /collections"
+          />
+          {badLink && <p className="mt-1 text-[12px] text-danger">{t.admin.broadcastBadLink}</p>}
+        </div>
+        <div>
+          <label className="mb-1.5 block text-[13px] font-bold">{t.admin.broadcastButtonLabel}</label>
+          <Input
+            value={buttonLabel}
+            onChange={(e) => setButtonLabel(e.target.value)}
+            maxLength={40}
+            placeholder={t.admin.broadcastButtonLabelPlaceholder}
+          />
+        </div>
+      </div>
+
       {text.trim() && (
         <div>
           <div className="mb-2 text-[12.5px] font-bold uppercase tracking-wide text-muted-2">{t.admin.broadcastPreview}</div>
           <div className="rounded-[14px] border border-border-soft bg-surface p-4.5">
-            <AnnouncementBody message={text} />
+            <AnnouncementBody message={preview} />
           </div>
         </div>
       )}
 
       <div className="flex flex-wrap items-center gap-3">
-        <Button onClick={send} disabled={pending || !text.trim() || recipients === 0}>
+        <Button onClick={send} disabled={pending || !text.trim() || badLink || recipients === 0}>
           {pending ? t.common.loading : t.admin.broadcastSend.replace("{audience}", audienceLabel[audience].toLowerCase())}
         </Button>
         <span className="text-[13px] text-muted-2">{t.admin.broadcastRecipients.replace("{count}", String(recipients))}</span>

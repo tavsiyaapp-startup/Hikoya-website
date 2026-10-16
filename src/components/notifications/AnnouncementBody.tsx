@@ -1,6 +1,7 @@
 "use client";
 
 import { useLocale } from "@/lib/i18n/LocaleProvider";
+import { decodeAnnouncement, isTelegramUrl } from "@/lib/announcement";
 
 // Text of a staff announcement (notifications.message), shown in the
 // notifications list and in the one-time popup. Line breaks are kept,
@@ -27,8 +28,20 @@ function TelegramIcon() {
 
 export function AnnouncementBody({ message, onLinkClick }: { message: string; onLinkClick?: () => void }) {
   const { t } = useLocale();
-  const parts = message.split(TOKEN);
-  const telegram = (message.match(TOKEN) ?? []).map(telegramUrl).find(Boolean) ?? null;
+  const { text, button: ownButton } = decodeAnnouncement(message);
+  const parts = text.split(TOKEN);
+  // A button set in the broadcast form wins; otherwise the first Telegram
+  // @handle / t.me link in the text gets one.
+  const autoTelegram = (text.match(TOKEN) ?? []).map(telegramUrl).find(Boolean) ?? null;
+  const button = ownButton
+    ? {
+        url: ownButton.url,
+        label: ownButton.label || (isTelegramUrl(ownButton.url) ? t.notifications.openTelegram : t.notifications.openLink),
+        telegram: isTelegramUrl(ownButton.url),
+      }
+    : autoTelegram
+      ? { url: autoTelegram, label: t.notifications.openTelegram, telegram: true }
+      : null;
 
   return (
     <div>
@@ -51,16 +64,18 @@ export function AnnouncementBody({ message, onLinkClick }: { message: string; on
           );
         })}
       </p>
-      {telegram && (
+      {button && (
         <a
-          href={telegram}
-          target="_blank"
-          rel="noopener noreferrer"
+          href={button.url}
+          target={button.url.startsWith("/") ? undefined : "_blank"}
+          rel={button.url.startsWith("/") ? undefined : "noopener noreferrer"}
           onClick={onLinkClick}
-          className="mt-3.5 inline-flex h-11 items-center gap-2 rounded-[13px] bg-[#54A9EB] px-5 text-[14.5px] font-bold text-white transition hover:brightness-105"
+          className={`mt-3.5 inline-flex h-11 items-center gap-2 rounded-[13px] px-5 text-[14.5px] font-bold text-white transition hover:brightness-105 ${
+            button.telegram ? "bg-[#54A9EB]" : "bg-linear-to-br from-[#6D28D9] to-[#9333EA]"
+          }`}
         >
-          <TelegramIcon />
-          {t.notifications.openTelegram}
+          {button.telegram && <TelegramIcon />}
+          {button.label}
         </a>
       )}
     </div>

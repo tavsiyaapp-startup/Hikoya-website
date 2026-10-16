@@ -2,6 +2,7 @@ import { getServerLocale } from "@/lib/i18n/locale-server";
 import { getDictionary } from "@/lib/i18n";
 import { countAnnouncementRecipients, getSentAnnouncements } from "@/lib/queries/admin";
 import { formatDateTime } from "@/lib/format";
+import { decodeAnnouncement } from "@/lib/announcement";
 import { getStaffSession } from "@/server/auth/staff";
 import { AdminHeader } from "../AdminHeader";
 import { BroadcastForm } from "./BroadcastForm";
@@ -35,16 +36,24 @@ export default async function BroadcastPage() {
         <h2 className="mb-3.5 mt-8 text-[18px] font-extrabold tracking-tight">{t.admin.broadcastHistory}</h2>
         {sent.length > 0 ? (
           <div className="flex max-w-180 flex-col gap-3">
-            {sent.map((b) => (
+            {sent.map((b) => {
+              const { text, button } = decodeAnnouncement(b.message);
+              return (
               <div key={`${b.sentAt}-${b.message.slice(0, 20)}`} className="rounded-[14px] border border-border bg-card p-4.5">
                 <div className="mb-2 flex flex-wrap gap-x-4 gap-y-1 text-[12.5px] text-muted-2">
                   <span className="font-bold text-ink-soft">{formatDateTime(b.sentAt, locale)}</span>
                   <span>{t.admin.broadcastHistoryRecipients.replace("{count}", String(b.recipients))}</span>
                   <span>{t.admin.broadcastHistoryRead.replace("{count}", String(b.read))}</span>
                 </div>
-                <p className="whitespace-pre-line text-[14px] leading-relaxed text-ink-soft">{b.message}</p>
+                <p className="whitespace-pre-line text-[14px] leading-relaxed text-ink-soft">{text}</p>
+                {button && (
+                  <p className="mt-2 break-all text-[12.5px] text-muted-2">
+                    {t.admin.broadcastHistoryButton}: <b className="text-ink-soft">{button.label || "—"}</b> → {button.url}
+                  </p>
+                )}
               </div>
-            ))}
+              );
+            })}
           </div>
         ) : (
           <p className="text-[13.5px] text-muted-2">{t.admin.broadcastHistoryEmpty}</p>

@@ -47,6 +47,7 @@ export interface Profile {
   instagram_handle: string | null;
   telegram_handle: string | null;
   created_at: string;
+  last_seen_at: string | null;
 }
 
 export interface Story {

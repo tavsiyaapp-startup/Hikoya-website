@@ -7,6 +7,8 @@ import { getDb } from "@/server/db/client";
 import { profiles } from "@/server/db/schema";
 import type { Profile } from "@/types/database";
 
+const LAST_SEEN_EVERY_MS = 60_000;
+
 export interface CurrentUser {
   id: string;
   email: string | null;
@@ -40,7 +42,18 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
       ...row,
       onboarded_at: row.onboarded_at ? row.onboarded_at.toISOString() : null,
       created_at: row.created_at.toISOString(),
+      last_seen_at: row.last_seen_at ? row.last_seen_at.toISOString() : null,
     };
+
+    // "Last seen" for the admin users list — written at most once a minute
+    // per user, and never awaited: a page must not wait on (or fail
+    // because of) this bookkeeping write.
+    if (!row.last_seen_at || Date.now() - row.last_seen_at.getTime() > LAST_SEEN_EVERY_MS) {
+      db.update(profiles)
+        .set({ last_seen_at: new Date() })
+        .where(eq(profiles.id, row.id))
+        .catch((err) => console.error("[current-user] last_seen_at update failed", err));
+    }
 
     return { id: session.user.id, email: session.user.email ?? null, profile };
   } catch (err) {

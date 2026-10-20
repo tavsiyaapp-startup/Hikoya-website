@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/Button";
 import { LinkChip } from "@/components/ui/LinkChip";
 import { UserRow } from "./UserRow";
 
-const SORTS: AdminUserSort[] = ["newest", "followers", "stories"];
+const SORTS: AdminUserSort[] = ["newest", "recent", "followers", "stories"];
 
 export default async function AdminUsersPage({
   searchParams,
@@ -48,6 +48,7 @@ export default async function AdminUsersPage({
   }
 
   const sortLabels: Record<AdminUserSort, string> = {
+    recent: t.admin.sortByLastSeen,
     newest: t.search.sortNewest,
     followers: t.admin.sortByFollowers,
     stories: t.admin.sortByStories,

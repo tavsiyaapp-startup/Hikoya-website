@@ -20,6 +20,7 @@ import { AdminHeader } from "../../AdminHeader";
 import { UserStatusButton } from "../UserStatusButton";
 import { AdminBadgesPanel } from "./AdminBadgesPanel";
 import { TransferStoriesPanel } from "./TransferStoriesPanel";
+import { LastSeen } from "../LastSeen";
 import { plural } from "@/lib/plural";
 
 const TABS = ["stories", "collections"] as const;
@@ -83,6 +84,8 @@ export default async function AdminUserProfilePage({
               @{profile.username}
               {" · "}
               {[login.email, login.telegramLinked ? "Telegram" : null].filter(Boolean).join(" · ") || "—"}
+              {" · "}
+              <LastSeen lastSeenAt={profile.last_seen_at} />
             </div>
             {profile.bio && <p className="mb-4 max-w-155 text-[15px] leading-relaxed text-ink-soft">{profile.bio}</p>}
             <div className="mb-4.5 flex flex-wrap gap-6 sm:gap-8.5">

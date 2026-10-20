@@ -12,6 +12,7 @@ import { MessageIcon } from "@/components/ui/icons";
 import { UserRoleSelect } from "./UserRoleSelect";
 import { UserStatusButton } from "./UserStatusButton";
 import { VerifiedToggle } from "./VerifiedToggle";
+import { LastSeen } from "./LastSeen";
 import type { Achievement, Profile, UserRole } from "@/types/database";
 import type { Locale } from "@/lib/i18n";
 
@@ -62,6 +63,7 @@ export function UserRow({
         <Link prefetch={false} href={ROUTES.adminUser(user.id)} className="min-w-0 flex-[1.4] hover:underline">
           <div className="text-[14px] font-bold">{user.display_name}</div>
           <div className="text-[12.5px] text-muted-2">@{user.username}</div>
+          <LastSeen lastSeenAt={user.last_seen_at} />
         </Link>
         <span className="w-27.5">
           <UserRoleSelect userId={user.id} role={user.role as UserRole} disabled={!viewerIsAdmin} />

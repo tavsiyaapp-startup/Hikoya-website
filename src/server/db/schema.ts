@@ -111,6 +111,10 @@ export const profiles = pgTable("profiles", {
   email: text("email"),
   email_verified: boolean("email_verified").default(false).notNull(),
   updated_at: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  // Last page view on the site (src/lib/current-user.ts, at most once a
+  // minute) — admin "online / last seen". Added 20.10.2026
+  // (D:/QIZLAB/backups/profiles_last_seen_at.sql).
+  last_seen_at: timestamp("last_seen_at", { withTimezone: true }),
 }, (table) => [
   unique("profiles_telegram_id_key").on(table.telegram_id),
   unique("profiles_username_key").on(table.username),

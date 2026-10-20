@@ -323,7 +323,7 @@ export async function getOpenReportsCount(): Promise<number> {
   }
 }
 
-export type AdminUserSort = "newest" | "followers" | "stories";
+export type AdminUserSort = "newest" | "recent" | "followers" | "stories";
 
 export async function searchUsersAdmin(query?: string, sort: AdminUserSort = "newest") {
   try {
@@ -331,9 +331,11 @@ export async function searchUsersAdmin(query?: string, sort: AdminUserSort = "ne
     const q = query?.trim();
     const where = q ? anyTextContains([profiles.display_name, profiles.username, profiles.email], q) : undefined;
 
-    if (sort === "newest") {
-      const rows = await db.select().from(profiles).where(where).orderBy(desc(profiles.created_at)).limit(100);
-      return rows.map((r) => ({ ...r, created_at: toISO(r.created_at), onboarded_at: r.onboarded_at ? toISO(r.onboarded_at) : null }));
+    if (sort === "newest" || sort === "recent") {
+      // "recent": most recently on the site first; never seen at the end.
+      const order = sort === "recent" ? sql`${profiles.last_seen_at} desc nulls last` : desc(profiles.created_at);
+      const rows = await db.select().from(profiles).where(where).orderBy(order, desc(profiles.created_at)).limit(100);
+      return rows.map((r) => ({ ...r, created_at: toISO(r.created_at), onboarded_at: r.onboarded_at ? toISO(r.onboarded_at) : null, last_seen_at: r.last_seen_at ? toISO(r.last_seen_at) : null }));
     }
 
     // Profiles don't carry a denormalized follower/story count, so the
@@ -354,7 +356,7 @@ export async function searchUsersAdmin(query?: string, sort: AdminUserSort = "ne
     return list
       .sort((a, b) => (counts[b.id] ?? 0) - (counts[a.id] ?? 0))
       .slice(0, 100)
-      .map((r) => ({ ...r, created_at: toISO(r.created_at), onboarded_at: r.onboarded_at ? toISO(r.onboarded_at) : null }));
+      .map((r) => ({ ...r, created_at: toISO(r.created_at), onboarded_at: r.onboarded_at ? toISO(r.onboarded_at) : null, last_seen_at: r.last_seen_at ? toISO(r.last_seen_at) : null }));
   } catch (err) {
     logQueryError("searchUsersAdmin", err);
     return [];

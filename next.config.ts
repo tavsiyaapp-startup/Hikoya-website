@@ -64,6 +64,13 @@ const nextConfig: NextConfig = {
     unoptimized: true,
   },
   experimental: {
+    // Don't write the data cache (unstable_cache results — every search
+    // query and filter combination got its own file) to .next/cache on disk.
+    // Nothing ever pruned it: it grew to millions of files and filled the
+    // hosting's disk quota (20.10.2026, "Disk quota exceeded" on deploy).
+    // The in-memory cache (cacheMaxMemorySize, 50 MB, least-recently-used
+    // entries dropped first) still serves repeat requests.
+    isrFlushToDisk: false,
     serverActions: {
       // Default is 1MB. .docx manuscripts (especially with embedded images)
       // need real headroom — see src/lib/actions/import-docx.ts.

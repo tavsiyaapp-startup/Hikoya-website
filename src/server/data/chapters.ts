@@ -168,6 +168,12 @@ export async function submitChapterForReview(db: DbOrTx, viewer: Viewer | null, 
   const status = requiresReview ? "pending_review" : "published";
   await db
     .update(chapters)
-    .set({ status, published_at: status === "published" ? new Date() : null, rejection_reason: null })
+    // A chapter that was published before (then rejected) keeps its first
+    // publication date.
+    .set({
+      status,
+      ...(status === "published" ? { published_at: sql`coalesce(${chapters.published_at}, now())` } : {}),
+      rejection_reason: null,
+    })
     .where(and(eq(chapters.id, chapterId), eq(chapters.status, "draft")));
 }

@@ -1,5 +1,5 @@
 import "server-only";
-import { and, eq, inArray, isNotNull, isNull } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 import { sanitizeHtml } from "@/lib/sanitize";
 import { slugify, withRandomSuffix } from "@/lib/slug";
 import type { AgeRating, StoryProgressStatus, StoryVisibility } from "@/types/database";
@@ -260,7 +260,9 @@ export async function submitStoryForReview(db: DbOrTx, viewer: Viewer | null, st
     .update(stories)
     .set({
       status,
-      published_at: status === "published" ? new Date() : null,
+      // The first publication date is kept for good: a story rejected or
+      // hidden and then resubmitted keeps the date it first went live.
+      ...(status === "published" ? { published_at: sql`coalesce(${stories.published_at}, now())` } : {}),
       rejection_reason: null,
       ...(story.visibility === "draft" ? { visibility: "public" as const } : {}),
     })

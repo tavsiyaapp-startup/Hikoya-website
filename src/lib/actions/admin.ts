@@ -104,7 +104,8 @@ export async function approveStory(storyId: string, storySlug: string): Promise<
     if (!updated) return null;
     await tx
       .update(chapters)
-      .set({ status: "published", published_at: new Date(), rejection_reason: null })
+      // coalesce: a chapter that was already published once keeps its date.
+      .set({ status: "published", published_at: sql`coalesce(${chapters.published_at}, now())`, rejection_reason: null })
       .where(
         and(
           eq(chapters.story_id, storyId),

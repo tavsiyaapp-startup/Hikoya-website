@@ -50,7 +50,7 @@ export function HeroCarousel({ slides: allSlides }: { slides: HeroSlide[] }) {
             type="button"
             onClick={() => go(index - 1)}
             aria-label="Previous slide"
-            className="absolute left-3 top-1/2 z-10 flex h-9 w-9 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full bg-card/80 text-ink-soft ring-1 ring-border backdrop-blur-md transition hover:bg-card"
+            className="absolute left-3 top-1/2 z-10 hidden h-9 w-9 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full bg-card/80 text-ink-soft ring-1 ring-border backdrop-blur-md transition hover:bg-card sm:flex"
           >
             <ChevronLeftIcon />
           </button>
@@ -58,11 +58,11 @@ export function HeroCarousel({ slides: allSlides }: { slides: HeroSlide[] }) {
             type="button"
             onClick={() => go(index + 1)}
             aria-label="Next slide"
-            className="absolute right-3 top-1/2 z-10 flex h-9 w-9 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full bg-card/80 text-ink-soft ring-1 ring-border backdrop-blur-md transition hover:bg-card"
+            className="absolute right-3 top-1/2 z-10 hidden h-9 w-9 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full bg-card/80 text-ink-soft ring-1 ring-border backdrop-blur-md transition hover:bg-card sm:flex"
           >
             <ChevronRightIcon />
           </button>
-          <div className="absolute bottom-3.5 left-1/2 z-10 flex -translate-x-1/2 gap-1.5">
+          <div className="absolute bottom-3 right-4 z-10 flex gap-1.5 rounded-full bg-card/70 px-2 py-1.5 backdrop-blur-md">
             {Array.from({ length: total }).map((_, i) => (
               <button
                 key={i}
@@ -115,22 +115,25 @@ function Slide({ slide, locale, isFirst }: { slide: HeroSlide; locale: "ru" | "u
         // script wordmark font on the heading (used everywhere else only
         // for "Hikoya" itself) for a handwritten, intimate feel, and a
         // blockquote-style left rule on the body.
-        <div className="flex flex-1 items-center overflow-y-auto p-3.5 sm:p-5">
-          <div className="relative mx-auto w-full max-w-[680px] overflow-hidden rounded-[18px] bg-card/70 p-4 ring-1 ring-border/70 dark:bg-white/[0.04] sm:p-6">
+        // my-auto (not items-center) centres a short letter but lets a long
+        // one start at its first line and scroll, instead of being clipped
+        // at the top. Side padding keeps the text clear of the arrows.
+        <div className="flex flex-1 overflow-y-auto px-5 pb-8 pt-4 [mask-image:linear-gradient(to_bottom,black_75%,transparent)] sm:px-16 sm:pb-8 sm:pt-6 sm:[mask-image:none]">
+          <div className="relative mx-auto my-auto w-full max-w-[920px]">
             <span
               aria-hidden
-              className="pointer-events-none absolute -top-1 left-2 select-none font-serif text-[70px] italic leading-none text-primary-300/60 dark:text-primary-700/40 sm:left-3 sm:text-[100px]"
+              className="pointer-events-none absolute -left-3 -top-4 select-none font-display text-[64px] italic leading-none text-primary-300/50 dark:text-primary-700/40 sm:-left-6 sm:-top-6 sm:text-[96px]"
             >
               &ldquo;
             </span>
             <div className="relative">
               {title && (
-                <h1 className="font-script mb-2 max-w-[560px] text-balance text-[22px] leading-tight text-primary-800 sm:text-[32px]">
+                <h1 className="font-script mb-2 text-balance text-[21px] leading-tight text-primary-800 sm:text-[27px]">
                   {title}
                 </h1>
               )}
               {body && (
-                <p className="max-w-[560px] whitespace-pre-line border-l-2 border-primary-300 pl-3.5 text-[13px] leading-[1.55] text-ink-soft dark:border-primary-700 sm:pl-4 sm:text-[14px]">
+                <p className="max-w-[78ch] whitespace-pre-line border-l-2 border-primary-300 pl-3.5 text-[13px] leading-[1.5] text-ink-soft dark:border-primary-700 sm:pl-4 sm:text-[13.5px]">
                   {body}
                 </p>
               )}

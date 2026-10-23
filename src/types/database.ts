@@ -28,7 +28,10 @@ export type NotificationType =
   | "story_like"
   | "story_restored"
   | "admin_message"
-  | "announcement";
+  | "announcement"
+  | "forum_comment"
+  | "forum_reply";
+export type ForumCategory = "muhokama" | "maslahat" | "tavsiya" | "sorov" | "elon";
 
 export interface Profile {
   id: string; // references auth.users.id
@@ -259,6 +262,8 @@ export interface Notification {
   message: string | null;
   is_read: boolean;
   created_at: string;
+  forum_post_id: string | null;
+  forum_comment_id: string | null;
 }
 
 export interface AdminChatMessage {

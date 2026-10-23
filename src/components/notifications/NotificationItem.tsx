@@ -12,6 +12,11 @@ import { AnnouncementBody } from "./AnnouncementBody";
 
 function notificationHref(n: NotificationWithContext): string {
   if (n.type === "admin_message") return ROUTES.chat;
+  if (n.type === "forum_comment" || n.type === "forum_reply") {
+    if (!n.forum_post_id) return ROUTES.forum;
+    const base = ROUTES.forumPost(n.forum_post_id);
+    return n.forum_comment_id ? `${base}#c-${n.forum_comment_id}` : base;
+  }
   if (!n.story) return ROUTES.home;
   if (
     n.type === "story_rejected" ||
@@ -34,7 +39,7 @@ function notificationHref(n: NotificationWithContext): string {
 
 function NotificationIcon({ type }: { type: NotificationWithContext["type"] }) {
   if (type === "comment_like" || type === "story_like") return <HeartIcon filled className="text-primary-600" />;
-  if (type === "new_comment" || type === "comment_reply" || type === "admin_message")
+  if (type === "new_comment" || type === "comment_reply" || type === "admin_message" || type === "forum_comment" || type === "forum_reply")
     return <MessageIcon className="text-primary-600" />;
   return <ShieldIcon className="text-primary-600" width={16} height={16} />;
 }
@@ -163,6 +168,13 @@ export function NotificationItem({
               </>
             )}
             {n.type === "admin_message" && <>{t.notifications.adminMessage}</>}
+            {(n.type === "forum_comment" || n.type === "forum_reply") && (
+              <>
+                <b className="text-ink">{actorName}</b>{" "}
+                {n.type === "forum_comment" ? t.notifications.forumComment : t.notifications.forumReply}{" "}
+                {n.forum_post && <>«{n.forum_post.title}»</>}
+              </>
+            )}
           </p>
           <span className="mt-1.5 block text-[12.5px] text-muted-3">
             {formatTimestamp(n.created_at, locale)}

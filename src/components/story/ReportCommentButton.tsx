@@ -10,7 +10,17 @@ const REASONS = ["spam", "abuse", "spoiler", "other"] as const;
 // "Пожаловаться" under a comment: pick a reason, optionally add a note, send.
 // Shown only to signed-in readers on someone else's comment (the server
 // re-checks both — see lib/actions/reports.ts).
-export function ReportCommentButton({ commentId }: { commentId: string }) {
+type ReportResult = { ok: true } | { error: string };
+
+// `send` lets Muhokamalar reuse the same form for topics and their comments
+// (lib/actions/forum.ts); by default it reports a story comment.
+export function ReportCommentButton({
+  commentId,
+  send,
+}: {
+  commentId: string;
+  send?: (reason: string, details: string) => Promise<ReportResult>;
+}) {
   const { t } = useLocale();
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState<(typeof REASONS)[number]>("spam");
@@ -45,7 +55,7 @@ export function ReportCommentButton({ commentId }: { commentId: string }) {
   function submit() {
     setStatus("idle");
     startTransition(async () => {
-      const result = await reportComment(commentId, reason, details).catch(() => ({ error: "failed" as const }));
+      const result: ReportResult = await (send ? send(reason, details) : reportComment(commentId, reason, details)).catch(() => ({ error: "failed" }));
       if ("ok" in result) {
         setStatus("sent");
         return;

@@ -17,7 +17,6 @@ import {
   notifications,
   platformSettings,
   profiles,
-  requests,
   stories,
   userAchievements,
 } from "@/server/db/schema";
@@ -709,24 +708,6 @@ export async function getChaptersForDownload(storyId: string): Promise<ChapterFo
       .orderBy(asc(chapters.order_index));
   } catch (err) {
     logQueryError("getChaptersForDownload", err);
-    return [];
-  }
-}
-
-export async function getAllRequestsAdmin(statusFilter?: string) {
-  try {
-    const db = getDb();
-    const where = statusFilter ? eq(requests.status, statusFilter as "open" | "closed") : undefined;
-    const rows = await db
-      .select({ request: requests, from_user: { display_name: profiles.display_name } })
-      .from(requests)
-      .innerJoin(profiles, eq(requests.from_user_id, profiles.id))
-      .where(where)
-      .orderBy(desc(requests.created_at))
-      .limit(100);
-    return rows.map((r) => ({ ...r.request, created_at: toISO(r.request.created_at), from_user: r.from_user }));
-  } catch (err) {
-    logQueryError("getAllRequestsAdmin", err);
     return [];
   }
 }

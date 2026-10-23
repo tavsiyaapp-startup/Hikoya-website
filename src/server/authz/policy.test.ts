@@ -26,7 +26,15 @@ import {
   canViewChapter,
   canViewCollection,
   canViewStory,
+  canCommentOnForumPost,
+  canCreateForumPost,
+  canDeleteForumItem,
+  canLikeForumComment,
+  canReportForumItem,
+  canViewForumItem,
+  canVoteForumPost,
   type ChapterRecord,
+  type ForumPostRecord,
   type CollectionRecord,
   type MaybeViewer,
   type RequestRecord,
@@ -350,5 +358,58 @@ describe("админка", () => {
 
   test("обычный пользователь не может менять статус никого", () => {
     assert.equal(canChangeUserStatus(OTHER, { id: "reader1", role: "reader" }), false);
+  });
+});
+
+function forumPost(overrides: Partial<ForumPostRecord> = {}): ForumPostRecord {
+  return { id: "p1", author_id: "author", is_locked: false, hidden_at: null, ...overrides };
+}
+
+describe("Muhokamalar", () => {
+  test("тему создаёт любой активный, заблокированный и гость — нет", () => {
+    assert.equal(canCreateForumPost(OTHER, "muhokama"), true);
+    assert.equal(canCreateForumPost(BLOCKED_READER, "muhokama"), false);
+    assert.equal(canCreateForumPost(GUEST, "muhokama"), false);
+  });
+
+  test("объявление (elon) создаёт только админ", () => {
+    assert.equal(canCreateForumPost(ADMIN, "elon"), true);
+    assert.equal(canCreateForumPost(MODERATOR, "elon"), false);
+    assert.equal(canCreateForumPost(OTHER, "elon"), false);
+  });
+
+  test("скрытую тему видит только staff", () => {
+    const hidden = forumPost({ hidden_at: new Date() });
+    assert.equal(canViewForumItem(GUEST, hidden), false);
+    assert.equal(canViewForumItem(AUTHOR, hidden), false);
+    assert.equal(canViewForumItem(MODERATOR, hidden), true);
+  });
+
+  test("в закрытой теме комментирует только staff", () => {
+    const locked = forumPost({ is_locked: true });
+    assert.equal(canCommentOnForumPost(OTHER, locked), false);
+    assert.equal(canCommentOnForumPost(MODERATOR, locked), true);
+    assert.equal(canCommentOnForumPost(OTHER, forumPost()), true);
+    assert.equal(canCommentOnForumPost(BLOCKED_READER, forumPost()), false);
+  });
+
+  test("за свою тему и свой комментарий голосовать нельзя", () => {
+    assert.equal(canVoteForumPost(AUTHOR, forumPost()), false);
+    assert.equal(canVoteForumPost(OTHER, forumPost()), true);
+    assert.equal(canVoteForumPost(BLOCKED_READER, forumPost()), false);
+    assert.equal(canLikeForumComment(AUTHOR, { id: "c", author_id: "author", hidden_at: null }), false);
+    assert.equal(canLikeForumComment(OTHER, { id: "c", author_id: "author", hidden_at: null }), true);
+  });
+
+  test("удаляет автор или staff", () => {
+    assert.equal(canDeleteForumItem(AUTHOR, forumPost()), true);
+    assert.equal(canDeleteForumItem(OTHER, forumPost()), false);
+    assert.equal(canDeleteForumItem(MODERATOR, forumPost()), true);
+  });
+
+  test("жалоба: заблокированный может, на своё нельзя", () => {
+    assert.equal(canReportForumItem(BLOCKED_READER, forumPost()), true);
+    assert.equal(canReportForumItem(AUTHOR, forumPost()), false);
+    assert.equal(canReportForumItem(GUEST, forumPost()), false);
   });
 });

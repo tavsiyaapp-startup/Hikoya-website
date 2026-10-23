@@ -5,7 +5,8 @@ import { getServerLocale } from "@/lib/i18n/locale-server";
 import { getDictionary } from "@/lib/i18n";
 import { getCurrentUser } from "@/lib/current-user";
 import { getStoryBySlug, getChaptersForStory, getTagsForStory, getAllTags } from "@/lib/queries/stories";
-import { getLinkedRequestForStory } from "@/lib/queries/requests";
+import { getDb } from "@/server/db/client";
+import { getSorovPostIdForStory } from "@/server/data/forum";
 import { ROUTES } from "@/lib/constants";
 import { localizeGenre } from "@/lib/genre";
 import { Badge, Chip } from "@/components/ui/Chip";
@@ -44,7 +45,7 @@ export default async function ManagePage({
     getChaptersForStory(story.id, true),
     tab === "edit" ? getTagsForStory(story.id) : Promise.resolve([]),
     tab === "edit" ? getAllTags() : Promise.resolve([]),
-    getLinkedRequestForStory(story.id),
+    getSorovPostIdForStory(getDb(), story.id).catch(() => null),
   ]);
 
   const metrics = [
@@ -77,7 +78,7 @@ export default async function ManagePage({
               <Badge key={g} tone="pink">{localizeGenre(g, locale)}</Badge>
             ))}
             {linkedRequestId && (
-              <Link prefetch={false} href={`${ROUTES.board}?selected=${linkedRequestId}`}>
+              <Link prefetch={false} href={ROUTES.forumPost(linkedRequestId)}>
                 <Badge tone="primary">{t.story.requestBadge}</Badge>
               </Link>
             )}

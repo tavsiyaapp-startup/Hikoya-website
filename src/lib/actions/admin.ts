@@ -16,7 +16,6 @@ import {
   notifications,
   platformSettings,
   profiles,
-  requests,
   stories,
   userAchievements,
 } from "@/server/db/schema";
@@ -638,22 +637,6 @@ export async function updateUserAchievements(userId: string, rawAchievementIds: 
   revalidatePath(`${ROUTES.admin}/users`);
   if (data?.username) revalidatePath(ROUTES.author(data.username));
   return true;
-}
-
-export async function setRequestStatusAdmin(requestId: string, status: "open" | "closed") {
-  await requireStaff();
-  const db = getDb();
-  await db.update(requests).set({ status }).where(eq(requests.id, requestId));
-  revalidatePath(`${ROUTES.admin}/requests`);
-  revalidatePath(ROUTES.board);
-}
-
-export async function deleteRequestAdmin(requestId: string) {
-  await requireStaff();
-  const db = getDb();
-  await db.delete(requests).where(eq(requests.id, requestId));
-  revalidatePath(`${ROUTES.admin}/requests`);
-  revalidatePath(ROUTES.board);
 }
 
 export async function updateStoryStatusAdmin(storyId: string, status: "draft" | "published" | "unlisted") {

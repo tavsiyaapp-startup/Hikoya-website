@@ -11,6 +11,8 @@ interface NotifyInput {
   storyId?: string | null;
   chapterId?: string | null;
   commentId?: string | null;
+  forumPostId?: string | null;
+  forumCommentId?: string | null;
   message?: string | null;
   // Skip when the same actor already notified the same user about the same
   // thing — like, unlike, like again would otherwise send one notification
@@ -55,6 +57,8 @@ export async function createNotification(input: NotifyInput) {
       story_id: input.storyId ?? null,
       chapter_id: input.chapterId ?? null,
       comment_id: input.commentId ?? null,
+      forum_post_id: input.forumPostId ?? null,
+      forum_comment_id: input.forumCommentId ?? null,
       message: input.message ?? null,
     });
   } catch (err) {

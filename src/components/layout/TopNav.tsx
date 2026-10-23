@@ -27,6 +27,12 @@ import type { CurrentUser } from "@/lib/current-user";
 const INSTAGRAM_URL = "https://www.instagram.com/hikoya.yoz?stkn=Z2ZweDlvNjVvb2Nm";
 const TELEGRAM_URL = "https://t.me/hikoya_yoz";
 
+// A topic page (/muhokamalar/<id>) still lights up «Muhokamalar».
+function isActive(pathname: string, href: string) {
+  const base = href.split("?")[0];
+  return pathname === base || (base === ROUTES.forum && pathname.startsWith(`${ROUTES.forum}/`));
+}
+
 export function TopNav({ user }: { user: CurrentUser | null }) {
   const { t } = useLocale();
   const pathname = usePathname();
@@ -37,7 +43,7 @@ export function TopNav({ user }: { user: CurrentUser | null }) {
     { href: ROUTES.search, icon: SearchIcon, label: t.nav.search, locked: false },
     { href: user ? ROUTES.library : ROUTES.onboarding, icon: LibraryIcon, label: t.nav.library, locked: !user },
     { href: ROUTES.collections, icon: CollectionsIcon, label: t.nav.collections, locked: false },
-    { href: ROUTES.board, icon: BoardIcon, label: t.nav.board, locked: false },
+    { href: ROUTES.forum, icon: BoardIcon, label: t.nav.forum, locked: false },
     { href: user ? ROUTES.create : ROUTES.onboarding, icon: PlusIcon, label: t.nav.create, locked: !user },
     {
       href: user ? ROUTES.author(user.profile?.username ?? "") : ROUTES.onboarding,
@@ -64,7 +70,7 @@ export function TopNav({ user }: { user: CurrentUser | null }) {
           <div className="min-w-0 flex-1 overflow-x-auto">
             <div className="mx-auto flex w-fit gap-1 py-2">
               {items.map((item) => {
-                const active = pathname === item.href.split("?")[0];
+                const active = isActive(pathname, item.href);
                 return (
                   <Link prefetch={false}
                     key={item.label}
@@ -127,7 +133,7 @@ export function TopNav({ user }: { user: CurrentUser | null }) {
           just vanishing; bottom offset is per-item math (FAB height +
           gap, then each pill's own height + gap), closest item first. */}
       {items.map((item, i) => {
-        const active = pathname === item.href.split("?")[0];
+        const active = isActive(pathname, item.href);
         return (
           <Link prefetch={false}
             key={item.label}

@@ -14,7 +14,8 @@ import {
 } from "@/lib/queries/social";
 import type { StoryCommentRow } from "@/lib/queries/social";
 import type { Dictionary } from "@/lib/i18n";
-import { getLinkedRequestForStory } from "@/lib/queries/requests";
+import { getDb } from "@/server/db/client";
+import { getSorovPostIdForStory } from "@/server/data/forum";
 import { formatDateTime, formatDate } from "@/lib/format";
 import { ROUTES } from "@/lib/constants";
 import { RELATIONSHIP_TYPES } from "@/lib/relationshipTypes";
@@ -66,7 +67,7 @@ export default async function StoryPage({
       getUserStoryState(user?.id, story.id),
       isFollowingAuthor(user?.id, story.author.id),
       getFollowerCount(story.author.id),
-      getLinkedRequestForStory(story.id),
+      getSorovPostIdForStory(getDb(), story.id).catch(() => null),
       user ? getMyCollectionsWithStory(user.id, story.id) : Promise.resolve([]),
       tab === "comments" ? getStoryComments(story.id) : Promise.resolve([]),
       getReadChapterIds(user?.id, story.id),
@@ -180,7 +181,7 @@ export default async function StoryPage({
           <Badge tone="neutral">{languageLabel(t, story.language)}</Badge>
           {story.is_translation && <Badge tone="neutral">{t.story.translationBadge}</Badge>}
           {linkedRequestId && (
-            <Link prefetch={false} href={`${ROUTES.board}?selected=${linkedRequestId}`}>
+            <Link prefetch={false} href={ROUTES.forumPost(linkedRequestId)}>
               <Badge tone="primary">{t.story.requestBadge}</Badge>
             </Link>
           )}

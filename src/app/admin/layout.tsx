@@ -6,6 +6,8 @@ import { getServerLocale } from "@/lib/i18n/locale-server";
 import { getDictionary } from "@/lib/i18n";
 import { getUnreadAdminChatsCount } from "@/lib/queries/chat";
 import { getOpenReportsCount } from "@/lib/queries/admin";
+import { getDb } from "@/server/db/client";
+import { countOpenForumReports } from "@/server/data/forum";
 import { ROUTES } from "@/lib/constants";
 import { ShieldIcon, UserIcon, CollectionsIcon, BoardIcon, HomeIcon, LibraryIcon, SparkleIcon, ImageIcon, ClockIcon, MessageIcon, CommentsIcon, BellIcon, SendIcon } from "@/components/ui/icons";
 import { AdminNavLink } from "./AdminNavLink";
@@ -21,7 +23,11 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   const locale = await getServerLocale();
   const t = getDictionary(locale);
-  const [unreadChats, openReports] = await Promise.all([getUnreadAdminChatsCount(), getOpenReportsCount()]);
+  const [unreadChats, openReports, openForumReports] = await Promise.all([
+    getUnreadAdminChatsCount(),
+    getOpenReportsCount(),
+    countOpenForumReports(getDb()).catch(() => 0),
+  ]);
 
   const nav = [
     { href: ROUTES.admin, icon: HomeIcon, label: t.admin.dashboard },
@@ -35,7 +41,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     { href: `${ROUTES.admin}/banner`, icon: ImageIcon, label: t.admin.banner },
     { href: `${ROUTES.admin}/announcements`, icon: BellIcon, label: t.admin.announcements },
     { href: `${ROUTES.admin}/broadcast`, icon: SendIcon, label: t.admin.broadcastTitle },
-    { href: `${ROUTES.admin}/requests`, icon: BoardIcon, label: t.admin.requests },
+    { href: ROUTES.adminForum, icon: BoardIcon, label: t.admin.forum, badge: openForumReports },
     { href: `${ROUTES.admin}/collections`, icon: LibraryIcon, label: t.admin.collections },
     { href: `${ROUTES.admin}/settings`, icon: ShieldIcon, label: t.admin.settings },
   ];

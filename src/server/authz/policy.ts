@@ -170,6 +170,64 @@ export function canLinkStoryToRequest(viewer: MaybeViewer, story: StoryRecord): 
   return isActive(viewer) && isOwner(viewer, story.author_id);
 }
 
+// --- Muhokamalar (обсуждения) ---
+
+export interface ForumPostRecord {
+  id: string;
+  author_id: string;
+  is_locked: boolean;
+  hidden_at: string | Date | null;
+}
+
+export interface ForumCommentRecord {
+  id: string;
+  author_id: string;
+  hidden_at: string | Date | null;
+}
+
+// Модерация обсуждений (закрепить, закрыть, скрыть, удалить): staff.
+export function canModerateForum(viewer: MaybeViewer): boolean {
+  return canAccessAdmin(viewer);
+}
+
+// Тему создаёт любой активный пользователь; «Eʼlon» (объявления) — только admin.
+export function canCreateForumPost(viewer: MaybeViewer, category: string): boolean {
+  if (!isActive(viewer)) return false;
+  return category !== "elon" || isAdmin(viewer);
+}
+
+// Скрытую модератором тему или комментарий видит только staff.
+export function canViewForumItem(viewer: MaybeViewer, item: { hidden_at: string | Date | null }): boolean {
+  return !item.hidden_at || isStaff(viewer);
+}
+
+// Комментировать: активный, тема видна и не закрыта (staff может и в закрытой).
+export function canCommentOnForumPost(viewer: MaybeViewer, post: ForumPostRecord): boolean {
+  if (!isActive(viewer) || !canViewForumItem(viewer, post)) return false;
+  return !post.is_locked || isStaff(viewer);
+}
+
+// Голос за тему и лайк комментария: активный, не за своё (иначе «Top» накручивается).
+export function canVoteForumPost(viewer: MaybeViewer, post: ForumPostRecord): boolean {
+  return isActive(viewer) && canViewForumItem(viewer, post) && viewer!.id !== post.author_id;
+}
+
+export function canLikeForumComment(viewer: MaybeViewer, comment: ForumCommentRecord): boolean {
+  return isActive(viewer) && canViewForumItem(viewer, comment) && viewer!.id !== comment.author_id;
+}
+
+// Удалить своё может автор; staff удаляет любое.
+export function canDeleteForumItem(viewer: MaybeViewer, item: { author_id: string }): boolean {
+  if (canModerateForum(viewer)) return true;
+  return isActive(viewer) && isOwner(viewer, item.author_id);
+}
+
+// Жалоба: любой вошедший (в том числе заблокированный), не на своё, на видимое.
+export function canReportForumItem(viewer: MaybeViewer, item: { author_id: string; hidden_at: string | Date | null }): boolean {
+  if (viewer === null || viewer.id === item.author_id) return false;
+  return canViewForumItem(viewer, item);
+}
+
 // Профиль меняет только сам пользователь. Роль и статус меняются только через админские проверки ниже.
 export function canEditOwnProfile(viewer: MaybeViewer, profileId: string): boolean {
   return isActive(viewer) && isOwner(viewer, profileId);

@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getServerLocale } from "@/lib/i18n/locale-server";
 import { getDictionary } from "@/lib/i18n";
@@ -6,26 +5,26 @@ import { getCurrentUser } from "@/lib/current-user";
 import { getProfileByUsername, getAuthorStoryCount, getAuthorAchievements, getAuthorTotals } from "@/lib/queries/profiles";
 import { getAuthorStories, getCollectionsFeaturingAuthor } from "@/lib/queries/stories";
 import { getFollowerCount, isFollowingAuthor } from "@/lib/queries/social";
-import { getRequestsBySubmitter } from "@/lib/queries/requests";
-import { requestStatusTone, requestStatusLabel } from "@/lib/requestStatus";
+import { getDb } from "@/server/db/client";
+import { listForumPostsByAuthor } from "@/server/data/forum";
+import { logQueryError } from "@/lib/queries/query-errors";
 import { getNotifications } from "@/lib/queries/notifications";
 import { getAdminChatSummary } from "@/lib/queries/chat";
 import { ROUTES } from "@/lib/constants";
 import { formatCompactCount } from "@/lib/format";
 import { Avatar } from "@/components/ui/Avatar";
-import { Badge } from "@/components/ui/Chip";
 import { LinkChip } from "@/components/ui/LinkChip";
 import { StoryCard } from "@/components/story/StoryCard";
 import { FollowButton } from "@/components/story/StoryActions";
 import { EditProfileForm } from "@/components/profile/EditProfileForm";
 import { NotificationList } from "@/components/notifications/NotificationList";
-import { CloseRequestButton } from "@/components/board/CloseRequestButton";
+import { PostCard } from "@/components/forum/PostCard";
 import { CollectionCard } from "@/components/collections/CollectionCard";
 import { ChatWithAdminButton } from "@/components/chat/ChatWithAdminButton";
 import { VerifiedIcon, SparkleIcon, InstagramIcon, SendIcon } from "@/components/ui/icons";
 import { plural } from "@/lib/plural";
 
-const TABS = ["stories", "collections", "myRequests", "notifications"] as const;
+const TABS = ["stories", "collections", "myTopics", "notifications"] as const;
 type Tab = (typeof TABS)[number];
 
 export default async function AuthorPage({
@@ -47,13 +46,18 @@ export default async function AuthorPage({
   if (!profile) notFound();
 
   const isOwner = user?.id === profile.id;
-  const [storyCount, followerCount, following, stories, myRequests, achievements, notifications, totals, featuringCollections, chatSummary] =
+  const [storyCount, followerCount, following, stories, myTopics, achievements, notifications, totals, featuringCollections, chatSummary] =
     await Promise.all([
       getAuthorStoryCount(profile.id),
       getFollowerCount(profile.id),
       isFollowingAuthor(user?.id, profile.id),
       tab === "stories" ? getAuthorStories(profile.id, isOwner) : Promise.resolve([]),
-      isOwner && tab === "myRequests" ? getRequestsBySubmitter(profile.id) : Promise.resolve([]),
+      isOwner && tab === "myTopics"
+        ? listForumPostsByAuthor(getDb(), null, profile.id).catch((err) => {
+            logQueryError("listForumPostsByAuthor", err);
+            return [];
+          })
+        : Promise.resolve([]),
       getAuthorAchievements(profile.id),
       isOwner && tab === "notifications" ? getNotifications(profile.id) : Promise.resolve([]),
       getAuthorTotals(profile.id),
@@ -172,7 +176,7 @@ export default async function AuthorPage({
           [
             ["stories", t.author.tabStories],
             ["collections", t.author.tabCollections],
-            ...(isOwner ? [["myRequests", t.author.tabMyRequests] as const] : []),
+            ...(isOwner ? [["myTopics", t.author.tabMyTopics] as const] : []),
             ...(isOwner ? [["notifications", t.nav.notifications] as const] : []),
           ] as const
         ).map(([key, label]) => (
@@ -208,33 +212,15 @@ export default async function AuthorPage({
           <EmptyState text={t.author.noCollectionsYet} />
         ))}
 
-      {tab === "myRequests" && isOwner &&
-        (myRequests.length > 0 ? (
-          <div className="flex max-w-225 flex-col gap-3.5">
-            {myRequests.map((r) => {
-              const responseCount = (r.responses as unknown as unknown[] | null)?.length ?? 0;
-              return (
-                <div key={r.id} className="rounded-[12px] border border-border bg-card px-5.5 py-5">
-                  <div className="mb-2.5 flex items-center gap-2.5">
-                    <Badge tone={requestStatusTone(r.status)}>{requestStatusLabel(t, r.status)}</Badge>
-                    <span className="text-[12.5px] text-muted-2">
-                      {responseCount} {plural(responseCount, t.board.responsesCountSuffix)}
-                    </span>
-                    {r.status !== "closed" && <CloseRequestButton requestId={r.id} />}
-                  </div>
-                  <Link prefetch={false}
-                    href={`${ROUTES.board}?selected=${r.id}`}
-                    className="mb-1.5 block text-[15px] font-extrabold leading-snug hover:text-primary-800"
-                  >
-                    {r.title}
-                  </Link>
-                  <p className="line-clamp-2 text-[14.5px] leading-relaxed text-ink-soft">{r.text}</p>
-                </div>
-              );
-            })}
+      {tab === "myTopics" && isOwner &&
+        (myTopics.length > 0 ? (
+          <div className="flex max-w-225 flex-col gap-3">
+            {myTopics.map((post) => (
+              <PostCard key={post.id} post={post} t={t} locale={locale} voteState="own" />
+            ))}
           </div>
         ) : (
-          <EmptyState text={t.board.noRequestsYet} />
+          <EmptyState text={t.forum.myTopicsEmpty} />
         ))}
     </div>
   );

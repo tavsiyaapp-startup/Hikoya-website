@@ -80,8 +80,8 @@ function normalizeQuoteText(s: string): string {
 }
 
 function quoteFontSize(len: number, format: Format) {
-  const base = len <= 70 ? 66 : len <= 130 ? 56 : len <= 200 ? 48 : 42;
-  return format === "story" ? Math.round(base * 1.12) : base;
+  const base = len <= 70 ? 72 : len <= 130 ? 60 : len <= 200 ? 50 : 44;
+  return format === "story" ? Math.round(base * 1.15) : base;
 }
 
 function theme(style: Style, seed: string) {
@@ -164,10 +164,12 @@ export async function GET(request: Request) {
             flexDirection: "column",
             backgroundImage: th.background,
             backgroundColor: style === "paper" ? "#F6EEDC" : "#1C1730",
-            padding: `${pad + (format === "story" ? 120 : 0)}px ${pad}px ${pad}px`,
+            padding: `${pad}px ${pad}px ${pad}px`,
             color: th.text,
           }}
         >
+          {/* Equal space above and below: the quote sits in the middle. */}
+          <div style={{ display: "flex", flexGrow: 1 }} />
           <div style={{ display: "flex", fontFamily: "Literata", fontStyle: "italic", fontSize: 220, lineHeight: 0.8, color: th.accent, opacity: 0.85 }}>
             “
           </div>

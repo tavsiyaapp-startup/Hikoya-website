@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { clsx } from "clsx";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
-import { cardBrand, formatCardNumber } from "@/lib/card";
+import { CARD_TYPE_LABEL, formatCardNumber, type CardType } from "@/lib/card";
 import { Avatar } from "@/components/ui/Avatar";
 import { CloseIcon, HeartIcon } from "@/components/ui/icons";
 
@@ -30,23 +30,30 @@ async function copyText(text: string): Promise<boolean> {
   }
 }
 
+type Copyable = "local" | "intl" | "holder";
+
 export function DonateButton({
   authorName,
   avatarUrl,
-  cardNumber,
+  local,
+  intl,
   cardHolder,
   message,
 }: {
   authorName: string;
   avatarUrl: string | null;
-  cardNumber: string;
+  local: { number: string; type: CardType } | null;
+  intl: { number: string; type: CardType } | null;
   cardHolder: string | null;
   message: string | null;
 }) {
   const { t } = useLocale();
   const [open, setOpen] = useState(false);
-  const [copied, setCopied] = useState<"card" | "holder" | null>(null);
-  const brand = cardBrand(cardNumber);
+  const [copied, setCopied] = useState<Copyable | null>(null);
+  const cards = [
+    local && { key: "local" as const, label: t.donation.localCardFor, ...local },
+    intl && { key: "intl" as const, label: t.donation.intlCardFor, ...intl },
+  ].filter((c) => c !== null);
 
   useEffect(() => {
     if (!open) return;
@@ -61,7 +68,7 @@ export function DonateButton({
     return () => clearTimeout(id);
   }, [copied]);
 
-  async function copy(what: "card" | "holder", text: string) {
+  async function copy(what: Copyable, text: string) {
     if (await copyText(text)) setCopied(what);
   }
 
@@ -104,26 +111,30 @@ export function DonateButton({
               {message || t.donation.defaultMessage}
             </blockquote>
 
-            <div className="mb-1.5 flex items-center justify-between text-[12.5px] font-bold text-muted-2">
-              <span>{t.donation.cardLabel}</span>
-              {brand && <span className="rounded-full bg-surface px-2.5 py-0.5 text-[11.5px] tracking-wide">{brand}</span>}
-            </div>
-            <button
-              type="button"
-              onClick={() => copy("card", cardNumber)}
-              className={clsx(
-                "group mb-1.5 flex w-full cursor-pointer items-center justify-between gap-3 rounded-[16px] border px-4.5 py-4 text-left transition",
-                copied === "card" ? "border-primary-300 bg-primary-50" : "border-border bg-surface hover:border-primary-200"
-              )}
-            >
-              <span className="font-mono text-[19px] font-semibold tracking-[0.06em] tabular-nums sm:text-[21px]">
-                {formatCardNumber(cardNumber)}
-              </span>
-              <CopyIcon done={copied === "card"} />
-            </button>
-            <p aria-live="polite" className={clsx("mb-4 text-[12.5px]", copied === "card" ? "font-bold text-primary-800" : "text-muted-2")}>
-              {copied === "card" ? t.donation.copied : t.donation.tapToCopy}
-            </p>
+            {cards.map((card) => (
+              <div key={card.key} className="mb-4">
+                <div className="mb-1.5 flex items-center justify-between gap-2 text-[12.5px] font-bold text-muted-2">
+                  <span>{card.label}</span>
+                  <span className="rounded-full bg-surface px-2.5 py-0.5 text-[11.5px] tracking-wide">{CARD_TYPE_LABEL[card.type]}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => copy(card.key, card.number)}
+                  className={clsx(
+                    "group mb-1.5 flex w-full cursor-pointer items-center justify-between gap-3 rounded-[16px] border px-4.5 py-4 text-left transition",
+                    copied === card.key ? "border-primary-300 bg-primary-50" : "border-border bg-surface hover:border-primary-200"
+                  )}
+                >
+                  <span className="font-mono text-[19px] font-semibold tracking-[0.06em] tabular-nums sm:text-[21px]">
+                    {formatCardNumber(card.number)}
+                  </span>
+                  <CopyIcon done={copied === card.key} />
+                </button>
+                <p aria-live="polite" className={clsx("text-[12.5px]", copied === card.key ? "font-bold text-primary-800" : "text-muted-2")}>
+                  {copied === card.key ? t.donation.copied : t.donation.tapToCopy}
+                </p>
+              </div>
+            ))}
 
             {cardHolder && (
               <>

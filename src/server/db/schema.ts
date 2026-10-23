@@ -560,11 +560,15 @@ export const forumReports = pgTable("forum_reports", {
 ]);
 
 // Donation card details an author shows on their profile (the «Donat»
-// button). Created by D:\QIZLAB\backups\author_donations.sql (23.10.2026);
-// no row = no button. card_number is 16 digits, no spaces (CHECK in SQL).
+// button). Created by D:/QIZLAB/backups/author_donations.sql (23.10.2026);
+// no row = no button. A local card (uzcard/humo) and/or an international
+// one (visa/mastercard), each 16 digits without spaces (CHECK in SQL).
 export const authorDonations = pgTable("author_donations", {
   author_id: uuid("author_id").notNull().primaryKey().references(() => profiles.id, { onDelete: "cascade" }),
-  card_number: text("card_number").notNull(),
+  card_number: text("card_number"),
+  card_type: text("card_type"),
+  intl_card_number: text("intl_card_number"),
+  intl_card_type: text("intl_card_type"),
   card_holder: text("card_holder"),
   message: text("message"),
   updated_at: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),

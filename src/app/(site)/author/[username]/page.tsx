@@ -178,7 +178,8 @@ export default async function AuthorPage({
               <DonateButton
                 authorName={profile.display_name}
                 avatarUrl={profile.avatar_url}
-                cardNumber={donation.cardNumber}
+                local={donation.local}
+                intl={donation.intl}
                 cardHolder={donation.cardHolder}
                 message={donation.message}
               />
@@ -214,7 +215,8 @@ export default async function AuthorPage({
               canHaveDonations ? (
                 <DonationSettings
                   username={profile.username}
-                  cardNumber={donation?.cardNumber ?? null}
+                  local={donation?.local ?? null}
+                  intl={donation?.intl ?? null}
                   cardHolder={donation?.cardHolder ?? null}
                   message={donation?.message ?? null}
                 />

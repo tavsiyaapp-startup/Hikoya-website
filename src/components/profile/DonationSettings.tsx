@@ -1,37 +1,122 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { clsx } from "clsx";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 import { saveDonationSettings } from "@/lib/actions/donations";
-import { cardBrand, formatCardNumber } from "@/lib/card";
+import {
+  CARD_TYPE_LABEL,
+  INTL_CARD_TYPES,
+  LOCAL_CARD_TYPES,
+  formatCardNumber,
+  guessCardType,
+  type CardType,
+} from "@/lib/card";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { Button } from "@/components/ui/Button";
 
 // «Donatlar» block in the profile settings (EditProfileForm). The author
-// page only renders it for an author with a published story; filling in a
-// card number turns the «Donat yuborish» button on, clearing it turns it off.
+// page only renders it for an author with a published story. Two optional
+// cards — local (Uzcard / Humo) and international (Visa / Mastercard);
+// filling in either turns the «Donat yuborish» button on, clearing both
+// turns it off.
 
 const MESSAGE_MAX = 300;
 
+function CardField<T extends CardType>({
+  title,
+  hint,
+  name,
+  typeName,
+  types,
+  initialNumber,
+  initialType,
+  placeholder,
+}: {
+  title: string;
+  hint: string;
+  name: string;
+  typeName: string;
+  types: readonly T[];
+  initialNumber: string | null;
+  initialType: T | null;
+  placeholder: string;
+}) {
+  const { t } = useLocale();
+  const [number, setNumber] = useState(formatCardNumber(initialNumber ?? ""));
+  const [type, setType] = useState<T | null>(initialType);
+  // Once the author picks a type by hand, typing no longer changes it.
+  const [picked, setPicked] = useState(Boolean(initialType));
+
+  function onNumber(raw: string) {
+    const formatted = formatCardNumber(raw).slice(0, 19);
+    setNumber(formatted);
+    if (!picked) {
+      const guess = guessCardType(formatted.replace(/\D/g, ""));
+      setType(types.find((x) => x === guess) ?? null);
+    }
+  }
+
+  return (
+    <div className="rounded-[14px] border border-border-soft bg-surface/50 p-3.5">
+      <div className="mb-0.5 text-[13px] font-bold">
+        {title} <span className="font-medium text-muted-2">{t.common.optional}</span>
+      </div>
+      <p className="mb-2.5 text-[12px] text-muted-2">{hint}</p>
+      <input type="hidden" name={typeName} value={type ?? ""} />
+      <div className="mb-2.5 flex flex-wrap gap-2" role="radiogroup" aria-label={t.donation.cardTypeLabel}>
+        {types.map((x) => (
+          <button
+            key={x}
+            type="button"
+            role="radio"
+            aria-checked={type === x}
+            onClick={() => {
+              setType(x);
+              setPicked(true);
+            }}
+            className={clsx(
+              "h-8.5 cursor-pointer rounded-full border px-3.5 text-[13px] font-semibold transition",
+              type === x ? "border-ink bg-ink text-card" : "border-border bg-card text-ink-soft hover:border-primary-200"
+            )}
+          >
+            {CARD_TYPE_LABEL[x]}
+          </button>
+        ))}
+      </div>
+      <Input
+        name={name}
+        value={number}
+        onChange={(e) => onNumber(e.target.value)}
+        inputMode="numeric"
+        autoComplete="off"
+        placeholder={placeholder}
+        aria-label={`${title}: ${t.donation.cardLabel}`}
+        className="font-mono tracking-wide"
+      />
+    </div>
+  );
+}
+
 export function DonationSettings({
   username,
-  cardNumber,
+  local,
+  intl,
   cardHolder,
   message,
 }: {
   username: string;
-  cardNumber: string | null;
+  local: { number: string; type: "uzcard" | "humo" } | null;
+  intl: { number: string; type: "visa" | "mastercard" } | null;
   cardHolder: string | null;
   message: string | null;
 }) {
   const { t } = useLocale();
-  const [card, setCard] = useState(formatCardNumber(cardNumber ?? ""));
   const [text, setText] = useState(message ?? "");
-  const [enabled, setEnabled] = useState(Boolean(cardNumber));
+  const [enabled, setEnabled] = useState(Boolean(local || intl));
   const [status, setStatus] = useState<{ ok: boolean; text: string } | null>(null);
   const [pending, startTransition] = useTransition();
-  const brand = cardBrand(card.replace(/\D/g, ""));
 
   function submit(formData: FormData) {
     setStatus(null);
@@ -44,6 +129,8 @@ export function DonationSettings({
       }
       const errors = {
         card: t.donation.errorCard,
+        intlCard: t.donation.errorIntlCard,
+        cardType: t.donation.errorCardType,
         holder: t.donation.errorHolder,
         message: t.donation.errorMessage,
         rate: t.donation.errorRate,
@@ -72,21 +159,26 @@ export function DonationSettings({
         </span>
       </div>
 
-      <div>
-        <label className="mb-1.5 flex items-center justify-between text-[13px] font-bold">
-          {t.donation.cardLabel}
-          {brand && <span className="text-[11.5px] font-semibold text-muted-2">{brand}</span>}
-        </label>
-        <Input
-          name="cardNumber"
-          value={card}
-          onChange={(e) => setCard(formatCardNumber(e.target.value).slice(0, 19))}
-          inputMode="numeric"
-          autoComplete="off"
-          placeholder="8600 0000 0000 0000"
-          className="font-mono tracking-wide"
-        />
-      </div>
+      <CardField
+        title={t.donation.localCardTitle}
+        hint={t.donation.localCardHint}
+        name="cardNumber"
+        typeName="cardType"
+        types={LOCAL_CARD_TYPES}
+        initialNumber={local?.number ?? null}
+        initialType={local?.type ?? null}
+        placeholder="8600 0000 0000 0000"
+      />
+      <CardField
+        title={t.donation.intlCardTitle}
+        hint={t.donation.intlCardHint}
+        name="intlCardNumber"
+        typeName="intlCardType"
+        types={INTL_CARD_TYPES}
+        initialNumber={intl?.number ?? null}
+        initialType={intl?.type ?? null}
+        placeholder="4000 0000 0000 0000"
+      />
 
       <div>
         <label className="mb-1.5 block text-[13px] font-bold">

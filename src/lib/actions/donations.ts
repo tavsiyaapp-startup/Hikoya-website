@@ -12,7 +12,7 @@ import { ROUTES } from "@/lib/constants";
 
 export type SaveDonationResult =
   | { ok: true; enabled: boolean }
-  | { ok: false; error: "card" | "holder" | "message" | "forbidden" | "rate" | "failed" };
+  | { ok: false; error: "card" | "intlCard" | "cardType" | "holder" | "message" | "forbidden" | "rate" | "failed" };
 
 // Saves the author's «Donat» settings (src/components/profile/DonationSettings.tsx).
 // Only an active account with at least one published story may have them.
@@ -29,6 +29,9 @@ export async function saveDonationSettings(username: string, formData: FormData)
 
     const saved = await saveDonation(db, session.user.id, {
       cardNumber: String(formData.get("cardNumber") ?? ""),
+      cardType: String(formData.get("cardType") ?? ""),
+      intlCardNumber: String(formData.get("intlCardNumber") ?? ""),
+      intlCardType: String(formData.get("intlCardType") ?? ""),
       cardHolder: String(formData.get("cardHolder") ?? ""),
       message: String(formData.get("message") ?? ""),
     });

@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { asc, eq } from "drizzle-orm";
 import { getDb, type Db } from "@/server/db/client";
 import { telegramSupportPendingMessages, telegramSupportTickets } from "@/server/db/schema";
+import { handlePaymentCallback, handlePaymentMessage } from "@/server/telegram/payment-bot";
 
 // Support/feedback bot, modeled on a reference aiogram bot the user already
 // runs elsewhere (long-polling + in-memory dicts). Vercel has no
@@ -53,6 +54,7 @@ type TelegramMessage = {
   text?: string;
   photo?: unknown[];
   video?: unknown;
+  document?: { mime_type?: string };
 };
 
 type TelegramUpdate = {
@@ -113,10 +115,16 @@ export async function POST(request: Request) {
     const update = (await request.json()) as TelegramUpdate;
     const chat = update.callback_query?.message?.chat ?? update.message?.chat;
     if (chat && chat.type === "private") privateChatId = chat.id;
+    // «Obuna» payments (src/server/telegram/payment-bot.ts) go first; whatever
+    // they don't handle is the usual support flow.
     if (update.callback_query) {
-      await handleCallback(admin, update.callback_query, groupChatId);
+      if (!(await handlePaymentCallback(admin, update.callback_query, callTelegram))) {
+        await handleCallback(admin, update.callback_query, groupChatId);
+      }
     } else if (update.message) {
-      await handleMessage(admin, update.message, groupChatId);
+      if (!(await handlePaymentMessage(admin, update.message, callTelegram))) {
+        await handleMessage(admin, update.message, groupChatId);
+      }
     }
   } catch (err) {
     console.error("telegram support webhook error", err);

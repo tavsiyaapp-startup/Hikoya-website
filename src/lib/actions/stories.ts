@@ -12,6 +12,8 @@ import { getRequiresReview } from "@/server/data/settings";
 import * as storiesData from "@/server/data/stories";
 import * as chaptersData from "@/server/data/chapters";
 import { notifyPendingReview } from "@/lib/telegram";
+import { getPublishGate, loadPaywallState } from "@/server/data/paywall";
+import type { Viewer } from "@/server/authz/policy";
 import { uploadUrlPrefix } from "@/server/storage/local";
 import { ROUTES } from "@/lib/constants";
 import type { AgeRating, StoryProgressStatus, StoryVisibility } from "@/types/database";
@@ -29,6 +31,19 @@ async function requireViewer() {
   const viewer = await loadViewer(db, session?.user.id);
   if (!viewer) redirect(ROUTES.onboarding);
   return { db, viewer };
+}
+
+// «Obuna»: may this author publish one more chapter now? Any failure here
+// (e.g. paywall.sql not run) means "yes" — the site works as before.
+async function canPublishNow(db: DbOrTx, viewer: Viewer): Promise<boolean> {
+  try {
+    const state = await loadPaywallState(db);
+    if (!state.live) return true;
+    return (await getPublishGate(db, viewer, state)).allowed;
+  } catch (err) {
+    console.error("[stories] publish gate check failed", err);
+    return true;
+  }
 }
 
 // A cover must be a file this user uploaded through uploadUserImage (their
@@ -81,6 +96,9 @@ export async function createStory(input: CreateStoryInput): Promise<{ id: string
   const language = input.language.trim() || "ru";
 
   const coverUrl = input.coverUrl && isOwnCoverUpload(input.coverUrl, viewer.id) ? input.coverUrl : null;
+  // Without a subscription (when one is needed) the story is kept as a
+  // draft; the author publishes it from the manage page once subscribed.
+  const visibility = input.visibility !== "draft" && !(await canPublishNow(db, viewer)) ? "draft" : input.visibility;
 
   let story: Awaited<ReturnType<typeof storiesData.createStory>>;
   try {
@@ -96,7 +114,7 @@ export async function createStory(input: CreateStoryInput): Promise<{ id: string
       isTranslation: input.isTranslation,
       chapterTitle: input.chapterTitle,
       chapterText: input.chapterText,
-      visibility: input.visibility,
+      visibility,
       announce: input.announce,
     });
   } catch (err) {
@@ -221,7 +239,8 @@ export async function deleteChapter(chapterId: string, storyId: string, storySlu
 // Returns false when the chapter wasn't saved (empty, forbidden, database
 // error) so the form can keep the text and say so — it used to throw or
 // return nothing, and every caller closed the form either way.
-export async function addChapter(storyId: string, storySlug: string, formData: FormData): Promise<boolean> {
+// "draft": saved, but not published — the author needs a subscription first.
+export async function addChapter(storyId: string, storySlug: string, formData: FormData): Promise<boolean | "draft"> {
   const { db, viewer } = await requireViewer();
   const title = String(formData.get("title") ?? "").trim();
   const content = String(formData.get("content") ?? "").trim();
@@ -229,7 +248,7 @@ export async function addChapter(storyId: string, storySlug: string, formData: F
 
   let chapter: Awaited<ReturnType<typeof chaptersData.addChapter>>;
   try {
-    chapter = await chaptersData.addChapter(db, viewer, storyId, { title, content });
+    chapter = await chaptersData.addChapter(db, viewer, storyId, { title, content }, { asDraft: !(await canPublishNow(db, viewer)) });
   } catch (err) {
     console.error("[stories] addChapter failed", storyId, err);
     return false;
@@ -244,7 +263,7 @@ export async function addChapter(storyId: string, storySlug: string, formData: F
   updateTag("stories");
   revalidatePath(ROUTES.manage(storySlug));
   revalidatePath(ROUTES.story(storySlug));
-  return true;
+  return chapter.status === "draft" ? "draft" : true;
 }
 
 // Moderator ping after something landed in pending_review. Runs after the
@@ -318,8 +337,14 @@ export async function deleteStory(storyId: string, storySlug: string): Promise<f
   redirect(ROUTES.library);
 }
 
-export async function submitChapterForReview(chapterId: string, storyId: string, storySlug: string): Promise<boolean> {
+// "subscription": refused because publishing needs a subscription now.
+export async function submitChapterForReview(
+  chapterId: string,
+  storyId: string,
+  storySlug: string
+): Promise<boolean | "subscription"> {
   const { db, viewer } = await requireViewer();
+  if (!(await canPublishNow(db, viewer))) return "subscription";
   try {
     await chaptersData.submitChapterForReview(db, viewer, chapterId);
   } catch (err) {

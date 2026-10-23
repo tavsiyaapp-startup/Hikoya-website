@@ -3,6 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 import { clsx } from "clsx";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
+import { copyText } from "@/lib/copy-text";
 import { CARD_TYPE_LABEL, formatCardNumber, type CardType } from "@/lib/card";
 import { reportDonation } from "@/lib/actions/donations";
 import { Avatar } from "@/components/ui/Avatar";
@@ -13,25 +14,6 @@ import { CloseIcon, EyeIcon, HeartIcon } from "@/components/ui/icons";
 // «Donat yuborish» on an author page: opens a popup with the author's
 // message and card number; tapping the number copies it, and the reader
 // sends the transfer from their own bank app (Hikoya never handles money).
-
-async function copyText(text: string): Promise<boolean> {
-  try {
-    await navigator.clipboard.writeText(text);
-    return true;
-  } catch {
-    // Older browsers / non-secure contexts: the textarea fallback.
-    const area = document.createElement("textarea");
-    area.value = text;
-    area.setAttribute("readonly", "");
-    area.style.position = "fixed";
-    area.style.opacity = "0";
-    document.body.appendChild(area);
-    area.select();
-    const ok = document.execCommand("copy");
-    area.remove();
-    return ok;
-  }
-}
 
 type Copyable = "local" | "intl" | "holder";
 

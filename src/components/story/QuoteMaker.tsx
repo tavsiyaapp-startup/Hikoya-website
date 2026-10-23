@@ -5,6 +5,9 @@ import { clsx } from "clsx";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 import { Button } from "@/components/ui/Button";
 import { CloseIcon } from "@/components/ui/icons";
+import { beginQuote } from "@/lib/actions/paywall";
+import type { PaywallOffer } from "@/lib/paywall-offer";
+import { SubscribeDialog } from "@/components/paywall/SubscribeDialog";
 
 // Select a sentence in the chapter → an «Iqtibos» button appears under it →
 // a sheet shows the quote card (drawn by /api/quote, no AI) in three styles
@@ -28,7 +31,21 @@ function selectedQuote(): { text: string; rect: DOMRect } | null {
   return { text, rect: range.getBoundingClientRect() };
 }
 
-export function QuoteMaker({ chapterId, storyTitle }: { chapterId: string; storyTitle: string }) {
+export function QuoteMaker({
+  chapterId,
+  storyTitle,
+  paywallOffer = null,
+  signedIn = false,
+  nextPath = "/",
+}: {
+  chapterId: string;
+  storyTitle: string;
+  // Set while the «Obuna» subscription is on: each new card is first cleared
+  // by beginQuote (free trials / subscription), which returns a ticket.
+  paywallOffer?: PaywallOffer | null;
+  signedIn?: boolean;
+  nextPath?: string;
+}) {
   const { t } = useLocale();
   const [pick, setPick] = useState<{ text: string; top: number; left: number } | null>(null);
   const [quote, setQuote] = useState<string | null>(null);
@@ -37,6 +54,10 @@ export function QuoteMaker({ chapterId, storyTitle }: { chapterId: string; story
   const [loaded, setLoaded] = useState<string | null>(null);
   const [failed, setFailed] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [ticket, setTicket] = useState<string | null>(null);
+  const [trialsLeft, setTrialsLeft] = useState<number | null>(null);
+  const [gate, setGate] = useState<"signup" | "subscribe" | null>(null);
+  const [checking, setChecking] = useState(false);
 
   // Watch the selection; place the button just under it (above the phone's
   // own copy/select menu, which opens over the selection).
@@ -65,7 +86,7 @@ export function QuoteMaker({ chapterId, storyTitle }: { chapterId: string; story
   }, []);
 
   const src = quote
-    ? `/api/quote?${new URLSearchParams({ c: chapterId, q: quote, s: style, f: format }).toString()}`
+    ? `/api/quote?${new URLSearchParams({ c: chapterId, q: quote, s: style, f: format, ...(ticket ? { k: ticket } : {}) }).toString()}`
     : "";
   // Loading/failed state is derived from which card URL last loaded or
   // failed, so switching style/format shows "loading" until the new one is in.
@@ -130,9 +151,21 @@ export function QuoteMaker({ chapterId, storyTitle }: { chapterId: string; story
           type="button"
           // Pressing the button must not clear the selection before the click.
           onPointerDown={(e) => e.preventDefault()}
-          onClick={() => {
-            if (tooLong) return;
-            setQuote(pick.text);
+          onClick={async () => {
+            if (tooLong || checking) return;
+            const text = pick.text;
+            if (paywallOffer) {
+              setChecking(true);
+              const res = await beginQuote(chapterId, text).catch(() => null);
+              setChecking(false);
+              if (!res || !res.ok) {
+                if (res && res.reason !== "failed") setGate(res.reason);
+                return;
+              }
+              setTicket(res.ticket);
+              setTrialsLeft(res.trialsLeft);
+            }
+            setQuote(text);
             window.getSelection()?.removeAllRanges();
             setPick(null);
           }}
@@ -151,7 +184,12 @@ export function QuoteMaker({ chapterId, storyTitle }: { chapterId: string; story
           <button type="button" aria-label={t.common.close} onClick={close} className="absolute inset-0 cursor-default bg-ink/45 backdrop-blur-[2px]" />
           <div className="relative flex max-h-[94dvh] w-full max-w-md flex-col overflow-hidden rounded-t-[26px] bg-card sm:rounded-[26px]">
             <div className="flex items-center justify-between px-5 pb-2 pt-4">
-              <h2 className="text-[19px] font-bold">{t.quote.title}</h2>
+              <div>
+                <h2 className="text-[19px] font-bold">{t.quote.title}</h2>
+                {trialsLeft !== null && (
+                  <p className="text-[12px] font-semibold text-primary-800">{t.paywall.quoteTrialsLeft.replace("{n}", String(trialsLeft))}</p>
+                )}
+              </div>
               <button type="button" onClick={close} aria-label={t.common.close} className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full hover:bg-surface">
                 <CloseIcon />
               </button>
@@ -206,6 +244,16 @@ export function QuoteMaker({ chapterId, storyTitle }: { chapterId: string; story
             </div>
           </div>
         </div>
+      )}
+
+      {gate && paywallOffer && (
+        <SubscribeDialog
+          offer={paywallOffer}
+          signedIn={signedIn}
+          nextPath={nextPath}
+          intro={gate === "subscribe" ? t.paywall.quoteSubscribe : t.paywall.quoteSignup}
+          onClose={() => setGate(null)}
+        />
       )}
     </>
   );

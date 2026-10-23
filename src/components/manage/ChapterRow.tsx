@@ -26,6 +26,7 @@ export function ChapterRow({
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState(false);
   const [note, setNote] = useState(false);
+  const [needsSubscription, setNeedsSubscription] = useState(false);
 
   function handleDelete() {
     if (!window.confirm(t.manage.confirmDeleteChapter)) return;
@@ -38,7 +39,9 @@ export function ChapterRow({
   function handleSubmitForReview() {
     setError(false);
     startTransition(async () => {
-      if (!(await submitChapterForReview(chapter.id, storyId, storySlug))) setError(true);
+      const result = await submitChapterForReview(chapter.id, storyId, storySlug);
+      if (result === "subscription") setNeedsSubscription(true);
+      else if (!result) setError(true);
     });
   }
 
@@ -134,6 +137,11 @@ export function ChapterRow({
       </div>
       {errorLine && <div className="mt-2">{errorLine}</div>}
       {note && <p className="mt-2 text-[12.5px] font-semibold text-amber-800 dark:text-amber-300">{t.manage.chapterBackToReview}</p>}
+      {needsSubscription && (
+        <p className="mt-2 text-[12.5px] font-semibold text-primary-800">
+          {t.paywall.publishNeedsSubscription} — <a href="#publish-subscription" className="underline">{t.paywall.subscribeButton}</a>
+        </p>
+      )}
       {chapter.status === "draft" && chapter.rejection_reason && (
         <div className="mt-3 rounded-[12px] bg-danger-bg px-3.5 py-2.5">
           <div className="mb-0.5 text-[12px] font-bold text-danger">{t.manage.rejectionReasonLabel}</div>

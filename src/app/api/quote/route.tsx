@@ -8,6 +8,8 @@ import { canViewChapter } from "@/server/authz/policy";
 import { isUuid } from "@/server/data/forum";
 import { takeRateLimit } from "@/server/rate-limit";
 import { coverPalette } from "@/components/story/GeneratedCover";
+import { loadPaywallState } from "@/server/data/paywall";
+import { verifyQuoteTicket } from "@/server/data/quote-ticket";
 
 // Quote card: a picture of a sentence from a chapter, with the book's
 // title, author and the Hikoya mark — made to be shared in Instagram /
@@ -19,6 +21,9 @@ import { coverPalette } from "@/components/story/GeneratedCover";
 //
 // The quote must really be in that chapter, and the chapter must be public
 // — otherwise anyone could put any text under a Hikoya author's name.
+// While the «Obuna» subscription is on, a card also needs the ticket (k=)
+// that beginQuote (src/lib/actions/paywall.ts) hands out — that is where
+// the free trial cards are counted and paid chapters are checked.
 
 export const runtime = "nodejs";
 
@@ -146,6 +151,10 @@ export async function GET(request: Request) {
       .where(eq(chapters.id, chapterId))
       .limit(1);
     if (!row || !canViewChapter(null, row.chapter, row.story)) return new Response("Not found", { status: 404 });
+    const paywall = await loadPaywallState(db).catch(() => null);
+    if (paywall?.live && !verifyQuoteTicket(url.searchParams.get("k"), chapterId, quote)) {
+      return new Response("Subscription required", { status: 403 });
+    }
     if (!normalizeQuoteText(row.chapter.content).includes(normalizeQuoteText(quote))) {
       return new Response("Quote not in chapter", { status: 422 });
     }

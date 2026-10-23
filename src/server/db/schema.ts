@@ -574,6 +574,80 @@ export const authorDonations = pgTable("author_donations", {
   updated_at: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
+// --- «Obuna» (paid subscription, test mode). Created by
+// D:/QIZLAB/backups/paywall.sql (23.10.2026). Rules live in
+// src/server/data/paywall-rules.ts, database work in src/server/data/paywall.ts.
+
+export const paywallSettings = pgTable("paywall_settings", {
+  id: integer("id").default(1).notNull().primaryKey(),
+  enabled: boolean("enabled").default(false).notNull(),
+  starts_at: timestamp("starts_at", { withTimezone: true }),
+  ends_at: timestamp("ends_at", { withTimezone: true }),
+  reader_free_chapters: integer("reader_free_chapters").default(3).notNull(),
+  author_free_chapters: integer("author_free_chapters").default(3).notNull(),
+  period_days: integer("period_days").default(30).notNull(),
+  price: text("price").default("10 000 soʻm").notNull(),
+  card_number: text("card_number"),
+  card_type: text("card_type"),
+  card_holder: text("card_holder"),
+  message_uz: text("message_uz"),
+  message_ru: text("message_ru"),
+  quote_trials: integer("quote_trials").default(2).notNull(),
+  updated_at: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const subscriptions = pgTable("subscriptions", {
+  user_id: uuid("user_id").notNull().primaryKey().references(() => profiles.id, { onDelete: "cascade" }),
+  expires_at: timestamp("expires_at", { withTimezone: true }).notNull(),
+  updated_at: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  index("subscriptions_expires_at_idx").on(table.expires_at),
+]);
+
+export const paymentClaims = pgTable("payment_claims", {
+  id: uuid("id").defaultRandom().notNull().primaryKey(),
+  token: text("token").notNull().unique(),
+  user_id: uuid("user_id").notNull().references(() => profiles.id, { onDelete: "cascade" }),
+  // new → awaiting (bot opened) → submitted (screenshot sent) → approved / rejected
+  status: text("status").default("new").notNull(),
+  telegram_user_id: bigint("telegram_user_id", { mode: "number" }),
+  telegram_chat_id: bigint("telegram_chat_id", { mode: "number" }),
+  telegram_username: text("telegram_username"),
+  created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  submitted_at: timestamp("submitted_at", { withTimezone: true }),
+  resolved_at: timestamp("resolved_at", { withTimezone: true }),
+  resolved_by: text("resolved_by"),
+}, (table) => [
+  index("payment_claims_user_idx").on(table.user_id, table.created_at.desc()),
+  index("payment_claims_tg_idx").on(table.telegram_user_id, table.created_at.desc()),
+]);
+
+export const subscriptionEvents = pgTable("subscription_events", {
+  id: uuid("id").defaultRandom().notNull().primaryKey(),
+  user_id: uuid("user_id").notNull().references(() => profiles.id, { onDelete: "cascade" }),
+  kind: text("kind").notNull(),
+  days: integer("days"),
+  expires_at: timestamp("expires_at", { withTimezone: true }),
+  by_user_id: uuid("by_user_id").references(() => profiles.id, { onDelete: "set null" }),
+  by_telegram: text("by_telegram"),
+  claim_id: uuid("claim_id").references(() => paymentClaims.id, { onDelete: "set null" }),
+  created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  index("subscription_events_created_idx").on(table.created_at.desc()),
+  index("subscription_events_user_idx").on(table.user_id, table.created_at.desc()),
+]);
+
+export const storyFreeChapters = pgTable("story_free_chapters", {
+  story_id: uuid("story_id").notNull().primaryKey().references(() => stories.id, { onDelete: "cascade" }),
+  free_chapters: integer("free_chapters").notNull(),
+  updated_at: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const quoteTrials = pgTable("quote_trials", {
+  user_id: uuid("user_id").notNull().primaryKey().references(() => profiles.id, { onDelete: "cascade" }),
+  used: integer("used").default(0).notNull(),
+});
+
 export const baAccounts = pgTable("ba_accounts", {
   id: text("id").notNull().primaryKey(),
   user_id: uuid("user_id").notNull().references(() => profiles.id, { onDelete: "cascade" }),

@@ -15,6 +15,10 @@ import { StoryHideAction } from "./StoryHideAction";
 import { TrashActions } from "./TrashActions";
 import { ChapterModerateActions } from "./ChapterModerateActions";
 import { StoryCoverAdmin } from "./StoryCoverAdmin";
+import { StoryFreeChaptersForm } from "./StoryFreeChaptersForm";
+import { getStaffSession } from "@/server/auth/staff";
+import { getDb } from "@/server/db/client";
+import { getStoryFreeChapters, loadPaywallState } from "@/server/data/paywall";
 import { liveImageUrl } from "@/lib/images";
 import { plural } from "@/lib/plural";
 
@@ -31,6 +35,20 @@ export default async function AdminStoryModeratePage({ params }: { params: Promi
 
   const [story, chapters] = await Promise.all([getStoryForModeration(id), getChaptersForModeration(id)]);
   if (!story) notFound();
+
+  // «Obuna» free chapters for this story — admins only, and only once
+  // paywall.sql has been run (otherwise the form is simply not shown).
+  const staff = await getStaffSession();
+  const paywall =
+    staff.status === "staff" && staff.staff.isAdmin
+      ? await Promise.resolve()
+          .then(async () => {
+            const db = getDb();
+            const [state, current] = await Promise.all([loadPaywallState(db), getStoryFreeChapters(db, id)]);
+            return state.settings ? { current, fallback: state.settings.reader_free_chapters } : null;
+          })
+          .catch(() => null)
+      : null;
 
   const author = story.author;
   const statusLabel: Record<string, string> = {
@@ -123,6 +141,7 @@ export default async function AdminStoryModeratePage({ params }: { params: Promi
             {!story.deleted_at && (story.status === "published" || story.status === "unlisted") && (
               <StoryHideAction storyId={story.id} storySlug={story.slug} />
             )}
+            {paywall && <StoryFreeChaptersForm storyId={story.id} current={paywall.current} fallback={paywall.fallback} />}
           </div>
         </div>
 

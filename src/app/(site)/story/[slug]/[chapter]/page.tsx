@@ -25,6 +25,9 @@ import { CommentGuidelines } from "@/components/story/CommentGuidelines";
 import { CommentForm } from "@/components/story/CommentForm";
 import { CommentItem } from "@/components/story/CommentItem";
 import { plural } from "@/lib/plural";
+import { getFreeChaptersForStory, getMySubscriptionExpiry, getPaywallState, paywallOffer } from "@/lib/queries/paywall";
+import { chapterAccess, isSubscriptionActive } from "@/server/data/paywall-rules";
+import { SubscribeGate } from "@/components/paywall/SubscribeGate";
 
 export default async function ReaderPage({
   params,
@@ -52,7 +55,25 @@ export default async function ReaderPage({
   ]);
   if (!ch) notFound();
 
-  const isUnlocked = Boolean(user) || ch.is_free || ch.order_index <= freeLimit;
+  // «Obuna»: past the free chapters a subscription is needed; a locked
+  // chapter's text is never sent to the browser (paywall-rules.ts).
+  const paywall = await getPaywallState();
+  const [freeChapters, subscriptionExpiry] = await Promise.all([
+    getFreeChaptersForStory(story.id, paywall),
+    getMySubscriptionExpiry(user?.id),
+  ]);
+  const role = user?.profile?.role;
+  const access = chapterAccess({
+    ownerOrStaff: user?.id === story.author.id || role === "admin" || role === "moderator",
+    signedIn: Boolean(user),
+    orderIndex: ch.order_index,
+    isFreeChapter: ch.is_free,
+    guestFreeChapters: freeLimit,
+    live: paywall.live,
+    freeChapters,
+    subscribed: isSubscriptionActive(subscriptionExpiry, new Date()),
+  });
+  const isUnlocked = access === "open";
   const comments = isUnlocked ? await getChapterComments(ch.id) : [];
   const allCommentIds = comments.flatMap((c) => [c.id, ...c.replies.map((r) => r.id)]);
   const likedCommentIds = isUnlocked ? await getLikedCommentIds(user?.id, allCommentIds) : new Set<string>();
@@ -100,7 +121,15 @@ export default async function ReaderPage({
             nextHref={nextChapter ? ROUTES.chapter(slug, nextChapter.order_index) : null}
           />
         )}
-        {isUnlocked && <QuoteMaker chapterId={ch.id} storyTitle={story.title} />}
+        {isUnlocked && (
+          <QuoteMaker
+            chapterId={ch.id}
+            storyTitle={story.title}
+            paywallOffer={paywall.live ? paywallOffer(paywall.settings, locale) : null}
+            signedIn={Boolean(user)}
+            nextPath={ROUTES.chapter(slug, orderIndex)}
+          />
+        )}
         <div className="mb-2.5 text-[12px] font-bold uppercase tracking-[0.18em] text-primary-600">
           {t.reader.chapterLabel} {ch.order_index}
         </div>
@@ -118,6 +147,14 @@ export default async function ReaderPage({
             initialPrefs={readerPrefs}
             htmlContent={isRichContent ? sanitizeHtml(ch.content) : null}
             paragraphs={isRichContent ? null : paragraphs}
+          />
+        ) : access === "subscribe" ? (
+          <SubscribeGate
+            offer={paywallOffer(paywall.settings, locale)}
+            signedIn={Boolean(user)}
+            nextPath={ROUTES.chapter(slug, orderIndex)}
+            orderIndex={ch.order_index}
+            freeChapters={freeChapters}
           />
         ) : (
           <div className="rounded-[16px] bg-linear-to-br from-ink-dark to-primary-950 px-5 py-6 text-white sm:px-9 sm:py-8.5">

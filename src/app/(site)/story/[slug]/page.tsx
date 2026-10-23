@@ -36,6 +36,7 @@ import { LockIcon } from "@/components/ui/icons";
 import type { ReadingStatus } from "@/types/database";
 import { liveImageUrl } from "@/lib/images";
 import { plural } from "@/lib/plural";
+import { getFreeChaptersForStory, getMySubscriptionExpiry, getPaywallState } from "@/lib/queries/paywall";
 
 function relationshipLabel(value: string, locale: "ru" | "uz"): string {
   if (locale === "ru") return value;
@@ -61,6 +62,17 @@ export default async function StoryPage({
 
   const story = await getStoryBySlug(slug);
   if (!story) notFound();
+
+  // «Obuna»: chapters past the free ones get a lock for readers who would
+  // hit the subscription popup there.
+  const paywall = await getPaywallState();
+  let lockedFrom: number | null = null;
+  if (paywall.live) {
+    const role = user?.profile?.role;
+    const exempt = user?.id === story.author.id || role === "admin" || role === "moderator";
+    const [free, expiry] = await Promise.all([getFreeChaptersForStory(story.id, paywall), getMySubscriptionExpiry(user?.id)]);
+    if (!exempt && !(expiry && expiry > new Date())) lockedFrom = free + 1;
+  }
 
   const [chapters, social, following, followerCount, linkedRequestId, myCollections, storyComments, readChapterIds] =
     await Promise.all([
@@ -263,7 +275,11 @@ export default async function StoryPage({
                         ✓
                       </span>
                     )}
-                    {ch.is_free && <Badge tone="primary">{t.common.read}</Badge>}
+                    {lockedFrom !== null && ch.order_index >= lockedFrom ? (
+                      <LockIcon className="h-4 w-4 shrink-0 text-muted-2" aria-label={t.paywall.badge} />
+                    ) : (
+                      ch.is_free && <Badge tone="primary">{t.common.read}</Badge>
+                    )}
                   </Link>
                 );
               })

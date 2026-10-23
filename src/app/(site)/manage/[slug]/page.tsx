@@ -18,6 +18,8 @@ import { EditStoryForm } from "@/components/manage/EditStoryForm";
 import { StoryModerationActions } from "@/components/manage/StoryModerationActions";
 import { DeleteStoryButton } from "@/components/manage/DeleteStoryButton";
 import { liveImageUrl } from "@/lib/images";
+import { getMyPublishGate, getPaywallState, paywallOffer } from "@/lib/queries/paywall";
+import { AuthorPublishNotice } from "@/components/paywall/AuthorPublishNotice";
 
 const TABS = ["chapters", "edit"] as const;
 type Tab = (typeof TABS)[number];
@@ -42,12 +44,14 @@ export default async function ManagePage({
   if (!story) notFound();
   if (story.author.id !== user.id) redirect(ROUTES.home);
 
-  const [chapters, tags, existingTags, linkedRequestId] = await Promise.all([
+  const [chapters, tags, existingTags, linkedRequestId, publishGate, paywall] = await Promise.all([
     getChaptersForStory(story.id, true),
     tab === "edit" ? getTagsForStory(story.id) : Promise.resolve([]),
     tab === "edit" ? getAllTags() : Promise.resolve([]),
     // getDb() inside the promise: if it throws, .catch still gets it.
     Promise.resolve().then(() => getSorovPostIdForStory(getDb(), story.id)).catch(() => null),
+    getMyPublishGate(user.id),
+    getPaywallState(),
   ]);
 
   const metrics = [
@@ -125,6 +129,15 @@ export default async function ManagePage({
           </Link>
         ))}
       </div>
+
+      {tab === "chapters" && (
+        <AuthorPublishNotice
+          allowed={publishGate.allowed}
+          freeLeft={publishGate.freeLeft}
+          offer={paywallOffer(paywall.settings, locale)}
+          nextPath={ROUTES.manage(slug)}
+        />
+      )}
 
       {tab === "chapters" && (
         <div className="mb-4.5 flex flex-wrap justify-end gap-2.5">

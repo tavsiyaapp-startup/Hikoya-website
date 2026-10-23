@@ -25,6 +25,9 @@ import { CollectionCard } from "@/components/collections/CollectionCard";
 import { ChatWithAdminButton } from "@/components/chat/ChatWithAdminButton";
 import { DonateButton } from "@/components/profile/DonateButton";
 import { DonationSettings } from "@/components/profile/DonationSettings";
+import { SubscribeButton } from "@/components/paywall/SubscribeButton";
+import { getMySubscriptionExpiry, getPaywallState, paywallOffer } from "@/lib/queries/paywall";
+import { formatDateTime } from "@/lib/format";
 import { VerifiedIcon, SparkleIcon, InstagramIcon, SendIcon } from "@/components/ui/icons";
 import { plural } from "@/lib/plural";
 
@@ -79,6 +82,12 @@ export default async function AuthorPage({
   // button once a card is filled in (and never on a blocked account).
   const canHaveDonations = storyCount > 0 && profile.status === "active" && donation !== undefined;
   const showDonate = canHaveDonations && donation != null;
+
+  // «Obuna» on the owner's own profile: until when, or a button to subscribe.
+  const [paywall, subscriptionExpiry] = isOwner
+    ? await Promise.all([getPaywallState(), getMySubscriptionExpiry(profile.id)])
+    : [null, null];
+  const subscriptionActive = Boolean(subscriptionExpiry && subscriptionExpiry > new Date());
 
   const band = coverPalette(profile.id);
   const stats = [
@@ -184,6 +193,16 @@ export default async function AuthorPage({
                 cardHolder={donation.cardHolder}
                 message={donation.message}
               />
+            </div>
+          )}
+          {isOwner && subscriptionActive && subscriptionExpiry && (
+            <p className="mb-2.5 rounded-xl bg-primary-50 px-3 py-2 text-center text-[12.5px] font-bold text-primary-900">
+              {t.paywall.activeUntil.replace("{date}", formatDateTime(subscriptionExpiry.toISOString(), locale))}
+            </p>
+          )}
+          {isOwner && !subscriptionActive && paywall?.live && (
+            <div className="mb-2.5">
+              <SubscribeButton offer={paywallOffer(paywall.settings, locale)} nextPath={ROUTES.author(username)} />
             </div>
           )}
           {isOwner ? (

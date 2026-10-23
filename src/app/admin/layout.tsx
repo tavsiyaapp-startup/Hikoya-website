@@ -8,8 +8,9 @@ import { getUnreadAdminChatsCount } from "@/lib/queries/chat";
 import { getOpenReportsCount } from "@/lib/queries/admin";
 import { getDb } from "@/server/db/client";
 import { countOpenForumReports } from "@/server/data/forum";
+import { countPendingClaims } from "@/server/data/paywall";
 import { ROUTES } from "@/lib/constants";
-import { ShieldIcon, UserIcon, CollectionsIcon, BoardIcon, HomeIcon, LibraryIcon, SparkleIcon, ImageIcon, ClockIcon, MessageIcon, CommentsIcon, BellIcon, SendIcon } from "@/components/ui/icons";
+import { ShieldIcon, UserIcon, CollectionsIcon, BoardIcon, HomeIcon, LibraryIcon, SparkleIcon, ImageIcon, ClockIcon, MessageIcon, CommentsIcon, BellIcon, SendIcon, LockIcon } from "@/components/ui/icons";
 import { AdminNavLink } from "./AdminNavLink";
 import { AdminSignOutLink } from "./AdminSignOutLink";
 
@@ -23,10 +24,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   const locale = await getServerLocale();
   const t = getDictionary(locale);
-  const [unreadChats, openReports, openForumReports] = await Promise.all([
+  const isAdmin = result.staff.isAdmin;
+  const [unreadChats, openReports, openForumReports, pendingPayments] = await Promise.all([
     getUnreadAdminChatsCount(),
     getOpenReportsCount(),
     countOpenForumReports(getDb()).catch(() => 0),
+    isAdmin ? Promise.resolve().then(() => countPendingClaims(getDb())).catch(() => 0) : Promise.resolve(0),
   ]);
 
   const nav = [
@@ -43,6 +46,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     { href: `${ROUTES.admin}/broadcast`, icon: SendIcon, label: t.admin.broadcastTitle },
     { href: ROUTES.adminForum, icon: BoardIcon, label: t.admin.forum, badge: openForumReports },
     { href: `${ROUTES.admin}/collections`, icon: LibraryIcon, label: t.admin.collections },
+    // «Obuna» is about money — admins only.
+    ...(isAdmin ? [{ href: `${ROUTES.admin}/subscriptions`, icon: LockIcon, label: t.paywall.adminTitle, badge: pendingPayments }] : []),
     { href: `${ROUTES.admin}/settings`, icon: ShieldIcon, label: t.admin.settings },
   ];
 

@@ -19,6 +19,7 @@ import { FollowButton } from "@/components/story/StoryActions";
 import { EditProfileForm } from "@/components/profile/EditProfileForm";
 import { NotificationList } from "@/components/notifications/NotificationList";
 import { PostCard } from "@/components/forum/PostCard";
+import { coverPalette } from "@/components/story/GeneratedCover";
 import { CollectionCard } from "@/components/collections/CollectionCard";
 import { ChatWithAdminButton } from "@/components/chat/ChatWithAdminButton";
 import { VerifiedIcon, SparkleIcon, InstagramIcon, SendIcon } from "@/components/ui/icons";
@@ -65,6 +66,7 @@ export default async function AuthorPage({
       isOwner ? getAdminChatSummary(profile.id) : Promise.resolve(null),
     ]);
 
+  const band = coverPalette(profile.id);
   const stats = [
     { label: plural(storyCount, t.author.stories), value: storyCount },
     { label: plural(followerCount, t.author.subscribers), value: followerCount },
@@ -73,10 +75,25 @@ export default async function AuthorPage({
 
   return (
     <div>
-      <div className="mb-6 flex flex-col items-start gap-5 rounded-[16px] border border-border bg-card p-4.5 sm:flex-row sm:gap-6.5 sm:p-7">
-        <Avatar name={profile.display_name} src={profile.avatar_url} size={80} className="sm:!h-24 sm:!w-24" />
-        <div className="min-w-0 flex-1">
-          <h1 className="mb-2 flex items-center gap-2 text-[24px] font-extrabold tracking-tight sm:text-[30px]">
+      <div className="mb-7 overflow-hidden rounded-[22px] border border-border bg-card shadow-[0_24px_50px_-34px_rgba(45,31,85,0.45)]">
+      {/* Wide header band in the author's own colour (same palette as the
+          drawn book covers, so it never clashes with a story's cover). */}
+      <div
+        aria-hidden
+        className="h-28 sm:h-36"
+        style={{
+          background: `radial-gradient(70% 140% at 15% 0%, ${band.glow}, transparent 65%), linear-gradient(120deg, ${band.to}, ${band.from})`,
+        }}
+      />
+      <div className="flex flex-col items-start gap-5 px-4.5 pb-6 sm:flex-row sm:gap-6.5 sm:px-8 sm:pb-8">
+        <Avatar
+          name={profile.display_name}
+          src={profile.avatar_url}
+          size={88}
+          className="-mt-11 ring-4 ring-card sm:!-mt-14 sm:!h-28 sm:!w-28"
+        />
+        <div className="min-w-0 flex-1 sm:pt-4">
+          <h1 className="mb-2 flex items-center gap-2 text-[26px] font-bold leading-tight tracking-tight sm:text-[34px]">
             {profile.display_name}
             {profile.is_verified && (
               <VerifiedIcon className="shrink-0 text-primary-600" aria-label={t.author.verified} />
@@ -112,7 +129,7 @@ export default async function AuthorPage({
           <div className="mb-4.5 flex flex-wrap gap-6 sm:gap-8.5">
             {stats.map((s) => (
               <div key={s.label}>
-                <div className="text-[21px] font-extrabold">{s.value}</div>
+                <div className="font-display text-[24px] font-bold tabular-nums">{s.value}</div>
                 <div className="text-[12.5px] text-muted-2">{s.label}</div>
               </div>
             ))}
@@ -141,7 +158,7 @@ export default async function AuthorPage({
             </div>
           )}
         </div>
-        <div className="w-full shrink-0 sm:w-47.5">
+        <div className="w-full shrink-0 sm:w-47.5 sm:pt-4">
           {isOwner ? (
             <ChatWithAdminButton hasUnread={chatSummary?.unread_by_user ?? false} />
           ) : (
@@ -153,6 +170,7 @@ export default async function AuthorPage({
             />
           )}
         </div>
+      </div>
       </div>
 
       {isOwner && (
@@ -228,7 +246,7 @@ export default async function AuthorPage({
 
 function EmptyState({ text }: { text: string }) {
   return (
-    <div className="rounded-[12px] border border-dashed border-border-soft bg-surface px-6 py-14 text-center text-[14px] text-muted">
+    <div className="empty-state rounded-[18px] border border-dashed border-border bg-card/60 px-6 py-14 text-center text-[14px] text-muted">
       {text}
     </div>
   );

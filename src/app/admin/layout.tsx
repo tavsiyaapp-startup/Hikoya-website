@@ -47,8 +47,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   ];
 
   return (
-    <div className="flex min-h-screen flex-col items-stretch bg-bg lg:flex-row">
-      <aside className="flex w-full shrink-0 flex-col bg-ink-darker px-4.5 py-4 lg:w-62 lg:py-6.5">
+    <div className="flex min-h-[100dvh] flex-col items-stretch lg:flex-row">
+      <aside className="flex w-full shrink-0 flex-col bg-ink-darker px-4.5 py-4 lg:sticky lg:top-3 lg:m-3 lg:mr-0 lg:h-[calc(100dvh-1.5rem)] lg:w-62 lg:overflow-y-auto lg:rounded-[24px] lg:py-6.5 lg:shadow-[0_30px_60px_-30px_rgba(20,16,31,0.6)]">
         <div className="mb-4 flex items-center gap-3 lg:mb-8.5">
           <div className="flex h-10.5 w-10.5 shrink-0 items-center justify-center rounded-xl bg-white/90">
             <Image src="/images/logo.png" alt="" width={32} height={32} className="object-contain" />
@@ -69,7 +69,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
         <Link prefetch={false}
           href={ROUTES.home}
-          className="mt-3 flex h-11.5 shrink-0 items-center gap-3 rounded-xl px-3.5 text-[14.5px] font-semibold text-[#8B82A8] hover:bg-white/6 lg:mt-auto"
+          className="mt-3 flex h-11.5 shrink-0 items-center gap-3 rounded-full px-3.5 text-[14.5px] font-semibold text-[#8B82A8] transition hover:bg-white/8 hover:text-white lg:mt-auto"
         >
           ← {t.nav.home}
         </Link>

@@ -144,17 +144,18 @@ export function ReaderContent({
       </div>
 
       <div
-        className="rounded-[16px] border border-border p-5 sm:p-8"
+        className="rounded-[20px] border border-border px-5 py-6 shadow-[0_24px_50px_-34px_rgba(45,31,85,0.4)] sm:px-10 sm:py-10"
         style={{ backgroundColor: themeStyle.bg, color: themeStyle.text, fontFamily }}
       >
+        {/* A book's measure: about 68 characters per line, centred. */}
         {htmlContent ? (
           <div
-            className="rich-content"
+            className="rich-content mx-auto max-w-[68ch]"
             style={{ fontSize: sizeStyle.fontSize, lineHeight: sizeStyle.lineHeight }}
             dangerouslySetInnerHTML={{ __html: htmlContent }}
           />
         ) : (
-          <div style={{ fontSize: sizeStyle.fontSize, lineHeight: sizeStyle.lineHeight }}>
+          <div className="mx-auto max-w-[68ch]" style={{ fontSize: sizeStyle.fontSize, lineHeight: sizeStyle.lineHeight }}>
             {(paragraphs ?? []).map((p, i) => (
               <p key={i} className="mb-4.5">
                 {p}

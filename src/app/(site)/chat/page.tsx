@@ -30,7 +30,7 @@ export default async function ChatPage() {
             <ChatMessages messages={messages} viewerIsStaff={false} />
           </ChatScrollArea>
         ) : (
-          <div className="mb-5 rounded-[12px] border border-dashed border-border-soft bg-surface px-6 py-10 text-center text-[14px] text-muted">
+          <div className="mb-5 empty-state rounded-[18px] border border-dashed border-border bg-card/60 px-6 py-10 text-center text-[14px] text-muted">
             {t.chat.emptyState}
           </div>
         )}

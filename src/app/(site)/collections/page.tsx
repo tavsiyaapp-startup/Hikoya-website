@@ -89,7 +89,7 @@ export default async function CollectionsPage({
       )}
 
       {needsLogin ? (
-        <div className="rounded-[12px] border border-dashed border-border-soft bg-surface px-6 py-14 text-center text-[14px] text-muted">
+        <div className="empty-state rounded-[18px] border border-dashed border-border bg-card/60 px-6 py-14 text-center text-[14px] text-muted">
           <p className="mb-4">{tab === "mine" ? t.collections.loginToManage : t.collections.loginToSave}</p>
           <Link prefetch={false} href={ROUTES.onboarding} className="inline-block">
             <Button size="sm">{t.common.login}</Button>
@@ -102,7 +102,7 @@ export default async function CollectionsPage({
           ))}
         </div>
       ) : (
-        <div className="rounded-[12px] border border-dashed border-border-soft bg-surface px-6 py-14 text-center text-[14px] text-muted">
+        <div className="empty-state rounded-[18px] border border-dashed border-border bg-card/60 px-6 py-14 text-center text-[14px] text-muted">
           {emptyText}
         </div>
       )}

@@ -130,7 +130,7 @@ export default async function ForumPage({
           ))}
         </div>
       ) : (
-        <div className="rounded-[12px] border border-dashed border-border-soft bg-surface px-6 py-14 text-center text-[14px] text-muted">
+        <div className="empty-state rounded-[18px] border border-dashed border-border bg-card/60 px-6 py-14 text-center text-[14px] text-muted">
           {t.forum.empty}
         </div>
       )}

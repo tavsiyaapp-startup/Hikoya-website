@@ -83,10 +83,11 @@ export default async function ReaderPage({
           <span>{story.title}</span>
         </Link>
 
-        <div className="mb-2.5 text-[14px] font-bold text-muted-2">
+        {isUnlocked && <div className="reading-progress" aria-hidden />}
+        <div className="mb-2.5 text-[12px] font-bold uppercase tracking-[0.18em] text-primary-600">
           {t.reader.chapterLabel} {ch.order_index}
         </div>
-        <h1 className="mb-4.5 text-[26px] font-extrabold leading-tight tracking-tight sm:text-[32px] lg:text-[40px]">{ch.title}</h1>
+        <h1 className="mb-4.5 text-[28px] font-bold leading-tight tracking-tight sm:text-[34px] lg:text-[42px]">{ch.title}</h1>
         <div className="mb-7.5 flex flex-wrap gap-5 border-b border-border pb-5.5 text-[13.5px] text-muted-2">
           <span>{ch.word_count} {plural(ch.word_count, t.reader.wordsLabel)}</span>
           <span>{readMinutes} {t.reader.readTimeLabel}</span>
@@ -126,7 +127,7 @@ export default async function ReaderPage({
             {prevChapter && (
               <Link prefetch={false}
                 href={ROUTES.chapter(slug, prevChapter.order_index)}
-                className="flex w-full items-center justify-center gap-3 rounded-[12px] border border-border bg-card py-5 text-[15px] font-bold text-ink-soft sm:flex-1"
+                className="flex w-full items-center justify-center gap-3 rounded-full border border-border bg-card py-4.5 text-[15px] font-bold text-ink-soft transition hover:border-primary-200 sm:flex-1"
               >
                 <span>← {t.reader.previousChapter}</span>
               </Link>
@@ -134,7 +135,7 @@ export default async function ReaderPage({
             {nextChapter && (
               <Link prefetch={false}
                 href={ROUTES.chapter(slug, nextChapter.order_index)}
-                className="flex w-full items-center justify-center gap-3 rounded-[12px] border border-primary-200 bg-primary-50 py-5 text-[16px] font-bold text-primary-900 sm:flex-1"
+                className="flex w-full items-center justify-center gap-3 rounded-full bg-accent py-4.5 text-[16px] font-bold text-on-accent shadow-[0_10px_24px_-12px_rgba(85,53,166,0.6)] transition hover:bg-accent-hover sm:flex-1"
               >
                 <span>{t.reader.continueNext}</span>
               </Link>

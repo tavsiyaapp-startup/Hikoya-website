@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
+import { GeneratedCover } from "@/components/story/GeneratedCover";
 import { notFound, redirect } from "next/navigation";
 import { getServerLocale } from "@/lib/i18n/locale-server";
 import { getDictionary } from "@/lib/i18n";
@@ -59,7 +60,11 @@ export default async function ManagePage({
     <div>
       <div className="mb-6 flex flex-col gap-4.5 rounded-[16px] border border-border bg-card p-4.5 sm:flex-row sm:gap-6.5 sm:p-6.5">
         <div className="relative mx-auto h-42 w-31.5 shrink-0 overflow-hidden rounded-[12px] bg-primary-200 shadow-[0_10px_24px_rgba(60,40,120,0.16)] sm:mx-0 sm:h-50 sm:w-37.5">
-          {liveImageUrl(story.cover_url) && <Image src={liveImageUrl(story.cover_url)!} alt="" fill className="object-cover" />}
+          {liveImageUrl(story.cover_url) ? (
+            <Image src={liveImageUrl(story.cover_url)!} alt="" fill className="object-cover" />
+          ) : (
+            <GeneratedCover seed={story.id} title={story.title} author={story.author?.display_name} />
+          )}
         </div>
         <div className="min-w-0 flex-1">
           <div className="mb-3 flex flex-wrap items-center gap-2.5">

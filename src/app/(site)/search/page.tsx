@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
+import { GeneratedCover } from "@/components/story/GeneratedCover";
 import { getServerLocale } from "@/lib/i18n/locale-server";
 import { getDictionary } from "@/lib/i18n";
 import { searchStories, getCustomLanguages, type SearchFilters } from "@/lib/queries/stories";
@@ -290,7 +291,7 @@ export default async function SearchPage({
                 className="flex gap-3.5 rounded-[14px] border border-border bg-card p-3.5 hover:border-primary-300 hover:shadow-[0_12px_28px_rgba(60,40,120,0.09)] sm:gap-5 sm:p-4.5"
               >
                 <div className="relative h-28 w-20 shrink-0 overflow-hidden rounded-[14px] bg-primary-200 sm:h-38.75 sm:w-29">
-                  {liveImageUrl(story.cover_url) && (
+                  {liveImageUrl(story.cover_url) ? (
                     <Image
                       src={liveImageUrl(story.cover_url)!}
                       alt=""
@@ -298,6 +299,8 @@ export default async function SearchPage({
                       sizes="(max-width: 639px) 80px, 116px"
                       className="object-cover"
                     />
+                  ) : (
+                    <GeneratedCover seed={story.id} title={story.title} author={story.author?.display_name} />
                   )}
                 </div>
                 <div className="flex min-w-0 flex-1 flex-col">

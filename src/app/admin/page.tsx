@@ -53,14 +53,14 @@ export default async function AdminDashboardPage() {
 
         <div className="mb-6 grid grid-cols-2 gap-5 lg:grid-cols-4">
           {cards.map((c) => (
-            <div key={c.label} className="rounded-[14px] border border-border bg-card px-6 py-5.5">
+            <div key={c.label} className="rounded-[20px] border border-border bg-card px-6 py-5.5 shadow-[0_20px_40px_-32px_rgba(45,31,85,0.45)]">
               <div className="mb-3.5 flex items-center gap-2.5">
                 <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-[11px] ${c.bg} ${c.fg}`}>
                   <c.icon width={18} height={18} />
                 </span>
                 <span className="text-[14px] text-muted-2">{c.label}</span>
               </div>
-              <div className="text-[32px] font-extrabold tracking-tight">{c.value}</div>
+              <div className="font-display text-[34px] font-bold tabular-nums tracking-tight">{c.value}</div>
             </div>
           ))}
         </div>

@@ -22,8 +22,8 @@ export function AdminNavLink({
     <Link prefetch={false}
       href={href}
       className={clsx(
-        "flex h-11.5 shrink-0 items-center gap-3 whitespace-nowrap rounded-xl px-3.5 text-[14.5px] font-semibold transition",
-        active ? "bg-white/12 text-white" : "text-[#B7AFD1] hover:bg-white/6"
+        "flex h-11 shrink-0 items-center gap-3 whitespace-nowrap rounded-full px-3.5 text-[14.5px] font-semibold transition",
+        active ? "bg-white text-ink-darker hover:text-ink-darker" : "text-[#B7AFD1] hover:bg-white/8 hover:text-white"
       )}
     >
       <span className="flex h-5 w-5 items-center justify-center">{children}</span>

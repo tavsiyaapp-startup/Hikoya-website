@@ -813,6 +813,12 @@ const uz: typeof ru = {
     setPasswordCta: "Saqlash va saytga oʻtish",
     setPasswordFailed: "Parolni saqlab boʻlmadi. Qaytadan urinib koʻring.",
   },
+  notFound: {
+    title: "Bu sahifa topilmadi",
+    body: "Havola eskirgan yoki sahifa oʻchirilgan boʻlishi mumkin. Asosiy sahifadan yoki qidiruvdan davom eting.",
+    home: "Asosiy sahifa",
+    search: "Qidiruv",
+  },
   meta: {
     title: "Hikoya — rus va oʻzbek tilidagi hikoyalar",
     description:

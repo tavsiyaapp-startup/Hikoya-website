@@ -72,7 +72,7 @@ export default async function AllStoriesPage({
           <Pagination page={page} totalPages={totalPages} buildHref={(p) => buildHref({ page: p })} />
         </>
       ) : (
-        <div className="rounded-[12px] border border-dashed border-border-soft bg-surface px-6 py-10 text-center text-[14px] text-muted">
+        <div className="empty-state rounded-[18px] border border-dashed border-border bg-card/60 px-6 py-10 text-center text-[14px] text-muted">
           {t.home.emptyFeed}
         </div>
       )}

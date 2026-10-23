@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
+import { GeneratedCover } from "@/components/story/GeneratedCover";
 import { notFound } from "next/navigation";
 import { getServerLocale } from "@/lib/i18n/locale-server";
 import { getDictionary } from "@/lib/i18n";
@@ -66,10 +67,7 @@ export default async function AdminStoryModeratePage({ params }: { params: Promi
               {liveImageUrl(story.cover_url) ? (
                 <Image src={liveImageUrl(story.cover_url)!} alt="" fill className="object-cover" />
               ) : (
-                <div className="text-center">
-                  <div className="line-clamp-4 text-[12px] font-extrabold leading-snug text-primary-900">{story.title}</div>
-                  <div className="mt-1 truncate text-[10.5px] font-semibold text-primary-800/80">{author?.display_name}</div>
-                </div>
+                <GeneratedCover seed={story.id} title={story.title} author={author?.display_name} />
               )}
             </div>
             <StoryCoverAdmin storyId={story.id} storySlug={story.slug} hasCover={Boolean(liveImageUrl(story.cover_url))} />

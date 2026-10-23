@@ -381,6 +381,13 @@ const ru = {
     noCollectionsYet: "Пока нет подборок с историями этого автора.",
   },
   donation: {
+    amountLabel: "Сколько вы задонатили?",
+    amountPlaceholder: "Например: 50 000 сум",
+    amountPlaceholderIntl: "Например: 5 $",
+    amountSend: "Отправить",
+    amountSent: "Спасибо! Информация отправлена.",
+    amountInvalid: "Укажите сумму цифрами",
+    amountNote: "Эта информация помогает нам понять, получают ли наши авторы донаты за свой труд, и служит тому, чтобы наш сайт становился ещё лучше.",
     localCardTitle: "Карта Uzcard / Humo",
     localCardHint: "Для читателей из Узбекистана",
     intlCardTitle: "Зарубежная карта Visa / Mastercard",

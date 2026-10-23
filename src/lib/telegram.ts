@@ -9,7 +9,10 @@ const TELEGRAM_API = `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOK
 // chat id configured, same tolerance-of-unreachable-external-service
 // pattern the rest of this codebase uses for Supabase.
 async function notifyModerationChat(text: string) {
-  const chatId = process.env.TELEGRAM_MODERATION_CHAT_ID || process.env.TELEGRAM_SUPPORT_GROUP_CHAT_ID;
+  await sendToChat(process.env.TELEGRAM_MODERATION_CHAT_ID || process.env.TELEGRAM_SUPPORT_GROUP_CHAT_ID, text);
+}
+
+async function sendToChat(chatId: string | undefined, text: string) {
   if (!process.env.TELEGRAM_BOT_TOKEN || !chatId) return;
   // Awaited inside story/chapter creation, so a hung Telegram request must
   // not hang that too — capped at 5s, and a non-OK reply is logged instead
@@ -21,9 +24,9 @@ async function notifyModerationChat(text: string) {
       body: JSON.stringify({ chat_id: chatId, text }),
       signal: AbortSignal.timeout(5000),
     });
-    if (!res.ok) console.error("telegram moderation notification rejected:", res.status, await res.text().catch(() => ""));
+    if (!res.ok) console.error("telegram notification rejected:", res.status, await res.text().catch(() => ""));
   } catch (err) {
-    console.error("telegram moderation notification failed:", err);
+    console.error("telegram notification failed:", err);
   }
 }
 
@@ -53,4 +56,32 @@ export async function notifyPendingReview(params: {
     .join("\n");
 
   await notifyModerationChat(text);
+}
+
+// A reader said how much they donated to an author (the field under the
+// card in the «Donat» popup) — so the team can see whether authors actually
+// earn through Hikoya. Goes to TELEGRAM_DONATIONS_CHAT_ID if set, otherwise
+// to the moderation chat.
+export async function notifyDonationReported(params: {
+  authorName: string;
+  authorUsername: string;
+  amount: string;
+  cardType: string;
+  fromUsername: string | null;
+}) {
+  const base = process.env.NEXT_PUBLIC_SITE_URL;
+  const link = base ? `${base}${ROUTES.author(params.authorUsername)}` : `@${params.authorUsername}`;
+  const text = [
+    `💜 Донат автору ${params.authorName}`,
+    `Сумма: ${params.amount}`,
+    `Карта: ${params.cardType}`,
+    `От: ${params.fromUsername ? `@${params.fromUsername}` : "гость"}`,
+    link,
+  ].join("\n");
+  await sendToChat(
+    process.env.TELEGRAM_DONATIONS_CHAT_ID ||
+      process.env.TELEGRAM_MODERATION_CHAT_ID ||
+      process.env.TELEGRAM_SUPPORT_GROUP_CHAT_ID,
+    text
+  );
 }

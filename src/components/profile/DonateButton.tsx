@@ -1,10 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { clsx } from "clsx";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 import { CARD_TYPE_LABEL, formatCardNumber, type CardType } from "@/lib/card";
+import { reportDonation } from "@/lib/actions/donations";
 import { Avatar } from "@/components/ui/Avatar";
+import { Input } from "@/components/ui/Input";
+import { Button } from "@/components/ui/Button";
 import { CloseIcon, EyeIcon, HeartIcon } from "@/components/ui/icons";
 
 // «Donat yuborish» on an author page: opens a popup with the author's
@@ -33,6 +36,7 @@ async function copyText(text: string): Promise<boolean> {
 type Copyable = "local" | "intl" | "holder";
 
 export function DonateButton({
+  authorId,
   authorName,
   avatarUrl,
   local,
@@ -40,6 +44,7 @@ export function DonateButton({
   cardHolder,
   message,
 }: {
+  authorId: string;
   authorName: string;
   avatarUrl: string | null;
   local: { number: string; type: CardType } | null;
@@ -61,7 +66,22 @@ export function DonateButton({
   const [revealed, setRevealed] = useState<Record<string, boolean>>({});
   const card = cards[Math.min(tab, cards.length - 1)];
 
+  // «Qancha donat qilmoqchisiz?» — reported to the team's Telegram chat.
+  const [amount, setAmount] = useState("");
+  const [report, setReport] = useState<"sent" | "amount" | "rate" | "failed" | null>(null);
+  const [sending, startSending] = useTransition();
+
+  function sendReport() {
+    if (!card) return;
+    startSending(async () => {
+      const res = await reportDonation(authorId, card.key, amount);
+      setReport(res.ok ? "sent" : (res.error ?? "failed"));
+    });
+  }
+
   function openPopup() {
+    setAmount("");
+    setReport(null);
     setRevealed({});
     setTab(0);
     setTabFrom(0);
@@ -211,6 +231,45 @@ export function DonateButton({
                 </button>
               </>
             )}
+
+            <div className="mb-4 rounded-[16px] border border-border p-4">
+              <label htmlFor="donation-amount" className="mb-1.5 block text-[13px] font-bold">
+                {t.donation.amountLabel}
+              </label>
+              {report === "sent" ? (
+                <p className="text-[13.5px] font-bold text-primary-800">{t.donation.amountSent}</p>
+              ) : (
+                <form
+                  className="flex gap-2"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    sendReport();
+                  }}
+                >
+                  <Input
+                    id="donation-amount"
+                    value={amount}
+                    onChange={(e) => {
+                      setAmount(e.target.value.slice(0, 40));
+                      setReport(null);
+                    }}
+                    inputMode="numeric"
+                    autoComplete="off"
+                    placeholder={card?.key === "intl" ? t.donation.amountPlaceholderIntl : t.donation.amountPlaceholder}
+                    className="min-w-0 flex-1"
+                  />
+                  <Button type="submit" className="!h-auto shrink-0 self-stretch" disabled={sending || !/\d/.test(amount)}>
+                    {sending ? t.common.loading : t.donation.amountSend}
+                  </Button>
+                </form>
+              )}
+              {report && report !== "sent" && (
+                <p className="mt-1.5 text-[12.5px] text-danger">
+                  {report === "amount" ? t.donation.amountInvalid : report === "rate" ? t.donation.errorRate : t.common.error}
+                </p>
+              )}
+              <p className="mt-2 text-[11.5px] leading-relaxed text-muted-2">{t.donation.amountNote}</p>
+            </div>
 
             <p className="text-[12px] leading-relaxed text-muted-2">{t.donation.note}</p>
           </div>

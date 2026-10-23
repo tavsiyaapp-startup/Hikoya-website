@@ -176,6 +176,7 @@ export default async function AuthorPage({
           {showDonate && donation && (
             <div className="mb-2.5">
               <DonateButton
+                authorId={profile.id}
                 authorName={profile.display_name}
                 avatarUrl={profile.avatar_url}
                 local={donation.local}

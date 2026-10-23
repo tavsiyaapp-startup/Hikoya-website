@@ -383,6 +383,13 @@ const uz: typeof ru = {
     noCollectionsYet: "Bu muallifning hikoyalari kirgan tanlanmalar hali yoʻq.",
   },
   donation: {
+    amountLabel: "Qancha donat qilmoqchisiz?",
+    amountPlaceholder: "Masalan: 50 000 soʻm",
+    amountPlaceholderIntl: "Masalan: 5 $",
+    amountSend: "Yuborish",
+    amountSent: "Rahmat! Maʼlumot yuborildi.",
+    amountInvalid: "Summani raqamlarda kiriting",
+    amountNote: "Bu maʼlumot mualliflarimiz oʻz mehnati orqali donat olayaptimi yoki yoʻqmi, bilishimizga va saytimiz yanada yaxshilanishiga xizmat qiladi.",
     localCardTitle: "Uzcard / Humo kartasi",
     localCardHint: "Oʻzbekistondagi oʻquvchilar uchun",
     intlCardTitle: "Xorijiy Visa / Mastercard kartasi",

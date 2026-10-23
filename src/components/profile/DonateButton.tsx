@@ -5,7 +5,7 @@ import { clsx } from "clsx";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 import { CARD_TYPE_LABEL, formatCardNumber, type CardType } from "@/lib/card";
 import { Avatar } from "@/components/ui/Avatar";
-import { CloseIcon, HeartIcon } from "@/components/ui/icons";
+import { CloseIcon, EyeIcon, HeartIcon } from "@/components/ui/icons";
 
 // «Donat yuborish» on an author page: opens a popup with the author's
 // message and card number; tapping the number copies it, and the reader
@@ -54,6 +54,33 @@ export function DonateButton({
     local && { key: "local" as const, label: t.donation.localCardFor, ...local },
     intl && { key: "intl" as const, label: t.donation.intlCardFor, ...intl },
   ].filter((c) => c !== null);
+  // With both cards, «Oʻzbekistondan» / «Xorijdan» tabs show one at a time.
+  const [tab, setTab] = useState(0);
+  const [tabFrom, setTabFrom] = useState(0);
+  // Card numbers stay blurred until tapped; the next tap copies.
+  const [revealed, setRevealed] = useState<Record<string, boolean>>({});
+  const card = cards[Math.min(tab, cards.length - 1)];
+
+  function openPopup() {
+    setRevealed({});
+    setTab(0);
+    setTabFrom(0);
+    setOpen(true);
+  }
+
+  function pickTab(i: number) {
+    if (i === tab) return;
+    setTabFrom(i > tab ? 28 : -28);
+    setTab(i);
+  }
+
+  function tapCard(key: "local" | "intl", number: string) {
+    if (!revealed[key]) {
+      setRevealed((r) => ({ ...r, [key]: true }));
+      return;
+    }
+    copy(key, number);
+  }
 
   useEffect(() => {
     if (!open) return;
@@ -76,7 +103,7 @@ export function DonateButton({
     <>
       <button
         type="button"
-        onClick={() => setOpen(true)}
+        onClick={openPopup}
         className="flex h-10.5 w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-accent text-[14px] font-bold text-on-accent shadow-[0_10px_24px_-12px_rgba(85,53,166,0.6)] transition hover:-translate-y-px hover:bg-accent-hover"
       >
         <HeartIcon filled width={16} height={16} className="shrink-0" />
@@ -111,30 +138,62 @@ export function DonateButton({
               {message || t.donation.defaultMessage}
             </blockquote>
 
-            {cards.map((card) => (
-              <div key={card.key} className="mb-4">
+            {cards.length > 1 && (
+              <div role="tablist" className="relative mb-4 grid grid-cols-2 rounded-full bg-surface p-1">
+                <span
+                  aria-hidden
+                  className="absolute inset-y-1 left-1 w-[calc(50%-4px)] rounded-full bg-card shadow-[0_4px_14px_-6px_rgba(45,31,85,0.35)] transition-transform duration-300 ease-[var(--ease-premium)]"
+                  style={{ transform: `translateX(${tab * 100}%)` }}
+                />
+                {cards.map((c, i) => (
+                  <button
+                    key={c.key}
+                    type="button"
+                    role="tab"
+                    aria-selected={tab === i}
+                    onClick={() => pickTab(i)}
+                    className={clsx(
+                      "relative z-10 h-9.5 cursor-pointer rounded-full text-[13.5px] font-bold transition-colors",
+                      tab === i ? "text-ink" : "text-muted-2 hover:text-ink-soft"
+                    )}
+                  >
+                    {c.label}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {card && (
+              <div key={card.key} role="tabpanel" className="tab-in mb-4" style={{ "--tab-from": `${tabFrom}px` } as React.CSSProperties}>
                 <div className="mb-1.5 flex items-center justify-between gap-2 text-[12.5px] font-bold text-muted-2">
-                  <span>{card.label}</span>
+                  <span>{cards.length > 1 ? t.donation.cardLabel : card.label}</span>
                   <span className="rounded-full bg-surface px-2.5 py-0.5 text-[11.5px] tracking-wide">{CARD_TYPE_LABEL[card.type]}</span>
                 </div>
                 <button
                   type="button"
-                  onClick={() => copy(card.key, card.number)}
+                  onClick={() => tapCard(card.key, card.number)}
+                  aria-label={revealed[card.key] ? undefined : t.donation.tapToReveal}
                   className={clsx(
-                    "group mb-1.5 flex w-full cursor-pointer items-center justify-between gap-3 rounded-[16px] border px-4.5 py-4 text-left transition",
+                    "group mb-1.5 flex w-full cursor-pointer items-center justify-between gap-3 overflow-hidden rounded-[16px] border px-4.5 py-4 text-left transition",
                     copied === card.key ? "border-primary-300 bg-primary-50" : "border-border bg-surface hover:border-primary-200"
                   )}
                 >
-                  <span className="font-mono text-[19px] font-semibold tracking-[0.06em] tabular-nums sm:text-[21px]">
+                  <span
+                    aria-hidden={!revealed[card.key]}
+                    className={clsx(
+                      "font-mono text-[19px] font-semibold tracking-[0.06em] tabular-nums transition-[filter,opacity] duration-500 sm:text-[21px]",
+                      revealed[card.key] ? "blur-0" : "select-none opacity-70 blur-[7px]"
+                    )}
+                  >
                     {formatCardNumber(card.number)}
                   </span>
-                  <CopyIcon done={copied === card.key} />
+                  {revealed[card.key] ? <CopyIcon done={copied === card.key} /> : <EyeIcon width={20} height={20} className="shrink-0 text-muted-2 group-hover:text-primary-700" />}
                 </button>
                 <p aria-live="polite" className={clsx("text-[12.5px]", copied === card.key ? "font-bold text-primary-800" : "text-muted-2")}>
-                  {copied === card.key ? t.donation.copied : t.donation.tapToCopy}
+                  {copied === card.key ? t.donation.copied : revealed[card.key] ? t.donation.tapToCopy : t.donation.tapToReveal}
                 </p>
               </div>
-            ))}
+            )}
 
             {cardHolder && (
               <>

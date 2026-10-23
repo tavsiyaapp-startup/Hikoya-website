@@ -396,6 +396,7 @@ const uz: typeof ru = {
     title: "Muallifni qoʻllab-quvvatlash",
     defaultMessage: "Agar hikoyalarim sizga yoqsa, meni donat bilan qoʻllab-quvvatlashingiz mumkin. Rahmat!",
     cardLabel: "Karta raqami",
+    tapToReveal: "Raqamni koʻrish uchun bosing",
     tapToCopy: "Nusxa olish uchun raqamni bosing",
     copied: "Raqamdan nusxa olindi",
     holderLabel: "Qabul qiluvchi",

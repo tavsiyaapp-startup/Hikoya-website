@@ -212,6 +212,25 @@ main > *:nth-child(n + 4) { animation-delay: 180ms; }
   }
 }
 
+/* Tab content sliding in from the side of the tab that was picked
+   (--tab-from is set inline: negative = from the left). */
+@keyframes hk-tab-in {
+  from {
+    opacity: 0;
+    transform: translateX(var(--tab-from, 0px));
+  }
+}
+
+.tab-in {
+  animation: hk-tab-in 320ms var(--ease-premium) backwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tab-in {
+    animation: none;
+  }
+}
+
 /* Thin reading-progress line at the very top of a chapter page. Driven by
    the page's own scroll position in CSS (scroll-driven animation) — no
    scroll listener; where unsupported it just isn't shown. */

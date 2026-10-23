@@ -29,6 +29,7 @@ export function EditProfileForm({
   instagramHandle,
   telegramHandle,
   telegramLinked,
+  donationSettings,
 }: {
   userId: string;
   username: string;
@@ -39,6 +40,9 @@ export function EditProfileForm({
   instagramHandle: string | null;
   telegramHandle: string | null;
   telegramLinked: boolean;
+  // «Donatlar» block (DonationSettings) — only passed for an author with a
+  // published story.
+  donationSettings?: React.ReactNode;
 }) {
   const { t } = useLocale();
   const router = useRouter();
@@ -277,6 +281,8 @@ export function EditProfileForm({
         </Button>
       </div>
       </form>
+
+      {donationSettings && <div className="border-t border-border-soft pt-4">{donationSettings}</div>}
 
       <div className="border-t border-border-soft pt-4">
         <div className="mb-1 text-[13px] font-bold">{t.profile.changePassword}</div>

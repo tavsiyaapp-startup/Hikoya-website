@@ -559,6 +559,17 @@ export const forumReports = pgTable("forum_reports", {
   index("forum_reports_open_idx").on(table.created_at).where(sql`(status = 'open')`),
 ]);
 
+// Donation card details an author shows on their profile (the «Donat»
+// button). Created by D:\QIZLAB\backups\author_donations.sql (23.10.2026);
+// no row = no button. card_number is 16 digits, no spaces (CHECK in SQL).
+export const authorDonations = pgTable("author_donations", {
+  author_id: uuid("author_id").notNull().primaryKey().references(() => profiles.id, { onDelete: "cascade" }),
+  card_number: text("card_number").notNull(),
+  card_holder: text("card_holder"),
+  message: text("message"),
+  updated_at: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
 export const baAccounts = pgTable("ba_accounts", {
   id: text("id").notNull().primaryKey(),
   user_id: uuid("user_id").notNull().references(() => profiles.id, { onDelete: "cascade" }),

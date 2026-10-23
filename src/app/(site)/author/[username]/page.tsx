@@ -7,6 +7,7 @@ import { getAuthorStories, getCollectionsFeaturingAuthor } from "@/lib/queries/s
 import { getFollowerCount, isFollowingAuthor } from "@/lib/queries/social";
 import { getDb } from "@/server/db/client";
 import { listForumPostsByAuthor } from "@/server/data/forum";
+import { getDonation } from "@/server/data/donations";
 import { logQueryError } from "@/lib/queries/query-errors";
 import { getNotifications } from "@/lib/queries/notifications";
 import { getAdminChatSummary } from "@/lib/queries/chat";
@@ -22,6 +23,8 @@ import { PostCard } from "@/components/forum/PostCard";
 import { coverPalette } from "@/components/story/GeneratedCover";
 import { CollectionCard } from "@/components/collections/CollectionCard";
 import { ChatWithAdminButton } from "@/components/chat/ChatWithAdminButton";
+import { DonateButton } from "@/components/profile/DonateButton";
+import { DonationSettings } from "@/components/profile/DonationSettings";
 import { VerifiedIcon, SparkleIcon, InstagramIcon, SendIcon } from "@/components/ui/icons";
 import { plural } from "@/lib/plural";
 
@@ -47,7 +50,7 @@ export default async function AuthorPage({
   if (!profile) notFound();
 
   const isOwner = user?.id === profile.id;
-  const [storyCount, followerCount, following, stories, myTopics, achievements, notifications, totals, featuringCollections, chatSummary] =
+  const [storyCount, followerCount, following, stories, myTopics, achievements, notifications, totals, featuringCollections, chatSummary, donation] =
     await Promise.all([
       getAuthorStoryCount(profile.id),
       getFollowerCount(profile.id),
@@ -64,7 +67,18 @@ export default async function AuthorPage({
       getAuthorTotals(profile.id),
       tab === "collections" ? getCollectionsFeaturingAuthor(profile.id) : Promise.resolve([]),
       isOwner ? getAdminChatSummary(profile.id) : Promise.resolve(null),
+      // Before D:/QIZLAB/backups/author_donations.sql is run the table is
+      // missing: no button, no error page.
+      Promise.resolve().then(() => getDonation(getDb(), profile.id)).catch((err) => {
+        logQueryError("getDonation", err);
+        return undefined;
+      }),
     ]);
+
+  // «Donat»: settings only for an author with a published story; the
+  // button once a card is filled in (and never on a blocked account).
+  const canHaveDonations = storyCount > 0 && profile.status === "active" && donation !== undefined;
+  const showDonate = canHaveDonations && donation != null;
 
   const band = coverPalette(profile.id);
   const stats = [
@@ -159,6 +173,17 @@ export default async function AuthorPage({
           )}
         </div>
         <div className="w-full shrink-0 sm:w-47.5 sm:pt-4">
+          {showDonate && donation && (
+            <div className="mb-2.5">
+              <DonateButton
+                authorName={profile.display_name}
+                avatarUrl={profile.avatar_url}
+                cardNumber={donation.cardNumber}
+                cardHolder={donation.cardHolder}
+                message={donation.message}
+              />
+            </div>
+          )}
           {isOwner ? (
             <ChatWithAdminButton hasUnread={chatSummary?.unread_by_user ?? false} />
           ) : (
@@ -185,6 +210,16 @@ export default async function AuthorPage({
             instagramHandle={profile.instagram_handle}
             telegramHandle={profile.telegram_handle}
             telegramLinked={user?.profile?.telegram_id != null}
+            donationSettings={
+              canHaveDonations ? (
+                <DonationSettings
+                  username={profile.username}
+                  cardNumber={donation?.cardNumber ?? null}
+                  cardHolder={donation?.cardHolder ?? null}
+                  message={donation?.message ?? null}
+                />
+              ) : undefined
+            }
           />
         </div>
       )}

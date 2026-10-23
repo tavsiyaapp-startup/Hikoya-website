@@ -20,6 +20,7 @@ import { FollowButton } from "@/components/story/StoryActions";
 import { ReaderContent } from "@/components/story/ReaderContent";
 import { ChapterReadingRecorder } from "@/components/story/ChapterReadingRecorder";
 import { ReaderChrome } from "@/components/story/ReaderChrome";
+import { QuoteMaker } from "@/components/story/QuoteMaker";
 import { CommentGuidelines } from "@/components/story/CommentGuidelines";
 import { CommentForm } from "@/components/story/CommentForm";
 import { CommentItem } from "@/components/story/CommentItem";
@@ -99,6 +100,7 @@ export default async function ReaderPage({
             nextHref={nextChapter ? ROUTES.chapter(slug, nextChapter.order_index) : null}
           />
         )}
+        {isUnlocked && <QuoteMaker chapterId={ch.id} storyTitle={story.title} />}
         <div className="mb-2.5 text-[12px] font-bold uppercase tracking-[0.18em] text-primary-600">
           {t.reader.chapterLabel} {ch.order_index}
         </div>

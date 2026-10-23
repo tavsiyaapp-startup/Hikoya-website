@@ -6,6 +6,7 @@ import { useLocale } from "@/lib/i18n/LocaleProvider";
 import { ROUTES } from "@/lib/constants";
 import { SendIcon, InstagramIcon } from "@/components/ui/icons";
 import { ThemeSwitch } from "@/components/layout/ThemeSwitch";
+import { InstallAppButton } from "@/components/layout/InstallAppButton";
 
 const TELEGRAM_SUPPORT_URL = "https://t.me/hikoya_yoz";
 const INSTAGRAM_URL = "https://www.instagram.com/hikoya.yoz?stkn=Z2ZweDlvNjVvb2Nm";
@@ -79,7 +80,10 @@ export function Footer() {
         <span>
           © {new Date().getFullYear()} {t.common.brand}
         </span>
-        <ThemeSwitch withLabel />
+        <div className="flex flex-wrap items-center gap-2">
+          <InstallAppButton variant="footer" />
+          <ThemeSwitch withLabel />
+        </div>
       </div>
     </footer>
   );

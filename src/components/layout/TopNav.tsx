@@ -21,6 +21,7 @@ import {
   UserIcon,
 } from "@/components/ui/icons";
 import type { CurrentUser } from "@/lib/current-user";
+import { InstallAppButton } from "@/components/layout/InstallAppButton";
 
 // Same site accounts already linked from the Footer — icon-only here, no
 // label, since this bar is otherwise all primary site navigation.
@@ -162,6 +163,18 @@ export function TopNav({ user }: { user: CurrentUser | null }) {
           </Link>
         );
       })}
+
+      {/* «Ilovani oʻrnatish» as the top pill of the phone menu (renders
+          nothing when already installed or not installable). */}
+      <InstallAppButton
+        variant="menu"
+        onDone={() => setMobileOpen(false)}
+        style={{ bottom: `${86 + items.length * 54}px` }}
+        className={clsx(
+          "site-fab fixed right-4 z-30 h-11 shrink-0 whitespace-nowrap rounded-full border border-primary-200 bg-primary-50 pl-3.5 pr-4.5 text-[13.5px] font-bold text-primary-900 shadow-[0_8px_20px_rgba(30,20,60,0.18)] duration-200 sm:hidden",
+          mobileOpen ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-2.5 opacity-0"
+        )}
+      />
 
       <button
         type="button"

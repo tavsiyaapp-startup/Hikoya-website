@@ -10,6 +10,7 @@ import { ROUTES } from "@/lib/constants";
 import { Button } from "@/components/ui/Button";
 import { BellIcon, SearchIcon } from "@/components/ui/icons";
 import { UserMenu } from "@/components/layout/UserMenu";
+import { ThemeSwitch } from "@/components/layout/ThemeSwitch";
 import type { CurrentUser } from "@/lib/current-user";
 
 export function Header({ user, unreadCount = 0 }: { user: CurrentUser | null; unreadCount?: number }) {
@@ -55,14 +56,14 @@ export function Header({ user, unreadCount = 0 }: { user: CurrentUser | null; un
       </Link>
 
       <div className={clsx("flex items-center gap-1.5 sm:ml-auto sm:gap-2.5", !user && "max-[359px]:ml-auto")}>
-        <div className="hidden gap-0.5 rounded-xl border border-border bg-primary-50 p-[3px] xs:flex">
+        <div className="hidden gap-0.5 rounded-full border border-border bg-primary-50 p-[3px] xs:flex">
           {(["uz", "ru"] as const).map((code) => (
             <button
               key={code}
               type="button"
               onClick={() => setLocale(code)}
               className={clsx(
-                "h-8 cursor-pointer rounded-[10px] px-3 text-[12.5px] font-bold transition",
+                "h-8 cursor-pointer rounded-full px-3 text-[12.5px] font-bold transition",
                 locale === code ? "bg-card text-primary-800 shadow-sm" : "text-muted"
               )}
             >
@@ -71,20 +72,22 @@ export function Header({ user, unreadCount = 0 }: { user: CurrentUser | null; un
           ))}
         </div>
 
-        <Link prefetch={false}
-          href={user ? `${ROUTES.author(user.profile?.username ?? "")}?tab=notifications` : ROUTES.onboarding}
-          title={user ? t.nav.notifications : t.common.guestLockedTitle}
-          className={clsx(
-            "relative flex h-10 w-10 shrink-0 items-center justify-center rounded-[13px] border border-border bg-card text-ink-soft transition sm:h-11 sm:w-11",
-            // A guest's bell does nothing; on phones its place goes to "Войти".
-            !user && "hidden cursor-not-allowed opacity-50 sm:flex"
-          )}
-        >
-          <BellIcon />
-          {unreadCount > 0 && (
-            <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-danger sm:right-2.5 sm:top-2.5" />
-          )}
-        </Link>
+        {user ? (
+          <Link prefetch={false}
+            href={`${ROUTES.author(user.profile?.username ?? "")}?tab=notifications`}
+            title={t.nav.notifications}
+            className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border bg-card text-ink-soft transition hover:border-primary-200 sm:h-11 sm:w-11"
+          >
+            <BellIcon />
+            {unreadCount > 0 && (
+              <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-danger sm:right-2.5 sm:top-2.5" />
+            )}
+          </Link>
+        ) : (
+          // A guest has no notifications; the bell's place goes to the
+          // light/dark switch (on phones it lives in the footer).
+          <ThemeSwitch className="hidden sm:flex" />
+        )}
 
         {user ? (
           <UserMenu user={user} />

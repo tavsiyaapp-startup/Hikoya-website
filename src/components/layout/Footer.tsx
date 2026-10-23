@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 import { ROUTES } from "@/lib/constants";
 import { SendIcon, InstagramIcon } from "@/components/ui/icons";
+import { ThemeSwitch } from "@/components/layout/ThemeSwitch";
 
 const TELEGRAM_SUPPORT_URL = "https://t.me/hikoya_yoz";
 const INSTAGRAM_URL = "https://www.instagram.com/hikoya.yoz?stkn=Z2ZweDlvNjVvb2Nm";
@@ -74,8 +75,11 @@ export function Footer() {
         </div>
       </div>
 
-      <div className="border-t border-border-soft px-4 py-4 text-center text-[12px] text-muted-3 sm:px-6 lg:px-9">
-        © {new Date().getFullYear()} {t.common.brand}
+      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border-soft px-4 py-4 text-[12px] text-muted-3 sm:px-6 lg:px-9">
+        <span>
+          © {new Date().getFullYear()} {t.common.brand}
+        </span>
+        <ThemeSwitch withLabel />
       </div>
     </footer>
   );

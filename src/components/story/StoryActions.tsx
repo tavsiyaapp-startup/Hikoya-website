@@ -199,7 +199,7 @@ function CollectionPickerButton({
                 <span
                   className={clsx(
                     "flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-[5px] border text-[10px] text-white",
-                    c.hasStory ? "border-[#9333EA] bg-[#9333EA]" : "border-border-soft bg-card"
+                    c.hasStory ? "border-accent bg-accent" : "border-border-soft bg-card"
                   )}
                 >
                   {c.hasStory && "✓"}
@@ -230,7 +230,7 @@ function CollectionPickerButton({
               <button
                 type="button"
                 onClick={handleCreate}
-                className="shrink-0 cursor-pointer rounded-lg bg-[#6D28D9] px-2.5 py-2 text-[12.5px] font-bold text-white"
+                className="shrink-0 cursor-pointer rounded-full bg-accent px-2.5 py-2 text-[12.5px] font-bold text-white"
               >
                 {t.story.newCollectionConfirm}
               </button>

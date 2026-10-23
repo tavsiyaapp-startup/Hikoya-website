@@ -10,10 +10,10 @@ export function Chip({
     <button
       type="button"
       className={clsx(
-        "inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-[10px] border px-3.5 text-[13px] font-semibold transition",
+        "inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-full border px-4 text-[13px] font-semibold transition",
         active
-          ? "border-primary-300 bg-primary-50 text-primary-900"
-          : "border-border bg-card text-ink-soft hover:bg-surface",
+          ? "border-ink bg-ink text-card"
+          : "border-border bg-card text-ink-soft hover:border-primary-200 hover:bg-primary-50",
         className
       )}
       {...props}
@@ -39,7 +39,7 @@ export function Badge({
   return (
     <span
       className={clsx(
-        "inline-flex items-center gap-1.5 rounded-[9px] px-3 py-1.5 text-[12.5px] font-bold",
+        "inline-flex items-center gap-1.5 rounded-[7px] px-2.5 py-1 text-[12px] font-bold tracking-[0.01em]",
         toneClasses[tone],
         className
       )}

@@ -99,8 +99,8 @@ export function OnboardingWizard({
   }
 
   return (
-    <div className="flex min-h-screen items-start justify-center bg-bg px-3 py-6 sm:px-5 sm:py-15">
-      <div className="w-full max-w-[780px] overflow-hidden rounded-[16px] bg-card shadow-[0_30px_80px_rgba(30,20,60,0.2)] sm:rounded-[28px]">
+    <div className="flex min-h-[100dvh] items-start justify-center px-3 py-6 sm:px-5 sm:py-15">
+      <div className="w-full max-w-[780px] overflow-hidden rounded-[20px] bezel sm:rounded-[26px]">
         <div className="flex items-center gap-3 border-b border-border-soft px-5 py-4.5 sm:gap-4 sm:px-7.5 sm:py-5.5">
           <span className="font-script text-[25px]">{t.common.brand}</span>
           <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-border-soft">
@@ -152,7 +152,7 @@ export function OnboardingWizard({
             <button
               type="button"
               onClick={() => setStep(2)}
-              className="h-13 w-full cursor-pointer rounded-[14px] border-none bg-linear-to-br from-[#6D28D9] to-[#9333EA] text-[16px] font-bold text-white shadow-[0_10px_24px_rgba(109,40,217,0.3)]"
+              className="h-13 w-full cursor-pointer rounded-[14px] border-none bg-accent hover:bg-accent-hover text-[16px] font-bold text-white shadow-[0_10px_24px_-12px_rgba(85,53,166,0.6)]"
             >
               {t.onboarding.continueCta}
             </button>
@@ -289,7 +289,7 @@ export function OnboardingWizard({
                 type="button"
                 onClick={handleContinueFromName}
                 disabled={!displayName.trim()}
-                className="h-13 flex-1 cursor-pointer rounded-[14px] border-none bg-linear-to-br from-[#6D28D9] to-[#9333EA] text-[16px] font-bold text-white shadow-[0_10px_24px_rgba(109,40,217,0.3)] disabled:cursor-not-allowed disabled:opacity-50"
+                className="h-13 flex-1 cursor-pointer rounded-[14px] border-none bg-accent hover:bg-accent-hover text-[16px] font-bold text-white shadow-[0_10px_24px_-12px_rgba(85,53,166,0.6)] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {t.onboarding.continueCta}
               </button>
@@ -351,7 +351,7 @@ export function OnboardingWizard({
               </button>
               <button
                 type="submit"
-                className="h-13 flex-1 cursor-pointer rounded-[14px] border-none bg-linear-to-br from-[#6D28D9] to-[#9333EA] text-[16px] font-bold text-white shadow-[0_10px_24px_rgba(109,40,217,0.3)]"
+                className="h-13 flex-1 cursor-pointer rounded-[14px] border-none bg-accent hover:bg-accent-hover text-[16px] font-bold text-white shadow-[0_10px_24px_-12px_rgba(85,53,166,0.6)]"
               >
                 {t.onboarding.startReading}
               </button>

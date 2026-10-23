@@ -28,8 +28,8 @@ export function Pagination({
 }) {
   if (totalPages <= 1) return null;
 
-  const arrowClass = "flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] border border-border text-ink-soft transition hover:bg-surface";
-  const arrowDisabledClass = "flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] border border-border-soft text-muted-3";
+  const arrowClass = "flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border bg-card text-ink-soft transition hover:border-primary-200";
+  const arrowDisabledClass = "flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border-soft text-muted-3";
 
   return (
     <nav className={clsx("mt-5 flex items-center justify-center gap-1.5", className)}>
@@ -54,8 +54,8 @@ export function Pagination({
             href={buildHref(p)}
             scroll={false}
             className={clsx(
-              "flex h-9 min-w-9 shrink-0 items-center justify-center rounded-[10px] px-2 text-[13.5px] font-bold transition",
-              p === page ? "bg-[#6D28D9] text-white" : "text-ink-soft hover:bg-surface"
+              "flex h-9 min-w-9 shrink-0 items-center justify-center rounded-full px-2 text-[13.5px] font-bold transition",
+              p === page ? "bg-accent text-on-accent" : "text-ink-soft hover:bg-card"
             )}
           >
             {p}

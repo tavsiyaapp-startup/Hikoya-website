@@ -63,7 +63,7 @@ export default async function ForumPostPage({
         ← {t.forum.backToList}
       </Link>
 
-      <article className="mb-7 flex gap-3 rounded-[16px] border border-border bg-card p-4 sm:gap-4 sm:p-6">
+      <article className="bezel mx-2 mb-8 flex gap-3 rounded-[20px] p-4 sm:mx-0 sm:gap-4 sm:p-6">
         <VoteButton postId={post.id} voted={post.votedByMe} count={post.vote_count} state={voteStateFor(viewer, post.author.id)} />
         <div className="min-w-0 flex-1">
           <div className="mb-2.5 flex flex-wrap items-center gap-x-2 gap-y-1.5 text-[12.5px] text-muted-2">

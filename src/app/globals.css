@@ -9,30 +9,47 @@
   --breakpoint-xs: 26rem;
 
   --font-sans: var(--font-manrope), system-ui, sans-serif;
+  --font-display: var(--font-literata), Georgia, "Times New Roman", serif;
   --font-script: var(--font-kaushan), cursive;
 
-  --color-bg: #F6F4FB;
-  --color-ink: #201B33;
-  --color-ink-soft: #3D3757;
-  --color-muted: #6B6488;
-  --color-muted-2: #8A85A3;
-  --color-muted-3: #A9A2C0;
-  --color-border: #EDE8F8;
-  --color-border-soft: #F1EDF9;
+  /* Redesign 23.10.2026 (git tag pre-redesign = the look before it): one
+     calm violet accent instead of violet→fuchsia gradients, every neutral
+     tinted the same cool-violet way, saturation brought down. */
+  --color-bg: #F5F4F8;
+  --color-ink: #1C1828;
+  --color-ink-soft: #3A3550;
+  --color-muted: #67627D;
+  --color-muted-2: #858099;
+  --color-muted-3: #A6A1B8;
+  --color-border: #E8E5F0;
+  --color-border-soft: #EFEDF5;
   --color-card: #FFFFFF;
-  --color-surface: #FBFAFE;
+  --color-surface: #FAF9FC;
 
-  --color-primary-50: #F6F2FE;
-  --color-primary-100: #F1EBFD;
-  --color-primary-200: #E7E1F5;
-  --color-primary-300: #DCD1F3;
-  --color-primary-400: #C4B5FD;
-  --color-primary-500: #A78BFA;
-  --color-primary-600: #9333EA;
-  --color-primary-700: #7C3AED;
-  --color-primary-800: #6D28D9;
-  --color-primary-900: #4C1D95;
-  --color-primary-950: #3B2568;
+  --color-primary-50: #F5F2FC;
+  --color-primary-100: #EEE9FA;
+  --color-primary-200: #E2DAF5;
+  --color-primary-300: #CFC2EE;
+  --color-primary-400: #B19EE2;
+  --color-primary-500: #937AD5;
+  --color-primary-600: #7656C8;
+  --color-primary-700: #6443BB;
+  --color-primary-800: #5535A6;
+  --color-primary-900: #3E267E;
+  --color-primary-950: #2D1F55;
+
+  /* Solid fill for primary buttons and active controls. Unlike the
+     mirrored primary scale it keeps meaning "white text on it" in both
+     themes. */
+  --color-accent: #5535A6;
+  --color-accent-hover: #47298F;
+  --color-on-accent: #FFFFFF;
+
+  /* One easing for every transition on the site: quick start, long soft
+     settle — reads as weight rather than a mechanical slide. */
+  --default-transition-duration: 220ms;
+  --default-transition-timing-function: cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-premium: cubic-bezier(0.32, 0.72, 0, 1);
 
   --color-ink-dark: #221B3C;
   --color-ink-darker: #14101F;
@@ -86,6 +103,9 @@
   --color-danger-bg: #3D1A1A;
   --color-pink: #F472B6;
   --color-pink-bg: #3D1530;
+
+  --color-accent: #7559CF;
+  --color-accent-hover: #8770D8;
 }
 
 html, body {
@@ -93,11 +113,9 @@ html, body {
   padding: 0;
 }
 
-/* Solid fallback lives on html, not body — body has to stay transparent
-   (see body rule below) so the blurred wallpaper on body::before shows
-   through instead of being painted over by an opaque body background. */
 html {
   background: var(--color-bg);
+  scroll-behavior: smooth;
 }
 
 body {
@@ -107,41 +125,124 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Wallpaper, both themes — light gets a single full-bleed illustration
-   (cover, no repeat), dark keeps its repeating starry tile with a blur. A
-   blur filter on body itself would blur the actual page content too, so the
-   image lives on its own fixed, z-index:-1 layer behind everything instead
-   — inset is negative (overscanned past the viewport) so the dark theme's
-   blurred edge falls outside what's visible rather than showing as a faint
-   lighter fringe right at the screen edge. Header/TopNav/Footer all paint
-   their own opaque bg-card, so this only ever shows in <main>'s own gutters
-   and the gaps between cards — the header's bg-card/92 + backdrop-blur-md
-   lets a soft hint of it through instead of a hard edge. */
+/* No wallpaper image any more (redesign): two very soft pools of the
+   accent colour give the page depth, and a fixed film-grain layer keeps
+   flat surfaces from looking sterile. Both are fixed and never repaint on
+   scroll; the grain ignores the pointer. */
 body::before {
   content: "";
   position: fixed;
-  inset: -20px;
+  inset: 0;
   z-index: -1;
-  background-image: url("/images/dragon-background.jpg");
-  background-repeat: no-repeat;
-  background-size: cover;
-  background-position: center;
+  background:
+    radial-gradient(60rem 40rem at 12% -8%, color-mix(in oklab, var(--color-primary-300) 38%, transparent), transparent 70%),
+    radial-gradient(50rem 36rem at 105% 30%, color-mix(in oklab, var(--color-pink-bg) 70%, transparent), transparent 70%),
+    var(--color-bg);
 }
 
-[data-theme="dark"] body::before {
-  background-image: url("/images/background.jpg");
-  background-repeat: repeat;
-  background-size: 736px 1098px;
-  filter: blur(3px);
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  pointer-events: none;
+  opacity: 0.035;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
-a {
-  color: var(--color-primary-800);
-  text-decoration: none;
+[data-theme="dark"] body::after {
+  opacity: 0.05;
 }
 
-a:hover {
-  color: var(--color-primary-900);
+/* Headings speak in the book serif; tight tracking and balanced lines.
+   Base layer, so a heading's own classes still win. */
+@layer base {
+  h1,
+  h2 {
+    font-family: var(--font-display);
+    letter-spacing: -0.015em;
+    text-wrap: balance;
+  }
+
+  h3 {
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+}
+
+::selection {
+  background: var(--color-primary-200);
+  color: var(--color-ink);
+}
+
+/* Visible keyboard focus everywhere (mouse clicks don't trigger it). */
+:focus-visible {
+  outline: 2px solid var(--color-primary-500);
+  outline-offset: 2px;
+}
+
+/* Page content rises in gently on load, one block after another.
+   fill-mode "backwards" (not "both"): once finished, no transform stays on
+   the block — a lingering transform would turn it into the containing
+   block for fixed dialogs and break sticky panels inside it. */
+@keyframes hk-rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+}
+
+main > * {
+  animation: hk-rise 650ms var(--ease-premium) backwards;
+}
+
+main > *:nth-child(2) { animation-delay: 60ms; }
+main > *:nth-child(3) { animation-delay: 120ms; }
+main > *:nth-child(n + 4) { animation-delay: 180ms; }
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  main > * {
+    animation: none;
+  }
+}
+
+/* Pressed feedback on every button: a slight physical push. */
+button:not(:disabled):active {
+  transform: scale(0.98);
+}
+
+/* "Double bezel": a card that sits in a soft tray — a 6px tinted rim with
+   a hairline edge around it — drawn with shadows only, so any existing
+   card gets it with one class and no extra markup. For the few blocks that
+   deserve elevation: sign-in/registration cards, an open topic. */
+@utility bezel {
+  background: var(--color-card);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.55),
+    0 0 0 6px color-mix(in oklab, var(--color-primary-200) 45%, transparent),
+    0 0 0 7px color-mix(in oklab, var(--color-primary-300) 55%, transparent),
+    0 30px 60px -28px color-mix(in oklab, var(--color-primary-900) 40%, transparent);
+}
+
+/* In the base layer (redesign): unlayered, these beat every Tailwind
+   utility, so a link's own text-* class (menu items, cards…) was silently
+   overridden and everything clickable turned violet. Now a link is violet
+   only when nothing else says otherwise. */
+@layer base {
+  a {
+    color: var(--color-primary-800);
+    text-decoration: none;
+  }
+
+  a:hover {
+    color: var(--color-primary-900);
+  }
 }
 
 ::-webkit-scrollbar {

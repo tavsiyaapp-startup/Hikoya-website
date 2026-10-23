@@ -23,7 +23,7 @@ export function Header({ user, unreadCount = 0 }: { user: CurrentUser | null; un
   }
 
   return (
-    <header className="sticky top-0 z-20 flex h-[64px] items-center gap-3 border-b border-border bg-card/92 px-3 backdrop-blur-md sm:h-[76px] sm:gap-5 sm:px-5 lg:gap-7 lg:px-8">
+    <header className="sticky top-0 z-20 flex h-[64px] items-center gap-3 border-b border-border/70 bg-card/80 px-3 backdrop-blur-xl sm:h-[76px] sm:gap-5 sm:px-5 lg:gap-7 lg:px-8">
       <Link prefetch={false} href={ROUTES.home} className="flex shrink-0 items-center gap-2.5 lg:w-52 lg:gap-3">
         <Image src="/images/logo.png" alt="Hikoya" width={36} height={36} className="object-contain sm:h-11 sm:w-11" />
         <span className="hidden font-script text-[24px] leading-none text-ink sm:inline sm:text-[30px]">
@@ -37,7 +37,7 @@ export function Header({ user, unreadCount = 0 }: { user: CurrentUser | null; un
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder={t.common.searchPlaceholder}
-          className="h-12 w-full rounded-[14px] border border-border bg-surface pl-12 pr-4 text-[14.5px] text-ink outline-none transition focus:border-primary-500 focus:bg-card focus:shadow-[0_0_0_4px_rgba(167,139,250,0.16)]"
+          className="h-12 w-full rounded-full border border-border bg-surface pl-12 pr-4 text-[14.5px] text-ink outline-none transition placeholder:text-muted-3 focus:border-primary-400 focus:bg-card focus:ring-4 focus:ring-primary-400/20"
         />
       </form>
 

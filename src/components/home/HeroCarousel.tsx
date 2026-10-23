@@ -68,7 +68,7 @@ export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
                 aria-label={`Go to slide ${i + 1}`}
                 className={clsx(
                   "h-2 cursor-pointer rounded-full transition-all",
-                  i === index ? "w-6 bg-[#7C3AED]" : "w-2 bg-white/70 hover:bg-card dark:bg-ink-darker/60 dark:hover:bg-ink-darker/85"
+                  i === index ? "w-6 bg-accent" : "w-2 bg-white/70 hover:bg-card dark:bg-ink-darker/60 dark:hover:bg-ink-darker/85"
                 )}
               />
             ))}

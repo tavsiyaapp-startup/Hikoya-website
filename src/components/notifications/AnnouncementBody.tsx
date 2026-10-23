@@ -71,7 +71,7 @@ export function AnnouncementBody({ message, onLinkClick }: { message: string; on
           rel={button.url.startsWith("/") ? undefined : "noopener noreferrer"}
           onClick={onLinkClick}
           className={`mt-3.5 inline-flex h-11 items-center gap-2 rounded-[13px] px-5 text-[14.5px] font-bold text-white transition hover:brightness-105 ${
-            button.telegram ? "bg-[#54A9EB]" : "bg-linear-to-br from-[#6D28D9] to-[#9333EA]"
+            button.telegram ? "bg-[#54A9EB]" : "bg-accent hover:bg-accent-hover"
           }`}
         >
           {button.telegram && <TelegramIcon />}

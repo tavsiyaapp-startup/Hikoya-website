@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Manrope, Kaushan_Script } from "next/font/google";
+import { Manrope, Kaushan_Script, Literata } from "next/font/google";
 import { GoogleAnalytics } from "@next/third-parties/google";
 import "./globals.css";
 import { LocaleProvider } from "@/lib/i18n/LocaleProvider";
@@ -13,6 +13,14 @@ const manrope = Manrope({
   subsets: ["latin", "cyrillic"],
   variable: "--font-manrope",
   weight: ["400", "500", "600", "700", "800"],
+});
+
+// Display serif for page and section headings — a reading platform's voice.
+// Variable weight + optical size; latin-ext/cyrillic cover Uzbek (ʻ) and Russian.
+const literata = Literata({
+  subsets: ["latin", "latin-ext", "cyrillic"],
+  variable: "--font-literata",
+  axes: ["opsz"],
 });
 
 const kaushan = Kaushan_Script({
@@ -33,7 +41,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const gaId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
 
   return (
-    <html lang={locale} data-theme={theme} className={`${manrope.variable} ${kaushan.variable}`}>
+    <html lang={locale} data-theme={theme} className={`${manrope.variable} ${literata.variable} ${kaushan.variable}`}>
       <body>
         <ThemeProvider initialTheme={theme}>
           <LocaleProvider initialLocale={locale}>

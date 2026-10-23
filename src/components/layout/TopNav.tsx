@@ -56,53 +56,51 @@ export function TopNav({ user }: { user: CurrentUser | null }) {
   return (
     <>
       {/* z-20, same tier as Header: in-page content (e.g. StoryCard's status
-          ribbon) uses z-10, and with equal z-index the later-in-DOM content
-          would paint over this sticky bar once it scrolls underneath it.
-          Below sm this bar doesn't render at all (hidden sm:block) — the
-          drawer opens from the floating button instead, so there's nothing
-          left to put in a mobile-width row here. */}
-      <nav className="sticky top-[76px] z-20 hidden border-b border-border bg-card/92 backdrop-blur-md sm:block">
-        <div className="flex items-center px-5 lg:px-8">
-          {/* w-fit + mx-auto (not justify-center) so the item group stays
-              centered when it fits, but on narrow screens where it overflows,
-              auto margins collapse to 0 and both ends stay reachable by
-              scroll — justify-center would clip the start on overflow. */}
-          <div className="min-w-0 flex-1 overflow-x-auto">
-            <div className="mx-auto flex w-fit gap-1 py-2">
-              {items.map((item) => {
-                const active = isActive(pathname, item.href);
-                return (
-                  <Link prefetch={false}
-                    key={item.label}
-                    href={item.href}
-                    title={item.locked ? t.common.guestLockedTitle : undefined}
-                    className={clsx(
-                      "flex h-11 shrink-0 items-center gap-2 whitespace-nowrap rounded-[12px] px-3.5 text-[14px] font-semibold transition",
-                      active ? "bg-primary-50 text-primary-900" : "text-ink-soft hover:bg-surface"
-                    )}
-                  >
-                    <span className="flex h-[20px] w-[20px] shrink-0 items-center justify-center">
-                      <item.icon />
+          ribbon) uses z-10. Below sm this bar doesn't render at all — the
+          menu opens from the floating button instead. */}
+      {/* Floating island (redesign): a pill that hovers under the header
+          instead of a full-width bar glued to it. The outer strip stays
+          transparent and lets clicks through around the pill. */}
+      <nav className="pointer-events-none sticky top-[76px] z-20 hidden px-5 py-2 sm:block lg:px-8">
+        {/* w-fit + mx-auto (not justify-center) so the pill stays centered
+            when it fits, but on narrow screens where it overflows, auto
+            margins collapse to 0 and both ends stay reachable by scroll. */}
+        <div className="pointer-events-auto mx-auto flex w-fit max-w-full items-center rounded-full border border-border/80 bg-card/80 p-1 shadow-[0_12px_32px_-18px_rgba(45,31,85,0.45)] backdrop-blur-xl">
+          <div className="no-scrollbar flex min-w-0 gap-0.5 overflow-x-auto">
+            {items.map((item) => {
+              const active = isActive(pathname, item.href);
+              return (
+                <Link prefetch={false}
+                  key={item.label}
+                  href={item.href}
+                  title={item.locked ? t.common.guestLockedTitle : undefined}
+                  aria-current={active ? "page" : undefined}
+                  className={clsx(
+                    "flex h-10 shrink-0 items-center gap-2 whitespace-nowrap rounded-full px-3.5 text-[14px] font-semibold transition",
+                    active ? "bg-ink text-card hover:text-card" : "text-ink-soft hover:bg-primary-50 hover:text-ink"
+                  )}
+                >
+                  <span className="flex h-[19px] w-[19px] shrink-0 items-center justify-center">
+                    <item.icon />
+                  </span>
+                  <span>{item.label}</span>
+                  {item.locked && (
+                    <span className={clsx("flex items-center", active ? "text-card/60" : "text-muted-3")}>
+                      <LockIcon />
                     </span>
-                    <span>{item.label}</span>
-                    {item.locked && (
-                      <span className="flex items-center text-muted-3">
-                        <LockIcon />
-                      </span>
-                    )}
-                  </Link>
-                );
-              })}
-            </div>
+                  )}
+                </Link>
+              );
+            })}
           </div>
 
-          <div className="ml-2 flex shrink-0 items-center gap-1.5 border-l border-border-soft pl-3">
+          <div className="ml-1 flex shrink-0 items-center gap-0.5 border-l border-border-soft pl-1">
             <a
               href={INSTAGRAM_URL}
               target="_blank"
               rel="noopener noreferrer"
               aria-label="Instagram"
-              className="flex h-9 w-9 items-center justify-center rounded-[11px] text-ink-soft transition hover:bg-surface"
+              className="flex h-10 w-10 items-center justify-center rounded-full text-ink-soft transition hover:bg-primary-50"
             >
               <InstagramIcon width={17} height={17} />
             </a>
@@ -111,7 +109,7 @@ export function TopNav({ user }: { user: CurrentUser | null }) {
               target="_blank"
               rel="noopener noreferrer"
               aria-label="Telegram"
-              className="flex h-9 w-9 items-center justify-center rounded-[11px] text-ink-soft transition hover:bg-surface"
+              className="flex h-10 w-10 items-center justify-center rounded-full text-ink-soft transition hover:bg-primary-50"
             >
               <SendIcon width={17} height={17} />
             </a>
@@ -169,7 +167,7 @@ export function TopNav({ user }: { user: CurrentUser | null }) {
         type="button"
         onClick={() => setMobileOpen((v) => !v)}
         aria-label={t.nav.home}
-        className="fixed bottom-5 right-4 z-30 flex h-13 w-13 cursor-pointer items-center justify-center rounded-full bg-linear-to-br from-[#6D28D9] to-[#9333EA] text-white shadow-[0_10px_24px_rgba(109,40,217,0.35)] transition hover:brightness-110 sm:hidden"
+        className="fixed bottom-5 right-4 z-30 flex h-13 w-13 cursor-pointer items-center justify-center rounded-full bg-accent text-on-accent hover:bg-accent-hover shadow-[0_10px_24px_-12px_rgba(85,53,166,0.6)] transition hover:brightness-110 sm:hidden"
       >
         {mobileOpen ? <CloseIcon /> : <MenuIcon />}
       </button>

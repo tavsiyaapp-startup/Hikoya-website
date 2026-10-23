@@ -20,7 +20,7 @@ export function Toggle({
       onClick={() => onChange(!checked)}
       className={clsx(
         "relative h-7 w-12 cursor-pointer rounded-full border-none transition",
-        checked ? "bg-linear-to-br from-primary-800 to-primary-600" : "bg-[#E2DCF0] dark:bg-[#332B4E]"
+        checked ? "bg-accent" : "bg-primary-200"
       )}
     >
       <span

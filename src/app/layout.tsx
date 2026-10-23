@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Manrope, Kaushan_Script, Literata } from "next/font/google";
 import { GoogleAnalytics } from "@next/third-parties/google";
 import "./globals.css";
@@ -8,6 +8,7 @@ import { getDictionary } from "@/lib/i18n";
 import { ThemeProvider } from "@/lib/ThemeProvider";
 import { getServerTheme } from "@/lib/theme-server";
 import { CookieConsent } from "@/components/layout/CookieConsent";
+import { PwaRegister } from "@/components/layout/PwaRegister";
 
 const manrope = Manrope({
   subsets: ["latin", "cyrillic"],
@@ -32,8 +33,24 @@ const kaushan = Kaushan_Script({
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getServerLocale();
   const t = getDictionary(locale);
-  return { title: t.meta.title, description: t.meta.description };
+  return {
+    title: t.meta.title,
+    description: t.meta.description,
+    // Installed on an iPhone home screen: opens full-screen, named Hikoya.
+    appleWebApp: { capable: true, title: "Hikoya", statusBarStyle: "default" },
+    icons: { apple: "/icons/apple-touch-icon.png" },
+  };
 }
+
+// Browser bar colour on phones; viewport-fit=cover lets the reader's bottom
+// bar sit above the iPhone home indicator (env(safe-area-inset-bottom)).
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#F5F4F8" },
+    { media: "(prefers-color-scheme: dark)", color: "#14101F" },
+  ],
+  viewportFit: "cover",
+};
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const locale = await getServerLocale();
@@ -47,6 +64,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <LocaleProvider initialLocale={locale}>
             {children}
             <CookieConsent />
+            <PwaRegister />
           </LocaleProvider>
         </ThemeProvider>
       </body>

@@ -24,7 +24,7 @@ export function Header({ user, unreadCount = 0 }: { user: CurrentUser | null; un
   }
 
   return (
-    <header className="sticky top-0 z-20 flex h-[64px] items-center gap-3 border-b border-border/70 bg-card/80 px-3 backdrop-blur-xl sm:h-[76px] sm:gap-5 sm:px-5 lg:gap-7 lg:px-8">
+    <header className="site-header sticky top-0 z-20 flex h-[64px] items-center gap-3 border-b border-border/70 bg-card/80 px-3 backdrop-blur-xl sm:h-[76px] sm:gap-5 sm:px-5 lg:gap-7 lg:px-8">
       <Link prefetch={false} href={ROUTES.home} className="flex shrink-0 items-center gap-2.5 lg:w-52 lg:gap-3">
         <Image src="/images/logo.png" alt="Hikoya" width={36} height={36} className="object-contain sm:h-11 sm:w-11" />
         <span className="hidden font-script text-[24px] leading-none text-ink sm:inline sm:text-[30px]">

@@ -61,7 +61,7 @@ export function TopNav({ user }: { user: CurrentUser | null }) {
       {/* Floating island (redesign): a pill that hovers under the header
           instead of a full-width bar glued to it. The outer strip stays
           transparent and lets clicks through around the pill. */}
-      <nav className="pointer-events-none sticky top-[76px] z-20 hidden px-5 py-2 sm:block lg:px-8">
+      <nav className="site-topnav pointer-events-none sticky top-[76px] z-20 hidden px-5 py-2 sm:block lg:px-8">
         {/* w-fit + mx-auto (not justify-center) so the pill stays centered
             when it fits, but on narrow screens where it overflows, auto
             margins collapse to 0 and both ends stay reachable by scroll. */}
@@ -140,7 +140,7 @@ export function TopNav({ user }: { user: CurrentUser | null }) {
             title={item.locked ? t.common.guestLockedTitle : undefined}
             style={{ bottom: `${86 + i * 54}px` }}
             className={clsx(
-              "fixed right-4 z-30 flex h-11 shrink-0 items-center gap-2.5 whitespace-nowrap rounded-full border border-border bg-card py-0 pl-3 pr-4.5 text-[13.5px] font-bold shadow-[0_8px_20px_rgba(30,20,60,0.18)] transition-all duration-200 sm:hidden",
+              "site-fab fixed right-4 z-30 flex h-11 shrink-0 items-center gap-2.5 whitespace-nowrap rounded-full border border-border bg-card py-0 pl-3 pr-4.5 text-[13.5px] font-bold shadow-[0_8px_20px_rgba(30,20,60,0.18)] transition-all duration-200 sm:hidden",
               active ? "text-primary-900" : "text-ink-soft",
               mobileOpen ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-2.5 opacity-0"
             )}
@@ -167,7 +167,7 @@ export function TopNav({ user }: { user: CurrentUser | null }) {
         type="button"
         onClick={() => setMobileOpen((v) => !v)}
         aria-label={t.nav.home}
-        className="fixed bottom-5 right-4 z-30 flex h-13 w-13 cursor-pointer items-center justify-center rounded-full bg-accent text-on-accent hover:bg-accent-hover shadow-[0_10px_24px_-12px_rgba(85,53,166,0.6)] transition hover:brightness-110 sm:hidden"
+        className="site-fab fixed bottom-5 right-4 z-30 flex h-13 w-13 cursor-pointer items-center justify-center rounded-full bg-accent text-on-accent hover:bg-accent-hover shadow-[0_10px_24px_-12px_rgba(85,53,166,0.6)] transition hover:brightness-110 sm:hidden"
       >
         {mobileOpen ? <CloseIcon /> : <MenuIcon />}
       </button>

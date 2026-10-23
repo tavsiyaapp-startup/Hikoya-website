@@ -9,7 +9,7 @@ import {
   getChapter,
   getGuestFreeChapterCount,
 } from "@/lib/queries/stories";
-import { getChapterComments, getLikedCommentIds, isFollowingAuthor, getFollowerCount } from "@/lib/queries/social";
+import { getChapterComments, getLikedCommentIds, isFollowingAuthor, getFollowerCount, getReadChapterIds } from "@/lib/queries/social";
 import { sanitizeHtml } from "@/lib/sanitize";
 import { getServerReaderPrefs } from "@/lib/readerPrefs-server";
 import { ROUTES } from "@/lib/constants";
@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/Button";
 import { FollowButton } from "@/components/story/StoryActions";
 import { ReaderContent } from "@/components/story/ReaderContent";
 import { ChapterReadingRecorder } from "@/components/story/ChapterReadingRecorder";
+import { ReaderChrome } from "@/components/story/ReaderChrome";
 import { CommentGuidelines } from "@/components/story/CommentGuidelines";
 import { CommentForm } from "@/components/story/CommentForm";
 import { CommentItem } from "@/components/story/CommentItem";
@@ -60,6 +61,9 @@ export default async function ReaderPage({
   const nextChapter = idx >= 0 && idx < allChapters.length - 1 ? allChapters[idx + 1] : null;
 
   const readMinutes = Math.max(1, Math.round(ch.word_count / 200));
+  const readIds = isUnlocked ? await getReadChapterIds(user?.id, story.id) : new Set<string>();
+  const chaptersLeft = idx >= 0 ? allChapters.length - idx - 1 : 0;
+  const chapterHref = Object.fromEntries(allChapters.map((c) => [c.order_index, ROUTES.chapter(slug, c.order_index)]));
   const isRichContent = /<[a-z][\s\S]*>/i.test(ch.content);
   const paragraphs = isRichContent ? [] : ch.content.split(/\n+/).filter(Boolean);
 
@@ -84,6 +88,17 @@ export default async function ReaderPage({
         </Link>
 
         {isUnlocked && <div className="reading-progress" aria-hidden />}
+        {isUnlocked && (
+          <ReaderChrome
+            chapterId={ch.id}
+            currentIndex={ch.order_index}
+            readMinutes={readMinutes}
+            chapters={allChapters.map((c) => ({ order_index: c.order_index, title: c.title, read: readIds.has(c.id) }))}
+            chapterHref={chapterHref}
+            prevHref={prevChapter ? ROUTES.chapter(slug, prevChapter.order_index) : null}
+            nextHref={nextChapter ? ROUTES.chapter(slug, nextChapter.order_index) : null}
+          />
+        )}
         <div className="mb-2.5 text-[12px] font-bold uppercase tracking-[0.18em] text-primary-600">
           {t.reader.chapterLabel} {ch.order_index}
         </div>
@@ -122,25 +137,41 @@ export default async function ReaderPage({
           </div>
         )}
 
-        {isUnlocked && (prevChapter || nextChapter) && (
-          <div className="mt-9 flex flex-col gap-3 sm:flex-row">
-            {prevChapter && (
-              <Link prefetch={false}
-                href={ROUTES.chapter(slug, prevChapter.order_index)}
-                className="flex w-full items-center justify-center gap-3 rounded-full border border-border bg-card py-4.5 text-[15px] font-bold text-ink-soft transition hover:border-primary-200 sm:flex-1"
-              >
-                <span>← {t.reader.previousChapter}</span>
-              </Link>
+        {/* End of the chapter: what's next, in one big obvious place. */}
+        {isUnlocked && (
+          <section id="chapter-end" className="mt-10 rounded-[24px] border border-border bg-card px-5 py-8 text-center shadow-[0_24px_50px_-34px_rgba(45,31,85,0.45)] sm:px-10">
+            <div className="mb-5 text-[12px] font-bold uppercase tracking-[0.18em] text-primary-600">
+              {t.reader.chapterFinished.replace("{n}", String(ch.order_index))}
+            </div>
+            {nextChapter ? (
+              <>
+                <div className="mb-1.5 text-[13px] font-semibold text-muted-2">{t.reader.nextChapterLabel}</div>
+                <h2 className="mx-auto mb-6 max-w-[28ch] text-[24px] font-bold leading-snug sm:text-[28px]">{nextChapter.title}</h2>
+                <Link prefetch={false} href={ROUTES.chapter(slug, nextChapter.order_index)} className="inline-block">
+                  <Button size="lg">{t.reader.keepReading} →</Button>
+                </Link>
+                {chaptersLeft > 1 && (
+                  <div className="mt-3 text-[13px] text-muted-2">{t.reader.chaptersLeft.replace("{n}", String(chaptersLeft))}</div>
+                )}
+                <div className="mt-4 text-[12px] text-muted-3 sm:hidden">← {t.reader.swipeHint}</div>
+              </>
+            ) : (
+              <>
+                <h2 className="mx-auto mb-2.5 max-w-[30ch] text-[24px] font-bold leading-snug">{t.reader.lastChapterTitle}</h2>
+                <p className="mx-auto max-w-[52ch] text-[14.5px] leading-relaxed text-muted">{t.reader.lastChapterBody}</p>
+              </>
             )}
-            {nextChapter && (
-              <Link prefetch={false}
-                href={ROUTES.chapter(slug, nextChapter.order_index)}
-                className="flex w-full items-center justify-center gap-3 rounded-full bg-accent py-4.5 text-[16px] font-bold text-on-accent shadow-[0_10px_24px_-12px_rgba(85,53,166,0.6)] transition hover:bg-accent-hover sm:flex-1"
-              >
-                <span>{t.reader.continueNext}</span>
-              </Link>
-            )}
-          </div>
+            <div className="mt-6 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 border-t border-border-soft pt-5 text-[13.5px] font-bold">
+              {prevChapter && (
+                <Link prefetch={false} href={ROUTES.chapter(slug, prevChapter.order_index)} className="text-muted-2 hover:text-primary-800">
+                  ← {t.reader.previousChapter}
+                </Link>
+              )}
+              <a href="#comments" className="text-muted-2 hover:text-primary-800">
+                💬 {t.reader.leaveComment}
+              </a>
+            </div>
+          </section>
         )}
 
         <div className="mt-9 flex items-center gap-3.5 rounded-[14px] border border-border bg-card p-4.5">
@@ -164,9 +195,9 @@ export default async function ReaderPage({
         </div>
 
         {isUnlocked && (
-          <div className="mt-11">
+          <div id="comments" className="mt-11 scroll-mt-24">
             <div className="mb-5 flex items-center gap-3.5">
-              <h2 className="text-[22px] font-extrabold">{t.reader.commentsTitle}</h2>
+              <h2 className="text-[22px] font-bold">{t.reader.commentsTitle}</h2>
               <span className="text-[14px] text-muted-2">{allCommentIds.length}</span>
             </div>
 

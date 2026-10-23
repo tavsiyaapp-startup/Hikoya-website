@@ -288,6 +288,26 @@ main > *:nth-child(n + 4) { animation-delay: 180ms; }
   mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 13c6-3.5 12-3.5 18 0 6-3.5 12-3.5 18 0v24c-6-3.5-12-3.5-18 0-6-3.5-12-3.5-18 0Z'/%3E%3Cpath d='M24 13v24'/%3E%3Cpath d='M11 19c3-1.2 6-1.2 9 0M11 24c3-1.2 6-1.2 9 0M28 19c3-1.2 6-1.2 9 0'/%3E%3Cpath d='M35 5l1.2 2.6L39 8.8l-2.8 1.2L35 12.6l-1.2-2.6L31 8.8l2.8-1.2Z'/%3E%3C/svg%3E") center / contain no-repeat;
 }
 
+/* Reader immersive mode (ReaderChrome): scrolling down a chapter slides
+   the header and the menu away; scrolling up brings them back. On chapter
+   pages the floating menu button gives way to the reader's own bar. */
+.site-header,
+.site-topnav {
+  transition: transform 300ms var(--ease-premium);
+}
+
+html[data-immersive] .site-header {
+  transform: translateY(-100%);
+}
+
+html[data-immersive] .site-topnav {
+  transform: translateY(calc(-100% - 90px));
+}
+
+html[data-reader] .site-fab {
+  display: none !important;
+}
+
 /* Pressed feedback on every button: a slight physical push. */
 button:not(:disabled):active {
   transform: scale(0.98);

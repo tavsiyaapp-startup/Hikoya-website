@@ -68,7 +68,8 @@ export default async function StoryPage({
       getUserStoryState(user?.id, story.id),
       isFollowingAuthor(user?.id, story.author.id),
       getFollowerCount(story.author.id),
-      getSorovPostIdForStory(getDb(), story.id).catch(() => null),
+      // getDb() inside the promise: if it throws, .catch still gets it.
+    Promise.resolve().then(() => getSorovPostIdForStory(getDb(), story.id)).catch(() => null),
       user ? getMyCollectionsWithStory(user.id, story.id) : Promise.resolve([]),
       tab === "comments" ? getStoryComments(story.id) : Promise.resolve([]),
       getReadChapterIds(user?.id, story.id),
@@ -98,7 +99,7 @@ export default async function StoryPage({
           a negative z-index would drop it behind the page background. */}
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-x-[-1rem] -top-4 z-0 h-[420px] overflow-hidden [mask-image:linear-gradient(to_bottom,black,transparent)] sm:inset-x-[-1.5rem] lg:inset-x-[-2.25rem]"
+        className="pointer-events-none absolute inset-x-[-1rem] -top-4 z-0 h-[420px] overflow-hidden [mask-image:linear-gradient(to_bottom,transparent,black_18%,black_45%,transparent)] sm:inset-x-[-1.5rem] lg:inset-x-[-2.25rem]"
       >
         {cover ? (
           <Image src={cover} alt="" fill sizes="240px" className="scale-125 object-cover opacity-45 blur-3xl" />

@@ -8,6 +8,6 @@ import { ROUTES } from "@/lib/constants";
 // /board → the Soʻrov list, /board?selected=<request id> → that topic.
 export default async function BoardRedirect({ searchParams }: { searchParams: Promise<{ selected?: string }> }) {
   const { selected } = await searchParams;
-  const postId = selected ? await getForumPostIdByLegacyRequest(getDb(), selected).catch(() => null) : null;
+  const postId = selected ? await Promise.resolve().then(() => getForumPostIdByLegacyRequest(getDb(), selected)).catch(() => null) : null;
   redirect(postId ? ROUTES.forumPost(postId) : `${ROUTES.forum}?category=sorov`);
 }

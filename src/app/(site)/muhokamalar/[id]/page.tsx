@@ -27,7 +27,8 @@ async function loadViewer(): Promise<Viewer | null> {
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params;
-  const post = await getForumPost(getDb(), await loadViewer(), id).catch(() => null);
+  const viewer = await loadViewer();
+  const post = await Promise.resolve().then(() => getForumPost(getDb(), viewer, id)).catch(() => null);
   if (!post) return {};
   return { title: post.title, description: post.body.slice(0, 160) || undefined };
 }

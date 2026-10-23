@@ -46,7 +46,8 @@ export default async function ManagePage({
     getChaptersForStory(story.id, true),
     tab === "edit" ? getTagsForStory(story.id) : Promise.resolve([]),
     tab === "edit" ? getAllTags() : Promise.resolve([]),
-    getSorovPostIdForStory(getDb(), story.id).catch(() => null),
+    // getDb() inside the promise: if it throws, .catch still gets it.
+    Promise.resolve().then(() => getSorovPostIdForStory(getDb(), story.id)).catch(() => null),
   ]);
 
   const metrics = [

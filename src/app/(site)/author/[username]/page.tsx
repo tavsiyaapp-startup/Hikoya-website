@@ -54,7 +54,7 @@ export default async function AuthorPage({
       isFollowingAuthor(user?.id, profile.id),
       tab === "stories" ? getAuthorStories(profile.id, isOwner) : Promise.resolve([]),
       isOwner && tab === "myTopics"
-        ? listForumPostsByAuthor(getDb(), null, profile.id).catch((err) => {
+        ? Promise.resolve().then(() => listForumPostsByAuthor(getDb(), null, profile.id)).catch((err) => {
             logQueryError("listForumPostsByAuthor", err);
             return [];
           })

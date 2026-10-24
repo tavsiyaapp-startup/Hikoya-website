@@ -158,7 +158,32 @@ export async function handlePaymentCallback(db: Db, callback: TgCallback, callTe
 
   const claimId = data.slice((approve ? CALLBACK_OK : CALLBACK_NO).length);
   const admin = who(callback.from);
-  const claim = /^[0-9a-f-]{36}$/i.test(claimId) ? await resolveClaim(db, claimId, approve ? "approved" : "rejected", admin) : null;
+  if (!/^[0-9a-f-]{36}$/i.test(claimId)) {
+    await callTelegram("answerCallbackQuery", { callback_query_id: callback.id });
+    return true;
+  }
+  // Marking the payment approved and opening the subscription happen
+  // together: if the second fails, the first is undone and the button stays.
+  const state = await loadPaywallState(db);
+  const days = state.settings?.period_days ?? 30;
+  let claim: Awaited<ReturnType<typeof resolveClaim>> = null;
+  let expires: Date | null = null;
+  try {
+    const result = await db.transaction(async (tx) => {
+      const resolved = await resolveClaim(tx, claimId, approve ? "approved" : "rejected", admin);
+      const until =
+        resolved && approve
+          ? await grantSubscription(tx, { userId: resolved.user_id, days, byTelegram: admin, claimId: resolved.id })
+          : null;
+      return { resolved, until };
+    });
+    claim = result.resolved;
+    expires = result.until;
+  } catch (err) {
+    console.error("[payment-bot] resolving a payment failed", claimId, err);
+    await callTelegram("answerCallbackQuery", { callback_query_id: callback.id, text: "Xatolik. Qayta bosing.", show_alert: true });
+    return true;
+  }
   if (!claim) {
     await callTelegram("answerCallbackQuery", { callback_query_id: callback.id, text: T.alreadyDone, show_alert: true });
     await callTelegram("editMessageReplyMarkup", { chat_id: message.chat.id, message_id: message.message_id, reply_markup: { inline_keyboard: [] } });
@@ -166,10 +191,7 @@ export async function handlePaymentCallback(db: Db, callback: TgCallback, callTe
   }
 
   let resultLine: string;
-  if (approve) {
-    const state = await loadPaywallState(db);
-    const days = state.settings?.period_days ?? 30;
-    const expires = await grantSubscription(db, { userId: claim.user_id, days, byTelegram: admin, claimId: claim.id });
+  if (approve && expires) {
     resultLine = `✅ Ochildi: ${tashkentDate(expires)} gacha — ${admin}`;
     if (claim.telegram_chat_id) await callTelegram("sendMessage", { chat_id: claim.telegram_chat_id, text: T.approved(tashkentDate(expires)) });
   } else {

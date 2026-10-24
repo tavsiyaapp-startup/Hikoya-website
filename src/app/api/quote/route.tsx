@@ -84,9 +84,10 @@ function normalizeQuoteText(s: string): string {
     .trim();
 }
 
-// The bundled fonts have no ʻ / ʼ (U+02BB / U+02BC — Uzbek oʻ, gʻ, eʼ):
-// they came out as "?". Drawn with the look-alike ‘ ’ instead; the check
-// that the quote is in the chapter still uses the original text.
+// Literata draws ʻ / ʼ (U+02BB / U+02BC — Uzbek oʻ, gʻ, eʼ) with almost no
+// width, so they sit on top of the letters on the card. The look-alike ‘ ’
+// are drawn instead; the check that the quote is in the chapter still uses
+// the original text.
 function forDisplay(text: string): string {
   return text.replace(/ʻ/g, "‘").replace(/ʼ/g, "’");
 }

@@ -20,21 +20,22 @@ import { handlePaymentCallback, handlePaymentMessage } from "@/server/telegram/p
 const TELEGRAM_API = `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`;
 const SEND_CALLBACK_DATA = "send_appeal";
 
-const SEND_BUTTON_TEXT = "📨 Отправить обращение";
+// What the user sees is in Uzbek; staff-group messages below stay in Russian.
+const SEND_BUTTON_TEXT = "📨 Murojaatni yuborish";
 const WELCOME_TEXT =
-  "Здравствуйте! Чем можем помочь?\n\n" +
-  "Напишите ваш вопрос, отправьте фото или видео. Можно отправить несколько сообщений.\n\n" +
-  `Когда закончите — нажмите кнопку «${SEND_BUTTON_TEXT}» ниже.`;
-const ACK_TEXT = `✍️ Хотите добавить что-то ещё?\n\nЕсли всё написали — нажмите «${SEND_BUTTON_TEXT}» ниже.`;
-const EMPTY_QUEUE_TEXT = "Вы ещё ничего не отправили. Сначала напишите текст обращения, фото или видео.";
-const UNSUPPORTED_TYPE_TEXT = "Можно отправлять только текст, фото или видео.";
-const CONFIRMATION_TEXT = "Спасибо! Мы получили ваше обращение и свяжемся с вами.";
+  "Assalomu alaykum! Sizga qanday yordam bera olamiz?\n\n" +
+  "Savolingizni yozing, rasm yoki video yuboring. Bir nechta xabar yuborishingiz mumkin.\n\n" +
+  `Tugatgach, quyidagi «${SEND_BUTTON_TEXT}» tugmasini bosing.`;
+const ACK_TEXT = `✍️ Yana biror narsa qoʻshmoqchimisiz?\n\nHammasini yozgan boʻlsangiz, quyidagi «${SEND_BUTTON_TEXT}» tugmasini bosing.`;
+const EMPTY_QUEUE_TEXT = "Siz hali hech narsa yubormadingiz. Avval murojaat matnini, rasm yoki video yuboring.";
+const UNSUPPORTED_TYPE_TEXT = "Faqat matn, rasm yoki video yuborish mumkin.";
+const CONFIRMATION_TEXT = "Rahmat! Murojaatingizni qabul qildik, tez orada siz bilan bogʻlanamiz.";
 const REPLY_USAGE_TEXT = "Использование: /reply <номер> <текст>\nНапример: /reply 47 Здравствуйте, ваш вопрос решён";
 const TICKET_NOT_FOUND_TEXT = "❌ Обращение с таким номером не найдено.";
 const REPLY_FAILED_TEXT = "❌ Не удалось отправить. Пользователь заблокировал бота или ID неверен.";
 const REPLY_SENT_TEXT = "✅ Отправлено.";
-const FAILURE_TEXT = "Не удалось отправить обращение. Пожалуйста, попробуйте ещё раз чуть позже.";
-const TOO_MANY_PENDING_TEXT = "Слишком много сообщений в одном обращении. Нажмите «Отправить обращение» или начните заново командой /start.";
+const FAILURE_TEXT = "Murojaatni yuborib boʻlmadi. Iltimos, birozdan keyin qayta urinib koʻring.";
+const TOO_MANY_PENDING_TEXT = `Bitta murojaatda xabarlar juda koʻp. «${SEND_BUTTON_TEXT}» tugmasini bosing yoki /start buyrugʻi bilan qaytadan boshlang.`;
 const MAX_PENDING_MESSAGES = 30;
 const SEPARATOR = "-".repeat(30);
 

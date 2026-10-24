@@ -40,25 +40,14 @@ const CALLBACK_OK = "sub_ok:";
 const CALLBACK_NO = "sub_no:";
 
 const T = {
-  askScreenshot:
-    "💜 Hikoya obunasi\n\nToʻlov skrinshotini shu yerga rasm qilib yuboring.\n\n" +
-    "Отправьте сюда скриншот оплаты (картинкой).",
-  linkExpired:
-    "Bu havola eskirgan. Saytda «Toʻladim» tugmasini qayta bosing.\n\n" +
-    "Ссылка устарела. Нажмите «Я оплатил(а)» на сайте ещё раз.",
-  alreadyDone: "Bu toʻlov allaqachon koʻrib chiqilgan. / Эта оплата уже рассмотрена.",
-  received:
-    "✅ Rahmat! Skrinshot adminga yuborildi. Obuna ochilgach, sizga xabar beramiz.\n\n" +
-    "Спасибо! Скриншот отправлен админу. Когда подписка откроется, мы вам напишем.",
-  sendPhoto: "Iltimos, skrinshotni rasm sifatida yuboring. / Пожалуйста, отправьте скриншот картинкой.",
-  forwardFailed:
-    "Skrinshotni yuborib boʻlmadi. Birozdan keyin qayta urinib koʻring.\n\n" +
-    "Не удалось отправить скриншот. Попробуйте чуть позже.",
-  approved: (date: string) =>
-    `🎉 Obunangiz ochildi — ${date} gacha. Yoqimli mutolaa!\n\n` + `Ваша подписка открыта до ${date}. Приятного чтения!`,
-  rejected:
-    "Toʻlov tasdiqlanmadi. Savollar boʻlsa, shu botga yozing.\n\n" +
-    "Оплата не подтверждена. Если есть вопросы, напишите в этот бот.",
+  askScreenshot: "💜 Hikoya obunasi\n\nToʻlov skrinshotini shu yerga rasm qilib yuboring.",
+  linkExpired: "Bu havola eskirgan. Saytda «Toʻladim» tugmasini qayta bosing.",
+  alreadyDone: "Bu toʻlov allaqachon koʻrib chiqilgan.",
+  received: "✅ Rahmat! Skrinshot adminga yuborildi. Obuna ochilgach, sizga xabar beramiz.",
+  sendPhoto: "Iltimos, toʻlov skrinshotini rasm sifatida yuboring.",
+  forwardFailed: "Skrinshotni yuborib boʻlmadi. Iltimos, birozdan keyin qayta urinib koʻring.",
+  approved: (date: string) => `🎉 Obunangiz ochildi — ${date} gacha. Yoqimli mutolaa!`,
+  rejected: "Toʻlov tasdiqlanmadi. Savollaringiz boʻlsa, shu botga yozing.",
 };
 
 function paymentsChatId(): number {

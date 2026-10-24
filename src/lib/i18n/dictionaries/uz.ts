@@ -950,6 +950,7 @@ const uz: typeof ru = {
     setPasswordFailed: "Parolni saqlab boʻlmadi. Qaytadan urinib koʻring.",
   },
   quote: {
+    copyBlocked: "Matndan nusxa olib boʻlmaydi. Jumlani belgilab, «Iqtibos» tugmasini bosing — ulashish uchun kartochka tayyor boʻladi.",
     button: "Iqtibos",
     title: "Iqtibos kartochkasi",
     hint: "Matndan jumlani belgilang — undan chiroyli kartochka yasaymiz.",

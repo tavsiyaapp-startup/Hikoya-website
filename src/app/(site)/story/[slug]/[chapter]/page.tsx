@@ -128,6 +128,7 @@ export default async function ReaderPage({
             paywallOffer={paywall.live ? paywallOffer(paywall.settings, locale) : null}
             signedIn={Boolean(user)}
             nextPath={ROUTES.chapter(slug, orderIndex)}
+            allowCopy={user?.id === story.author.id}
           />
         )}
         <div className="mb-2.5 text-[12px] font-bold uppercase tracking-[0.18em] text-primary-600">

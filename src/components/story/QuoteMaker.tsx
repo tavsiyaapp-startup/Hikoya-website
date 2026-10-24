@@ -37,6 +37,7 @@ export function QuoteMaker({
   paywallOffer = null,
   signedIn = false,
   nextPath = "/",
+  allowCopy = false,
 }: {
   chapterId: string;
   storyTitle: string;
@@ -45,6 +46,9 @@ export function QuoteMaker({
   paywallOffer?: PaywallOffer | null;
   signedIn?: boolean;
   nextPath?: string;
+  // The story's own author may copy their text; readers share it only as
+  // a quote card.
+  allowCopy?: boolean;
 }) {
   const { t } = useLocale();
   const [pick, setPick] = useState<{ text: string; top: number; left: number } | null>(null);
@@ -58,6 +62,45 @@ export function QuoteMaker({
   const [trialsLeft, setTrialsLeft] = useState<number | null>(null);
   const [gate, setGate] = useState<"signup" | "subscribe" | null>(null);
   const [checking, setChecking] = useState(false);
+  const [copyBlocked, setCopyBlocked] = useState(false);
+
+  // No copying out of the chapter text (Ctrl+C, the phone's "Copy", cut,
+  // dragging the selection away). Selecting still works — that is how a
+  // quote card starts. It only stops casual copying: the text is on the
+  // page, so a determined person can still get it.
+  useEffect(() => {
+    if (allowCopy) return;
+    const touchesText = () => {
+      const root = document.getElementById(TEXT_ID);
+      const sel = window.getSelection();
+      if (!root || !sel || sel.rangeCount === 0) return false;
+      for (let i = 0; i < sel.rangeCount; i++) if (sel.getRangeAt(i).intersectsNode(root)) return true;
+      return false;
+    };
+    const block = (e: Event) => {
+      if (!touchesText()) return;
+      e.preventDefault();
+      setCopyBlocked(true);
+    };
+    const blockDrag = (e: DragEvent) => {
+      const root = document.getElementById(TEXT_ID);
+      if (root && e.target instanceof Node && root.contains(e.target)) e.preventDefault();
+    };
+    document.addEventListener("copy", block);
+    document.addEventListener("cut", block);
+    document.addEventListener("dragstart", blockDrag);
+    return () => {
+      document.removeEventListener("copy", block);
+      document.removeEventListener("cut", block);
+      document.removeEventListener("dragstart", blockDrag);
+    };
+  }, [allowCopy]);
+
+  useEffect(() => {
+    if (!copyBlocked) return;
+    const id = setTimeout(() => setCopyBlocked(false), 3500);
+    return () => clearTimeout(id);
+  }, [copyBlocked]);
 
   // Watch the selection; place the button just under it (above the phone's
   // own copy/select menu, which opens over the selection).
@@ -243,6 +286,15 @@ export function QuoteMaker({
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {copyBlocked && (
+        <div
+          role="status"
+          className="fixed inset-x-4 top-20 z-50 mx-auto max-w-sm rounded-[16px] bg-ink px-4 py-3 text-center text-[13.5px] font-semibold leading-snug text-card shadow-[0_18px_40px_-16px_rgba(20,16,31,0.6)] sm:top-24"
+        >
+          {t.quote.copyBlocked}
         </div>
       )}
 

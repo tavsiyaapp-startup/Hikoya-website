@@ -33,6 +33,7 @@ function CardField<T extends CardType>({
   initialNumber,
   initialType,
   placeholder,
+  auto = false,
 }: {
   title: string;
   hint: string;
@@ -42,6 +43,9 @@ function CardField<T extends CardType>({
   initialNumber: string | null;
   initialType: T | null;
   placeholder: string;
+  // Type comes from the number's first digits (Uzcard 8600…, Humo 9860…);
+  // no buttons to pick it.
+  auto?: boolean;
 }) {
   const { t } = useLocale();
   const [number, setNumber] = useState(formatCardNumber(initialNumber ?? ""));
@@ -52,7 +56,7 @@ function CardField<T extends CardType>({
   function onNumber(raw: string) {
     const formatted = formatCardNumber(raw).slice(0, 19);
     setNumber(formatted);
-    if (!picked) {
+    if (auto || !picked) {
       const guess = guessCardType(formatted.replace(/\D/g, ""));
       setType(types.find((x) => x === guess) ?? null);
     }
@@ -65,6 +69,7 @@ function CardField<T extends CardType>({
       </div>
       <p className="mb-2.5 text-[12px] text-muted-2">{hint}</p>
       <input type="hidden" name={typeName} value={type ?? ""} />
+      {!auto && (
       <div className="mb-2.5 flex flex-wrap gap-2" role="radiogroup" aria-label={t.donation.cardTypeLabel}>
         {types.map((x) => (
           <button
@@ -85,6 +90,7 @@ function CardField<T extends CardType>({
           </button>
         ))}
       </div>
+      )}
       <Input
         name={name}
         value={number}
@@ -95,6 +101,7 @@ function CardField<T extends CardType>({
         aria-label={`${title}: ${t.donation.cardLabel}`}
         className="font-mono tracking-wide"
       />
+      {auto && type && <p className="mt-1.5 text-[12px] font-bold text-primary-800">{CARD_TYPE_LABEL[type]}</p>}
     </div>
   );
 }
@@ -131,6 +138,7 @@ export function DonationSettings({
         card: t.donation.errorCard,
         intlCard: t.donation.errorIntlCard,
         cardType: t.donation.errorCardType,
+        localCard: t.donation.errorLocalCard,
         holder: t.donation.errorHolder,
         message: t.donation.errorMessage,
         rate: t.donation.errorRate,
@@ -165,6 +173,7 @@ export function DonationSettings({
         name="cardNumber"
         typeName="cardType"
         types={LOCAL_CARD_TYPES}
+        auto
         initialNumber={local?.number ?? null}
         initialType={local?.type ?? null}
         placeholder="8600 0000 0000 0000"

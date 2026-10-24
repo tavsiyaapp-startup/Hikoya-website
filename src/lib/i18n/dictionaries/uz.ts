@@ -958,6 +958,7 @@ const uz: typeof ru = {
     styleBook: "Kitob rangi",
     stylePaper: "Qogʻoz",
     styleNight: "Tun",
+    styleCover: "Muqova",
     formatPost: "Post",
     formatStory: "Stories",
     share: "Ulashish",

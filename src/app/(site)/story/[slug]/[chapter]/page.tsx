@@ -28,6 +28,7 @@ import { plural } from "@/lib/plural";
 import { getFreeChaptersForStory, getMySubscriptionExpiry, getPaywallState, paywallOffer } from "@/lib/queries/paywall";
 import { chapterAccess, isSubscriptionActive } from "@/server/data/paywall-rules";
 import { SubscribeGate } from "@/components/paywall/SubscribeGate";
+import { liveImageUrl } from "@/lib/images";
 
 export default async function ReaderPage({
   params,
@@ -129,6 +130,7 @@ export default async function ReaderPage({
             signedIn={Boolean(user)}
             nextPath={ROUTES.chapter(slug, orderIndex)}
             allowCopy={user?.id === story.author.id}
+            coverUrl={liveImageUrl(story.cover_url)}
           />
         )}
         <div className="mb-2.5 text-[12px] font-bold uppercase tracking-[0.18em] text-primary-600">

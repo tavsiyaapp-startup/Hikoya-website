@@ -8,6 +8,7 @@ import { CloseIcon } from "@/components/ui/icons";
 import { beginQuote } from "@/lib/actions/paywall";
 import type { PaywallOffer } from "@/lib/paywall-offer";
 import { SubscribeDialog } from "@/components/paywall/SubscribeDialog";
+import { pickCoverColors } from "@/lib/cover-colors";
 
 // Select a sentence in the chapter → an «Iqtibos» button appears under it →
 // a sheet shows the quote card (drawn by /api/quote, no AI) in three styles
@@ -17,7 +18,7 @@ import { SubscribeDialog } from "@/components/paywall/SubscribeDialog";
 const TEXT_ID = "chapter-text";
 const MIN_LEN = 8;
 const MAX_LEN = 300;
-type Style = "book" | "paper" | "night";
+type Style = "book" | "paper" | "night" | "cover";
 type Format = "post" | "story";
 
 function selectedQuote(): { text: string; rect: DOMRect } | null {
@@ -38,6 +39,7 @@ export function QuoteMaker({
   signedIn = false,
   nextPath = "/",
   allowCopy = false,
+  coverUrl = null,
 }: {
   chapterId: string;
   storyTitle: string;
@@ -49,6 +51,8 @@ export function QuoteMaker({
   // The story's own author may copy their text; readers share it only as
   // a quote card.
   allowCopy?: boolean;
+  // The story's uploaded cover: offers a «Muqova» card in its colours.
+  coverUrl?: string | null;
 }) {
   const { t } = useLocale();
   const [pick, setPick] = useState<{ text: string; top: number; left: number } | null>(null);
@@ -63,6 +67,33 @@ export function QuoteMaker({
   const [gate, setGate] = useState<"signup" | "subscribe" | null>(null);
   const [checking, setChecking] = useState(false);
   const [copyBlocked, setCopyBlocked] = useState(false);
+  // "rrggbb,rrggbb" once read from the cover; "failed" → the server draws
+  // the «Kitob rangi» colours instead.
+  const [coverColors, setCoverColors] = useState<string | null>(null);
+
+  // The cover is already on the reader's screen elsewhere, so reading its
+  // colours here costs the server nothing: a 48×48 canvas, two colours out.
+  function pickCover() {
+    setStyle("cover");
+    if (coverColors || !coverUrl) return;
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      try {
+        const canvas = document.createElement("canvas");
+        canvas.width = 48;
+        canvas.height = 48;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) throw new Error("no canvas");
+        ctx.drawImage(img, 0, 0, 48, 48);
+        setCoverColors(pickCoverColors(ctx.getImageData(0, 0, 48, 48).data).join(","));
+      } catch {
+        setCoverColors("failed");
+      }
+    };
+    img.onerror = () => setCoverColors("failed");
+    img.src = coverUrl;
+  }
 
   // No copying out of the chapter text (Ctrl+C, the phone's "Copy", cut,
   // dragging the selection away). Selecting still works — that is how a
@@ -128,9 +159,18 @@ export function QuoteMaker({
     };
   }, []);
 
-  const src = quote
-    ? `/api/quote?${new URLSearchParams({ c: chapterId, q: quote, s: style, f: format, ...(ticket ? { k: ticket } : {}) }).toString()}`
-    : "";
+  const waitingForCover = style === "cover" && coverColors === null;
+  const src =
+    quote && !waitingForCover
+      ? `/api/quote?${new URLSearchParams({
+          c: chapterId,
+          q: quote,
+          s: style,
+          f: format,
+          ...(ticket ? { k: ticket } : {}),
+          ...(style === "cover" && coverColors && coverColors !== "failed" ? { p: coverColors } : {}),
+        }).toString()}`
+      : "";
   // Loading/failed state is derived from which card URL last loaded or
   // failed, so switching style/format shows "loading" until the new one is in.
   const status = failed === src ? "error" : loaded === src ? "ready" : "loading";
@@ -250,15 +290,19 @@ export function QuoteMaker({
                     {status === "error" ? t.quote.failed : t.quote.loading}
                   </div>
                 )}
-                {/* eslint-disable-next-line @next/next/no-img-element -- a generated PNG from our own API, shown as is */}
-                <img
-                  key={src}
-                  src={src}
-                  alt={quote}
-                  onLoad={() => setLoaded(src)}
-                  onError={() => setFailed(src)}
-                  className={clsx("h-full w-full object-contain transition-opacity", status === "ready" ? "opacity-100" : "opacity-0")}
-                />
+                {src && (
+                  <>
+                    {/* eslint-disable-next-line @next/next/no-img-element -- a generated PNG from our own API, shown as is */}
+                    <img
+                      key={src}
+                      src={src}
+                      alt={quote}
+                      onLoad={() => setLoaded(src)}
+                      onError={() => setFailed(src)}
+                      className={clsx("h-full w-full object-contain transition-opacity", status === "ready" ? "opacity-100" : "opacity-0")}
+                    />
+                  </>
+                )}
               </div>
             </div>
 
@@ -269,6 +313,11 @@ export function QuoteMaker({
                     {s === "book" ? t.quote.styleBook : s === "paper" ? t.quote.stylePaper : t.quote.styleNight}
                   </button>
                 ))}
+                {coverUrl && (
+                  <button type="button" onClick={pickCover} className={chip(style === "cover")}>
+                    {t.quote.styleCover}
+                  </button>
+                )}
                 <span className="mx-1 w-px self-stretch bg-border" />
                 {(["story", "post"] as const).map((f) => (
                   <button key={f} type="button" onClick={() => setFormat(f)} className={chip(format === f)}>

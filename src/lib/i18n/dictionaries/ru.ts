@@ -956,6 +956,7 @@ const ru = {
     styleBook: "Цвет книги",
     stylePaper: "Бумага",
     styleNight: "Ночь",
+    styleCover: "Обложка",
     formatPost: "Пост",
     formatStory: "Stories",
     share: "Поделиться",

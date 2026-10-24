@@ -10,6 +10,8 @@ import { takeRateLimit } from "@/server/rate-limit";
 import { coverPalette } from "@/components/story/GeneratedCover";
 import { loadPaywallState } from "@/server/data/paywall";
 import { verifyQuoteTicket } from "@/server/data/quote-ticket";
+import { COVER_COLORS_RE, coverCardTheme } from "@/lib/cover-colors";
+import { liveImageUrl } from "@/lib/images";
 
 // Quote card: a picture of a sentence from a chapter, with the book's
 // title, author and the Hikoya mark — made to be shared in Instagram /
@@ -17,7 +19,9 @@ import { verifyQuoteTicket } from "@/server/data/quote-ticket";
 // AI and no paid API: the cost is a little CPU per new card, and identical
 // cards are cached by the browser for a day.
 //
-// GET /api/quote?c=<chapter id>&q=<quote>&s=book|paper|night&f=post|story
+// GET /api/quote?c=<chapter id>&q=<quote>&s=book|paper|night|cover&f=post|story
+//   s=cover also takes p=<rrggbb>,<rrggbb>: the cover's two colours, picked in
+//   the browser (src/lib/cover-colors.ts); the card shows a small cover too.
 //
 // The quote must really be in that chapter, and the chapter must be public
 // — otherwise anyone could put any text under a Hikoya author's name.
@@ -31,7 +35,7 @@ const MIN_LEN = 8;
 const MAX_LEN = 300;
 const SIZES = { post: { width: 1080, height: 1350 }, story: { width: 1080, height: 1920 } } as const;
 type Format = keyof typeof SIZES;
-type Style = "book" | "paper" | "night";
+type Style = "book" | "paper" | "night" | "cover";
 type FontEntry = { name: string; data: Buffer; weight: 400 | 600 | 700; style: "normal" | "italic" };
 
 const FONT_DIR = path.join(process.cwd(), "public", "fonts", "quote");
@@ -92,12 +96,33 @@ function forDisplay(text: string): string {
   return text.replace(/ʻ/g, "‘").replace(/ʼ/g, "’");
 }
 
+// The story's own uploaded cover, as is (no re-encoding — this server has
+// little memory), for the «Muqova» card. JPEG and PNG only: those are what
+// the card renderer reads; anything else just leaves the cover out.
+const COVERS_ROOT = path.join(process.cwd(), "public", "uploads");
+const MAX_THUMB_BYTES = 3 * 1024 * 1024;
+
+async function loadCoverThumb(coverUrl: string | null): Promise<string | null> {
+  const live = liveImageUrl(coverUrl);
+  if (!live || !live.startsWith("/uploads/") || live.includes("..")) return null;
+  const file = path.join(COVERS_ROOT, decodeURIComponent(live.slice("/uploads/".length).split("?")[0]));
+  if (!file.startsWith(COVERS_ROOT + path.sep)) return null;
+  const type = /\.png$/i.test(file) ? "image/png" : /\.jpe?g$/i.test(file) ? "image/jpeg" : null;
+  if (!type) return null;
+  try {
+    const data = await readFile(file);
+    return data.length <= MAX_THUMB_BYTES ? `data:${type};base64,${data.toString("base64")}` : null;
+  } catch {
+    return null;
+  }
+}
+
 function quoteFontSize(len: number, format: Format) {
   const base = len <= 70 ? 72 : len <= 130 ? 60 : len <= 200 ? 50 : 44;
   return format === "story" ? Math.round(base * 1.15) : base;
 }
 
-function theme(style: Style, seed: string) {
+function theme(style: Exclude<Style, "cover">, seed: string) {
   if (style === "paper") {
     return { background: "linear-gradient(160deg, #FBF6EA, #F1E6CF)", text: "#2B2118", soft: "#6B5A45", accent: "#A0702F", line: "rgba(43,33,24,0.18)" };
   }
@@ -128,7 +153,7 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const chapterId = url.searchParams.get("c") ?? "";
   const quote = (url.searchParams.get("q") ?? "").replace(/\s+/g, " ").trim();
-  const style: Style = (["book", "paper", "night"] as const).find((s) => s === url.searchParams.get("s")) ?? "book";
+  const style: Style = (["book", "paper", "night", "cover"] as const).find((s) => s === url.searchParams.get("s")) ?? "book";
   const format: Format = url.searchParams.get("f") === "story" ? "story" : "post";
 
   if (!isUuid(chapterId) || quote.length < MIN_LEN || quote.length > MAX_LEN) {
@@ -150,6 +175,7 @@ export async function GET(request: Request) {
           visibility: stories.visibility,
           deleted_at: stories.deleted_at,
           title: stories.title,
+          cover_url: stories.cover_url,
         },
         author: profiles.display_name,
       })
@@ -167,8 +193,14 @@ export async function GET(request: Request) {
       return new Response("Quote not in chapter", { status: 422 });
     }
 
-    const [fonts, logo] = await Promise.all([loadFonts(), loadLogo()]);
-    const th = theme(style, row.story.id);
+    const colors = url.searchParams.get("p") ?? "";
+    const useCover = style === "cover" && COVER_COLORS_RE.test(colors);
+    const [fonts, logo, thumb] = await Promise.all([
+      loadFonts(),
+      loadLogo(),
+      useCover ? loadCoverThumb(row.story.cover_url) : Promise.resolve(null),
+    ]);
+    const th = useCover ? coverCardTheme(colors) : theme(style === "cover" ? "book" : style, row.story.id);
     const pad = format === "story" ? 110 : 96;
 
     return new ImageResponse(
@@ -206,7 +238,17 @@ export async function GET(request: Request) {
           <div style={{ display: "flex", flexGrow: 1 }} />
           <div style={{ display: "flex", height: 2, backgroundColor: th.line, marginBottom: 40 }} />
           <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between" }}>
-            <div style={{ display: "flex", flexDirection: "column", maxWidth: 680 }}>
+            {thumb && (
+              // eslint-disable-next-line @next/next/no-img-element -- rendered to PNG by next/og, not a page
+              <img
+                src={thumb}
+                width={format === "story" ? 156 : 126}
+                height={format === "story" ? 208 : 168}
+                alt=""
+                style={{ objectFit: "cover", borderRadius: 10, marginRight: 28, boxShadow: "0 10px 30px rgba(0,0,0,0.45)" }}
+              />
+            )}
+            <div style={{ display: "flex", flexDirection: "column", flexGrow: 1, maxWidth: thumb ? 540 : 680 }}>
               <div style={{ display: "flex", fontFamily: "Literata", fontWeight: 600, fontSize: 40, lineHeight: 1.2 }}>{forDisplay(row.story.title)}</div>
               <div
                 style={{

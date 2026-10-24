@@ -84,6 +84,13 @@ function normalizeQuoteText(s: string): string {
     .trim();
 }
 
+// The bundled fonts have no ʻ / ʼ (U+02BB / U+02BC — Uzbek oʻ, gʻ, eʼ):
+// they came out as "?". Drawn with the look-alike ‘ ’ instead; the check
+// that the quote is in the chapter still uses the original text.
+function forDisplay(text: string): string {
+  return text.replace(/ʻ/g, "‘").replace(/ʼ/g, "’");
+}
+
 function quoteFontSize(len: number, format: Format) {
   const base = len <= 70 ? 72 : len <= 130 ? 60 : len <= 200 ? 50 : 44;
   return format === "story" ? Math.round(base * 1.15) : base;
@@ -193,13 +200,13 @@ export async function GET(request: Request) {
               letterSpacing: "-0.01em",
             }}
           >
-            {quote}
+            {forDisplay(quote)}
           </div>
           <div style={{ display: "flex", flexGrow: 1 }} />
           <div style={{ display: "flex", height: 2, backgroundColor: th.line, marginBottom: 40 }} />
           <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between" }}>
             <div style={{ display: "flex", flexDirection: "column", maxWidth: 680 }}>
-              <div style={{ display: "flex", fontFamily: "Literata", fontWeight: 600, fontSize: 40, lineHeight: 1.2 }}>{row.story.title}</div>
+              <div style={{ display: "flex", fontFamily: "Literata", fontWeight: 600, fontSize: 40, lineHeight: 1.2 }}>{forDisplay(row.story.title)}</div>
               <div
                 style={{
                   display: "flex",
@@ -212,7 +219,7 @@ export async function GET(request: Request) {
                   color: th.soft,
                 }}
               >
-                {row.author}
+                {forDisplay(row.author)}
               </div>
             </div>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>

@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import Image from "next/image";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 import { CloseIcon } from "@/components/ui/icons";
@@ -10,6 +11,9 @@ import { CloseIcon } from "@/components/ui/icons";
 // would otherwise do (e.g. sit inside a card that links elsewhere) — shared
 // by every cover image on the site (story cards, the story page's own
 // cover) so they all behave the same way.
+// The preview is portalled to <body>: the story page's cover sits in a
+// sticky column, which is its own stacking context, so a z-50 overlay
+// rendered in place stayed under the floating menu and the stats card.
 export function ImageZoom({
   src,
   alt,
@@ -23,6 +27,13 @@ export function ImageZoom({
 }) {
   const { t } = useLocale();
   const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open]);
 
   return (
     <>
@@ -39,9 +50,9 @@ export function ImageZoom({
         {children}
       </button>
 
-      {open && (
+      {open && createPortal(
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4"
           onClick={() => setOpen(false)}
         >
           <button
@@ -55,7 +66,8 @@ export function ImageZoom({
           <div className="relative aspect-[3/4] max-h-[85vh] w-full max-w-md" onClick={(e) => e.stopPropagation()}>
             <Image src={src} alt={alt} fill sizes="90vw" className="rounded-[12px] object-contain" />
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );

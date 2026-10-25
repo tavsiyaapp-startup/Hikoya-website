@@ -166,18 +166,21 @@ export function ReaderContent({
 
       <div
         id="chapter-text"
-        className="rounded-[20px] border border-border px-5 py-6 shadow-[0_24px_50px_-34px_rgba(45,31,85,0.4)] sm:px-10 sm:py-10"
-        style={{ backgroundColor: themeStyle.bg, color: themeStyle.text, fontFamily }}
+        className="mx-auto max-w-[calc(75ch+5rem)] rounded-[20px] border border-border px-5 py-6 shadow-[0_24px_50px_-34px_rgba(45,31,85,0.4)] sm:px-10 sm:py-10"
+        style={{ backgroundColor: themeStyle.bg, color: themeStyle.text, fontFamily, fontSize: sizeStyle.fontSize }}
       >
-        {/* A book's measure: about 68 characters per line, centred. */}
+        {/* A book's measure: about 75 characters per line. The page itself
+            is only that wide (+ its padding) — no empty paper either side on
+            wide screens. The font size sits on the page so `ch` here and on
+            the text are the same unit. */}
         {htmlContent ? (
           <div
-            className="rich-content mx-auto max-w-[68ch]"
-            style={{ fontSize: sizeStyle.fontSize, lineHeight: sizeStyle.lineHeight }}
+            className="rich-content max-w-[75ch]"
+            style={{ lineHeight: sizeStyle.lineHeight }}
             dangerouslySetInnerHTML={{ __html: htmlContent }}
           />
         ) : (
-          <div className="mx-auto max-w-[68ch]" style={{ fontSize: sizeStyle.fontSize, lineHeight: sizeStyle.lineHeight }}>
+          <div className="max-w-[75ch]" style={{ lineHeight: sizeStyle.lineHeight }}>
             {(paragraphs ?? []).map((p, i) => (
               <p key={i} className="mb-4.5">
                 {p}

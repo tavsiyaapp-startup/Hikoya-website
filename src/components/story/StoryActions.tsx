@@ -6,7 +6,8 @@ import Link from "next/link";
 import { toggleStoryLike, toggleStoryBookmark, toggleFollowAuthor } from "@/lib/actions/social";
 import { toggleStoryInCollection, createCollectionWithStory } from "@/lib/actions/collections";
 import { setReadingStatus } from "@/lib/actions/reading";
-import { HeartIcon, BookmarkIcon, CollectionsIcon, ChevronDownIcon } from "@/components/ui/icons";
+import { HeartIcon, BookmarkIcon, CollectionsIcon, ChevronDownIcon, ShareIcon } from "@/components/ui/icons";
+import { copyText } from "@/lib/copy-text";
 import { ROUTES } from "@/lib/constants";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 import type { ReadingStatus } from "@/types/database";
@@ -25,6 +26,7 @@ export function LikeBookmarkRow({
   initialBookmarked,
   collections,
   path,
+  title,
 }: {
   storyId: string;
   isAuthenticated: boolean;
@@ -32,6 +34,7 @@ export function LikeBookmarkRow({
   initialBookmarked: boolean;
   collections: CollectionPickerItem[];
   path: string;
+  title: string;
 }) {
   const { t } = useLocale();
   const [liked, setLiked] = useState(initialLiked);
@@ -56,6 +59,7 @@ export function LikeBookmarkRow({
           <span>{t.common.bookmark}</span>
         </Link>
         <CollectionPickerButton storyId={storyId} isAuthenticated={false} collections={collections} path={path} />
+        <ShareButton path={path} title={title} />
       </div>
     );
   }
@@ -101,6 +105,58 @@ export function LikeBookmarkRow({
         <span>{bookmarked ? t.common.bookmarked : t.common.bookmark}</span>
       </button>
       <CollectionPickerButton storyId={storyId} isAuthenticated collections={collections} path={path} />
+      <ShareButton path={path} title={title} />
+    </div>
+  );
+}
+
+// The story's own link. Phones get the system share sheet (Telegram,
+// Instagram, …); elsewhere — or when the sheet is unavailable — the link is
+// copied and a short note says so. Works for guests too.
+function ShareButton({ path, title }: { path: string; title: string }) {
+  const { t } = useLocale();
+  const [copied, setCopied] = useState(false);
+
+  async function share() {
+    const url = new URL(path, window.location.origin).toString();
+    const phone = window.matchMedia("(pointer: coarse)").matches;
+    if (phone && typeof navigator.share === "function") {
+      try {
+        await navigator.share({ title, url });
+        return;
+      } catch (err) {
+        // Closing the sheet is not a failure.
+        if (err instanceof DOMException && err.name === "AbortError") return;
+      }
+    }
+    if (await copyText(url)) {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  }
+
+  return (
+    <div className="relative shrink-0">
+      <button
+        type="button"
+        title={t.common.share}
+        aria-label={t.common.share}
+        onClick={share}
+        className={clsx(
+          "flex h-11 w-11 cursor-pointer items-center justify-center rounded-xl border transition",
+          copied ? "border-primary-300 bg-primary-50 text-primary-900" : "border-border bg-card text-ink-soft"
+        )}
+      >
+        <ShareIcon />
+      </button>
+      {copied && (
+        <span
+          role="status"
+          className="absolute right-0 top-full z-20 mt-2 whitespace-nowrap rounded-full bg-ink px-3 py-1.5 text-[12px] font-bold text-card shadow-[0_14px_30px_rgba(60,40,120,0.14)]"
+        >
+          {t.story.linkCopied}
+        </span>
+      )}
     </div>
   );
 }
@@ -199,7 +255,7 @@ function CollectionPickerButton({
                 <span
                   className={clsx(
                     "flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-[5px] border text-[10px] text-white",
-                    c.hasStory ? "border-[#9333EA] bg-[#9333EA]" : "border-border-soft bg-card"
+                    c.hasStory ? "border-accent bg-accent" : "border-border-soft bg-card"
                   )}
                 >
                   {c.hasStory && "✓"}
@@ -230,7 +286,7 @@ function CollectionPickerButton({
               <button
                 type="button"
                 onClick={handleCreate}
-                className="shrink-0 cursor-pointer rounded-lg bg-[#6D28D9] px-2.5 py-2 text-[12.5px] font-bold text-white"
+                className="shrink-0 cursor-pointer rounded-full bg-accent px-2.5 py-2 text-[12.5px] font-bold text-white"
               >
                 {t.story.newCollectionConfirm}
               </button>

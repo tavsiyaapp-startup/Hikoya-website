@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
+import { GeneratedCover } from "@/components/story/GeneratedCover";
 import { redirect } from "next/navigation";
 import { getServerLocale } from "@/lib/i18n/locale-server";
 import { getDictionary } from "@/lib/i18n";
@@ -90,7 +91,11 @@ export default async function LibraryPage({
                   className="flex items-center gap-3 rounded-[14px] border border-border bg-card p-3.5 hover:border-primary-300 sm:gap-4.5 sm:p-4.5"
                 >
                   <div className="relative h-20 w-15 shrink-0 overflow-hidden rounded-[13px] bg-primary-200 sm:h-25 sm:w-19">
-                    {liveImageUrl(story.cover_url) && <Image src={liveImageUrl(story.cover_url)!} alt="" fill className="object-cover" />}
+                    {liveImageUrl(story.cover_url) ? (
+                      <Image src={liveImageUrl(story.cover_url)!} alt="" fill className="object-cover" />
+                    ) : (
+                      <GeneratedCover seed={story.id} title={story.title} />
+                    )}
                   </div>
                   <div className="min-w-0 flex-1">
                     <h3 className="mb-2.5 line-clamp-2 text-[15px] font-extrabold sm:text-[17px]">{story.title}</h3>
@@ -157,7 +162,7 @@ export default async function LibraryPage({
 
 function EmptyState({ text }: { text: string }) {
   return (
-    <div className="rounded-[12px] border border-dashed border-border-soft bg-surface px-6 py-14 text-center text-[14px] text-muted">
+    <div className="empty-state rounded-[18px] border border-dashed border-border bg-card/60 px-6 py-14 text-center text-[14px] text-muted">
       {text}
     </div>
   );

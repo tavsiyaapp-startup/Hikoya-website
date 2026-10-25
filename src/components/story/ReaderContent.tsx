@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { clsx } from "clsx";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 import { SettingsIcon } from "@/components/ui/icons";
@@ -16,6 +16,7 @@ import {
   type ReaderTheme,
 } from "@/lib/readerPrefs";
 import type { ReaderPrefs } from "@/lib/readerPrefs-server";
+import { TOGGLE_SETTINGS_EVENT } from "@/components/story/ReaderChrome";
 
 const FONTS: ReaderFont[] = ["sans", "serif", "rounded"];
 const SIZES: ReaderFontSize[] = ["sm", "md", "lg", "xl"];
@@ -39,6 +40,18 @@ export function ReaderContent({
   const [fontSize, setFontSize] = useState(initialPrefs.fontSize);
   const [theme, setTheme] = useState(initialPrefs.theme);
   const [open, setOpen] = useState(false);
+  // Opened from the floating bar (ReaderChrome) the panel sits just above
+  // the bar instead of at the top of the text, which may be far away.
+  const [fromBar, setFromBar] = useState(false);
+
+  useEffect(() => {
+    const toggle = () => {
+      setFromBar(true);
+      setOpen((v) => !v);
+    };
+    window.addEventListener(TOGGLE_SETTINGS_EVENT, toggle);
+    return () => window.removeEventListener(TOGGLE_SETTINGS_EVENT, toggle);
+  }, []);
 
   const sizeStyle = READER_FONT_SIZES[fontSize];
   const themeStyle = READER_THEMES[theme];
@@ -49,7 +62,10 @@ export function ReaderContent({
       <div className="relative mb-3 flex justify-end">
         <button
           type="button"
-          onClick={() => setOpen((v) => !v)}
+          onClick={() => {
+            setFromBar(false);
+            setOpen((v) => !v);
+          }}
           aria-label={t.reader.readerSettings}
           className={clsx(
             "flex h-10 w-10 cursor-pointer items-center justify-center rounded-full border bg-card text-ink-soft transition hover:border-primary-300",
@@ -65,9 +81,14 @@ export function ReaderContent({
               type="button"
               aria-label={t.common.close}
               onClick={() => setOpen(false)}
-              className="fixed inset-0 z-10 cursor-default"
+              className={clsx("fixed inset-0 cursor-default", fromBar ? "z-[39]" : "z-10")}
             />
-            <div className="absolute right-0 top-12 z-20 w-72 rounded-[14px] border border-border bg-card p-4 shadow-[0_14px_34px_rgba(60,40,120,0.18)]">
+            <div
+              className={clsx(
+                "rounded-[18px] border border-border bg-card p-4 shadow-[0_18px_40px_-16px_rgba(45,31,85,0.45)]",
+                fromBar ? "fixed inset-x-3 bottom-20 z-40 mx-auto max-w-sm" : "absolute right-0 top-12 z-20 w-72"
+              )}
+            >
               <div className="mb-3.5">
                 <div className="mb-2 text-[12.5px] font-bold text-muted-2">{t.reader.fontFamily}</div>
                 <div className="flex gap-2">
@@ -144,17 +165,19 @@ export function ReaderContent({
       </div>
 
       <div
-        className="rounded-[16px] border border-border p-5 sm:p-8"
+        id="chapter-text"
+        className="rounded-[20px] border border-border px-5 py-6 shadow-[0_24px_50px_-34px_rgba(45,31,85,0.4)] sm:px-10 sm:py-10"
         style={{ backgroundColor: themeStyle.bg, color: themeStyle.text, fontFamily }}
       >
+        {/* A book's measure: about 68 characters per line, centred. */}
         {htmlContent ? (
           <div
-            className="rich-content"
+            className="rich-content mx-auto max-w-[68ch]"
             style={{ fontSize: sizeStyle.fontSize, lineHeight: sizeStyle.lineHeight }}
             dangerouslySetInnerHTML={{ __html: htmlContent }}
           />
         ) : (
-          <div style={{ fontSize: sizeStyle.fontSize, lineHeight: sizeStyle.lineHeight }}>
+          <div className="mx-auto max-w-[68ch]" style={{ fontSize: sizeStyle.fontSize, lineHeight: sizeStyle.lineHeight }}>
             {(paragraphs ?? []).map((p, i) => (
               <p key={i} className="mb-4.5">
                 {p}

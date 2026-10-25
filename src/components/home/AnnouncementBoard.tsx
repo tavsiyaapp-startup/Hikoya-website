@@ -8,8 +8,8 @@ import type { Announcement } from "@/types/database";
 
 const AUTO_ADVANCE_MS = 6000;
 
-// Every announcement gets the board's full fixed height to itself — sm:h-[300px]
-// matches HeroCarousel's own fixed sm:h-[300px], so "the banner and the board
+// Every announcement gets the board's full fixed height to itself — sm:h-[248px]
+// matches HeroCarousel's own fixed sm:h-[248px], so "the banner and the board
 // are level" holds by construction, not as a side effect of flex-stretch.
 // Width is still a flex-grow share (sm:flex-1 against the hero wrapper's
 // sm:flex-[3] in page.tsx — a 3:1 ratio, ~25% of the row), so it scales with
@@ -19,8 +19,11 @@ const AUTO_ADVANCE_MS = 6000;
 // (translateY, mirroring HeroCarousel's horizontal translateX) auto-advances
 // through them, each filling the full fixed height — no splitting the board
 // between two half-height cards, so there's always full room for the text.
-export function AnnouncementBoard({ announcements }: { announcements: Announcement[] }) {
+export function AnnouncementBoard({ announcements: all }: { announcements: Announcement[] }) {
   const { locale } = useLocale();
+  // Same as HeroCarousel: a card with neither a (still existing) picture
+  // nor text would show as an empty box — leave it out.
+  const announcements = all.filter((a) => a.image_url || a.text_uz || a.text_ru);
   const total = announcements.length;
   const [index, setIndex] = useState(0);
 
@@ -33,15 +36,15 @@ export function AnnouncementBoard({ announcements }: { announcements: Announceme
   if (total === 0) return null;
 
   return (
-    <div className="h-[128px] overflow-hidden sm:h-[300px] sm:min-w-0 sm:flex-1">
+    <div className="h-[120px] overflow-hidden rounded-[22px] shadow-[0_24px_50px_-30px_rgba(45,31,85,0.45)] sm:h-[248px] sm:min-w-0 sm:flex-1">
       <div
-        className="flex h-full flex-col transition-transform duration-500 ease-out"
+        className="flex h-full flex-col transition-transform duration-700"
         style={{ transform: `translateY(-${index * 100}%)` }}
       >
         {announcements.map((announcement) => {
           const text = locale === "uz" ? announcement.text_uz : announcement.text_ru;
           const cardClassName =
-            "relative h-full shrink-0 overflow-hidden rounded-[18px] border border-primary-100 bg-linear-to-br from-primary-50 via-[#F6ECFB] to-pink-bg dark:via-[#2A2044]";
+            "relative h-full shrink-0 overflow-hidden rounded-[22px] bg-card bg-[radial-gradient(40rem_18rem_at_0%_0%,var(--color-primary-100),transparent_70%),radial-gradient(30rem_16rem_at_100%_100%,var(--color-pink-bg),transparent_70%)] ring-1 ring-inset ring-border";
           const cardContent = (
             <>
               {announcement.image_url && (
@@ -58,14 +61,14 @@ export function AnnouncementBoard({ announcements }: { announcements: Announceme
                   className={
                     announcement.image_url
                       ? "absolute inset-x-0 bottom-0 bg-linear-to-t from-black/70 to-transparent p-3.5 pt-8"
-                      : "absolute inset-0 flex items-center p-3.5"
+                      : "absolute inset-0 flex items-center p-4 sm:p-5"
                   }
                 >
                   <p
                     className={
                       announcement.image_url
                         ? "line-clamp-3 text-[13.5px] font-bold leading-snug text-white"
-                        : "line-clamp-4 text-[13.5px] font-bold leading-snug text-primary-900 sm:line-clamp-8"
+                        : "line-clamp-3 whitespace-pre-line text-[13.5px] font-semibold leading-snug text-ink sm:line-clamp-8"
                     }
                   >
                     {text}

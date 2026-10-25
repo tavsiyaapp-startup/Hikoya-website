@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
+import { GeneratedCover, coverPalette } from "@/components/story/GeneratedCover";
 import { notFound } from "next/navigation";
 import { getServerLocale } from "@/lib/i18n/locale-server";
 import { getDictionary } from "@/lib/i18n";
@@ -14,7 +15,8 @@ import {
 } from "@/lib/queries/social";
 import type { StoryCommentRow } from "@/lib/queries/social";
 import type { Dictionary } from "@/lib/i18n";
-import { getLinkedRequestForStory } from "@/lib/queries/requests";
+import { getDb } from "@/server/db/client";
+import { getSorovPostIdForStory } from "@/server/data/forum";
 import { formatDateTime, formatDate } from "@/lib/format";
 import { ROUTES } from "@/lib/constants";
 import { RELATIONSHIP_TYPES } from "@/lib/relationshipTypes";
@@ -34,6 +36,7 @@ import { LockIcon } from "@/components/ui/icons";
 import type { ReadingStatus } from "@/types/database";
 import { liveImageUrl } from "@/lib/images";
 import { plural } from "@/lib/plural";
+import { getFreeChaptersForStory, getMySubscriptionExpiry, getPaywallState } from "@/lib/queries/paywall";
 
 function relationshipLabel(value: string, locale: "ru" | "uz"): string {
   if (locale === "ru") return value;
@@ -60,13 +63,25 @@ export default async function StoryPage({
   const story = await getStoryBySlug(slug);
   if (!story) notFound();
 
+  // «Obuna»: chapters past the free ones get a lock for readers who would
+  // hit the subscription popup there.
+  const paywall = await getPaywallState();
+  let lockedFrom: number | null = null;
+  if (paywall.live) {
+    const role = user?.profile?.role;
+    const exempt = user?.id === story.author.id || role === "admin" || role === "moderator";
+    const [free, expiry] = await Promise.all([getFreeChaptersForStory(story.id, paywall), getMySubscriptionExpiry(user?.id)]);
+    if (!exempt && !(expiry && expiry > new Date())) lockedFrom = free + 1;
+  }
+
   const [chapters, social, following, followerCount, linkedRequestId, myCollections, storyComments, readChapterIds] =
     await Promise.all([
       getChaptersForStory(story.id),
       getUserStoryState(user?.id, story.id),
       isFollowingAuthor(user?.id, story.author.id),
       getFollowerCount(story.author.id),
-      getLinkedRequestForStory(story.id),
+      // getDb() inside the promise: if it throws, .catch still gets it.
+    Promise.resolve().then(() => getSorovPostIdForStory(getDb(), story.id)).catch(() => null),
       user ? getMyCollectionsWithStory(user.id, story.id) : Promise.resolve([]),
       tab === "comments" ? getStoryComments(story.id) : Promise.resolve([]),
       getReadChapterIds(user?.id, story.id),
@@ -86,8 +101,29 @@ export default async function StoryPage({
     { label: t.story.chapters, value: chapters.length },
   ];
 
+  const cover = liveImageUrl(story.cover_url);
+  const palette = coverPalette(story.id);
+
   return (
-    <div className="flex flex-col items-start gap-6 lg:flex-row lg:gap-9">
+    <div className="relative">
+      {/* Backdrop behind the top of the page: the cover itself, blurred and
+          fading out — or the colours of the drawn cover. z-0 (not negative):
+          a negative z-index would drop it behind the page background. */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-[-1rem] -top-4 z-0 h-[420px] overflow-hidden [mask-image:linear-gradient(to_bottom,transparent,black_18%,black_45%,transparent)] sm:inset-x-[-1.5rem] lg:inset-x-[-2.25rem]"
+      >
+        {cover ? (
+          <Image src={cover} alt="" fill sizes="240px" className="scale-125 object-cover opacity-45 blur-3xl" />
+        ) : (
+          <div
+            className="absolute inset-0 opacity-35"
+            style={{ background: `radial-gradient(60% 90% at 20% 0%, ${palette.glow}, transparent 70%), linear-gradient(120deg, ${palette.to}66, transparent 70%)` }}
+          />
+        )}
+      </div>
+
+    <div className="relative z-[1] flex flex-col items-start gap-6 lg:flex-row lg:gap-9">
       <div className="w-full lg:sticky lg:top-26 lg:w-75 lg:shrink-0">
         {liveImageUrl(story.cover_url) ? (
           <ImageZoom
@@ -98,15 +134,8 @@ export default async function StoryPage({
             <Image src={liveImageUrl(story.cover_url)!} alt="" fill className="object-cover" />
           </ImageZoom>
         ) : (
-          <div className="relative mx-auto mb-4.5 flex aspect-[3/4] w-full max-w-60 items-center justify-center overflow-hidden rounded-[14px] bg-primary-200 p-5 shadow-[0_18px_40px_rgba(60,40,120,0.18)] sm:max-w-70 lg:mx-0 lg:max-w-none">
-            <div className="text-center">
-              <div className="line-clamp-6 text-[18px] font-extrabold leading-snug text-primary-900">
-                {story.title}
-              </div>
-              <div className="mt-2 truncate text-[13px] font-semibold text-primary-800/80">
-                {story.author?.display_name}
-              </div>
-            </div>
+          <div className="relative mx-auto mb-4.5 aspect-[3/4] w-full max-w-60 overflow-hidden rounded-[14px] shadow-[0_24px_50px_-18px_rgba(45,31,85,0.55)] sm:max-w-70 lg:mx-0 lg:max-w-none">
+            <GeneratedCover seed={story.id} title={story.title} author={story.author?.display_name} />
           </div>
         )}
 
@@ -114,9 +143,9 @@ export default async function StoryPage({
           <h1 className="mb-2 text-[24px] font-extrabold leading-tight tracking-tight text-balance sm:text-[28px]">
             {story.title}
           </h1>
-          <div className="mb-4.5 rounded-[12px] border border-border bg-card px-4.5 py-4">
-            <p className="text-[15px] leading-relaxed text-ink-soft">{story.description}</p>
-          </div>
+          <p className="mb-5 whitespace-pre-line border-l-2 border-primary-300 pl-4 font-display text-[16px] leading-relaxed text-ink-soft">
+            {story.description}
+          </p>
         </div>
 
         {readCta ? (
@@ -138,6 +167,7 @@ export default async function StoryPage({
           initialBookmarked={social.bookmarked}
           collections={myCollections}
           path={path}
+          title={story.title}
         />
 
         {user && (
@@ -180,7 +210,7 @@ export default async function StoryPage({
           <Badge tone="neutral">{languageLabel(t, story.language)}</Badge>
           {story.is_translation && <Badge tone="neutral">{t.story.translationBadge}</Badge>}
           {linkedRequestId && (
-            <Link prefetch={false} href={`${ROUTES.board}?selected=${linkedRequestId}`}>
+            <Link prefetch={false} href={ROUTES.forumPost(linkedRequestId)}>
               <Badge tone="primary">{t.story.requestBadge}</Badge>
             </Link>
           )}
@@ -196,18 +226,18 @@ export default async function StoryPage({
           {story.title}
         </h1>
 
-        <div className="mb-6.5 flex flex-wrap gap-6 rounded-[14px] border border-border bg-card px-4.5 py-5 sm:gap-11 sm:px-6.5 sm:py-5.5">
+        <div className="mb-7 flex flex-wrap gap-6 rounded-[18px] border border-border/80 bg-card/80 px-5 py-5 backdrop-blur-sm sm:gap-12 sm:px-7 sm:py-5.5">
           {metrics.map((m) => (
             <div key={m.label}>
-              <div className="mb-0.5 text-2xl font-extrabold tracking-tight">{m.value}</div>
+              <div className="mb-0.5 font-display text-[26px] font-bold tabular-nums tracking-tight">{m.value}</div>
               <div className="text-[13px] text-muted-2">{m.label}</div>
             </div>
           ))}
         </div>
 
-        <div className="mb-8 hidden max-w-190 rounded-[12px] border border-border bg-card px-4.5 py-4 sm:px-5.5 lg:block">
-          <p className="text-[16px] leading-relaxed text-ink-soft">{story.description}</p>
-        </div>
+        <p className="mb-9 hidden max-w-[68ch] whitespace-pre-line border-l-2 border-primary-300 pl-5 font-display text-[18px] leading-[1.7] text-ink-soft lg:block">
+          {story.description}
+        </p>
 
         <div className="mb-4 flex items-center gap-2.5 overflow-x-auto">
           <LinkChip href={`?tab=chapters`} scroll={false} active={tab === "chapters"} shrink>
@@ -219,7 +249,7 @@ export default async function StoryPage({
         </div>
 
         {tab === "chapters" && (
-          <div className="overflow-hidden rounded-[14px] border border-border bg-card">
+          <div className="overflow-hidden rounded-[18px] border border-border bg-card">
             {chapters.length > 0 ? (
               chapters.map((ch, i) => {
                 const isRead = readChapterIds.has(ch.id);
@@ -229,9 +259,11 @@ export default async function StoryPage({
                     href={ROUTES.chapter(slug, ch.order_index)}
                     className={clsxRow(i, chapters.length)}
                   >
-                    <span className="w-8 shrink-0 text-[14px] font-bold text-muted-3">{ch.order_index}</span>
+                    <span className="w-9 shrink-0 font-display text-[19px] font-semibold tabular-nums text-primary-400">
+                      {String(ch.order_index).padStart(2, "0")}
+                    </span>
                     <div className="min-w-0 flex-1">
-                      <span className={`text-[15px] font-semibold ${isRead ? "text-muted-2" : ""}`}>{ch.title}</span>
+                      <span className={`font-display text-[16.5px] font-semibold leading-snug ${isRead ? "text-muted-2" : "text-ink"}`}>{ch.title}</span>
                       <div className="mt-1 text-[12.5px] text-muted-3">
                         {formatDateTime(ch.published_at ?? ch.created_at, locale)} · {ch.comment_count ?? 0} {t.common.comments}
                       </div>
@@ -244,7 +276,11 @@ export default async function StoryPage({
                         ✓
                       </span>
                     )}
-                    {ch.is_free && <Badge tone="primary">{t.common.read}</Badge>}
+                    {lockedFrom !== null && ch.order_index >= lockedFrom ? (
+                      <LockIcon className="h-4 w-4 shrink-0 text-muted-2" aria-label={t.paywall.badge} />
+                    ) : (
+                      ch.is_free && <Badge tone="primary">{t.common.read}</Badge>
+                    )}
                   </Link>
                 );
               })
@@ -306,12 +342,13 @@ export default async function StoryPage({
         )}
       </div>
     </div>
+    </div>
   );
 }
 
 function clsxRow(index: number, total: number) {
   const border = index < total - 1 ? "border-b border-border-soft" : "";
-  return `flex items-center gap-3.5 px-5.5 py-4 hover:bg-surface ${border}`;
+  return `group flex items-center gap-4 px-5.5 py-4.5 transition hover:bg-primary-50/60 ${border}`;
 }
 
 function StoryCommentCard({

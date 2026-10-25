@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getServerLocale } from "@/lib/i18n/locale-server";
 import { getDictionary } from "@/lib/i18n";
@@ -6,26 +5,33 @@ import { getCurrentUser } from "@/lib/current-user";
 import { getProfileByUsername, getAuthorStoryCount, getAuthorAchievements, getAuthorTotals } from "@/lib/queries/profiles";
 import { getAuthorStories, getCollectionsFeaturingAuthor } from "@/lib/queries/stories";
 import { getFollowerCount, isFollowingAuthor } from "@/lib/queries/social";
-import { getRequestsBySubmitter } from "@/lib/queries/requests";
-import { requestStatusTone, requestStatusLabel } from "@/lib/requestStatus";
+import { getDb } from "@/server/db/client";
+import { listForumPostsByAuthor } from "@/server/data/forum";
+import { getDonation } from "@/server/data/donations";
+import { logQueryError } from "@/lib/queries/query-errors";
 import { getNotifications } from "@/lib/queries/notifications";
 import { getAdminChatSummary } from "@/lib/queries/chat";
 import { ROUTES } from "@/lib/constants";
 import { formatCompactCount } from "@/lib/format";
 import { Avatar } from "@/components/ui/Avatar";
-import { Badge } from "@/components/ui/Chip";
 import { LinkChip } from "@/components/ui/LinkChip";
 import { StoryCard } from "@/components/story/StoryCard";
 import { FollowButton } from "@/components/story/StoryActions";
 import { EditProfileForm } from "@/components/profile/EditProfileForm";
 import { NotificationList } from "@/components/notifications/NotificationList";
-import { CloseRequestButton } from "@/components/board/CloseRequestButton";
+import { PostCard } from "@/components/forum/PostCard";
+import { coverPalette } from "@/components/story/GeneratedCover";
 import { CollectionCard } from "@/components/collections/CollectionCard";
 import { ChatWithAdminButton } from "@/components/chat/ChatWithAdminButton";
+import { DonateButton } from "@/components/profile/DonateButton";
+import { DonationSettings } from "@/components/profile/DonationSettings";
+import { SubscribeButton } from "@/components/paywall/SubscribeButton";
+import { getMySubscriptionExpiry, getPaywallState, paywallOffer } from "@/lib/queries/paywall";
+import { formatDateTime } from "@/lib/format";
 import { VerifiedIcon, SparkleIcon, InstagramIcon, SendIcon } from "@/components/ui/icons";
 import { plural } from "@/lib/plural";
 
-const TABS = ["stories", "collections", "myRequests", "notifications"] as const;
+const TABS = ["stories", "collections", "myTopics", "notifications"] as const;
 type Tab = (typeof TABS)[number];
 
 export default async function AuthorPage({
@@ -47,20 +53,43 @@ export default async function AuthorPage({
   if (!profile) notFound();
 
   const isOwner = user?.id === profile.id;
-  const [storyCount, followerCount, following, stories, myRequests, achievements, notifications, totals, featuringCollections, chatSummary] =
+  const [storyCount, followerCount, following, stories, myTopics, achievements, notifications, totals, featuringCollections, chatSummary, donation] =
     await Promise.all([
       getAuthorStoryCount(profile.id),
       getFollowerCount(profile.id),
       isFollowingAuthor(user?.id, profile.id),
       tab === "stories" ? getAuthorStories(profile.id, isOwner) : Promise.resolve([]),
-      isOwner && tab === "myRequests" ? getRequestsBySubmitter(profile.id) : Promise.resolve([]),
+      isOwner && tab === "myTopics"
+        ? Promise.resolve().then(() => listForumPostsByAuthor(getDb(), null, profile.id)).catch((err) => {
+            logQueryError("listForumPostsByAuthor", err);
+            return [];
+          })
+        : Promise.resolve([]),
       getAuthorAchievements(profile.id),
       isOwner && tab === "notifications" ? getNotifications(profile.id) : Promise.resolve([]),
       getAuthorTotals(profile.id),
       tab === "collections" ? getCollectionsFeaturingAuthor(profile.id) : Promise.resolve([]),
       isOwner ? getAdminChatSummary(profile.id) : Promise.resolve(null),
+      // Before D:/QIZLAB/backups/author_donations.sql is run the table is
+      // missing: no button, no error page.
+      Promise.resolve().then(() => getDonation(getDb(), profile.id)).catch((err) => {
+        logQueryError("getDonation", err);
+        return undefined;
+      }),
     ]);
 
+  // «Donat»: settings only for an author with a published story; the
+  // button once a card is filled in (and never on a blocked account).
+  const canHaveDonations = storyCount > 0 && profile.status === "active" && donation !== undefined;
+  const showDonate = canHaveDonations && donation != null;
+
+  // «Obuna» on the owner's own profile: until when, or a button to subscribe.
+  const [paywall, subscriptionExpiry] = isOwner
+    ? await Promise.all([getPaywallState(), getMySubscriptionExpiry(profile.id)])
+    : [null, null];
+  const subscriptionActive = Boolean(subscriptionExpiry && subscriptionExpiry > new Date());
+
+  const band = coverPalette(profile.id);
   const stats = [
     { label: plural(storyCount, t.author.stories), value: storyCount },
     { label: plural(followerCount, t.author.subscribers), value: followerCount },
@@ -69,10 +98,25 @@ export default async function AuthorPage({
 
   return (
     <div>
-      <div className="mb-6 flex flex-col items-start gap-5 rounded-[16px] border border-border bg-card p-4.5 sm:flex-row sm:gap-6.5 sm:p-7">
-        <Avatar name={profile.display_name} src={profile.avatar_url} size={80} className="sm:!h-24 sm:!w-24" />
-        <div className="min-w-0 flex-1">
-          <h1 className="mb-2 flex items-center gap-2 text-[24px] font-extrabold tracking-tight sm:text-[30px]">
+      <div className="mb-7 overflow-hidden rounded-[22px] border border-border bg-card shadow-[0_24px_50px_-34px_rgba(45,31,85,0.45)]">
+      {/* Wide header band in the author's own colour (same palette as the
+          drawn book covers, so it never clashes with a story's cover). */}
+      <div
+        aria-hidden
+        className="h-28 sm:h-36"
+        style={{
+          background: `radial-gradient(70% 140% at 15% 0%, ${band.glow}, transparent 65%), linear-gradient(120deg, ${band.to}, ${band.from})`,
+        }}
+      />
+      <div className="flex flex-col items-start gap-5 px-4.5 pb-6 sm:flex-row sm:gap-6.5 sm:px-8 sm:pb-8">
+        <Avatar
+          name={profile.display_name}
+          src={profile.avatar_url}
+          size={88}
+          className="-mt-11 ring-4 ring-card sm:!-mt-14 sm:!h-28 sm:!w-28"
+        />
+        <div className="min-w-0 flex-1 sm:pt-4">
+          <h1 className="mb-2 flex items-center gap-2 text-[26px] font-bold leading-tight tracking-tight sm:text-[34px]">
             {profile.display_name}
             {profile.is_verified && (
               <VerifiedIcon className="shrink-0 text-primary-600" aria-label={t.author.verified} />
@@ -108,7 +152,7 @@ export default async function AuthorPage({
           <div className="mb-4.5 flex flex-wrap gap-6 sm:gap-8.5">
             {stats.map((s) => (
               <div key={s.label}>
-                <div className="text-[21px] font-extrabold">{s.value}</div>
+                <div className="font-display text-[24px] font-bold tabular-nums">{s.value}</div>
                 <div className="text-[12.5px] text-muted-2">{s.label}</div>
               </div>
             ))}
@@ -137,7 +181,30 @@ export default async function AuthorPage({
             </div>
           )}
         </div>
-        <div className="w-full shrink-0 sm:w-47.5">
+        <div className="w-full shrink-0 sm:w-47.5 sm:pt-4">
+          {showDonate && donation && (
+            <div className="mb-2.5">
+              <DonateButton
+                authorId={profile.id}
+                authorName={profile.display_name}
+                avatarUrl={profile.avatar_url}
+                local={donation.local}
+                intl={donation.intl}
+                cardHolder={donation.cardHolder}
+                message={donation.message}
+              />
+            </div>
+          )}
+          {isOwner && subscriptionActive && subscriptionExpiry && (
+            <p className="mb-2.5 rounded-xl bg-primary-50 px-3 py-2 text-center text-[12.5px] font-bold text-primary-900">
+              {t.paywall.activeUntil.replace("{date}", formatDateTime(subscriptionExpiry.toISOString(), locale))}
+            </p>
+          )}
+          {isOwner && !subscriptionActive && paywall?.live && (
+            <div className="mb-2.5">
+              <SubscribeButton offer={paywallOffer(paywall.settings, locale)} nextPath={ROUTES.author(username)} />
+            </div>
+          )}
           {isOwner ? (
             <ChatWithAdminButton hasUnread={chatSummary?.unread_by_user ?? false} />
           ) : (
@@ -149,6 +216,7 @@ export default async function AuthorPage({
             />
           )}
         </div>
+      </div>
       </div>
 
       {isOwner && (
@@ -163,6 +231,17 @@ export default async function AuthorPage({
             instagramHandle={profile.instagram_handle}
             telegramHandle={profile.telegram_handle}
             telegramLinked={user?.profile?.telegram_id != null}
+            donationSettings={
+              canHaveDonations ? (
+                <DonationSettings
+                  username={profile.username}
+                  local={donation?.local ?? null}
+                  intl={donation?.intl ?? null}
+                  cardHolder={donation?.cardHolder ?? null}
+                  message={donation?.message ?? null}
+                />
+              ) : undefined
+            }
           />
         </div>
       )}
@@ -172,7 +251,7 @@ export default async function AuthorPage({
           [
             ["stories", t.author.tabStories],
             ["collections", t.author.tabCollections],
-            ...(isOwner ? [["myRequests", t.author.tabMyRequests] as const] : []),
+            ...(isOwner ? [["myTopics", t.author.tabMyTopics] as const] : []),
             ...(isOwner ? [["notifications", t.nav.notifications] as const] : []),
           ] as const
         ).map(([key, label]) => (
@@ -208,33 +287,15 @@ export default async function AuthorPage({
           <EmptyState text={t.author.noCollectionsYet} />
         ))}
 
-      {tab === "myRequests" && isOwner &&
-        (myRequests.length > 0 ? (
-          <div className="flex max-w-225 flex-col gap-3.5">
-            {myRequests.map((r) => {
-              const responseCount = (r.responses as unknown as unknown[] | null)?.length ?? 0;
-              return (
-                <div key={r.id} className="rounded-[12px] border border-border bg-card px-5.5 py-5">
-                  <div className="mb-2.5 flex items-center gap-2.5">
-                    <Badge tone={requestStatusTone(r.status)}>{requestStatusLabel(t, r.status)}</Badge>
-                    <span className="text-[12.5px] text-muted-2">
-                      {responseCount} {plural(responseCount, t.board.responsesCountSuffix)}
-                    </span>
-                    {r.status !== "closed" && <CloseRequestButton requestId={r.id} />}
-                  </div>
-                  <Link prefetch={false}
-                    href={`${ROUTES.board}?selected=${r.id}`}
-                    className="mb-1.5 block text-[15px] font-extrabold leading-snug hover:text-primary-800"
-                  >
-                    {r.title}
-                  </Link>
-                  <p className="line-clamp-2 text-[14.5px] leading-relaxed text-ink-soft">{r.text}</p>
-                </div>
-              );
-            })}
+      {tab === "myTopics" && isOwner &&
+        (myTopics.length > 0 ? (
+          <div className="flex max-w-225 flex-col gap-3">
+            {myTopics.map((post) => (
+              <PostCard key={post.id} post={post} t={t} locale={locale} voteState="own" />
+            ))}
           </div>
         ) : (
-          <EmptyState text={t.board.noRequestsYet} />
+          <EmptyState text={t.forum.myTopicsEmpty} />
         ))}
     </div>
   );
@@ -242,7 +303,7 @@ export default async function AuthorPage({
 
 function EmptyState({ text }: { text: string }) {
   return (
-    <div className="rounded-[12px] border border-dashed border-border-soft bg-surface px-6 py-14 text-center text-[14px] text-muted">
+    <div className="empty-state rounded-[18px] border border-dashed border-border bg-card/60 px-6 py-14 text-center text-[14px] text-muted">
       {text}
     </div>
   );

@@ -37,7 +37,7 @@ export function Avatar({
   return (
     <div
       className={clsx(
-        "flex shrink-0 items-center justify-center rounded-full bg-linear-to-br from-[#C4B5FD] to-[#F0ABFC] font-extrabold text-white",
+        "flex shrink-0 items-center justify-center rounded-full bg-primary-100 font-bold text-primary-800 ring-1 ring-inset ring-primary-200",
         className
       )}
       style={{ width: size, height: size, fontSize: Math.round(size * 0.36) }}

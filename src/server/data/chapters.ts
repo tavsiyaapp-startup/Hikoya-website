@@ -59,7 +59,15 @@ export interface ChapterInput {
 // Locks the story row for the duration of the transaction so two concurrent
 // addChapter calls on the same story can't both read the same max(order_index)
 // and insert at the same position — see backend_functions.md finding 10.
-export async function addChapter(db: DbOrTx, viewer: Viewer | null, storyId: string, input: ChapterInput) {
+// asDraft: saved but not published — used when «Obuna» says the author needs
+// a subscription to publish (src/lib/actions/stories.ts).
+export async function addChapter(
+  db: DbOrTx,
+  viewer: Viewer | null,
+  storyId: string,
+  input: ChapterInput,
+  options: { asDraft?: boolean } = {}
+) {
   const title = input.title.trim();
   const content = sanitizeHtml(input.content.trim());
   if (!title || !content) throw new Error("Title and content are required");
@@ -77,7 +85,7 @@ export async function addChapter(db: DbOrTx, viewer: Viewer | null, storyId: str
     const [{ value }] = await tx.select({ value: max(chapters.order_index) }).from(chapters).where(eq(chapters.story_id, storyId));
     const orderIndex = nextOrderIndex(value);
     const requiresReview = await getRequiresReview(tx);
-    const status = computeChapterStatus(requiresReview);
+    const status = options.asDraft ? ("draft" as const) : computeChapterStatus(requiresReview);
 
     const [chapter] = await tx
       .insert(chapters)

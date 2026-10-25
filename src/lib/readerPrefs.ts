@@ -26,12 +26,12 @@ export function isReaderTheme(value: string | undefined | null): value is Reader
   return value === "light" || value === "sepia" || value === "dark" || value === "green";
 }
 
-// System font stacks only (no extra next/font loads) — Georgia and Verdana
-// both ship with real Cyrillic glyphs on every mainstream OS, so RU/UZ text
-// never falls back to a mismatched generic serif/sans-serif.
+// "serif" is the site's own book face, Literata (already loaded for
+// headings, with Cyrillic and Uzbek ʻ); Georgia stays as the fallback.
+// Verdana ships with real Cyrillic glyphs on every mainstream OS.
 export const READER_FONT_STACKS: Record<ReaderFont, string> = {
   sans: "var(--font-sans)",
-  serif: "Georgia, 'Noto Serif', serif",
+  serif: "var(--font-literata), Georgia, 'Noto Serif', serif",
   rounded: "Verdana, 'Segoe UI', sans-serif",
 };
 

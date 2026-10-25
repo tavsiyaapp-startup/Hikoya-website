@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
+import { GeneratedCover } from "@/components/story/GeneratedCover";
 import { notFound } from "next/navigation";
 import { getServerLocale } from "@/lib/i18n/locale-server";
 import { getDictionary } from "@/lib/i18n";
@@ -14,6 +15,10 @@ import { StoryHideAction } from "./StoryHideAction";
 import { TrashActions } from "./TrashActions";
 import { ChapterModerateActions } from "./ChapterModerateActions";
 import { StoryCoverAdmin } from "./StoryCoverAdmin";
+import { StoryFreeChaptersForm } from "./StoryFreeChaptersForm";
+import { getStaffSession } from "@/server/auth/staff";
+import { getDb } from "@/server/db/client";
+import { getStoryFreeChapters, loadPaywallState } from "@/server/data/paywall";
 import { liveImageUrl } from "@/lib/images";
 import { plural } from "@/lib/plural";
 
@@ -30,6 +35,20 @@ export default async function AdminStoryModeratePage({ params }: { params: Promi
 
   const [story, chapters] = await Promise.all([getStoryForModeration(id), getChaptersForModeration(id)]);
   if (!story) notFound();
+
+  // «Obuna» free chapters for this story — admins only, and only once
+  // paywall.sql has been run (otherwise the form is simply not shown).
+  const staff = await getStaffSession();
+  const paywall =
+    staff.status === "staff" && staff.staff.isAdmin
+      ? await Promise.resolve()
+          .then(async () => {
+            const db = getDb();
+            const [state, current] = await Promise.all([loadPaywallState(db), getStoryFreeChapters(db, id)]);
+            return state.settings ? { current, fallback: state.settings.reader_free_chapters } : null;
+          })
+          .catch(() => null)
+      : null;
 
   const author = story.author;
   const statusLabel: Record<string, string> = {
@@ -66,10 +85,7 @@ export default async function AdminStoryModeratePage({ params }: { params: Promi
               {liveImageUrl(story.cover_url) ? (
                 <Image src={liveImageUrl(story.cover_url)!} alt="" fill className="object-cover" />
               ) : (
-                <div className="text-center">
-                  <div className="line-clamp-4 text-[12px] font-extrabold leading-snug text-primary-900">{story.title}</div>
-                  <div className="mt-1 truncate text-[10.5px] font-semibold text-primary-800/80">{author?.display_name}</div>
-                </div>
+                <GeneratedCover seed={story.id} title={story.title} author={author?.display_name} />
               )}
             </div>
             <StoryCoverAdmin storyId={story.id} storySlug={story.slug} hasCover={Boolean(liveImageUrl(story.cover_url))} />
@@ -125,6 +141,7 @@ export default async function AdminStoryModeratePage({ params }: { params: Promi
             {!story.deleted_at && (story.status === "published" || story.status === "unlisted") && (
               <StoryHideAction storyId={story.id} storySlug={story.slug} />
             )}
+            {paywall && <StoryFreeChaptersForm storyId={story.id} current={paywall.current} fallback={paywall.fallback} />}
           </div>
         </div>
 

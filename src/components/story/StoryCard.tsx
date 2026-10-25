@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
+import { GeneratedCover } from "@/components/story/GeneratedCover";
 import { getServerLocale } from "@/lib/i18n/locale-server";
 import { getDictionary } from "@/lib/i18n";
 import { formatCompactCount } from "@/lib/format";
@@ -97,14 +98,7 @@ export async function StoryCard({
               className="object-cover"
             />
           ) : (
-            <div className="text-center">
-              <div className="line-clamp-4 text-[12.5px] font-extrabold leading-snug text-primary-900">
-                {story.title}
-              </div>
-              <div className="mt-1.5 truncate text-[10.5px] font-semibold text-primary-800/80">
-                {story.author?.display_name}
-              </div>
-            </div>
+            <GeneratedCover seed={story.id} title={story.title} author={story.author?.display_name} />
           )}
           {story.deleted_at ? (
             <div className="absolute right-2 top-2">

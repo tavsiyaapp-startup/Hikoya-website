@@ -11,7 +11,9 @@ export const chapterStatus = pgEnum("chapter_status", ["draft", "published", "pe
 export const collectionOwnerType = pgEnum("collection_owner_type", ["user", "author", "moderator"]);
 export const contentLanguage = pgEnum("content_language", ["ru", "uz"]);
 export const likeTargetType = pgEnum("like_target_type", ["story", "chapter", "comment"]);
-export const notificationType = pgEnum("notification_type", ["new_comment", "comment_reply", "comment_like", "story_approved", "story_rejected", "chapter_approved", "chapter_rejected", "story_like", "story_hidden", "story_restored", "admin_message", "announcement"]);
+export const notificationType = pgEnum("notification_type", ["new_comment", "comment_reply", "comment_like", "story_approved", "story_rejected", "chapter_approved", "chapter_rejected", "story_like", "story_hidden", "story_restored", "admin_message", "announcement", "forum_comment", "forum_reply"]);
+// Muhokamalar topic categories, in the order the site lists them.
+export const forumCategory = pgEnum("forum_category", ["muhokama", "maslahat", "tavsiya", "sorov", "elon"]);
 export const readingStatus = pgEnum("reading_status", ["want_to_read", "read", "dropped"]);
 export const requestResponseStatus = pgEnum("request_response_status", ["proposed", "accepted", "declined"]);
 export const requestStatus = pgEnum("request_status", ["open", "in_progress", "fulfilled", "closed"]);
@@ -332,6 +334,9 @@ export const notifications = pgTable("notifications", {
   message: text("message"),
   is_read: boolean("is_read").default(false).notNull(),
   created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  // Muhokamalar replies (D:\QIZLAB\backups\muhokamalar.sql, 23.10.2026).
+  forum_post_id: uuid("forum_post_id").references((): AnyPgColumn => forumPosts.id, { onDelete: "cascade" }),
+  forum_comment_id: uuid("forum_comment_id").references((): AnyPgColumn => forumComments.id, { onDelete: "cascade" }),
 }, (table) => [
   index("notifications_user_id_idx").on(table.user_id, table.created_at.desc()),
   index("notifications_unread_idx").on(table.user_id).where(sql`(is_read = false)`),
@@ -470,6 +475,178 @@ export const commentReports = pgTable("comment_reports", {
   index("comment_reports_status_idx").on(table.status, table.created_at),
   index("comment_reports_comment_idx").on(table.comment_id),
 ]);
+
+// --- Muhokamalar (community discussions). Created by
+// D:\QIZLAB\backups\muhokamalar.sql (23.10.2026), which also copied the old
+// board (requests / request_responses) in as «Soʻrov» topics.
+
+export const forumPosts = pgTable("forum_posts", {
+  id: uuid("id").defaultRandom().notNull().primaryKey(),
+  author_id: uuid("author_id").notNull().references(() => profiles.id, { onDelete: "cascade" }),
+  category: forumCategory("category").default("muhokama").notNull(),
+  title: text("title").notNull(),
+  body: text("body").default("").notNull(),
+  story_id: uuid("story_id").references(() => stories.id, { onDelete: "set null" }),
+  // Kept in step with forum_votes / forum_comments by the data layer
+  // (src/server/data/forum.ts), so lists never count rows.
+  vote_count: integer("vote_count").default(0).notNull(),
+  comment_count: integer("comment_count").default(0).notNull(),
+  is_pinned: boolean("is_pinned").default(false).notNull(),
+  is_locked: boolean("is_locked").default(false).notNull(),
+  hidden_at: timestamp("hidden_at", { withTimezone: true }),
+  hidden_by: uuid("hidden_by").references(() => profiles.id, { onDelete: "set null" }),
+  created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  legacy_request_id: uuid("legacy_request_id").unique(),
+}, (table) => [
+  index("forum_posts_created_at_idx").on(table.created_at.desc()),
+  index("forum_posts_category_created_at_idx").on(table.category, table.created_at.desc()),
+  index("forum_posts_author_id_idx").on(table.author_id),
+]);
+
+export const forumComments = pgTable("forum_comments", {
+  id: uuid("id").defaultRandom().notNull().primaryKey(),
+  post_id: uuid("post_id").notNull().references(() => forumPosts.id, { onDelete: "cascade" }),
+  author_id: uuid("author_id").notNull().references(() => profiles.id, { onDelete: "cascade" }),
+  parent_id: uuid("parent_id").references((): AnyPgColumn => forumComments.id, { onDelete: "cascade" }),
+  body: text("body").notNull(),
+  story_id: uuid("story_id").references(() => stories.id, { onDelete: "set null" }),
+  like_count: integer("like_count").default(0).notNull(),
+  hidden_at: timestamp("hidden_at", { withTimezone: true }),
+  hidden_by: uuid("hidden_by").references(() => profiles.id, { onDelete: "set null" }),
+  created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  legacy_response_id: uuid("legacy_response_id").unique(),
+}, (table) => [
+  index("forum_comments_post_author_idx").on(table.post_id, table.author_id),
+  index("forum_comments_parent_id_idx").on(table.parent_id),
+  index("forum_comments_author_id_idx").on(table.author_id),
+  index("forum_comments_story_id_idx").on(table.story_id).where(sql`(story_id IS NOT NULL)`),
+]);
+
+export const forumVotes = pgTable("forum_votes", {
+  post_id: uuid("post_id").notNull().references(() => forumPosts.id, { onDelete: "cascade" }),
+  user_id: uuid("user_id").notNull().references(() => profiles.id, { onDelete: "cascade" }),
+  created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  primaryKey({ columns: [table.post_id, table.user_id] }),
+  index("forum_votes_user_id_idx").on(table.user_id),
+]);
+
+export const forumCommentLikes = pgTable("forum_comment_likes", {
+  comment_id: uuid("comment_id").notNull().references(() => forumComments.id, { onDelete: "cascade" }),
+  user_id: uuid("user_id").notNull().references(() => profiles.id, { onDelete: "cascade" }),
+  created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  primaryKey({ columns: [table.comment_id, table.user_id] }),
+  index("forum_comment_likes_user_id_idx").on(table.user_id),
+]);
+
+// Exactly one of post_id / comment_id is set (CHECK in the SQL file).
+export const forumReports = pgTable("forum_reports", {
+  id: uuid("id").defaultRandom().notNull().primaryKey(),
+  post_id: uuid("post_id").references(() => forumPosts.id, { onDelete: "cascade" }),
+  comment_id: uuid("comment_id").references(() => forumComments.id, { onDelete: "cascade" }),
+  reporter_id: uuid("reporter_id").notNull().references(() => profiles.id, { onDelete: "cascade" }),
+  reason: text("reason").notNull(),
+  details: text("details"),
+  status: text("status").default("open").notNull(),
+  resolution: text("resolution"),
+  created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  resolved_at: timestamp("resolved_at", { withTimezone: true }),
+  resolved_by: uuid("resolved_by").references(() => profiles.id, { onDelete: "set null" }),
+}, (table) => [
+  uniqueIndex("forum_reports_post_reporter_key").on(table.post_id, table.reporter_id).where(sql`(post_id IS NOT NULL)`),
+  uniqueIndex("forum_reports_comment_reporter_key").on(table.comment_id, table.reporter_id).where(sql`(comment_id IS NOT NULL)`),
+  index("forum_reports_open_idx").on(table.created_at).where(sql`(status = 'open')`),
+]);
+
+// Donation card details an author shows on their profile (the «Donat»
+// button). Created by D:/QIZLAB/backups/author_donations.sql (23.10.2026);
+// no row = no button. A local card (uzcard/humo) and/or an international
+// one (visa/mastercard), each 16 digits without spaces (CHECK in SQL).
+export const authorDonations = pgTable("author_donations", {
+  author_id: uuid("author_id").notNull().primaryKey().references(() => profiles.id, { onDelete: "cascade" }),
+  card_number: text("card_number"),
+  card_type: text("card_type"),
+  intl_card_number: text("intl_card_number"),
+  intl_card_type: text("intl_card_type"),
+  card_holder: text("card_holder"),
+  message: text("message"),
+  updated_at: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+// --- «Obuna» (paid subscription, test mode). Created by
+// D:/QIZLAB/backups/paywall.sql (23.10.2026). Rules live in
+// src/server/data/paywall-rules.ts, database work in src/server/data/paywall.ts.
+
+export const paywallSettings = pgTable("paywall_settings", {
+  id: integer("id").default(1).notNull().primaryKey(),
+  enabled: boolean("enabled").default(false).notNull(),
+  starts_at: timestamp("starts_at", { withTimezone: true }),
+  ends_at: timestamp("ends_at", { withTimezone: true }),
+  reader_free_chapters: integer("reader_free_chapters").default(3).notNull(),
+  author_free_chapters: integer("author_free_chapters").default(3).notNull(),
+  period_days: integer("period_days").default(30).notNull(),
+  price: text("price").default("10 000 soʻm").notNull(),
+  card_number: text("card_number"),
+  card_type: text("card_type"),
+  card_holder: text("card_holder"),
+  message_uz: text("message_uz"),
+  message_ru: text("message_ru"),
+  quote_trials: integer("quote_trials").default(2).notNull(),
+  updated_at: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const subscriptions = pgTable("subscriptions", {
+  user_id: uuid("user_id").notNull().primaryKey().references(() => profiles.id, { onDelete: "cascade" }),
+  expires_at: timestamp("expires_at", { withTimezone: true }).notNull(),
+  updated_at: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  index("subscriptions_expires_at_idx").on(table.expires_at),
+]);
+
+export const paymentClaims = pgTable("payment_claims", {
+  id: uuid("id").defaultRandom().notNull().primaryKey(),
+  token: text("token").notNull().unique(),
+  user_id: uuid("user_id").notNull().references(() => profiles.id, { onDelete: "cascade" }),
+  // new → awaiting (bot opened) → submitted (screenshot sent) → approved / rejected
+  status: text("status").default("new").notNull(),
+  telegram_user_id: bigint("telegram_user_id", { mode: "number" }),
+  telegram_chat_id: bigint("telegram_chat_id", { mode: "number" }),
+  telegram_username: text("telegram_username"),
+  created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  submitted_at: timestamp("submitted_at", { withTimezone: true }),
+  resolved_at: timestamp("resolved_at", { withTimezone: true }),
+  resolved_by: text("resolved_by"),
+}, (table) => [
+  index("payment_claims_user_idx").on(table.user_id, table.created_at.desc()),
+  index("payment_claims_tg_idx").on(table.telegram_user_id, table.created_at.desc()),
+]);
+
+export const subscriptionEvents = pgTable("subscription_events", {
+  id: uuid("id").defaultRandom().notNull().primaryKey(),
+  user_id: uuid("user_id").notNull().references(() => profiles.id, { onDelete: "cascade" }),
+  kind: text("kind").notNull(),
+  days: integer("days"),
+  expires_at: timestamp("expires_at", { withTimezone: true }),
+  by_user_id: uuid("by_user_id").references(() => profiles.id, { onDelete: "set null" }),
+  by_telegram: text("by_telegram"),
+  claim_id: uuid("claim_id").references(() => paymentClaims.id, { onDelete: "set null" }),
+  created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  index("subscription_events_created_idx").on(table.created_at.desc()),
+  index("subscription_events_user_idx").on(table.user_id, table.created_at.desc()),
+]);
+
+export const storyFreeChapters = pgTable("story_free_chapters", {
+  story_id: uuid("story_id").notNull().primaryKey().references(() => stories.id, { onDelete: "cascade" }),
+  free_chapters: integer("free_chapters").notNull(),
+  updated_at: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const quoteTrials = pgTable("quote_trials", {
+  user_id: uuid("user_id").notNull().primaryKey().references(() => profiles.id, { onDelete: "cascade" }),
+  used: integer("used").default(0).notNull(),
+});
 
 export const baAccounts = pgTable("ba_accounts", {
   id: text("id").notNull().primaryKey(),

@@ -2,7 +2,7 @@ import "server-only";
 import { logQueryError } from "@/lib/queries/query-errors";
 import { and, desc, eq, sql } from "drizzle-orm";
 import { getDb } from "@/server/db/client";
-import { chapters, notifications, profiles, stories } from "@/server/db/schema";
+import { chapters, forumPosts, notifications, profiles, stories } from "@/server/db/schema";
 import type { Notification } from "@/types/database";
 
 export async function getUnreadNotificationCount(userId: string): Promise<number> {
@@ -43,6 +43,7 @@ export type NotificationWithContext = Notification & {
   actor: { display_name: string } | null;
   story: { title: string; slug: string } | null;
   chapter: { order_index: number; title: string } | null;
+  forum_post: { title: string } | null;
 };
 
 export async function getNotifications(userId: string, limit = 40): Promise<NotificationWithContext[]> {
@@ -54,11 +55,13 @@ export async function getNotifications(userId: string, limit = 40): Promise<Noti
         actor: { display_name: profiles.display_name },
         story: { title: stories.title, slug: stories.slug },
         chapter: { order_index: chapters.order_index, title: chapters.title },
+        forum_post: { title: forumPosts.title },
       })
       .from(notifications)
       .leftJoin(profiles, eq(notifications.actor_id, profiles.id))
       .leftJoin(stories, eq(notifications.story_id, stories.id))
       .leftJoin(chapters, eq(notifications.chapter_id, chapters.id))
+      .leftJoin(forumPosts, eq(notifications.forum_post_id, forumPosts.id))
       .where(eq(notifications.user_id, userId))
       .orderBy(desc(notifications.created_at))
       .limit(limit);
@@ -68,6 +71,7 @@ export async function getNotifications(userId: string, limit = 40): Promise<Noti
       actor: r.notification.actor_id ? r.actor : null,
       story: r.notification.story_id ? r.story : null,
       chapter: r.notification.chapter_id ? r.chapter : null,
+      forum_post: r.notification.forum_post_id ? r.forum_post : null,
     }));
   } catch (err) {
     logQueryError("getNotifications", err);

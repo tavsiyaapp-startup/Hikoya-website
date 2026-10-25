@@ -134,7 +134,7 @@ export function TelegramLoginButton({
         type="button"
         onClick={handleClick}
         disabled={!ready || pending}
-        className={`flex h-[54px] cursor-pointer items-center justify-center gap-2.5 rounded-[15px] bg-[#54A9EB] px-6 text-[16px] font-bold text-white transition hover:brightness-105 disabled:cursor-default disabled:opacity-60 ${
+        className={`flex h-[54px] cursor-pointer items-center justify-center gap-2.5 rounded-full bg-[#54A9EB] px-6 text-[16px] font-bold text-white transition hover:brightness-105 disabled:cursor-default disabled:opacity-60 ${
           mode === "link" ? "" : "w-full"
         }`}
       >

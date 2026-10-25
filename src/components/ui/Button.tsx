@@ -6,18 +6,18 @@ type Size = "sm" | "md" | "lg";
 
 const variantClasses: Record<Variant, string> = {
   primary:
-    "border-none bg-linear-to-br from-[#6D28D9] to-[#9333EA] text-white shadow-[0_10px_24px_rgba(109,40,217,0.3)] hover:brightness-110",
+    "border-none bg-accent text-on-accent shadow-[0_10px_24px_-12px_rgba(85,53,166,0.6)] hover:-translate-y-px hover:bg-accent-hover hover:shadow-[0_14px_28px_-12px_rgba(85,53,166,0.65)]",
   secondary:
-    "border border-primary-200 bg-card text-primary-900 hover:bg-primary-50",
-  ghost: "border border-border bg-card text-ink-soft hover:bg-surface",
+    "border border-primary-200 bg-card text-primary-900 hover:border-primary-300 hover:bg-primary-50",
+  ghost: "border border-border bg-card text-ink-soft hover:border-primary-200 hover:bg-surface",
   danger:
     "border border-red-200 dark:border-red-900/60 bg-card text-danger hover:bg-danger-bg",
 };
 
 const sizeClasses: Record<Size, string> = {
-  sm: "h-9 px-3.5 text-[13.5px] rounded-[11px] gap-1.5",
-  md: "h-[46px] px-5 text-[14.5px] rounded-[13px] gap-2",
-  lg: "h-[54px] px-6 text-[16px] rounded-[15px] gap-2.5",
+  sm: "h-9 px-4 text-[13.5px] rounded-full gap-1.5",
+  md: "h-[46px] px-6 text-[14.5px] rounded-full gap-2",
+  lg: "h-[54px] px-7 text-[16px] rounded-full gap-2.5",
 };
 
 export const Button = forwardRef<

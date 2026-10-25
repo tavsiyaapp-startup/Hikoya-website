@@ -24,8 +24,9 @@ export function LastSeen({ lastSeenAt }: { lastSeenAt: string | null }) {
     );
   }
   return (
-    <span className="text-[12px] text-muted-2" title={formatDateTime(lastSeenAt, locale)}>
+    <span className="text-[12px] text-muted-2">
       {t.admin.lastSeen} {formatRelativeTime(lastSeenAt, locale)}
+      <span className="text-muted-3"> · {formatDateTime(lastSeenAt, locale)}</span>
     </span>
   );
 }

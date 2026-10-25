@@ -1,11 +1,13 @@
 import Link from "next/link";
 import Image from "next/image";
+import { GeneratedCover } from "@/components/story/GeneratedCover";
 import { notFound, redirect } from "next/navigation";
 import { getServerLocale } from "@/lib/i18n/locale-server";
 import { getDictionary } from "@/lib/i18n";
 import { getCurrentUser } from "@/lib/current-user";
 import { getStoryBySlug, getChaptersForStory, getTagsForStory, getAllTags } from "@/lib/queries/stories";
-import { getLinkedRequestForStory } from "@/lib/queries/requests";
+import { getDb } from "@/server/db/client";
+import { getSorovPostIdForStory } from "@/server/data/forum";
 import { ROUTES } from "@/lib/constants";
 import { localizeGenre } from "@/lib/genre";
 import { Badge, Chip } from "@/components/ui/Chip";
@@ -16,6 +18,8 @@ import { EditStoryForm } from "@/components/manage/EditStoryForm";
 import { StoryModerationActions } from "@/components/manage/StoryModerationActions";
 import { DeleteStoryButton } from "@/components/manage/DeleteStoryButton";
 import { liveImageUrl } from "@/lib/images";
+import { getMyPublishGate, getPaywallState, paywallOffer } from "@/lib/queries/paywall";
+import { AuthorPublishNotice } from "@/components/paywall/AuthorPublishNotice";
 
 const TABS = ["chapters", "edit"] as const;
 type Tab = (typeof TABS)[number];
@@ -40,11 +44,14 @@ export default async function ManagePage({
   if (!story) notFound();
   if (story.author.id !== user.id) redirect(ROUTES.home);
 
-  const [chapters, tags, existingTags, linkedRequestId] = await Promise.all([
+  const [chapters, tags, existingTags, linkedRequestId, publishGate, paywall] = await Promise.all([
     getChaptersForStory(story.id, true),
     tab === "edit" ? getTagsForStory(story.id) : Promise.resolve([]),
     tab === "edit" ? getAllTags() : Promise.resolve([]),
-    getLinkedRequestForStory(story.id),
+    // getDb() inside the promise: if it throws, .catch still gets it.
+    Promise.resolve().then(() => getSorovPostIdForStory(getDb(), story.id)).catch(() => null),
+    getMyPublishGate(user.id),
+    getPaywallState(),
   ]);
 
   const metrics = [
@@ -58,7 +65,11 @@ export default async function ManagePage({
     <div>
       <div className="mb-6 flex flex-col gap-4.5 rounded-[16px] border border-border bg-card p-4.5 sm:flex-row sm:gap-6.5 sm:p-6.5">
         <div className="relative mx-auto h-42 w-31.5 shrink-0 overflow-hidden rounded-[12px] bg-primary-200 shadow-[0_10px_24px_rgba(60,40,120,0.16)] sm:mx-0 sm:h-50 sm:w-37.5">
-          {liveImageUrl(story.cover_url) && <Image src={liveImageUrl(story.cover_url)!} alt="" fill className="object-cover" />}
+          {liveImageUrl(story.cover_url) ? (
+            <Image src={liveImageUrl(story.cover_url)!} alt="" fill className="object-cover" />
+          ) : (
+            <GeneratedCover seed={story.id} title={story.title} author={story.author?.display_name} />
+          )}
         </div>
         <div className="min-w-0 flex-1">
           <div className="mb-3 flex flex-wrap items-center gap-2.5">
@@ -77,7 +88,7 @@ export default async function ManagePage({
               <Badge key={g} tone="pink">{localizeGenre(g, locale)}</Badge>
             ))}
             {linkedRequestId && (
-              <Link prefetch={false} href={`${ROUTES.board}?selected=${linkedRequestId}`}>
+              <Link prefetch={false} href={ROUTES.forumPost(linkedRequestId)}>
                 <Badge tone="primary">{t.story.requestBadge}</Badge>
               </Link>
             )}
@@ -118,6 +129,15 @@ export default async function ManagePage({
           </Link>
         ))}
       </div>
+
+      {tab === "chapters" && (
+        <AuthorPublishNotice
+          allowed={publishGate.allowed}
+          freeLeft={publishGate.freeLeft}
+          offer={paywallOffer(paywall.settings, locale)}
+          nextPath={ROUTES.manage(slug)}
+        />
+      )}
 
       {tab === "chapters" && (
         <div className="mb-4.5 flex flex-wrap justify-end gap-2.5">

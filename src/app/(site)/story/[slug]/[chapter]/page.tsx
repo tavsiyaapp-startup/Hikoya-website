@@ -9,7 +9,7 @@ import {
   getChapter,
   getGuestFreeChapterCount,
 } from "@/lib/queries/stories";
-import { getChapterComments, getLikedCommentIds, isFollowingAuthor, getFollowerCount } from "@/lib/queries/social";
+import { getChapterComments, getLikedCommentIds, isFollowingAuthor, getFollowerCount, getReadChapterIds } from "@/lib/queries/social";
 import { sanitizeHtml } from "@/lib/sanitize";
 import { getServerReaderPrefs } from "@/lib/readerPrefs-server";
 import { ROUTES } from "@/lib/constants";
@@ -19,10 +19,16 @@ import { Button } from "@/components/ui/Button";
 import { FollowButton } from "@/components/story/StoryActions";
 import { ReaderContent } from "@/components/story/ReaderContent";
 import { ChapterReadingRecorder } from "@/components/story/ChapterReadingRecorder";
+import { ReaderChrome } from "@/components/story/ReaderChrome";
+import { QuoteMaker } from "@/components/story/QuoteMaker";
 import { CommentGuidelines } from "@/components/story/CommentGuidelines";
 import { CommentForm } from "@/components/story/CommentForm";
 import { CommentItem } from "@/components/story/CommentItem";
 import { plural } from "@/lib/plural";
+import { getFreeChaptersForStory, getMySubscriptionExpiry, getPaywallState, paywallOffer } from "@/lib/queries/paywall";
+import { chapterAccess, isSubscriptionActive } from "@/server/data/paywall-rules";
+import { SubscribeGate } from "@/components/paywall/SubscribeGate";
+import { liveImageUrl } from "@/lib/images";
 
 export default async function ReaderPage({
   params,
@@ -50,7 +56,25 @@ export default async function ReaderPage({
   ]);
   if (!ch) notFound();
 
-  const isUnlocked = Boolean(user) || ch.is_free || ch.order_index <= freeLimit;
+  // «Obuna»: past the free chapters a subscription is needed; a locked
+  // chapter's text is never sent to the browser (paywall-rules.ts).
+  const paywall = await getPaywallState();
+  const [freeChapters, subscriptionExpiry] = await Promise.all([
+    getFreeChaptersForStory(story.id, paywall),
+    getMySubscriptionExpiry(user?.id),
+  ]);
+  const role = user?.profile?.role;
+  const access = chapterAccess({
+    ownerOrStaff: user?.id === story.author.id || role === "admin" || role === "moderator",
+    signedIn: Boolean(user),
+    orderIndex: ch.order_index,
+    isFreeChapter: ch.is_free,
+    guestFreeChapters: freeLimit,
+    live: paywall.live,
+    freeChapters,
+    subscribed: isSubscriptionActive(subscriptionExpiry, new Date()),
+  });
+  const isUnlocked = access === "open";
   const comments = isUnlocked ? await getChapterComments(ch.id) : [];
   const allCommentIds = comments.flatMap((c) => [c.id, ...c.replies.map((r) => r.id)]);
   const likedCommentIds = isUnlocked ? await getLikedCommentIds(user?.id, allCommentIds) : new Set<string>();
@@ -60,6 +84,9 @@ export default async function ReaderPage({
   const nextChapter = idx >= 0 && idx < allChapters.length - 1 ? allChapters[idx + 1] : null;
 
   const readMinutes = Math.max(1, Math.round(ch.word_count / 200));
+  const readIds = isUnlocked ? await getReadChapterIds(user?.id, story.id) : new Set<string>();
+  const chaptersLeft = idx >= 0 ? allChapters.length - idx - 1 : 0;
+  const chapterHref = Object.fromEntries(allChapters.map((c) => [c.order_index, ROUTES.chapter(slug, c.order_index)]));
   const isRichContent = /<[a-z][\s\S]*>/i.test(ch.content);
   const paragraphs = isRichContent ? [] : ch.content.split(/\n+/).filter(Boolean);
 
@@ -83,10 +110,33 @@ export default async function ReaderPage({
           <span>{story.title}</span>
         </Link>
 
-        <div className="mb-2.5 text-[14px] font-bold text-muted-2">
+        {isUnlocked && <div className="reading-progress" aria-hidden />}
+        {isUnlocked && (
+          <ReaderChrome
+            chapterId={ch.id}
+            currentIndex={ch.order_index}
+            readMinutes={readMinutes}
+            chapters={allChapters.map((c) => ({ order_index: c.order_index, title: c.title, read: readIds.has(c.id) }))}
+            chapterHref={chapterHref}
+            prevHref={prevChapter ? ROUTES.chapter(slug, prevChapter.order_index) : null}
+            nextHref={nextChapter ? ROUTES.chapter(slug, nextChapter.order_index) : null}
+          />
+        )}
+        {isUnlocked && (
+          <QuoteMaker
+            chapterId={ch.id}
+            storyTitle={story.title}
+            paywallOffer={paywall.live ? paywallOffer(paywall.settings, locale) : null}
+            signedIn={Boolean(user)}
+            nextPath={ROUTES.chapter(slug, orderIndex)}
+            allowCopy={user?.id === story.author.id}
+            coverUrl={liveImageUrl(story.cover_url)}
+          />
+        )}
+        <div className="mb-2.5 text-[12px] font-bold uppercase tracking-[0.18em] text-primary-600">
           {t.reader.chapterLabel} {ch.order_index}
         </div>
-        <h1 className="mb-4.5 text-[26px] font-extrabold leading-tight tracking-tight sm:text-[32px] lg:text-[40px]">{ch.title}</h1>
+        <h1 className="mb-4.5 text-[28px] font-bold leading-tight tracking-tight sm:text-[34px] lg:text-[42px]">{ch.title}</h1>
         <div className="mb-7.5 flex flex-wrap gap-5 border-b border-border pb-5.5 text-[13.5px] text-muted-2">
           <span>{ch.word_count} {plural(ch.word_count, t.reader.wordsLabel)}</span>
           <span>{readMinutes} {t.reader.readTimeLabel}</span>
@@ -100,6 +150,14 @@ export default async function ReaderPage({
             initialPrefs={readerPrefs}
             htmlContent={isRichContent ? sanitizeHtml(ch.content) : null}
             paragraphs={isRichContent ? null : paragraphs}
+          />
+        ) : access === "subscribe" ? (
+          <SubscribeGate
+            offer={paywallOffer(paywall.settings, locale)}
+            signedIn={Boolean(user)}
+            nextPath={ROUTES.chapter(slug, orderIndex)}
+            orderIndex={ch.order_index}
+            freeChapters={freeChapters}
           />
         ) : (
           <div className="rounded-[16px] bg-linear-to-br from-ink-dark to-primary-950 px-5 py-6 text-white sm:px-9 sm:py-8.5">
@@ -121,25 +179,41 @@ export default async function ReaderPage({
           </div>
         )}
 
-        {isUnlocked && (prevChapter || nextChapter) && (
-          <div className="mt-9 flex flex-col gap-3 sm:flex-row">
-            {prevChapter && (
-              <Link prefetch={false}
-                href={ROUTES.chapter(slug, prevChapter.order_index)}
-                className="flex w-full items-center justify-center gap-3 rounded-[12px] border border-border bg-card py-5 text-[15px] font-bold text-ink-soft sm:flex-1"
-              >
-                <span>← {t.reader.previousChapter}</span>
-              </Link>
+        {/* End of the chapter: what's next, in one big obvious place. */}
+        {isUnlocked && (
+          <section id="chapter-end" className="mt-10 rounded-[24px] border border-border bg-card px-5 py-8 text-center shadow-[0_24px_50px_-34px_rgba(45,31,85,0.45)] sm:px-10">
+            <div className="mb-5 text-[12px] font-bold uppercase tracking-[0.18em] text-primary-600">
+              {t.reader.chapterFinished.replace("{n}", String(ch.order_index))}
+            </div>
+            {nextChapter ? (
+              <>
+                <div className="mb-1.5 text-[13px] font-semibold text-muted-2">{t.reader.nextChapterLabel}</div>
+                <h2 className="mx-auto mb-6 max-w-[28ch] text-[24px] font-bold leading-snug sm:text-[28px]">{nextChapter.title}</h2>
+                <Link prefetch={false} href={ROUTES.chapter(slug, nextChapter.order_index)} className="inline-block">
+                  <Button size="lg">{t.reader.keepReading} →</Button>
+                </Link>
+                {chaptersLeft > 1 && (
+                  <div className="mt-3 text-[13px] text-muted-2">{t.reader.chaptersLeft.replace("{n}", String(chaptersLeft))}</div>
+                )}
+                <div className="mt-4 text-[12px] text-muted-3 sm:hidden">← {t.reader.swipeHint}</div>
+              </>
+            ) : (
+              <>
+                <h2 className="mx-auto mb-2.5 max-w-[30ch] text-[24px] font-bold leading-snug">{t.reader.lastChapterTitle}</h2>
+                <p className="mx-auto max-w-[52ch] text-[14.5px] leading-relaxed text-muted">{t.reader.lastChapterBody}</p>
+              </>
             )}
-            {nextChapter && (
-              <Link prefetch={false}
-                href={ROUTES.chapter(slug, nextChapter.order_index)}
-                className="flex w-full items-center justify-center gap-3 rounded-[12px] border border-primary-200 bg-primary-50 py-5 text-[16px] font-bold text-primary-900 sm:flex-1"
-              >
-                <span>{t.reader.continueNext}</span>
-              </Link>
-            )}
-          </div>
+            <div className="mt-6 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 border-t border-border-soft pt-5 text-[13.5px] font-bold">
+              {prevChapter && (
+                <Link prefetch={false} href={ROUTES.chapter(slug, prevChapter.order_index)} className="text-muted-2 hover:text-primary-800">
+                  ← {t.reader.previousChapter}
+                </Link>
+              )}
+              <a href="#comments" className="text-muted-2 hover:text-primary-800">
+                💬 {t.reader.leaveComment}
+              </a>
+            </div>
+          </section>
         )}
 
         <div className="mt-9 flex items-center gap-3.5 rounded-[14px] border border-border bg-card p-4.5">
@@ -163,9 +237,9 @@ export default async function ReaderPage({
         </div>
 
         {isUnlocked && (
-          <div className="mt-11">
+          <div id="comments" className="mt-11 scroll-mt-24">
             <div className="mb-5 flex items-center gap-3.5">
-              <h2 className="text-[22px] font-extrabold">{t.reader.commentsTitle}</h2>
+              <h2 className="text-[22px] font-bold">{t.reader.commentsTitle}</h2>
               <span className="text-[14px] text-muted-2">{allCommentIds.length}</span>
             </div>
 

@@ -10,6 +10,7 @@ import { ROUTES } from "@/lib/constants";
 import { Button } from "@/components/ui/Button";
 import { BellIcon, SearchIcon } from "@/components/ui/icons";
 import { UserMenu } from "@/components/layout/UserMenu";
+import { ThemeSwitch } from "@/components/layout/ThemeSwitch";
 import type { CurrentUser } from "@/lib/current-user";
 
 export function Header({ user, unreadCount = 0 }: { user: CurrentUser | null; unreadCount?: number }) {
@@ -23,7 +24,7 @@ export function Header({ user, unreadCount = 0 }: { user: CurrentUser | null; un
   }
 
   return (
-    <header className="sticky top-0 z-20 flex h-[64px] items-center gap-3 border-b border-border bg-card/92 px-3 backdrop-blur-md sm:h-[76px] sm:gap-5 sm:px-5 lg:gap-7 lg:px-8">
+    <header className="site-header sticky top-0 z-20 flex h-[64px] items-center gap-3 border-b border-border/70 bg-card/80 px-3 backdrop-blur-xl sm:h-[76px] sm:gap-5 sm:px-5 lg:gap-7 lg:px-8">
       <Link prefetch={false} href={ROUTES.home} className="flex shrink-0 items-center gap-2.5 lg:w-52 lg:gap-3">
         <Image src="/images/logo.png" alt="Hikoya" width={36} height={36} className="object-contain sm:h-11 sm:w-11" />
         <span className="hidden font-script text-[24px] leading-none text-ink sm:inline sm:text-[30px]">
@@ -37,7 +38,7 @@ export function Header({ user, unreadCount = 0 }: { user: CurrentUser | null; un
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder={t.common.searchPlaceholder}
-          className="h-12 w-full rounded-[14px] border border-border bg-surface pl-12 pr-4 text-[14.5px] text-ink outline-none transition focus:border-primary-500 focus:bg-card focus:shadow-[0_0_0_4px_rgba(167,139,250,0.16)]"
+          className="h-12 w-full rounded-full border border-border bg-surface pl-12 pr-4 text-[14.5px] text-ink outline-none transition placeholder:text-muted-3 focus:border-primary-400 focus:bg-card focus:ring-4 focus:ring-primary-400/20"
         />
       </form>
 
@@ -55,14 +56,14 @@ export function Header({ user, unreadCount = 0 }: { user: CurrentUser | null; un
       </Link>
 
       <div className={clsx("flex items-center gap-1.5 sm:ml-auto sm:gap-2.5", !user && "max-[359px]:ml-auto")}>
-        <div className="hidden gap-0.5 rounded-xl border border-border bg-primary-50 p-[3px] xs:flex">
+        <div className="hidden gap-0.5 rounded-full border border-border bg-primary-50 p-[3px] xs:flex">
           {(["uz", "ru"] as const).map((code) => (
             <button
               key={code}
               type="button"
               onClick={() => setLocale(code)}
               className={clsx(
-                "h-8 cursor-pointer rounded-[10px] px-3 text-[12.5px] font-bold transition",
+                "h-8 cursor-pointer rounded-full px-3 text-[12.5px] font-bold transition",
                 locale === code ? "bg-card text-primary-800 shadow-sm" : "text-muted"
               )}
             >
@@ -71,20 +72,22 @@ export function Header({ user, unreadCount = 0 }: { user: CurrentUser | null; un
           ))}
         </div>
 
-        <Link prefetch={false}
-          href={user ? `${ROUTES.author(user.profile?.username ?? "")}?tab=notifications` : ROUTES.onboarding}
-          title={user ? t.nav.notifications : t.common.guestLockedTitle}
-          className={clsx(
-            "relative flex h-10 w-10 shrink-0 items-center justify-center rounded-[13px] border border-border bg-card text-ink-soft transition sm:h-11 sm:w-11",
-            // A guest's bell does nothing; on phones its place goes to "Войти".
-            !user && "hidden cursor-not-allowed opacity-50 sm:flex"
-          )}
-        >
-          <BellIcon />
-          {unreadCount > 0 && (
-            <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-danger sm:right-2.5 sm:top-2.5" />
-          )}
-        </Link>
+        {user ? (
+          <Link prefetch={false}
+            href={`${ROUTES.author(user.profile?.username ?? "")}?tab=notifications`}
+            title={t.nav.notifications}
+            className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border bg-card text-ink-soft transition hover:border-primary-200 sm:h-11 sm:w-11"
+          >
+            <BellIcon />
+            {unreadCount > 0 && (
+              <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-danger sm:right-2.5 sm:top-2.5" />
+            )}
+          </Link>
+        ) : (
+          // A guest has no notifications; the bell's place goes to the
+          // light/dark switch (on phones it lives in the footer).
+          <ThemeSwitch className="hidden sm:flex" />
+        )}
 
         {user ? (
           <UserMenu user={user} />

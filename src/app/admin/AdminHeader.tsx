@@ -9,7 +9,7 @@ export function AdminHeader({ title }: { title: string }) {
   const router = useRouter();
 
   return (
-    <div className="flex items-center gap-3.5 border-b border-border bg-card px-4 py-5.5 sm:px-8.5">
+    <div className="sticky top-0 z-10 flex items-center gap-3.5 border-b border-border/70 bg-card/80 px-4 py-5 backdrop-blur-xl sm:px-8.5">
       {pathname !== ROUTES.admin && (
         <button
           type="button"
@@ -19,7 +19,7 @@ export function AdminHeader({ title }: { title: string }) {
           <ChevronLeftIcon />
         </button>
       )}
-      <h1 className="text-[22px] font-extrabold tracking-tight sm:text-[26px]">{title}</h1>
+      <h1 className="text-[22px] font-bold tracking-tight sm:text-[28px]">{title}</h1>
     </div>
   );
 }

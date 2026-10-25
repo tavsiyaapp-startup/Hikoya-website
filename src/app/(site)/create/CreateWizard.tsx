@@ -156,7 +156,7 @@ export function CreateWizard({
               className={clsx(
                 "flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-2 text-[13px] font-bold",
                 n === step
-                  ? "border-[#7C3AED] bg-[#7C3AED] text-white"
+                  ? "border-accent bg-accent text-white"
                   : n < step
                     ? "cursor-pointer border-primary-500 bg-primary-50 text-primary-800"
                     : "border-border bg-card text-muted-3"
@@ -398,7 +398,7 @@ export function CreateWizard({
                       <span
                         className={clsx(
                           "h-4.5 w-4.5 shrink-0 rounded-full border-2",
-                          visibility === value ? "border-[#7C3AED] bg-[#7C3AED]" : "border-border"
+                          visibility === value ? "border-accent bg-accent" : "border-border"
                         )}
                       />
                       <span className="flex flex-col gap-0.5">
@@ -438,7 +438,7 @@ export function CreateWizard({
               type="button"
               disabled={(step === 1 && !step1Valid) || (step === 2 && !step2Valid) || pending}
               onClick={() => (step < 3 ? setStep((s) => s + 1) : handlePublish())}
-              className="h-13.5 flex-1 cursor-pointer rounded-[15px] border-none bg-linear-to-br from-[#6D28D9] to-[#9333EA] text-[16px] font-bold text-white shadow-[0_10px_24px_rgba(109,40,217,0.3)] disabled:cursor-not-allowed disabled:opacity-50"
+              className="h-13.5 flex-1 cursor-pointer rounded-[15px] border-none bg-accent hover:bg-accent-hover text-[16px] font-bold text-white shadow-[0_10px_24px_-12px_rgba(85,53,166,0.6)] disabled:cursor-not-allowed disabled:opacity-50"
             >
               {step < 3 ? t.common.next : pending ? t.common.loading : t.create.publish}
             </button>

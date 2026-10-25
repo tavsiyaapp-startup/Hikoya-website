@@ -20,6 +20,7 @@ import { StoryCarousel } from "@/components/story/StoryCarousel";
 import { CollectionCard } from "@/components/collections/CollectionCard";
 import { HeroCarousel } from "@/components/home/HeroCarousel";
 import { AnnouncementBoard } from "@/components/home/AnnouncementBoard";
+import { CardRowSkeleton } from "@/components/ui/Skeletons";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Chip";
 import { Pagination } from "@/components/ui/Pagination";
@@ -294,7 +295,7 @@ async function EmptyRow({ className = "" }: { className?: string }) {
   const t = getDictionary(locale);
   return (
     <div
-      className={`rounded-[12px] border border-dashed border-border-soft bg-surface px-6 py-10 text-center text-[14px] text-muted ${className}`}
+      className={`empty-state rounded-[18px] border border-dashed border-border bg-card/60 px-6 py-10 text-center text-[14px] text-muted ${className}`}
     >
       {t.home.emptyFeed}
     </div>
@@ -305,15 +306,11 @@ async function EmptyRow({ className = "" }: { className?: string }) {
 // content doesn't visibly jump (CLS).
 function HomeSectionsSkeleton() {
   return (
-    <div className="animate-pulse">
+    <div className="flex flex-col gap-11">
       {[0, 1].map((row) => (
-        <div key={row} className="mb-11">
-          <div className="mb-4.5 h-8 w-40 rounded-lg bg-surface" />
-          <div className="flex gap-4 overflow-hidden sm:gap-5.5">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="aspect-[3/4] w-[118px] shrink-0 rounded-[14px] bg-surface xs:w-[138px] sm:w-[158px] lg:w-[172px]" />
-            ))}
-          </div>
+        <div key={row}>
+          <div className="skeleton mb-4.5 h-8 w-40 rounded-full" />
+          <CardRowSkeleton count={8} />
         </div>
       ))}
     </div>

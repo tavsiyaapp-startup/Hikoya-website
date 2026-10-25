@@ -14,13 +14,18 @@ export function AddChapterForm({ storyId, storySlug }: { storyId: string; storyS
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  // Saved as a draft because publishing needs a subscription («Obuna»).
+  const [savedAsDraft, setSavedAsDraft] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
 
   if (!open) {
     return (
-      <Button onClick={() => setOpen(true)} size="md">
-        {t.manage.addChapter}
-      </Button>
+      <div className="flex flex-col items-end gap-1.5">
+        <Button onClick={() => setOpen(true)} size="md">
+          {t.manage.addChapter}
+        </Button>
+        {savedAsDraft && <p className="max-w-80 text-right text-[12.5px] font-semibold text-primary-800">{t.paywall.savedAsDraft}</p>}
+      </div>
     );
   }
 
@@ -39,6 +44,7 @@ export function AddChapterForm({ storyId, storySlug }: { storyId: string; storyS
             setError(t.manage.chapterSaveError);
             return;
           }
+          setSavedAsDraft(saved === "draft");
           formRef.current?.reset();
           setOpen(false);
           // revalidatePath alone didn't always redraw the list in place

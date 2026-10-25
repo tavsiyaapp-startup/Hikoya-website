@@ -20,7 +20,6 @@ import { FollowButton } from "@/components/story/StoryActions";
 import { EditProfileForm } from "@/components/profile/EditProfileForm";
 import { NotificationList } from "@/components/notifications/NotificationList";
 import { PostCard } from "@/components/forum/PostCard";
-import { coverPalette } from "@/components/story/GeneratedCover";
 import { CollectionCard } from "@/components/collections/CollectionCard";
 import { ChatWithAdminButton } from "@/components/chat/ChatWithAdminButton";
 import { DonateButton } from "@/components/profile/DonateButton";
@@ -89,7 +88,6 @@ export default async function AuthorPage({
     : [null, null];
   const subscriptionActive = Boolean(subscriptionExpiry && subscriptionExpiry > new Date());
 
-  const band = coverPalette(profile.id);
   const stats = [
     { label: plural(storyCount, t.author.stories), value: storyCount },
     { label: plural(followerCount, t.author.subscribers), value: followerCount },
@@ -99,13 +97,14 @@ export default async function AuthorPage({
   return (
     <div>
       <div className="mb-7 overflow-hidden rounded-[22px] border border-border bg-card shadow-[0_24px_50px_-34px_rgba(45,31,85,0.45)]">
-      {/* Wide header band in the author's own colour (same palette as the
-          drawn book covers, so it never clashes with a story's cover). */}
+      {/* Wide header band, the same brand violet for every author (fixed
+          values, not the theme's mirrored primary scale, so it reads the
+          same in light and dark mode). */}
       <div
         aria-hidden
         className="h-28 sm:h-36"
         style={{
-          background: `radial-gradient(70% 140% at 15% 0%, ${band.glow}, transparent 65%), linear-gradient(120deg, ${band.to}, ${band.from})`,
+          background: "radial-gradient(70% 140% at 15% 0%, #B19EE2, transparent 65%), radial-gradient(50% 120% at 100% 100%, rgba(194,46,124,0.35), transparent 70%), linear-gradient(120deg, #5535A6, #2D1F55)",
         }}
       />
       <div className="flex flex-col items-start gap-5 px-4.5 pb-6 sm:flex-row sm:gap-6.5 sm:px-8 sm:pb-8">

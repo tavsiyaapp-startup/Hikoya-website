@@ -38,7 +38,9 @@ export async function generateMetadata(): Promise<Metadata> {
     description: t.meta.description,
     // Installed on an iPhone home screen: opens full-screen, named Hikoya.
     appleWebApp: { capable: true, title: "Hikoya", statusBarStyle: "default" },
-    icons: { apple: "/icons/apple-touch-icon.png" },
+    // Setting `icons` here replaces the app/icon.png file convention, so the
+    // browser-tab icon has to be listed too.
+    icons: { icon: "/icon.png", apple: "/icons/apple-touch-icon.png" },
   };
 }
 

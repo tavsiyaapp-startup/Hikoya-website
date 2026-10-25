@@ -126,6 +126,7 @@ const uz: typeof ru = {
     noCommentsYet: "Hozircha izohlar yoʻq.",
     requestBadge: "Soʻrov boʻyicha",
     addToCollection: "Tanlanmaga qoʻshish",
+    linkCopied: "Havola nusxalandi",
     noCollectionsYet: "Hozircha tanlanmalar yoʻq",
     newCollectionConfirm: "Yaratish",
     newCollectionError: "Tanlanma yaratib boʻlmadi. Qaytadan urinib koʻring.",

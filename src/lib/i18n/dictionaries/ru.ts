@@ -124,6 +124,7 @@ const ru = {
     noCommentsYet: "Комментариев пока нет.",
     requestBadge: "По заявке",
     addToCollection: "Добавить в подборку",
+    linkCopied: "Ссылка скопирована",
     noCollectionsYet: "Подборок пока нет",
     newCollectionConfirm: "Создать",
     newCollectionError: "Не удалось создать подборку. Попробуйте ещё раз.",

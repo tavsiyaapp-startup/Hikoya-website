@@ -31,6 +31,16 @@ export function SearchIcon(props: IconProps) {
   );
 }
 
+export function ShareIcon(props: IconProps) {
+  return (
+    <svg {...base()} {...props}>
+      <path d="M12 15V4" />
+      <path d="m8 8 4-4 4 4" />
+      <path d="M8 11H6a1 1 0 0 0-1 1v7a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-7a1 1 0 0 0-1-1h-2" />
+    </svg>
+  );
+}
+
 export function CollectionsIcon(props: IconProps) {
   return (
     <svg {...base()} {...props}>

@@ -167,6 +167,7 @@ export default async function StoryPage({
           initialBookmarked={social.bookmarked}
           collections={myCollections}
           path={path}
+          title={story.title}
         />
 
         {user && (

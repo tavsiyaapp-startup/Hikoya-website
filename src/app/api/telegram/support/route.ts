@@ -4,6 +4,7 @@ import { asc, eq } from "drizzle-orm";
 import { getDb, type Db } from "@/server/db/client";
 import { telegramSupportPendingMessages, telegramSupportTickets } from "@/server/db/schema";
 import { handlePaymentCallback, handlePaymentMessage } from "@/server/telegram/payment-bot";
+import { handleLoginCallback, handleLoginMessage } from "@/server/telegram/login-bot";
 
 // Support/feedback bot, modeled on a reference aiogram bot the user already
 // runs elsewhere (long-polling + in-memory dicts). Vercel has no
@@ -116,16 +117,20 @@ export async function POST(request: Request) {
     const update = (await request.json()) as TelegramUpdate;
     const chat = update.callback_query?.message?.chat ?? update.message?.chat;
     if (chat && chat.type === "private") privateChatId = chat.id;
-    // «Obuna» payments (src/server/telegram/payment-bot.ts) go first; whatever
-    // they don't handle is the usual support flow.
+    // Site sign-in (src/server/telegram/login-bot.ts) and «Obuna» payments
+    // (src/server/telegram/payment-bot.ts) go first — each only takes its own
+    // /start link and buttons; whatever they don't handle is the usual
+    // support flow.
     if (update.callback_query) {
-      if (!(await handlePaymentCallback(admin, update.callback_query, callTelegram))) {
-        await handleCallback(admin, update.callback_query, groupChatId);
-      }
+      const handled =
+        (await handleLoginCallback(admin, update.callback_query, callTelegram)) ||
+        (await handlePaymentCallback(admin, update.callback_query, callTelegram));
+      if (!handled) await handleCallback(admin, update.callback_query, groupChatId);
     } else if (update.message) {
-      if (!(await handlePaymentMessage(admin, update.message, callTelegram))) {
-        await handleMessage(admin, update.message, groupChatId);
-      }
+      const handled =
+        (await handleLoginMessage(admin, update.message, callTelegram)) ||
+        (await handlePaymentMessage(admin, update.message, callTelegram));
+      if (!handled) await handleMessage(admin, update.message, groupChatId);
     }
   } catch (err) {
     console.error("telegram support webhook error", err);

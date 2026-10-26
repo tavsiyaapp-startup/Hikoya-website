@@ -1,44 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ROUTES } from "@/lib/constants";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 
-// Numeric id of the bot (the public part of its token before ":"), set in
-// next.config.ts. Telegram's sign-in popup is opened by id, not username.
-const BOT_ID = process.env.NEXT_PUBLIC_TELEGRAM_BOT_ID ?? "";
-const WIDGET_SCRIPT = "https://telegram.org/js/telegram-widget.js?22";
+// The site's own support bot (the same one «Obuna» payments use).
+const BOT_USERNAME = (process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME ?? "").replace(/^@/, "");
+const POLL_MS = 2000;
+const GIVE_UP_MS = 10 * 60 * 1000;
 
 type Mode = "sign-in" | "link";
-type TelegramUser = Record<string, unknown>;
-type TelegramGlobal = {
-  Login?: {
-    auth: (
-      options: { bot_id: string; request_access?: "write"; lang?: string },
-      callback: (user: TelegramUser | false) => void
-    ) => void;
-  };
-};
-
-// Loaded once per page; resolves when window.Telegram.Login is ready.
-let widgetScript: Promise<void> | null = null;
-function loadWidgetScript(): Promise<void> {
-  if (!widgetScript) {
-    widgetScript = new Promise((resolve, reject) => {
-      const script = document.createElement("script");
-      script.src = WIDGET_SCRIPT;
-      script.async = true;
-      script.onload = () => resolve();
-      script.onerror = () => {
-        widgetScript = null;
-        reject(new Error("telegram widget failed to load"));
-      };
-      document.head.appendChild(script);
-    });
-  }
-  return widgetScript;
-}
+type PollStatus = "pending" | "ok" | "cancelled" | "expired";
 
 function TelegramIcon() {
   return (
@@ -48,13 +21,18 @@ function TelegramIcon() {
   );
 }
 
-// Our own button (in the site's language) that opens Telegram's sign-in
-// popup through its widget script (https://core.telegram.org/widgets/login).
-// Telegram's ready-made button can't be translated and its iframe showed
-// black corners in dark mode. After the person confirms in Telegram the
-// signed data is sent to the server (src/server/auth/telegram-plugin.ts),
-// which checks the signature and signs in / links. The bot's domain must be
-// set to hikoya.org in BotFather (/setdomain).
+function randomString(bytes: number): string {
+  const buf = crypto.getRandomValues(new Uint8Array(bytes));
+  return btoa(String.fromCharCode(...buf)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+// Sign-in (or linking, from profile settings) through the site's bot — flow
+// in src/server/auth/telegram-bot-login.ts. The click opens
+// t.me/<bot>?start=login_<token>; the person presses Start and «Ha, kirish»
+// in Telegram while this page asks the server every 2 s whether it's done,
+// then carries on like after any sign-in. No phone number, no popup — works
+// in in-app browsers and in the installed app, since the page that waits is
+// the one that gets signed in.
 export function TelegramLoginButton({
   mode = "sign-in",
   next = "/",
@@ -64,76 +42,116 @@ export function TelegramLoginButton({
   next?: string;
   onLinked?: () => void;
 }) {
-  const { t, locale } = useLocale();
+  const { t } = useLocale();
   const router = useRouter();
-  const [ready, setReady] = useState(false);
+  const [link, setLink] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const attempt = useRef<{ token: string; secret: string; started: number } | null>(null);
 
   useEffect(() => {
-    if (!BOT_ID) return;
-    let cancelled = false;
-    loadWidgetScript()
-      .then(() => !cancelled && setReady(true))
-      .catch(() => !cancelled && setError(t.auth.telegramError));
-    return () => {
-      cancelled = true;
-    };
-  }, [t]);
+    if (!link) return;
+    let stopped = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
 
-  async function submit(user: TelegramUser) {
-    setPending(true);
-    setError(null);
-    try {
-      const res = await fetch(`/api/auth/telegram/${mode}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "same-origin",
-        body: JSON.stringify(user),
-      });
-      if (!res.ok) {
-        const body = (await res.json().catch(() => null)) as { message?: string } | null;
-        setError(body?.message === "TELEGRAM_TAKEN" ? t.auth.telegramTaken : t.auth.telegramError);
-        setPending(false);
-        return;
-      }
-      if (mode === "link") {
-        setPending(false);
-        onLinked?.();
-        router.refresh();
-        return;
-      }
-      // Same hand-off as Google/email: /login sends a new account through
-      // onboarding, everyone else on to `next`.
-      router.push(`${ROUTES.login}?next=${encodeURIComponent(next)}`);
-      router.refresh();
-    } catch {
-      setError(t.auth.telegramError);
-      setPending(false);
+    function stop(message: string | null) {
+      stopped = true;
+      attempt.current = null;
+      setLink(null);
+      setError(message);
     }
-  }
+
+    async function poll() {
+      const current = attempt.current;
+      if (stopped || !current) return;
+      if (Date.now() - current.started > GIVE_UP_MS) return stop(t.auth.telegramExpired);
+      try {
+        const res = await fetch("/api/auth/telegram/bot-poll", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "same-origin",
+          body: JSON.stringify({ token: current.token, secret: current.secret }),
+        });
+        if (stopped) return;
+        if (!res.ok) {
+          const body = (await res.json().catch(() => null)) as { message?: string } | null;
+          return stop(body?.message === "TELEGRAM_TAKEN" ? t.auth.telegramTaken : t.auth.telegramError);
+        }
+        const { status } = (await res.json()) as { status: PollStatus };
+        if (status === "ok") {
+          stopped = true;
+          attempt.current = null;
+          if (mode === "link") {
+            setLink(null);
+            onLinked?.();
+            router.refresh();
+            return;
+          }
+          setPending(true);
+          // Same hand-off as Google/email: /login sends a new account through
+          // onboarding, everyone else on to `next`.
+          router.push(`${ROUTES.login}?next=${encodeURIComponent(next)}`);
+          router.refresh();
+          return;
+        }
+        if (status === "cancelled") return stop(t.auth.telegramCancelled);
+        if (status === "expired") return stop(t.auth.telegramExpired);
+      } catch {
+        // A dropped connection (phone switching to Telegram) — just ask again.
+      }
+      timer = setTimeout(poll, POLL_MS);
+    }
+
+    // Coming back from Telegram: ask straight away instead of waiting.
+    function onVisible() {
+      if (document.visibilityState !== "visible" || stopped) return;
+      clearTimeout(timer);
+      void poll();
+    }
+
+    timer = setTimeout(poll, POLL_MS);
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      stopped = true;
+      clearTimeout(timer);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [link, mode, next, onLinked, router, t]);
 
   function handleClick() {
-    const login = (window as unknown as { Telegram?: TelegramGlobal }).Telegram?.Login;
-    if (!login) {
-      setError(t.auth.telegramError);
-      return;
-    }
+    const token = randomString(24);
+    const secret = randomString(32);
+    const url = `https://t.me/${BOT_USERNAME}?start=login_${token}`;
+    attempt.current = { token, secret, started: Date.now() };
     setError(null);
-    // Opens Telegram's confirmation popup; `false` means it was closed or refused.
-    login.auth({ bot_id: BOT_ID, request_access: "write", lang: locale }, (user) => {
-      if (user) void submit(user);
-    });
+    // Opened straight from the click — browsers block a window opened later.
+    window.open(url, "_blank", "noopener");
+    setLink(url);
+    fetch("/api/auth/telegram/bot-start", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
+      body: JSON.stringify({ token, secret, mode }),
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error(String(res.status));
+      })
+      .catch(() => {
+        if (attempt.current?.token !== token) return;
+        attempt.current = null;
+        setLink(null);
+        setError(t.auth.telegramError);
+      });
   }
 
-  if (!BOT_ID) return null;
+  if (!BOT_USERNAME) return null;
 
   return (
     <div className={mode === "link" ? "flex flex-col items-start gap-1.5" : "flex flex-col gap-1.5"}>
       <button
         type="button"
         onClick={handleClick}
-        disabled={!ready || pending}
+        disabled={pending}
         className={`flex h-[54px] cursor-pointer items-center justify-center gap-2.5 rounded-full bg-[#54A9EB] px-6 text-[16px] font-bold text-white transition hover:brightness-105 disabled:cursor-default disabled:opacity-60 ${
           mode === "link" ? "" : "w-full"
         }`}
@@ -141,6 +159,14 @@ export function TelegramLoginButton({
         <TelegramIcon />
         {pending ? t.common.loading : mode === "link" ? t.auth.telegramLink : t.auth.telegramSignIn}
       </button>
+      {link && (
+        <div role="status" className="text-center text-[12.5px] leading-relaxed text-muted">
+          <p>{mode === "link" ? t.auth.telegramWaitingLink : t.auth.telegramWaiting}</p>
+          <a href={link} target="_blank" rel="noopener noreferrer" className="font-bold text-primary-800 hover:underline">
+            {t.auth.telegramOpenAgain}
+          </a>
+        </div>
+      )}
       {error && <p className="text-center text-[12.5px] text-danger">{error}</p>}
     </div>
   );

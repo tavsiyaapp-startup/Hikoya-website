@@ -1,19 +1,31 @@
 import "server-only";
 import type { BetterAuthPlugin } from "better-auth";
-import { APIError, createAuthEndpoint, createEmailVerificationToken, sessionMiddleware } from "better-auth/api";
+import { APIError, createAuthEndpoint, createEmailVerificationToken, getSessionFromCtx, sessionMiddleware } from "better-auth/api";
 import { setSessionCookie } from "better-auth/cookies";
 import { eq } from "drizzle-orm";
 import { getDb } from "@/server/db/client";
 import { profiles } from "@/server/db/schema";
 import { uniqueUsernameFromEmail } from "@/server/data/username";
 import { isTelegramPlaceholderEmail, telegramPlaceholderEmail } from "@/lib/telegram-account";
-import { verifyTelegramLogin, type TelegramLoginData } from "@/server/auth/telegram-verify";
+import {
+  LOGIN_TOKEN_RE,
+  createLoginRequest,
+  deleteLoginRequest,
+  describeDevice,
+  hashSecret,
+  readLoginRequest,
+  secretMatches,
+  type TelegramLoginUser,
+} from "@/server/auth/telegram-bot-login";
 import { mergeTelegramAccount, sendMergeOffer } from "@/server/auth/telegram-merge";
 import { takeRateLimit } from "@/server/rate-limit";
 
-// Sign-in with the Telegram Login Widget, as a Better Auth plugin so the
-// session it starts is an ordinary Better Auth session (same cookie, same
-// expiry, same sign-out) as email-code and Google sign-ins.
+// Sign-in with Telegram, as a Better Auth plugin so the session it starts is
+// an ordinary Better Auth session (same cookie, same expiry, same sign-out)
+// as email-code and Google sign-ins. The person confirms in the site's own
+// bot (Start → «Ha, kirish»), see telegram-bot-login.ts for the flow; the
+// Login Widget's phone-number popup it replaced broke in in-app browsers
+// and in the installed iPhone app.
 //
 // The link lives in profiles.telegram_id (unique) — one Telegram account per
 // site account. A Telegram id that isn't linked yet creates a new account
@@ -22,10 +34,14 @@ import { takeRateLimit } from "@/server/rate-limit";
 // instead, so they keep one account. Two accounts can't be merged here —
 // an admin moves the works between them (transferStoriesAdmin).
 
-function verified(body: unknown): TelegramLoginData {
-  const data = verifyTelegramLogin(body, process.env.TELEGRAM_BOT_TOKEN ?? "");
-  if (!data) throw new APIError("UNAUTHORIZED", { message: "TELEGRAM_INVALID" });
-  return data;
+function bodyString(body: unknown, key: string): string {
+  const value = (body as Record<string, unknown> | null)?.[key];
+  return typeof value === "string" ? value : "";
+}
+
+// nginx appends the real client address last (see config.ts ipAddress).
+function clientIp(request: Request | undefined): string {
+  return request?.headers.get("x-forwarded-for")?.split(",").pop()?.trim() || "local";
 }
 
 async function findByTelegramId(telegramId: number) {
@@ -41,25 +57,80 @@ export function telegramAuth(): BetterAuthPlugin {
   return {
     id: "telegram",
     endpoints: {
-      signInTelegram: createAuthEndpoint("/telegram/sign-in", { method: "POST" }, async (ctx) => {
-        const data = verified(ctx.body);
+      // Step 1: the page registers its token (goes into the bot link) and the
+      // hash of its secret (stays on the page). Link mode is only for a
+      // signed-in account, recorded now so the finish can't link elsewhere.
+      startTelegramBot: createAuthEndpoint("/telegram/bot-start", { method: "POST" }, async (ctx) => {
+        const token = bodyString(ctx.body, "token");
+        const secret = bodyString(ctx.body, "secret");
+        const mode = bodyString(ctx.body, "mode") === "link" ? "link" : "sign-in";
+        if (!LOGIN_TOKEN_RE.test(token) || secret.length < 20 || secret.length > 100) {
+          throw new APIError("BAD_REQUEST", { message: "TELEGRAM_INVALID" });
+        }
+        if (!takeRateLimit(`tg-bot-start:${clientIp(ctx.request)}`, 20, 10 * 60 * 1000)) {
+          throw new APIError("TOO_MANY_REQUESTS", { message: "RATE_LIMITED" });
+        }
+        let userId: string | undefined;
+        if (mode === "link") {
+          const session = await getSessionFromCtx(ctx);
+          if (!session) throw new APIError("UNAUTHORIZED", { message: "TELEGRAM_INVALID" });
+          userId = session.user.id;
+        }
+        const ok = await createLoginRequest(getDb(), token, {
+          secret: hashSecret(secret),
+          status: "pending",
+          mode,
+          userId,
+          device: describeDevice(ctx.request?.headers.get("user-agent") ?? null),
+        });
+        if (!ok) throw new APIError("CONFLICT", { message: "TELEGRAM_INVALID" });
+        return ctx.json({ ok: true });
+      }),
+
+      // Step 3: the page asks every couple of seconds. Once the bot recorded
+      // the button press, this signs the page in (or links the Telegram to
+      // its account) and the request is gone — it works exactly once.
+      pollTelegramBot: createAuthEndpoint("/telegram/bot-poll", { method: "POST" }, async (ctx) => {
+        const token = bodyString(ctx.body, "token");
+        const secret = bodyString(ctx.body, "secret");
         const db = getDb();
-        let userId = (await findByTelegramId(data.id))?.id ?? null;
+        const request = await readLoginRequest(db, token);
+        if (!request || !secretMatches(request.state, secret)) return ctx.json({ status: "expired" as const });
+        const { state } = request;
+        if (state.status === "pending") return ctx.json({ status: "pending" as const });
+        if (state.status === "cancelled" || !state.tg) {
+          await deleteLoginRequest(db, request.id);
+          return ctx.json({ status: "cancelled" as const });
+        }
+        const tg: TelegramLoginUser = state.tg;
+
+        if (state.mode === "link") {
+          const session = await getSessionFromCtx(ctx);
+          if (!session || session.user.id !== state.userId) return ctx.json({ status: "expired" as const });
+          await deleteLoginRequest(db, request.id);
+          // A Telegram already linked to a different account is refused — it
+          // would otherwise silently move that person's sign-in here.
+          const owner = await findByTelegramId(tg.id);
+          if (owner && owner.id !== session.user.id) throw new APIError("CONFLICT", { message: "TELEGRAM_TAKEN" });
+          await db.update(profiles).set({ telegram_id: tg.id }).where(eq(profiles.id, session.user.id));
+          return ctx.json({ status: "ok" as const, isNew: false });
+        }
+
+        await deleteLoginRequest(db, request.id);
+        let userId = (await findByTelegramId(tg.id))?.id ?? null;
         let isNew = false;
 
         if (!userId) {
           // A previous attempt may have created the account and failed
           // before telegram_id was written — the placeholder email is unique
           // per Telegram id, so it finds that account instead of a duplicate.
-          const email = telegramPlaceholderEmail(data.id);
+          const email = telegramPlaceholderEmail(tg.id);
           const existing = await ctx.context.internalAdapter.findUserByEmail(email);
           if (existing) {
             userId = existing.user.id;
           } else {
             const name =
-              [data.first_name, data.last_name].filter(Boolean).join(" ").trim().slice(0, 60) ||
-              data.username ||
-              "Telegram";
+              [tg.first_name, tg.last_name].filter(Boolean).join(" ").trim().slice(0, 60) || tg.username || "Telegram";
             const created = await ctx.context.internalAdapter.createUser(
               { email, emailVerified: false, name },
               { method: "telegram" }
@@ -69,12 +140,12 @@ export function telegramAuth(): BetterAuthPlugin {
             isNew = true;
             // The create hook derived "tg<id>" from the placeholder; the
             // person's Telegram username is a nicer starting point.
-            if (data.username) {
-              const username = await uniqueUsernameFromEmail(`${data.username}@telegram`);
+            if (tg.username) {
+              const username = await uniqueUsernameFromEmail(`${tg.username}@telegram`);
               await db.update(profiles).set({ username }).where(eq(profiles.id, userId));
             }
           }
-          await db.update(profiles).set({ telegram_id: data.id }).where(eq(profiles.id, userId));
+          await db.update(profiles).set({ telegram_id: tg.id }).where(eq(profiles.id, userId));
         }
 
         const user = await ctx.context.internalAdapter.findUserById(userId);
@@ -82,24 +153,8 @@ export function telegramAuth(): BetterAuthPlugin {
         const session = await ctx.context.internalAdapter.createSession(user.id);
         if (!session) throw new APIError("INTERNAL_SERVER_ERROR", { message: "TELEGRAM_SESSION_FAILED" });
         await setSessionCookie(ctx, { session, user });
-        return ctx.json({ ok: true, isNew });
+        return ctx.json({ status: "ok" as const, isNew });
       }),
-
-      // Adds Telegram sign-in to the account the person is already signed in
-      // to. A Telegram already linked to a different account is refused —
-      // it would otherwise silently move that person's sign-in here.
-      linkTelegram: createAuthEndpoint(
-        "/telegram/link",
-        { method: "POST", use: [sessionMiddleware] },
-        async (ctx) => {
-          const data = verified(ctx.body);
-          const userId = ctx.context.session.user.id;
-          const owner = await findByTelegramId(data.id);
-          if (owner && owner.id !== userId) throw new APIError("CONFLICT", { message: "TELEGRAM_TAKEN" });
-          await getDb().update(profiles).set({ telegram_id: data.id }).where(eq(profiles.id, userId));
-          return ctx.json({ ok: true });
-        }
-      ),
 
       // Linking a real email to a Telegram-only account. Not Better Auth's
       // own /change-email: for an account whose placeholder is marked

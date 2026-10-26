@@ -19,6 +19,7 @@ import {
 import type { ReaderPrefs } from "@/lib/readerPrefs-server";
 import { readSaved, save, type TocChapter } from "@/components/story/ReaderChrome";
 import { ReaderSettingsPanel, setReaderCookie } from "@/components/story/ReaderSettingsPanel";
+import { leaveToStory } from "@/lib/reader-nav";
 
 // «Sahifalab»: the chapter as a book, turned page by page — two pages side
 // by side on wide screens, one on phones. One chapter at a time, like the
@@ -215,7 +216,7 @@ export function BookReader({
     (dir: 1 | -1) => {
       const target = spreadRef.current + dir;
       if (target > totalRef.current - 1) {
-        if (nextHref) router.push(nextHref);
+        if (nextHref) router.replace(nextHref);
         return;
       }
       if (target < 0) {
@@ -225,7 +226,7 @@ export function BookReader({
           } catch {
             // opens at its saved place instead
           }
-          router.push(prevHref);
+          router.replace(prevHref);
         }
         return;
       }
@@ -234,7 +235,9 @@ export function BookReader({
     [nextHref, prevHref, router, show]
   );
 
-  const leave = useCallback(() => router.push(storyHref), [router, storyHref]);
+  // Up to the story page — a step back in history when that is where the
+  // reader came from (src/lib/reader-nav.ts).
+  const leave = useCallback(() => leaveToStory(router, storyHref), [router, storyHref]);
 
   // Keys: arrows / PageUp / PageDown / Space turn pages, Esc closes what's
   // open or leaves the book.
@@ -360,10 +363,10 @@ export function BookReader({
         )}
         style={{ paddingTop: "env(safe-area-inset-top)" }}
       >
-        <Link prefetch={false} href={storyHref} aria-label={t.reader.storyPage} className="flex h-10 shrink-0 items-center gap-1.5 rounded-full pl-1 pr-3 text-inherit transition hover:bg-[var(--book-line)]" style={{ color: themeStyle.text }}>
+        <button type="button" onClick={leave} aria-label={t.reader.storyPage} className="flex h-10 shrink-0 cursor-pointer items-center gap-1.5 rounded-full pl-1 pr-3 transition hover:bg-[var(--book-line)]" style={{ color: themeStyle.text }}>
           <ChevronLeftIcon />
           <span className="font-script hidden text-[21px] sm:inline">{t.common.brand}</span>
-        </Link>
+        </button>
         <div className="min-w-0 flex-1 truncate text-[12.5px] font-semibold sm:text-center sm:text-[13.5px]" style={{ color: muted }}>
           <b className="font-bold" style={{ color: themeStyle.text }}>
             {storyTitle}
@@ -433,7 +436,7 @@ export function BookReader({
                       {t.reader.nextChapterLabel}
                     </div>
                     <h2 className="mx-auto mb-5 mt-1 max-w-[26ch] font-display text-[24px] font-bold leading-snug">{nextTitle}</h2>
-                    <Link prefetch={false} href={nextHref} className="inline-block">
+                    <Link prefetch={false} replace href={nextHref} className="inline-block">
                       <Button size="lg">{t.reader.keepReading} →</Button>
                     </Link>
                     {chaptersLeft > 1 && (
@@ -454,9 +457,9 @@ export function BookReader({
                   <button type="button" onClick={openComments} className="cursor-pointer hover:underline">
                     💬 {t.reader.commentsCount.replace("{n}", String(commentsCount))}
                   </button>
-                  <Link prefetch={false} href={storyHref} className="hover:underline">
+                  <button type="button" onClick={leave} className="cursor-pointer hover:underline">
                     {t.reader.storyPage}
-                  </Link>
+                  </button>
                 </div>
               </div>
             </div>
@@ -540,6 +543,7 @@ export function BookReader({
                 return (
                   <Link
                     prefetch={false}
+                    replace
                     key={c.order_index}
                     ref={current ? currentTocRef : undefined}
                     href={chapterHref[c.order_index]}

@@ -13,7 +13,7 @@ import { getChapterComments, getLikedCommentIds, isFollowingAuthor, getFollowerC
 import { sanitizeHtml } from "@/lib/sanitize";
 import { getServerReaderPrefs } from "@/lib/readerPrefs-server";
 import { ROUTES } from "@/lib/constants";
-import { ChevronLeftIcon, LockIcon } from "@/components/ui/icons";
+import { LockIcon } from "@/components/ui/icons";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { FollowButton } from "@/components/story/StoryActions";
@@ -21,6 +21,7 @@ import { ReaderContent } from "@/components/story/ReaderContent";
 import { ChapterReadingRecorder } from "@/components/story/ChapterReadingRecorder";
 import { ReaderChrome } from "@/components/story/ReaderChrome";
 import { BookReader } from "@/components/story/BookReader";
+import { StoryBackLink } from "@/components/story/StoryBackLink";
 import { QuoteMaker } from "@/components/story/QuoteMaker";
 import { CommentGuidelines } from "@/components/story/CommentGuidelines";
 import { CommentForm } from "@/components/story/CommentForm";
@@ -107,13 +108,7 @@ export default async function ReaderPage({
       )}
 
       <div className="min-w-0 w-full lg:max-w-[70vw] lg:flex-1">
-        <Link prefetch={false}
-          href={ROUTES.story(slug)}
-          className="mb-5 inline-flex items-center gap-2 text-[14px] font-semibold"
-        >
-          <ChevronLeftIcon />
-          <span>{story.title}</span>
-        </Link>
+        <StoryBackLink href={ROUTES.story(slug)} title={story.title} />
 
         {isUnlocked && !bookMode && <div className="reading-progress" aria-hidden />}
         {isUnlocked && !bookMode && (
@@ -214,7 +209,7 @@ export default async function ReaderPage({
               <>
                 <div className="mb-1.5 text-[13px] font-semibold text-muted-2">{t.reader.nextChapterLabel}</div>
                 <h2 className="mx-auto mb-6 max-w-[28ch] text-[24px] font-bold leading-snug sm:text-[28px]">{nextChapter.title}</h2>
-                <Link prefetch={false} href={ROUTES.chapter(slug, nextChapter.order_index)} className="inline-block">
+                <Link prefetch={false} replace href={ROUTES.chapter(slug, nextChapter.order_index)} className="inline-block">
                   <Button size="lg">{t.reader.keepReading} →</Button>
                 </Link>
                 {chaptersLeft > 1 && (
@@ -230,7 +225,7 @@ export default async function ReaderPage({
             )}
             <div className="mt-6 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 border-t border-border-soft pt-5 text-[13.5px] font-bold">
               {prevChapter && (
-                <Link prefetch={false} href={ROUTES.chapter(slug, prevChapter.order_index)} className="text-muted-2 hover:text-primary-800">
+                <Link prefetch={false} replace href={ROUTES.chapter(slug, prevChapter.order_index)} className="text-muted-2 hover:text-primary-800">
                   ← {t.reader.previousChapter}
                 </Link>
               )}

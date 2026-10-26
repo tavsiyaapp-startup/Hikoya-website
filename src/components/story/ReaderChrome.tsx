@@ -206,8 +206,9 @@ export function ReaderChrome({
       const dy = e.changedTouches[0].clientY - y0;
       if (Date.now() - t0 > 700 || Math.abs(dx) < 80 || Math.abs(dy) > 50) return;
       if (progressNow() < 0.92) return;
-      if (dx < 0 && nextHref) router.push(nextHref);
-      else if (dx > 0 && prevHref) router.push(prevHref);
+      // Chapter to chapter replaces the history entry (src/lib/reader-nav.ts).
+      if (dx < 0 && nextHref) router.replace(nextHref);
+      else if (dx > 0 && prevHref) router.replace(prevHref);
     };
     window.addEventListener("touchstart", start, { passive: true });
     window.addEventListener("touchend", end, { passive: true });
@@ -252,7 +253,7 @@ export function ReaderChrome({
         style={{ paddingBottom: "max(0.25rem, env(safe-area-inset-bottom))" }}
       >
         {prevHref ? (
-          <Link prefetch={false} href={prevHref} aria-label={t.reader.previousChapter} className={iconBtn}>
+          <Link prefetch={false} replace href={prevHref} aria-label={t.reader.previousChapter} className={iconBtn}>
             <ChevronLeftIcon />
           </Link>
         ) : (
@@ -278,7 +279,7 @@ export function ReaderChrome({
           Aa
         </button>
         {nextHref ? (
-          <Link prefetch={false} href={nextHref} aria-label={t.reader.nextChapterLabel} className={iconBtn}>
+          <Link prefetch={false} replace href={nextHref} aria-label={t.reader.nextChapterLabel} className={iconBtn}>
             <ChevronRightIcon />
           </Link>
         ) : (
@@ -304,6 +305,7 @@ export function ReaderChrome({
                 return (
                   <Link
                     prefetch={false}
+                    replace
                     key={c.order_index}
                     ref={current ? currentRef : undefined}
                     href={chapterHref[c.order_index]}

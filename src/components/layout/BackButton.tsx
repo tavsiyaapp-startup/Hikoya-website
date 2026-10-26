@@ -1,9 +1,11 @@
 "use client";
 
+import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 import { ChevronLeftIcon } from "@/components/ui/icons";
 import { ROUTES } from "@/lib/constants";
+import { recordNav } from "@/lib/reader-nav";
 
 // Literal "go back to whatever page you were just on" (browser history),
 // not a fixed parent route — a story/chapter/author/collection page can be
@@ -20,6 +22,10 @@ export function BackButton() {
   const pathname = usePathname();
   const router = useRouter();
   const { t } = useLocale();
+
+  // Remembers where each page was opened from, so leaving a chapter can go
+  // up to its story page instead of forward to a new copy of it.
+  useEffect(() => recordNav(pathname), [pathname]);
 
   if (HIDDEN_PATHS.has(pathname) || CHAPTER_READER_PATH.test(pathname)) return null;
 

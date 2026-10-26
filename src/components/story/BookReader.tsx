@@ -317,6 +317,10 @@ export function BookReader({
   // Chrome colours follow the page theme: muted = text at half strength.
   const muted = `color-mix(in srgb, ${themeStyle.text} 58%, transparent)`;
   const line = `color-mix(in srgb, ${themeStyle.text} 14%, transparent)`;
+  // The page's own accent, picked for its background — not the site's
+  // primary scale, which turns pale lavender in the site's dark mode and
+  // vanished on the light «Sepia» page.
+  const accent = theme === "dark" ? "#B49CFB" : theme === "light" ? "var(--color-primary-700)" : "#5535A6";
   const iconBtn = "flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-full transition hover:bg-[var(--book-line)]";
 
   return (
@@ -344,6 +348,7 @@ export function BookReader({
           color: themeStyle.text,
           "--book-muted": muted,
           "--book-line": line,
+          "--book-accent": accent,
         } as React.CSSProperties
       }
     >
@@ -355,7 +360,7 @@ export function BookReader({
         )}
         style={{ paddingTop: "env(safe-area-inset-top)" }}
       >
-        <Link prefetch={false} href={storyHref} aria-label={t.reader.storyPage} className="flex h-10 shrink-0 items-center gap-1.5 rounded-full pl-1 pr-3 transition hover:bg-[var(--book-line)]">
+        <Link prefetch={false} href={storyHref} aria-label={t.reader.storyPage} className="flex h-10 shrink-0 items-center gap-1.5 rounded-full pl-1 pr-3 text-inherit transition hover:bg-[var(--book-line)]" style={{ color: themeStyle.text }}>
           <ChevronLeftIcon />
           <span className="font-script hidden text-[21px] sm:inline">{t.common.brand}</span>
         </Link>
@@ -392,13 +397,13 @@ export function BookReader({
             id={TEXT_ID}
             className={clsx(
               "h-full transition-transform duration-500 ease-[cubic-bezier(.32,.72,0,1)] [column-fill:auto]",
-              "[&_img]:mx-auto [&_img]:max-h-[60dvh] [&_img]:w-auto [&_img]:max-w-full [&_img]:break-inside-avoid [&_h1]:break-after-avoid [&_h2]:break-after-avoid [&_h3]:break-after-avoid",
+              "[&_a]:text-[var(--book-accent)] [&_img]:mx-auto [&_img]:max-h-[60dvh] [&_img]:w-auto [&_img]:max-w-full [&_img]:break-inside-avoid [&_h1]:break-after-avoid [&_h2]:break-after-avoid [&_h3]:break-after-avoid",
               !ready && "opacity-0"
             )}
             style={{ fontFamily: READER_FONT_STACKS[font], fontSize: sizeStyle.fontSize, lineHeight: sizeStyle.lineHeight }}
           >
             <div className="pb-[1.4em] pt-[8%] text-center">
-              <div className="text-[12px] font-bold uppercase tracking-[0.18em] text-primary-600" style={{ fontFamily: "var(--font-sans)" }}>
+              <div className="text-[12px] font-bold uppercase tracking-[0.18em]" style={{ fontFamily: "var(--font-sans)", color: accent }}>
                 {t.reader.chapterLabel} {orderIndex}
               </div>
               <h1 className="mt-2 font-display text-[1.6em] font-bold leading-tight">{chapterTitle}</h1>
@@ -445,7 +450,7 @@ export function BookReader({
                     </p>
                   </>
                 )}
-                <div className="mt-6 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 border-t pt-5 text-[13.5px] font-bold text-primary-700" style={{ borderColor: line }}>
+                <div className="mt-6 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 border-t pt-5 text-[13.5px] font-bold [&_a]:text-inherit" style={{ borderColor: line, color: accent }}>
                   <button type="button" onClick={openComments} className="cursor-pointer hover:underline">
                     💬 {t.reader.commentsCount.replace("{n}", String(commentsCount))}
                   </button>

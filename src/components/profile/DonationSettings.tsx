@@ -9,7 +9,6 @@ import {
   INTL_CARD_TYPES,
   LOCAL_CARD_TYPES,
   formatCardNumber,
-  guessCardType,
   type CardType,
 } from "@/lib/card";
 import { Input } from "@/components/ui/Input";
@@ -33,7 +32,6 @@ function CardField<T extends CardType>({
   initialNumber,
   initialType,
   placeholder,
-  auto = false,
 }: {
   title: string;
   hint: string;
@@ -43,23 +41,15 @@ function CardField<T extends CardType>({
   initialNumber: string | null;
   initialType: T | null;
   placeholder: string;
-  // Type comes from the number's first digits (Uzcard 8600…, Humo 9860…);
-  // no buttons to pick it.
-  auto?: boolean;
 }) {
   const { t } = useLocale();
   const [number, setNumber] = useState(formatCardNumber(initialNumber ?? ""));
+  // The author picks the card type by hand — it isn't guessed from the
+  // number (the reader sending money needs it right, and the author knows).
   const [type, setType] = useState<T | null>(initialType);
-  // Once the author picks a type by hand, typing no longer changes it.
-  const [picked, setPicked] = useState(Boolean(initialType));
 
   function onNumber(raw: string) {
-    const formatted = formatCardNumber(raw).slice(0, 19);
-    setNumber(formatted);
-    if (auto || !picked) {
-      const guess = guessCardType(formatted.replace(/\D/g, ""));
-      setType(types.find((x) => x === guess) ?? null);
-    }
+    setNumber(formatCardNumber(raw).slice(0, 19));
   }
 
   return (
@@ -69,7 +59,6 @@ function CardField<T extends CardType>({
       </div>
       <p className="mb-2.5 text-[12px] text-muted-2">{hint}</p>
       <input type="hidden" name={typeName} value={type ?? ""} />
-      {!auto && (
       <div className="mb-2.5 flex flex-wrap gap-2" role="radiogroup" aria-label={t.donation.cardTypeLabel}>
         {types.map((x) => (
           <button
@@ -77,10 +66,7 @@ function CardField<T extends CardType>({
             type="button"
             role="radio"
             aria-checked={type === x}
-            onClick={() => {
-              setType(x);
-              setPicked(true);
-            }}
+            onClick={() => setType(x)}
             className={clsx(
               "h-8.5 cursor-pointer rounded-full border px-3.5 text-[13px] font-semibold transition",
               type === x ? "border-ink bg-ink text-card" : "border-border bg-card text-ink-soft hover:border-primary-200"
@@ -90,7 +76,6 @@ function CardField<T extends CardType>({
           </button>
         ))}
       </div>
-      )}
       <Input
         name={name}
         value={number}
@@ -101,7 +86,6 @@ function CardField<T extends CardType>({
         aria-label={`${title}: ${t.donation.cardLabel}`}
         className="font-mono tracking-wide"
       />
-      {auto && type && <p className="mt-1.5 text-[12px] font-bold text-primary-800">{CARD_TYPE_LABEL[type]}</p>}
     </div>
   );
 }
@@ -138,7 +122,6 @@ export function DonationSettings({
         card: t.donation.errorCard,
         intlCard: t.donation.errorIntlCard,
         cardType: t.donation.errorCardType,
-        localCard: t.donation.errorLocalCard,
         holder: t.donation.errorHolder,
         message: t.donation.errorMessage,
         rate: t.donation.errorRate,
@@ -173,7 +156,6 @@ export function DonationSettings({
         name="cardNumber"
         typeName="cardType"
         types={LOCAL_CARD_TYPES}
-        auto
         initialNumber={local?.number ?? null}
         initialType={local?.type ?? null}
         placeholder="8600 0000 0000 0000"

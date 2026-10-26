@@ -2,7 +2,7 @@ import "server-only";
 import { and, count, eq, isNull } from "drizzle-orm";
 import type { DbOrTx } from "@/server/db/client";
 import { authorDonations, stories } from "@/server/db/schema";
-import { INTL_CARD_TYPES, LOCAL_CARD_TYPES, guessCardType, type IntlCardType, type LocalCardType } from "@/lib/card";
+import { INTL_CARD_TYPES, LOCAL_CARD_TYPES, type IntlCardType, type LocalCardType } from "@/lib/card";
 
 // «Donat»: an author's card details, shown to readers in a popup on the
 // author page. Hikoya never touches the money — the reader copies the card
@@ -22,7 +22,7 @@ export type Donation = {
 };
 
 export class DonationInputError extends Error {
-  constructor(readonly code: "card" | "intlCard" | "cardType" | "localCard" | "holder" | "message") {
+  constructor(readonly code: "card" | "intlCard" | "cardType" | "holder" | "message") {
     super(code);
   }
 }
@@ -84,11 +84,9 @@ export async function saveDonation(
   }
   if (cardNumber && !isValidCardNumber(cardNumber)) throw new DonationInputError("card");
   if (intlCardNumber && !isValidCardNumber(intlCardNumber)) throw new DonationInputError("intlCard");
-  // Uzcard / Humo is told by the number itself (8600… / 9860…).
-  const localType = cardNumber ? asLocal(guessCardType(cardNumber)) : null;
+  const localType = cardNumber ? asLocal(input.cardType) : null;
   const intlType = intlCardNumber ? asIntl(input.intlCardType) : null;
-  if (cardNumber && !localType) throw new DonationInputError("localCard");
-  if (intlCardNumber && !intlType) throw new DonationInputError("cardType");
+  if ((cardNumber && !localType) || (intlCardNumber && !intlType)) throw new DonationInputError("cardType");
   if (cardHolder.length > DONATION_LIMITS.holder) throw new DonationInputError("holder");
   if (message.length > DONATION_LIMITS.message) throw new DonationInputError("message");
 

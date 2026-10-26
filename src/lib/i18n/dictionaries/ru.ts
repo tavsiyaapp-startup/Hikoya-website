@@ -406,7 +406,6 @@ const ru = {
     localCardFor: "Из Узбекистана",
     intlCardFor: "Из-за рубежа",
     errorIntlCard: "Номер зарубежной карты — 16 цифр",
-    errorLocalCard: "Номер карты Uzcard начинается с 8600, Humo — с 9860",
     errorCardType: "Выберите тип карты",
     button: "Отправить донат",
     title: "Поддержать автора",

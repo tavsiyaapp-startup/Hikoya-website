@@ -408,7 +408,6 @@ const uz: typeof ru = {
     localCardFor: "Oʻzbekistondan",
     intlCardFor: "Xorijdan",
     errorIntlCard: "Xorijiy karta raqami 16 ta raqamdan iborat",
-    errorLocalCard: "Uzcard karta raqami 8600, Humo — 9860 bilan boshlanadi",
     errorCardType: "Karta turini tanlang",
     button: "Donat yuborish",
     title: "Muallifni qoʻllab-quvvatlash",

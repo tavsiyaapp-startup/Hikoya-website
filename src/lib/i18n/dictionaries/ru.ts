@@ -920,6 +920,7 @@ const ru = {
     telegramLink: "Привязать Telegram",
     telegramError: "Не удалось войти через Telegram. Попробуйте ещё раз.",
     telegramTaken: "Этот Telegram уже привязан к другому аккаунту Hikoya.",
+    loginWithGoogle: "Войти через Google",
     googleError: "Не удалось связаться с сервером входа. Попробуйте ещё раз позже.",
     emailError: "Не удалось отправить код для входа. Проверьте адрес и попробуйте снова.",
     emailSentTo: "Код для входа отправлен на",

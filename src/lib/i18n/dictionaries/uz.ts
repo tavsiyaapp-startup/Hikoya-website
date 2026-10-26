@@ -922,6 +922,7 @@ const uz: typeof ru = {
     telegramLink: "Telegramni ulash",
     telegramError: "Telegram orqali kirib boʻlmadi. Qaytadan urinib koʻring.",
     telegramTaken: "Bu Telegram boshqa Hikoya akkauntiga ulangan.",
+    loginWithGoogle: "Google orqali kirish",
     googleError: "Kirish serveriga ulanib boʻlmadi. Birozdan keyin qayta urinib koʻring.",
     emailError: "Kirish kodini yuborib boʻlmadi. Manzilni tekshirib, qayta urinib koʻring.",
     emailSentTo: "Kirish kodi yuborildi:",

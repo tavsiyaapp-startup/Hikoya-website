@@ -7,10 +7,10 @@ import { ROUTES } from "@/lib/constants";
 import { GoogleButton, EmailForm, PasswordLoginForm } from "@/components/auth/AuthButtons";
 import { TelegramLoginButton } from "@/components/auth/TelegramLoginButton";
 
-// Password (email + password) is the primary path — email-link and Google
-// are secondary, reached only via "forgot email or password?", since both
-// need no password at all and would otherwise undercut the point of every
-// account having one (see /auth/set-password).
+// Password (email + password) is the primary path; Google and Telegram sit
+// right under it (most accounts were made with Google, and asked for, so
+// they shouldn't have to find "forgot email or password?" first). The
+// emailed code stays behind that link.
 export function LoginForm({ next, initialFallback = false }: { next: string; initialFallback?: boolean }) {
   const { t } = useLocale();
   const [fallback, setFallback] = useState(initialFallback);
@@ -39,6 +39,7 @@ export function LoginForm({ next, initialFallback = false }: { next: string; ini
             ) : (
               <>
                 <PasswordLoginForm next={next} />
+                <GoogleButton next={next} />
                 {/* Telegram accounts have no password — their only way in. */}
                 <TelegramLoginButton next={next} />
               </>

@@ -253,8 +253,12 @@ ${url}
     },
     socialProviders: {
       google: {
-        clientId: process.env.GOOGLE_CLIENT_ID ?? "",
-        clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? "",
+        // A client ID pasted into the GitHub secret as a URL
+        // ("https://…apps.googleusercontent.com") made Google answer every
+        // sign-in with 401 invalid_client (found live 26.10.2026) — the ID is
+        // the bare host-like string, so a scheme and stray spaces are dropped.
+        clientId: (process.env.GOOGLE_CLIENT_ID ?? "").trim().replace(/^https?:\/\//i, "").replace(/\/+$/, ""),
+        clientSecret: (process.env.GOOGLE_CLIENT_SECRET ?? "").trim(),
       },
     },
     // A new account (first email-code or Google sign-in) gets its username

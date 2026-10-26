@@ -5,14 +5,18 @@
 export const READER_FONT_COOKIE = "hikoya_reader_font";
 export const READER_SIZE_COOKIE = "hikoya_reader_size";
 export const READER_THEME_COOKIE = "hikoya_reader_theme";
+export const READER_MODE_COOKIE = "hikoya_reader_mode";
 
 export type ReaderFont = "sans" | "serif" | "rounded";
 export type ReaderFontSize = "sm" | "md" | "lg" | "xl";
 export type ReaderTheme = "light" | "sepia" | "dark" | "green";
+// "scroll": the chapter as one long page; "pages": a book, turned page by page.
+export type ReaderMode = "scroll" | "pages";
 
 export const defaultReaderFont: ReaderFont = "sans";
 export const defaultReaderFontSize: ReaderFontSize = "md";
 export const defaultReaderTheme: ReaderTheme = "light";
+export const defaultReaderMode: ReaderMode = "scroll";
 
 export function isReaderFont(value: string | undefined | null): value is ReaderFont {
   return value === "sans" || value === "serif" || value === "rounded";
@@ -20,6 +24,10 @@ export function isReaderFont(value: string | undefined | null): value is ReaderF
 
 export function isReaderFontSize(value: string | undefined | null): value is ReaderFontSize {
   return value === "sm" || value === "md" || value === "lg" || value === "xl";
+}
+
+export function isReaderMode(value: string | undefined | null): value is ReaderMode {
+  return value === "scroll" || value === "pages";
 }
 
 export function isReaderTheme(value: string | undefined | null): value is ReaderTheme {

@@ -254,7 +254,8 @@ export function QuoteMaker({
           }}
           style={{ top: pick.top, left: pick.left }}
           className={clsx(
-            "fixed z-40 flex h-10 -translate-x-1/2 items-center gap-2 rounded-full px-4 text-[13.5px] font-bold shadow-[0_14px_30px_-12px_rgba(45,31,85,0.6)] transition",
+            // above the book reader (z-45) as well as the scrolling page
+            "fixed z-[48] flex h-10 -translate-x-1/2 items-center gap-2 rounded-full px-4 text-[13.5px] font-bold shadow-[0_14px_30px_-12px_rgba(45,31,85,0.6)] transition",
             tooLong ? "cursor-default bg-card text-muted-2 ring-1 ring-border" : "cursor-pointer bg-ink text-card"
           )}
         >

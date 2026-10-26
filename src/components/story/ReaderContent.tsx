@@ -1,30 +1,22 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { clsx } from "clsx";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 import { SettingsIcon } from "@/components/ui/icons";
 import {
   READER_FONT_COOKIE,
+  READER_MODE_COOKIE,
   READER_SIZE_COOKIE,
   READER_THEME_COOKIE,
   READER_FONT_STACKS,
   READER_FONT_SIZES,
   READER_THEMES,
-  type ReaderFont,
-  type ReaderFontSize,
-  type ReaderTheme,
 } from "@/lib/readerPrefs";
 import type { ReaderPrefs } from "@/lib/readerPrefs-server";
 import { TOGGLE_SETTINGS_EVENT } from "@/components/story/ReaderChrome";
-
-const FONTS: ReaderFont[] = ["sans", "serif", "rounded"];
-const SIZES: ReaderFontSize[] = ["sm", "md", "lg", "xl"];
-const THEMES: ReaderTheme[] = ["light", "sepia", "dark", "green"];
-
-function setCookie(name: string, value: string) {
-  document.cookie = `${name}=${value}; path=/; max-age=31536000; samesite=lax`;
-}
+import { ReaderSettingsPanel, setReaderCookie } from "@/components/story/ReaderSettingsPanel";
 
 export function ReaderContent({
   initialPrefs,
@@ -36,6 +28,7 @@ export function ReaderContent({
   paragraphs: string[] | null;
 }) {
   const { t } = useLocale();
+  const router = useRouter();
   const [font, setFont] = useState(initialPrefs.font);
   const [fontSize, setFontSize] = useState(initialPrefs.fontSize);
   const [theme, setTheme] = useState(initialPrefs.theme);
@@ -89,76 +82,31 @@ export function ReaderContent({
                 fromBar ? "fixed inset-x-3 bottom-20 z-40 mx-auto max-w-sm" : "absolute right-0 top-12 z-20 w-72"
               )}
             >
-              <div className="mb-3.5">
-                <div className="mb-2 text-[12.5px] font-bold text-muted-2">{t.reader.fontFamily}</div>
-                <div className="flex gap-2">
-                  {FONTS.map((f) => (
-                    <button
-                      key={f}
-                      type="button"
-                      onClick={() => {
-                        setFont(f);
-                        setCookie(READER_FONT_COOKIE, f);
-                      }}
-                      style={{ fontFamily: READER_FONT_STACKS[f] }}
-                      className={clsx(
-                        "h-10 flex-1 cursor-pointer rounded-[10px] border text-[14px] font-bold",
-                        font === f ? "border-primary-400 bg-primary-50 text-primary-900" : "border-border text-ink-soft"
-                      )}
-                    >
-                      Аа
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="mb-3.5">
-                <div className="mb-2 text-[12.5px] font-bold text-muted-2">{t.reader.fontSize}</div>
-                <div className="flex gap-2">
-                  {SIZES.map((s) => (
-                    <button
-                      key={s}
-                      type="button"
-                      onClick={() => {
-                        setFontSize(s);
-                        setCookie(READER_SIZE_COOKIE, s);
-                      }}
-                      className={clsx(
-                        "flex h-10 flex-1 cursor-pointer items-center justify-center rounded-[10px] border font-bold",
-                        fontSize === s ? "border-primary-400 bg-primary-50 text-primary-900" : "border-border text-ink-soft"
-                      )}
-                      style={{ fontSize: READER_FONT_SIZES[s].fontSize }}
-                    >
-                      А
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <div className="mb-2 text-[12.5px] font-bold text-muted-2">{t.reader.colorTheme}</div>
-                <div className="flex gap-2">
-                  {THEMES.map((th) => (
-                    <button
-                      key={th}
-                      type="button"
-                      onClick={() => {
-                        setTheme(th);
-                        setCookie(READER_THEME_COOKIE, th);
-                      }}
-                      aria-label={t.reader.themeLabels[th]}
-                      title={t.reader.themeLabels[th]}
-                      style={{ backgroundColor: READER_THEMES[th].bg, color: READER_THEMES[th].text }}
-                      className={clsx(
-                        "flex h-10 flex-1 cursor-pointer items-center justify-center rounded-[10px] border-2 text-[13px] font-bold",
-                        theme === th ? "border-primary-500" : "border-border"
-                      )}
-                    >
-                      Аа
-                    </button>
-                  ))}
-                </div>
-              </div>
+              <ReaderSettingsPanel
+                mode="scroll"
+                font={font}
+                fontSize={fontSize}
+                theme={theme}
+                // The book reader is a different page layout — the server
+                // renders it once the cookie says so.
+                onMode={(m) => {
+                  if (m === "scroll") return;
+                  setReaderCookie(READER_MODE_COOKIE, m);
+                  router.refresh();
+                }}
+                onFont={(f) => {
+                  setFont(f);
+                  setReaderCookie(READER_FONT_COOKIE, f);
+                }}
+                onFontSize={(s) => {
+                  setFontSize(s);
+                  setReaderCookie(READER_SIZE_COOKIE, s);
+                }}
+                onTheme={(th) => {
+                  setTheme(th);
+                  setReaderCookie(READER_THEME_COOKIE, th);
+                }}
+              />
             </div>
           </>
         )}

@@ -26,7 +26,9 @@ const POS_KEY = (chapterId: string) => `hikoya:pos:${chapterId}`;
 // Where on the screen "the line I'm reading" is: a third of the way down.
 const READ_LINE = 0.33;
 
-function readSaved(chapterId: string): number | null {
+// Shared with the book reader (BookReader), so switching between scrolling
+// and pages keeps your place in the chapter.
+export function readSaved(chapterId: string): number | null {
   try {
     const v = Number(localStorage.getItem(POS_KEY(chapterId)));
     return Number.isFinite(v) && v > 0 ? v : null;
@@ -35,7 +37,7 @@ function readSaved(chapterId: string): number | null {
   }
 }
 
-function save(chapterId: string, p: number) {
+export function save(chapterId: string, p: number) {
   try {
     if (p >= 0.97) localStorage.removeItem(POS_KEY(chapterId));
     else localStorage.setItem(POS_KEY(chapterId), p.toFixed(4));

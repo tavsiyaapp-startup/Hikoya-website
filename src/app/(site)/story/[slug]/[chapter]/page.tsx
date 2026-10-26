@@ -20,6 +20,7 @@ import { FollowButton } from "@/components/story/StoryActions";
 import { ReaderContent } from "@/components/story/ReaderContent";
 import { ChapterReadingRecorder } from "@/components/story/ChapterReadingRecorder";
 import { ReaderChrome } from "@/components/story/ReaderChrome";
+import { BookReader } from "@/components/story/BookReader";
 import { QuoteMaker } from "@/components/story/QuoteMaker";
 import { CommentGuidelines } from "@/components/story/CommentGuidelines";
 import { CommentForm } from "@/components/story/CommentForm";
@@ -89,6 +90,10 @@ export default async function ReaderPage({
   const chapterHref = Object.fromEntries(allChapters.map((c) => [c.order_index, ROUTES.chapter(slug, c.order_index)]));
   const isRichContent = /<[a-z][\s\S]*>/i.test(ch.content);
   const paragraphs = isRichContent ? [] : ch.content.split(/\n+/).filter(Boolean);
+  // «Sahifalab» (Aa → reading mode): the book reader covers this page; the
+  // header, author card and comments below stay for «Izohlar».
+  const bookMode = isUnlocked && readerPrefs.mode === "pages";
+  const tocChapters = allChapters.map((c) => ({ order_index: c.order_index, title: c.title, read: readIds.has(c.id) }));
 
   return (
     <div className="flex flex-col gap-6 lg:flex-row lg:justify-center lg:gap-9">
@@ -110,13 +115,13 @@ export default async function ReaderPage({
           <span>{story.title}</span>
         </Link>
 
-        {isUnlocked && <div className="reading-progress" aria-hidden />}
-        {isUnlocked && (
+        {isUnlocked && !bookMode && <div className="reading-progress" aria-hidden />}
+        {isUnlocked && !bookMode && (
           <ReaderChrome
             chapterId={ch.id}
             currentIndex={ch.order_index}
             readMinutes={readMinutes}
-            chapters={allChapters.map((c) => ({ order_index: c.order_index, title: c.title, read: readIds.has(c.id) }))}
+            chapters={tocChapters}
             chapterHref={chapterHref}
             prevHref={prevChapter ? ROUTES.chapter(slug, prevChapter.order_index) : null}
             nextHref={nextChapter ? ROUTES.chapter(slug, nextChapter.order_index) : null}
@@ -145,7 +150,26 @@ export default async function ReaderPage({
           )}
         </div>
 
-        {isUnlocked ? (
+        {bookMode ? (
+          <BookReader
+            chapterId={ch.id}
+            storyTitle={story.title}
+            storyHref={ROUTES.story(slug)}
+            orderIndex={ch.order_index}
+            chapterTitle={ch.title}
+            readMinutes={readMinutes}
+            initialPrefs={readerPrefs}
+            htmlContent={isRichContent ? sanitizeHtml(ch.content) : null}
+            paragraphs={isRichContent ? null : paragraphs}
+            chapters={tocChapters}
+            chapterHref={chapterHref}
+            prevHref={prevChapter ? ROUTES.chapter(slug, prevChapter.order_index) : null}
+            nextHref={nextChapter ? ROUTES.chapter(slug, nextChapter.order_index) : null}
+            nextTitle={nextChapter?.title ?? null}
+            chaptersLeft={chaptersLeft}
+            commentsCount={allCommentIds.length}
+          />
+        ) : isUnlocked ? (
           <ReaderContent
             initialPrefs={readerPrefs}
             htmlContent={isRichContent ? sanitizeHtml(ch.content) : null}
@@ -179,8 +203,9 @@ export default async function ReaderPage({
           </div>
         )}
 
-        {/* End of the chapter: what's next, in one big obvious place. */}
-        {isUnlocked && (
+        {/* End of the chapter: what's next, in one big obvious place. (The
+            book reader has its own last page for this.) */}
+        {isUnlocked && !bookMode && (
           <section id="chapter-end" className="mt-10 rounded-[24px] border border-border bg-card px-5 py-8 text-center shadow-[0_24px_50px_-34px_rgba(45,31,85,0.45)] sm:px-10">
             <div className="mb-5 text-[12px] font-bold uppercase tracking-[0.18em] text-primary-600">
               {t.reader.chapterFinished.replace("{n}", String(ch.order_index))}

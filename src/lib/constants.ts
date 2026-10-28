@@ -43,4 +43,4 @@ export const DEFAULT_GUEST_FREE_CHAPTERS = 1;
 // this isn't saved — the author is asked to move part of it to another
 // chapter. Chapters already longer than this (saved before the limit) are
 // left alone (see src/server/data/chapters.ts).
-export const MAX_CHAPTER_WORDS = 4000;
+export const MAX_CHAPTER_WORDS = 6000;

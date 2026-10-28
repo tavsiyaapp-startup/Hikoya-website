@@ -28,7 +28,7 @@ export function StoryCarousel({ children }: { children: React.ReactNode }) {
           no left padding that got clipped by the track's own left edge too. */}
       <div ref={trackRef} className="no-scrollbar flex gap-4 overflow-x-auto scroll-smooth pl-2 pt-4 sm:gap-5.5">
         {items.map((child, i) => (
-          <div key={i} className="w-[118px] shrink-0 xs:w-[138px] sm:w-[158px] lg:w-[172px]">
+          <div key={i} className="w-[132px] shrink-0 xs:w-[148px] sm:w-[158px] lg:w-[172px]">
             {child}
           </div>
         ))}

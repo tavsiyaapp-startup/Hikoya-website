@@ -117,16 +117,19 @@ export async function StoryCard({
             {story.title}
           </h3>
           <div className="mb-1.5 truncate text-[11px] text-muted-2">{story.author?.display_name}</div>
-          <div className="flex items-center gap-2.5 text-[11px] font-semibold text-muted-3">
-            <span className="flex items-center gap-1">
+          {/* justify-between + small gaps so all three stats fit inside a
+              narrow mobile card — before, large counts (e.g. 1.6K) pushed the
+              comment count past the card's edge, where it was clipped. */}
+          <div className="flex items-center justify-between gap-1 text-[11px] font-semibold text-muted-3">
+            <span className="flex items-center gap-0.5">
               <HeartIcon width={12} height={12} filled />
               {formatCompactCount(story.like_count)}
             </span>
-            <span className="flex items-center gap-1">
+            <span className="flex items-center gap-0.5">
               <EyeIcon width={12} height={12} />
               {formatCompactCount(story.view_count)}
             </span>
-            <span className="flex items-center gap-1">
+            <span className="flex items-center gap-0.5">
               <CommentsIcon width={12} height={12} />
               {formatCompactCount(story.comment_count)}
             </span>

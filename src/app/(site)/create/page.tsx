@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/current-user";
-import { getAllTags, getCustomLanguages } from "@/lib/queries/stories";
+import { getAllTags, getAllGenres, getCustomLanguages } from "@/lib/queries/stories";
 import { ROUTES } from "@/lib/constants";
 import { CreateWizard } from "./CreateWizard";
 import { getServerLocale } from "@/lib/i18n/locale-server";
@@ -11,8 +11,9 @@ export default async function CreatePage() {
   const user = await getCurrentUser();
   if (!user) redirect(`${ROUTES.onboarding}?next=${encodeURIComponent(ROUTES.create)}`);
 
-  const [existingTags, existingLanguages, publishGate, paywall, locale] = await Promise.all([
+  const [existingTags, existingGenres, existingLanguages, publishGate, paywall, locale] = await Promise.all([
     getAllTags(),
+    getAllGenres(),
     getCustomLanguages(),
     getMyPublishGate(user.id),
     getPaywallState(),
@@ -30,7 +31,7 @@ export default async function CreatePage() {
           nextPath={ROUTES.create}
         />
       </div>
-      <CreateWizard userId={user.id} existingTags={existingTags} existingLanguages={existingLanguages} />
+      <CreateWizard userId={user.id} existingTags={existingTags} existingGenres={existingGenres} existingLanguages={existingLanguages} />
     </>
   );
 }

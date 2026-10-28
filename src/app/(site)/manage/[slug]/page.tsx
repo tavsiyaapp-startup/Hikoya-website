@@ -5,7 +5,7 @@ import { notFound, redirect } from "next/navigation";
 import { getServerLocale } from "@/lib/i18n/locale-server";
 import { getDictionary } from "@/lib/i18n";
 import { getCurrentUser } from "@/lib/current-user";
-import { getStoryBySlug, getChaptersForStory, getTagsForStory, getAllTags } from "@/lib/queries/stories";
+import { getStoryBySlug, getChaptersForStory, getTagsForStory, getAllTags, getAllGenres } from "@/lib/queries/stories";
 import { getDb } from "@/server/db/client";
 import { getSorovPostIdForStory } from "@/server/data/forum";
 import { ROUTES } from "@/lib/constants";
@@ -44,10 +44,11 @@ export default async function ManagePage({
   if (!story) notFound();
   if (story.author.id !== user.id) redirect(ROUTES.home);
 
-  const [chapters, tags, existingTags, linkedRequestId, publishGate, paywall] = await Promise.all([
+  const [chapters, tags, existingTags, existingGenres, linkedRequestId, publishGate, paywall] = await Promise.all([
     getChaptersForStory(story.id, true),
     tab === "edit" ? getTagsForStory(story.id) : Promise.resolve([]),
     tab === "edit" ? getAllTags() : Promise.resolve([]),
+    tab === "edit" ? getAllGenres() : Promise.resolve([]),
     // getDb() inside the promise: if it throws, .catch still gets it.
     Promise.resolve().then(() => getSorovPostIdForStory(getDb(), story.id)).catch(() => null),
     getMyPublishGate(user.id),
@@ -183,6 +184,7 @@ export default async function ManagePage({
             initialIsTranslation={story.is_translation}
             initialTags={tags}
             existingTags={existingTags}
+            existingGenres={existingGenres}
           />
           <DeleteStoryButton storyId={story.id} storySlug={slug} storyTitle={story.title} />
         </>

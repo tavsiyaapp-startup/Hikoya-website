@@ -19,6 +19,7 @@ import { AddLanguageButton } from "@/components/story/AddLanguageButton";
 import { DocxImportFlow } from "@/components/manage/DocxImportFlow";
 import { ROUTES } from "@/lib/constants";
 import { RELATIONSHIP_TYPES } from "@/lib/relationshipTypes";
+import { genreVariants } from "@/lib/genre";
 import { languageLabel } from "@/lib/language";
 import type { SplitChapter } from "@/lib/editor/splitChapters";
 import type { AgeRating, StoryVisibility } from "@/types/database";
@@ -26,10 +27,14 @@ import type { AgeRating, StoryVisibility } from "@/types/database";
 export function CreateWizard({
   userId,
   existingTags,
+  existingGenres,
   existingLanguages,
 }: {
   userId: string;
   existingTags: string[];
+  // Custom genres other authors already created — offered as chips so the
+  // same one isn't typed (and duplicated) again.
+  existingGenres: string[];
   existingLanguages: string[];
 }) {
   const { t, locale } = useLocale();
@@ -47,6 +52,32 @@ export function CreateWizard({
 
   function toggleGenre(g: string) {
     setGenres((prev) => (prev.includes(g) ? prev.filter((x) => x !== g) : [...prev, g]));
+  }
+
+  // The fixed list, plus custom genres other authors already created, plus
+  // ones this author just typed — de-duplicated case-insensitively so the
+  // same genre never appears (or is stored) twice.
+  const genreChips = (() => {
+    const seen = new Set<string>();
+    const out: string[] = [];
+    const custom = existingGenres.filter((g) => genreVariants(g).length === 1);
+    for (const g of [...t.genres, ...custom, ...customGenres]) {
+      const key = g.trim().toLowerCase();
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      out.push(g);
+    }
+    return out;
+  })();
+  // Selecting a genre that already exists (any spelling) reuses it rather
+  // than adding a near-duplicate.
+  function addGenre(raw: string) {
+    const key = raw.trim().toLowerCase();
+    if (!key) return;
+    const existing = genreChips.find((x) => x.toLowerCase() === key);
+    const label = existing ?? raw.trim();
+    if (!existing) setCustomGenres((prev) => [...prev, label]);
+    setGenres((prev) => (prev.some((x) => x.toLowerCase() === key) ? prev : [...prev, label]));
   }
   const [relationshipType, setRelationshipType] = useState<string | null>(null);
   const [tags, setTags] = useState<string[]>([]);
@@ -219,17 +250,12 @@ export function CreateWizard({
 
                 <label className="mb-2 block text-[14px] font-bold">{t.create.genreLabel} *</label>
                 <div className="mb-5 flex flex-wrap items-center gap-2">
-                  {[...t.genres, ...customGenres].map((g) => (
+                  {genreChips.map((g) => (
                     <Chip key={g} active={genres.includes(g)} onClick={() => toggleGenre(g)}>
                       {g}
                     </Chip>
                   ))}
-                  <AddGenreButton
-                    onAdd={(g) => {
-                      setCustomGenres((prev) => (prev.includes(g) || t.genres.includes(g) ? prev : [...prev, g]));
-                      setGenres((prev) => (prev.includes(g) ? prev : [...prev, g]));
-                    }}
-                  />
+                  <AddGenreButton onAdd={addGenre} />
                 </div>
 
                 <label className="mb-2 block text-[14px] font-bold">

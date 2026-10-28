@@ -56,11 +56,16 @@ async function resolveTagIds(tx: DbOrTx, labels: string[]): Promise<string[]> {
   const clean = sanitizeNewTagLabels(labels);
   if (clean.length === 0) return [];
 
-  const existing = await tx.select({ id: tags.id, label_ru: tags.label_ru }).from(tags).where(inArray(tags.label_ru, clean));
-  const found = new Set(existing.map((t) => t.label_ru));
+  // Case-insensitive match so "Романтика" reuses an existing "романтика"
+  // tag instead of creating a near-duplicate row.
+  const existing = await tx
+    .select({ id: tags.id, label_ru: tags.label_ru })
+    .from(tags)
+    .where(inArray(sql`lower(${tags.label_ru})`, clean.map((l) => l.toLowerCase())));
+  const foundLower = new Set(existing.map((t) => t.label_ru.toLowerCase()));
   const ids = existing.map((t) => t.id);
 
-  const missing = clean.filter((label) => !found.has(label));
+  const missing = clean.filter((label) => !foundLower.has(label.toLowerCase()));
   if (missing.length > 0) {
     const created = await tx
       .insert(tags)

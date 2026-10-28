@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/Button";
 import { ShieldIcon } from "@/components/ui/icons";
 import { TagPicker } from "@/components/story/TagPicker";
 import { AddGenreButton } from "@/components/story/AddGenreButton";
+import { genreVariants } from "@/lib/genre";
 import { RELATIONSHIP_TYPES } from "@/lib/relationshipTypes";
 import { storyProgressLabel } from "@/lib/storyProgress";
 import type { StoryProgressStatus } from "@/types/database";
@@ -33,6 +34,7 @@ export function EditStoryForm({
   initialProgressStatus,
   initialIsTranslation,
   existingTags,
+  existingGenres,
 }: {
   storyId: string;
   storySlug: string;
@@ -46,6 +48,9 @@ export function EditStoryForm({
   initialProgressStatus: StoryProgressStatus;
   initialIsTranslation: boolean;
   existingTags: string[];
+  // Custom genres other authors already created — offered as chips to avoid
+  // duplicating one that already exists.
+  existingGenres: string[];
 }) {
   const { t, locale } = useLocale();
   const [title, setTitle] = useState(initialTitle);
@@ -59,6 +64,29 @@ export function EditStoryForm({
 
   function toggleGenre(g: string) {
     setGenres((prev) => (prev.includes(g) ? prev.filter((x) => x !== g) : [...prev, g]));
+  }
+
+  // Fixed list + custom genres others created + this story's own, de-duped
+  // case-insensitively so the same genre never appears (or is stored) twice.
+  const genreChips = (() => {
+    const seen = new Set<string>();
+    const out: string[] = [];
+    const custom = existingGenres.filter((g) => genreVariants(g).length === 1);
+    for (const g of [...t.genres, ...custom, ...customGenres]) {
+      const key = g.trim().toLowerCase();
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      out.push(g);
+    }
+    return out;
+  })();
+  function addGenre(raw: string) {
+    const key = raw.trim().toLowerCase();
+    if (!key) return;
+    const existing = genreChips.find((x) => x.toLowerCase() === key);
+    const label = existing ?? raw.trim();
+    if (!existing) setCustomGenres((prev) => [...prev, label]);
+    setGenres((prev) => (prev.some((x) => x.toLowerCase() === key) ? prev : [...prev, label]));
   }
   const [relationshipType, setRelationshipType] = useState<string | null>(initialRelationshipType);
   const [description, setDescription] = useState(initialDescription);
@@ -152,17 +180,12 @@ export function EditStoryForm({
 
       <label className="mb-2 block text-[14px] font-bold">{t.create.genreLabel}</label>
       <div className="mb-5 flex flex-wrap items-center gap-2">
-        {[...t.genres, ...customGenres].map((g) => (
+        {genreChips.map((g) => (
           <Chip key={g} active={genres.includes(g)} onClick={() => toggleGenre(g)}>
             {g}
           </Chip>
         ))}
-        <AddGenreButton
-          onAdd={(g) => {
-            setCustomGenres((prev) => (prev.includes(g) || t.genres.includes(g) ? prev : [...prev, g]));
-            setGenres((prev) => (prev.includes(g) ? prev : [...prev, g]));
-          }}
-        />
+        <AddGenreButton onAdd={addGenre} />
       </div>
 
       <label className="mb-2 block text-[14px] font-bold">

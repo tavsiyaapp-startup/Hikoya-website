@@ -13,9 +13,10 @@ import {
 } from "@/server/authz/policy";
 import type { DbOrTx } from "@/server/db/client";
 import { chapters, profiles, stories, storyTags, tags } from "@/server/db/schema";
-import { ForbiddenError, NotFoundError } from "@/server/data/errors";
+import { ChapterTooLongError, ForbiddenError, NotFoundError } from "@/server/data/errors";
 import { getRequiresReview } from "@/server/data/settings";
 import { computeStoryStatus, sanitizeNewTagLabels, wordCount } from "@/server/data/logic";
+import { MAX_CHAPTER_WORDS } from "@/lib/constants";
 
 const storyRecordColumns = {
   id: stories.id,
@@ -148,6 +149,8 @@ export async function createStory(db: DbOrTx, viewer: Viewer | null, input: Crea
     const slug = withRandomSuffix(slugify(title));
     const language = input.language.trim() || "ru";
     const chapterContent = sanitizeHtml(input.chapterText);
+    // The story's first chapter is a new chapter — same word limit as any other.
+    if (wordCount(chapterContent) > MAX_CHAPTER_WORDS) throw new ChapterTooLongError();
 
     const [story] = await tx
       .insert(stories)

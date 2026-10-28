@@ -12,10 +12,11 @@ import {
 } from "@/server/authz/policy";
 import type { DbOrTx } from "@/server/db/client";
 import { chapters, stories } from "@/server/db/schema";
-import { ForbiddenError, NotFoundError } from "@/server/data/errors";
+import { ChapterTooLongError, ForbiddenError, NotFoundError } from "@/server/data/errors";
 import { getStoryRecord } from "@/server/data/stories";
 import { getRequiresReview } from "@/server/data/settings";
 import { computeChapterStatus, nextOrderIndex, wordCount } from "@/server/data/logic";
+import { MAX_CHAPTER_WORDS } from "@/lib/constants";
 
 // Upper bounds well above any real chapter (a whole novel is ~1-2 MB of
 // text); without them one request could store tens of megabytes per field.
@@ -72,6 +73,8 @@ export async function addChapter(
   const content = sanitizeHtml(input.content.trim());
   if (!title || !content) throw new Error("Title and content are required");
   if (title.length > MAX_CHAPTER_TITLE || content.length > MAX_CHAPTER_CONTENT) throw new Error("Chapter too long");
+  // A brand-new chapter over the word limit is refused outright.
+  if (wordCount(content) > MAX_CHAPTER_WORDS) throw new ChapterTooLongError();
 
   return db.transaction(async (tx) => {
     const [storyRow] = await tx
@@ -116,6 +119,13 @@ export async function updateChapter(db: DbOrTx, viewer: Viewer | null, chapterId
   const content = sanitizeHtml(input.content.trim());
   if (!title || !content) throw new Error("Title and content are required");
   if (title.length > MAX_CHAPTER_TITLE || content.length > MAX_CHAPTER_CONTENT) throw new Error("Chapter too long");
+  // Word limit, but grandfathered: a chapter that was already over the limit
+  // (saved before it existed) stays editable — the limit only blocks pushing
+  // a within-limit chapter over it, so existing works aren't broken.
+  if (wordCount(content) > MAX_CHAPTER_WORDS) {
+    const [cur] = await db.select({ wc: chapters.word_count }).from(chapters).where(eq(chapters.id, chapter.id)).limit(1);
+    if ((cur?.wc ?? 0) <= MAX_CHAPTER_WORDS) throw new ChapterTooLongError();
+  }
 
   const backToReview = chapter.status === "published" && !isStaff(viewer) && (await getRequiresReview(db));
   await db

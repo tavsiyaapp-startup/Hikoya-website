@@ -11,6 +11,7 @@ import { loadViewer } from "@/server/data/viewer";
 import { getRequiresReview } from "@/server/data/settings";
 import * as storiesData from "@/server/data/stories";
 import * as chaptersData from "@/server/data/chapters";
+import { ChapterTooLongError } from "@/server/data/errors";
 import { notifyPendingReview } from "@/lib/telegram";
 import { getPublishGate, loadPaywallState } from "@/server/data/paywall";
 import type { Viewer } from "@/server/authz/policy";
@@ -91,7 +92,7 @@ export interface CreateStoryInput {
 
 // Returns null when nothing was created (blocked, a field too long, database
 // error) — it used to throw, and the wizard just stopped with no message.
-export async function createStory(input: CreateStoryInput): Promise<{ id: string; slug: string } | null> {
+export async function createStory(input: CreateStoryInput): Promise<{ id: string; slug: string } | null | "too_long"> {
   const { db, viewer } = await requireViewer();
   const language = input.language.trim() || "ru";
 
@@ -118,6 +119,7 @@ export async function createStory(input: CreateStoryInput): Promise<{ id: string
       announce: input.announce,
     });
   } catch (err) {
+    if (err instanceof ChapterTooLongError) return "too_long";
     console.error("[stories] createStory failed", viewer.id, err);
     return null;
   }
@@ -197,7 +199,7 @@ export async function updateChapter(
   storyId: string,
   storySlug: string,
   formData: FormData
-): Promise<"saved" | "review" | false> {
+): Promise<"saved" | "review" | false | "too_long"> {
   const { db, viewer } = await requireViewer();
   const title = String(formData.get("title") ?? "").trim();
   const content = String(formData.get("content") ?? "").trim();
@@ -207,6 +209,7 @@ export async function updateChapter(
   try {
     updated = await chaptersData.updateChapter(db, viewer, chapterId, { title, content });
   } catch (err) {
+    if (err instanceof ChapterTooLongError) return "too_long";
     console.error("[stories] updateChapter failed", chapterId, err);
     return false;
   }
@@ -240,7 +243,7 @@ export async function deleteChapter(chapterId: string, storyId: string, storySlu
 // error) so the form can keep the text and say so — it used to throw or
 // return nothing, and every caller closed the form either way.
 // "draft": saved, but not published — the author needs a subscription first.
-export async function addChapter(storyId: string, storySlug: string, formData: FormData): Promise<boolean | "draft"> {
+export async function addChapter(storyId: string, storySlug: string, formData: FormData): Promise<boolean | "draft" | "too_long"> {
   const { db, viewer } = await requireViewer();
   const title = String(formData.get("title") ?? "").trim();
   const content = String(formData.get("content") ?? "").trim();
@@ -250,6 +253,7 @@ export async function addChapter(storyId: string, storySlug: string, formData: F
   try {
     chapter = await chaptersData.addChapter(db, viewer, storyId, { title, content }, { asDraft: !(await canPublishNow(db, viewer)) });
   } catch (err) {
+    if (err instanceof ChapterTooLongError) return "too_long";
     console.error("[stories] addChapter failed", storyId, err);
     return false;
   }

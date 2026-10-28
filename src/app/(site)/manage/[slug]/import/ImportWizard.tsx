@@ -30,6 +30,11 @@ export function ImportWizard({ storyId, storySlug }: { storyId: string; storySlu
         formData.set("title", chapter.title.trim());
         formData.set("content", chapter.html);
         const saved = await addChapter(storyId, storySlug, formData).catch(() => false);
+        if (saved === "too_long") {
+          // Stop at the over-limit chapter; the ones before it are saved.
+          setSaveError(`${t.manage.chapterTooLong} («${chapter.title.trim()}»)`);
+          return;
+        }
         if (!saved) {
           setSaveError(
             t.manage.importSaveError.replace("{saved}", String(savedRef.current)).replace("{total}", String(chapters.length))

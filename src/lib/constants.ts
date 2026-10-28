@@ -38,3 +38,9 @@ export const ROUTES = {
 
 export const GUEST_READ_COOKIE = "hikoya_guest_reads";
 export const DEFAULT_GUEST_FREE_CHAPTERS = 1;
+
+// Upper bound on a single chapter, in words. A new or edited chapter over
+// this isn't saved — the author is asked to move part of it to another
+// chapter. Chapters already longer than this (saved before the limit) are
+// left alone (see src/server/data/chapters.ts).
+export const MAX_CHAPTER_WORDS = 4000;

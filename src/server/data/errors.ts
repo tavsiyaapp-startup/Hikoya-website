@@ -16,6 +16,15 @@ export class ForbiddenError extends Error {
   }
 }
 
+// A new or edited chapter is over MAX_CHAPTER_WORDS — the caller keeps the
+// typed text and asks the author to move part of it to another chapter.
+export class ChapterTooLongError extends Error {
+  constructor() {
+    super("Chapter exceeds the word limit");
+    this.name = "ChapterTooLongError";
+  }
+}
+
 // A complaint someone else already resolved (stale admin page).
 export class AlreadyResolvedError extends Error {
   constructor() {

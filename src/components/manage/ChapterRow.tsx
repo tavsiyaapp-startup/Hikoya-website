@@ -25,6 +25,7 @@ export function ChapterRow({
   const [editing, setEditing] = useState(false);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState(false);
+  const [tooLong, setTooLong] = useState(false);
   const [note, setNote] = useState(false);
   const [needsSubscription, setNeedsSubscription] = useState(false);
 
@@ -51,9 +52,16 @@ export function ChapterRow({
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     setError(false);
+    setTooLong(false);
     setNote(false);
     startTransition(async () => {
       const result = await updateChapter(chapter.id, storyId, storySlug, formData);
+      // Over the word limit: keep the form open with the text so the author
+      // can move part of it elsewhere.
+      if (result === "too_long") {
+        setTooLong(true);
+        return;
+      }
       if (result === false) {
         setError(true);
         return;
@@ -84,6 +92,7 @@ export function ChapterRow({
           </Button>
         </div>
         {errorLine}
+        {tooLong && <p className="text-[12.5px] font-semibold text-danger">{t.manage.chapterTooLong}</p>}
       </form>
     );
   }

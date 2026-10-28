@@ -63,6 +63,7 @@ export function CreateWizard({
   const [visibility, setVisibility] = useState<StoryVisibility>("public");
   const [announce, setAnnounce] = useState("");
   const [publishFailed, setPublishFailed] = useState(false);
+  const [tooLong, setTooLong] = useState(false);
 
   const [pending, startTransition] = useTransition();
 
@@ -94,6 +95,7 @@ export function CreateWizard({
 
   function handlePublish() {
     setPublishFailed(false);
+    setTooLong(false);
     startTransition(async () => {
       const firstChapter =
         chapterMode === "manual"
@@ -115,6 +117,11 @@ export function CreateWizard({
         visibility,
         announce: announce || null,
       });
+      // The first chapter is over the word limit — keep everything typed.
+      if (story === "too_long") {
+        setTooLong(true);
+        return;
+      }
       // null: nothing was created — the form keeps everything typed so far.
       if (!story) {
         setPublishFailed(true);
@@ -126,14 +133,18 @@ export function CreateWizard({
         // fresh max(order_index)+1 query each call, so parallel inserts
         // would race and violate the unique(story_id, order_index) constraint.
         const failed: string[] = [];
+        const tooLongTitles: string[] = [];
         for (const chapter of importedChapters.slice(1)) {
           const formData = new FormData();
           formData.set("title", chapter.title.trim());
           formData.set("content", chapter.html);
-          const saved =
-            (await addChapter(story.id, story.slug, formData).catch(() => false)) ||
-            (await addChapter(story.id, story.slug, formData).catch(() => false));
-          if (!saved) failed.push(chapter.title.trim());
+          const first = await addChapter(story.id, story.slug, formData).catch(() => false);
+          const saved = first || (await addChapter(story.id, story.slug, formData).catch(() => false));
+          if (saved === "too_long") tooLongTitles.push(chapter.title.trim());
+          else if (!saved) failed.push(chapter.title.trim());
+        }
+        if (tooLongTitles.length > 0) {
+          window.alert(`${t.manage.chapterTooLong}\n${tooLongTitles.map((title) => `«${title}»`).join(", ")}`);
         }
         if (failed.length > 0) {
           window.alert(t.create.importPartialError.replace("{titles}", failed.map((title) => `«${title}»`).join(", ")));
@@ -443,6 +454,9 @@ export function CreateWizard({
               {step < 3 ? t.common.next : pending ? t.common.loading : t.create.publish}
             </button>
           </div>
+          {tooLong && step === 3 && (
+            <p className="mt-3 text-[13px] font-semibold text-danger">{t.manage.chapterTooLong}</p>
+          )}
           {publishFailed && step === 3 && (
             <p className="mt-3 text-[13px] font-semibold text-danger">{t.create.publishFailed}</p>
           )}

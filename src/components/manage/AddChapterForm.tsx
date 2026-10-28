@@ -40,6 +40,12 @@ export function AddChapterForm({ storyId, storySlug }: { storyId: string; storyS
         startTransition(async () => {
           setError(null);
           const saved = await addChapter(storyId, storySlug, formData).catch(() => false);
+          // The typed text stays (the form isn't reset) so the author can
+          // move part of it to another chapter.
+          if (saved === "too_long") {
+            setError(t.manage.chapterTooLong);
+            return;
+          }
           if (!saved) {
             setError(t.manage.chapterSaveError);
             return;

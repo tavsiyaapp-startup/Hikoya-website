@@ -199,8 +199,13 @@ export default async function StoryPage({
 
       <div className="min-w-0 flex-1">
         <div className="mb-3.5 flex flex-wrap items-center gap-2">
+          {/* Each genre links to search pre-filtered by it. The localized
+              label is passed as the value: it matches the genre chip shown on
+              the search page, and the filter maps it across locales itself. */}
           {story.genres.map((g) => (
-            <Badge key={g} tone="pink">{localizeGenre(g, locale)}</Badge>
+            <Link key={g} prefetch={false} href={`/search?genre=${encodeURIComponent(localizeGenre(g, locale))}`} className="transition hover:opacity-80">
+              <Badge tone="pink">{localizeGenre(g, locale)}</Badge>
+            </Link>
           ))}
           {story.relationship_type && (
             <Badge tone="primary">{relationshipLabel(story.relationship_type, locale)}</Badge>

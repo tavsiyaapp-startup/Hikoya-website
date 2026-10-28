@@ -677,6 +677,9 @@ export interface SearchFilters {
   relationship?: string;
   style?: string;
   warnings?: string[];
+  // Free, user-created tags (category "style" in the tags table), matched by
+  // label — all must be present (AND), like warnings.
+  tags?: string[];
   sort?: "popular" | "newest" | "views";
 }
 
@@ -687,6 +690,19 @@ async function storyIdsForTag(category: "style" | "warning", label: string): Pro
     .from(storyTags)
     .innerJoin(tags, eq(storyTags.tag_id, tags.id))
     .where(and(eq(tags.category, category), eq(tags.label_ru, label)));
+  return rows.map((r) => r.story_id);
+}
+
+// A free tag filter matches by the stored label in either locale column
+// (user tags are saved with label_ru = label_uz = the typed text), whatever
+// category it was filed under.
+async function storyIdsForTagLabel(label: string): Promise<string[]> {
+  const db = getDb();
+  const rows = await db
+    .select({ story_id: storyTags.story_id })
+    .from(storyTags)
+    .innerJoin(tags, eq(storyTags.tag_id, tags.id))
+    .where(or(eq(tags.label_ru, label), eq(tags.label_uz, label)));
   return rows.map((r) => r.story_id);
 }
 
@@ -725,6 +741,12 @@ export const searchStories = withFallback(
 
       for (const warning of filters.warnings ?? []) {
         const ids = await storyIdsForTag("warning", warning);
+        if (ids.length === 0) return [];
+        conditions.push(inArray(stories.id, ids));
+      }
+
+      for (const tag of filters.tags ?? []) {
+        const ids = await storyIdsForTagLabel(tag);
         if (ids.length === 0) return [];
         conditions.push(inArray(stories.id, ids));
       }
@@ -1038,6 +1060,37 @@ export const getCustomLanguages = withFallback(
   },
   ["custom-languages"],
   { revalidate: CACHE_SECONDS, tags: ["custom-languages"] }
+  ),
+  () => ([])
+);
+
+// Every genre actually in use across public stories — including ones authors
+// typed themselves (stored straight into stories.genres, never added to the
+// fixed dictionary list). Deduplicated case-insensitively (the first spelling
+// seen wins), so "Романтика" and "романтика" collapse to one chip.
+export const getAllGenres = withFallback(
+  "getAllGenres",
+  unstable_cache(
+  async (): Promise<string[]> => {
+    try {
+      const db = getDb();
+      const rows = await db.select({ genres: stories.genres }).from(stories).where(PUBLIC_STORY_FILTER);
+      const seen = new Map<string, string>();
+      for (const row of rows) {
+        for (const raw of row.genres ?? []) {
+          const value = raw.trim();
+          const key = value.toLowerCase();
+          if (value && !seen.has(key)) seen.set(key, value);
+        }
+      }
+      return [...seen.values()].sort((a, b) => a.localeCompare(b));
+    } catch (err) {
+      logQueryError("getAllGenres", err);
+      throw err;
+    }
+  },
+  ["all-genres"],
+  { revalidate: CACHE_SECONDS, tags: ["stories"] }
   ),
   () => ([])
 );

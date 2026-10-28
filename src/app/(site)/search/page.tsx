@@ -3,8 +3,8 @@ import Image from "next/image";
 import { GeneratedCover } from "@/components/story/GeneratedCover";
 import { getServerLocale } from "@/lib/i18n/locale-server";
 import { getDictionary } from "@/lib/i18n";
-import { searchStories, getCustomLanguages, type SearchFilters } from "@/lib/queries/stories";
-import { localizeGenre } from "@/lib/genre";
+import { searchStories, getCustomLanguages, getAllGenres, getAllTags, type SearchFilters } from "@/lib/queries/stories";
+import { localizeGenre, genreVariants } from "@/lib/genre";
 import { languageLabel } from "@/lib/language";
 import { storyProgressLabel } from "@/lib/storyProgress";
 import { Chip } from "@/components/ui/Chip";
@@ -76,10 +76,47 @@ export default async function SearchPage({
     relationship: one(sp.rel),
     style: one(sp.style),
     warnings: many(sp.warn),
+    tags: many(sp.tag),
     sort: (one(sp.sort) as SearchFilters["sort"]) ?? "popular",
   };
 
-  const [results, customLanguages] = await Promise.all([searchStories(filters), getCustomLanguages()]);
+  const [results, customLanguages, allGenres, allTags] = await Promise.all([
+    searchStories(filters),
+    getCustomLanguages(),
+    getAllGenres(),
+    getAllTags(),
+  ]);
+
+  // Genre chips: the fixed, translated list plus any genre an author typed
+  // themselves (present in the DB but in no locale's dictionary list), with
+  // case-insensitive de-duplication so nothing shows twice.
+  const genreSeen = new Set(t.genres.map((g) => g.toLowerCase()));
+  const customGenres: string[] = [];
+  for (const g of allGenres) {
+    // genreVariants returns >1 entry only for a dictionary genre; a lone
+    // entry means it's a user-typed one.
+    if (genreVariants(g).length > 1) continue;
+    const key = g.toLowerCase();
+    if (!genreSeen.has(key)) {
+      genreSeen.add(key);
+      customGenres.push(g);
+    }
+  }
+  const genreChips = [...t.genres, ...customGenres];
+
+  // Tag chips: every free tag on the site, minus the ones already shown as
+  // their own curated «Style» / «Warnings» chips, de-duplicated
+  // case-insensitively (the first spelling seen wins).
+  const curatedLabels = new Set([...STYLES, ...WARNINGS].map(([ru]) => ru.toLowerCase()));
+  const tagSeen = new Set<string>();
+  const tagChips: string[] = [];
+  for (const raw of allTags) {
+    const value = raw.trim();
+    const key = value.toLowerCase();
+    if (!key || curatedLabels.has(key) || tagSeen.has(key)) continue;
+    tagSeen.add(key);
+    tagChips.push(value);
+  }
   const hasActive = Boolean(
     filters.language ||
       filters.genre ||
@@ -87,7 +124,8 @@ export default async function SearchPage({
       filters.age ||
       filters.relationship ||
       filters.style ||
-      filters.warnings?.length
+      filters.warnings?.length ||
+      filters.tags?.length
   );
 
   const activeCount = [
@@ -97,7 +135,7 @@ export default async function SearchPage({
     filters.age,
     filters.relationship,
     filters.style,
-  ].filter(Boolean).length + (filters.warnings?.length ?? 0);
+  ].filter(Boolean).length + (filters.warnings?.length ?? 0) + (filters.tags?.length ?? 0);
 
   return (
     <div className="flex flex-col items-start gap-5 lg:flex-row lg:gap-7">
@@ -141,7 +179,7 @@ export default async function SearchPage({
         <div className="my-1 h-px bg-border-soft" />
 
         <FilterGroup label={t.search.genre} wrap>
-          {t.genres.map((g) => (
+          {genreChips.map((g) => (
             <LinkChip key={g} href={buildHref(sp, { genre: filters.genre === g ? undefined : g })} active={filters.genre === g}>
               {g}
             </LinkChip>
@@ -198,13 +236,30 @@ export default async function SearchPage({
 
         <div className="my-1 h-px bg-border-soft" />
 
-        <FilterGroup label={t.search.style} wrap last>
+        <FilterGroup label={t.search.style} wrap last={tagChips.length === 0}>
           {STYLES.map(([s, sUz]) => (
             <LinkChip key={s} href={buildHref(sp, { style: filters.style === s ? undefined : s })} active={filters.style === s}>
               {locale === "uz" ? sUz : s}
             </LinkChip>
           ))}
         </FilterGroup>
+
+        {tagChips.length > 0 && (
+          <>
+            <div className="my-1 h-px bg-border-soft" />
+            <FilterGroup label={t.search.tags} wrap last>
+              {tagChips.map((tag) => (
+                <LinkChip
+                  key={tag}
+                  href={buildHref(sp, { tag: toggleInArray(filters.tags ?? [], tag) })}
+                  active={filters.tags?.includes(tag)}
+                >
+                  {tag}
+                </LinkChip>
+              ))}
+            </FilterGroup>
+          </>
+        )}
         </div>
       </div>
 
@@ -276,6 +331,16 @@ export default async function SearchPage({
                 className="flex items-center gap-1.5 rounded-[10px] border border-primary-300 bg-primary-50 px-3 py-1.5 text-[12.5px] font-semibold text-primary-900"
               >
                 <span>{localizedLabel(w, locale)}</span>
+                <span className="text-[14px] leading-none">×</span>
+              </Link>
+            ))}
+            {(filters.tags ?? []).map((tag) => (
+              <Link prefetch={false}
+                key={`tag-${tag}`}
+                href={buildHref(sp, { tag: toggleInArray(filters.tags ?? [], tag) })}
+                className="flex items-center gap-1.5 rounded-[10px] border border-primary-300 bg-primary-50 px-3 py-1.5 text-[12.5px] font-semibold text-primary-900"
+              >
+                <span>{tag}</span>
                 <span className="text-[14px] leading-none">×</span>
               </Link>
             ))}

@@ -90,6 +90,7 @@ const ru = {
     relationship: "Тип отношений",
     warnings: "Предупреждения",
     style: "Стилистика",
+    tags: "Теги",
     period: "Период",
     sort: "Сортировка",
     active: "Активные:",

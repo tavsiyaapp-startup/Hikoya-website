@@ -92,6 +92,7 @@ const uz: typeof ru = {
     relationship: "Munosabat turi",
     warnings: "Ogohlantirishlar",
     style: "Uslub",
+    tags: "Teglar",
     period: "Davr",
     sort: "Saralash",
     active: "Faol:",

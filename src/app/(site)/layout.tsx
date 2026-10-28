@@ -5,7 +5,6 @@ import { BackButton } from "@/components/layout/BackButton";
 import { getCurrentUser } from "@/lib/current-user";
 import { getPendingAnnouncement, getUnreadNotificationCount } from "@/lib/queries/notifications";
 import { AnnouncementPopup } from "@/components/notifications/AnnouncementPopup";
-import { SubscriptionAnnounce } from "@/components/notifications/SubscriptionAnnounce";
 import { getPaywallState } from "@/lib/queries/paywall";
 import { getServerLocale } from "@/lib/i18n/locale-server";
 import { getDictionary } from "@/lib/i18n";
@@ -42,7 +41,6 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
       </main>
       <Footer />
       {announcement && <AnnouncementPopup id={announcement.id} message={announcement.message} />}
-      {user && <SubscriptionAnnounce userId={user.id} />}
     </div>
   );
 }

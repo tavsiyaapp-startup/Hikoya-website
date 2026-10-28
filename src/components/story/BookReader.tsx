@@ -19,6 +19,7 @@ import {
 import type { ReaderPrefs } from "@/lib/readerPrefs-server";
 import { readSaved, save, type TocChapter } from "@/components/story/ReaderChrome";
 import { ReaderSettingsPanel, setReaderCookie } from "@/components/story/ReaderSettingsPanel";
+import { ChapterImageZoom } from "@/components/story/ChapterImageZoom";
 import { leaveToStory } from "@/lib/reader-nav";
 
 // «Sahifalab»: the chapter as a book, turned page by page — two pages side
@@ -400,7 +401,7 @@ export function BookReader({
             id={TEXT_ID}
             className={clsx(
               "h-full transition-transform duration-500 ease-[cubic-bezier(.32,.72,0,1)] [column-fill:auto]",
-              "[&_a]:text-[var(--book-accent)] [&_img]:mx-auto [&_img]:max-h-[60dvh] [&_img]:w-auto [&_img]:max-w-full [&_img]:break-inside-avoid [&_h1]:break-after-avoid [&_h2]:break-after-avoid [&_h3]:break-after-avoid",
+              "[&_a]:text-[var(--book-accent)] [&_img]:mx-auto [&_img]:max-h-[60dvh] [&_img]:w-auto [&_img]:max-w-full [&_img]:cursor-zoom-in [&_img]:break-inside-avoid [&_h1]:break-after-avoid [&_h2]:break-after-avoid [&_h3]:break-after-avoid",
               !ready && "opacity-0"
             )}
             style={{ fontFamily: READER_FONT_STACKS[font], fontSize: sizeStyle.fontSize, lineHeight: sizeStyle.lineHeight }}
@@ -571,6 +572,8 @@ export function BookReader({
         </div>
       )}
     </div>
+    {/* Tap an author-embedded image (e.g. a character sheet) to enlarge it. */}
+    <ChapterImageZoom />
     </>
   );
 }

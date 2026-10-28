@@ -17,6 +17,7 @@ import {
 import type { ReaderPrefs } from "@/lib/readerPrefs-server";
 import { TOGGLE_SETTINGS_EVENT } from "@/components/story/ReaderChrome";
 import { ReaderSettingsPanel, setReaderCookie } from "@/components/story/ReaderSettingsPanel";
+import { ChapterImageZoom } from "@/components/story/ChapterImageZoom";
 
 export function ReaderContent({
   initialPrefs,
@@ -123,7 +124,7 @@ export function ReaderContent({
             the text are the same unit. */}
         {htmlContent ? (
           <div
-            className="rich-content max-w-[75ch]"
+            className="rich-content max-w-[75ch] [&_img]:cursor-zoom-in"
             style={{ lineHeight: sizeStyle.lineHeight }}
             dangerouslySetInnerHTML={{ __html: htmlContent }}
           />
@@ -137,6 +138,9 @@ export function ReaderContent({
           </div>
         )}
       </div>
+
+      {/* Tap an author-embedded image (e.g. a character sheet) to enlarge it. */}
+      <ChapterImageZoom />
     </div>
   );
 }

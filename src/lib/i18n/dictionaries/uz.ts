@@ -436,6 +436,11 @@ const uz: typeof ru = {
     errorMessage: "Xabar juda uzun (300 belgigacha)",
     errorRate: "Oʻzgarishlar juda koʻp, keyinroq urinib koʻring",
   },
+  obunaAnnounce: {
+    title: "Hikoya obuna",
+    body: "Hikoya shu kungacha siz — kitobxonlar va mualliflar mehri bilan yashab keldi. Platformaning uzluksiz ishlashi va yangi hikoyalarni siz uchun ochiq saqlash uchun «Obuna» joriy qilmoqdamiz. Obuna bilan barcha boblarni cheklovsiz oʻqiysiz, Iqtibos kartochkalarini bemalol ulashasiz va sevimli mualliflaringizni qoʻllab-quvvatlaysiz.\n\nObuna ertadan boshlab ishga tushadi. Hozircha bu sinov obunasi va sinov narxi — atigi 10 000 soʻm.",
+    gotIt: "Tushundim",
+  },
   paywall: {
     badge: "Obuna",
     lockedTitle: "Bu bob obuna bilan ochiladi",

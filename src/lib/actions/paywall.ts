@@ -215,6 +215,27 @@ export async function grantSubscriptionByUsername(_prev: PaywallAdminResult | nu
   }
 }
 
+// One-click grant from the users list (/admin/users) — the same thing the
+// bot's ✅ button does, but without the Telegram payment flow, for when the
+// money was handled off-platform. Admin only (money), default period from
+// the paywall settings. Returns the new expiry so the row can show it.
+export async function grantSubscriptionToUser(userId: string): Promise<{ ok: true; until: string } | { ok: false }> {
+  const admin = await requirePaywallAdmin();
+  if (!admin) return { ok: false };
+  try {
+    const db = getDb();
+    const state = await loadPaywallState(db);
+    const days = state.settings?.period_days ?? 30;
+    const expires = await grantSubscription(db, { userId, days, byUserId: admin.id });
+    revalidatePath(`${ROUTES.admin}/users`);
+    revalidatePath(`${ROUTES.admin}/subscriptions`);
+    return { ok: true, until: expires.toISOString() };
+  } catch (err) {
+    console.error("[paywall] grantSubscriptionToUser failed", err);
+    return { ok: false };
+  }
+}
+
 export async function revokeSubscriptionAction(userId: string): Promise<boolean> {
   const admin = await requirePaywallAdmin();
   if (!admin) return false;

@@ -77,7 +77,7 @@ export default async function AdminUsersPage({
           </div>
 
           <div className="overflow-x-auto">
-            <div className="min-w-[1040px]">
+            <div className="min-w-[1120px]">
               <div className="mb-3 flex items-center gap-4 border-b border-border-soft pb-3 text-[12px] font-bold uppercase tracking-wide text-muted-2">
                 <span className="flex-[1.4]">{t.admin.colUser}</span>
                 <span className="w-27.5">{t.admin.colRole}</span>
@@ -87,7 +87,7 @@ export default async function AdminUsersPage({
                 <span className="w-30">{t.admin.colStatus}</span>
                 <span className="w-24 shrink-0">{t.admin.colVerified}</span>
                 <span className="w-32 shrink-0">{t.admin.manageBadges}</span>
-                <span className="w-30 shrink-0 text-right">{t.admin.colAction}</span>
+                <span className="w-44 shrink-0 text-right">{t.admin.colAction}</span>
               </div>
 
               {users.map((u) => (

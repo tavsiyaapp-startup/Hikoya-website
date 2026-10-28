@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/Button";
 import { MessageIcon } from "@/components/ui/icons";
 import { UserRoleSelect } from "./UserRoleSelect";
 import { UserStatusButton } from "./UserStatusButton";
+import { SubscriptionGrantButton } from "./SubscriptionGrantButton";
 import { VerifiedToggle } from "./VerifiedToggle";
 import { LastSeen } from "./LastSeen";
 import type { Achievement, Profile, UserRole } from "@/types/database";
@@ -88,7 +89,7 @@ export function UserRow({
             {t.admin.manageBadges} ({initialCheckedIds.length})
           </button>
         </span>
-        <span className="flex w-30 shrink-0 items-center justify-end gap-1.5">
+        <span className="flex w-44 shrink-0 flex-wrap items-center justify-end gap-1.5">
           <Link prefetch={false}
             href={ROUTES.adminChats(user.id)}
             title={t.admin.writeMessage}
@@ -96,6 +97,9 @@ export function UserRow({
           >
             <MessageIcon width={15} height={15} />
           </Link>
+          {viewerIsAdmin && (
+            <SubscriptionGrantButton userId={user.id} userName={user.display_name} locale={locale} />
+          )}
           <UserStatusButton userId={user.id} status={user.status} />
         </span>
       </div>

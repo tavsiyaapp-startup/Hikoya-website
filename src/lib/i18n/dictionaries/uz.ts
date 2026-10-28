@@ -314,7 +314,7 @@ const uz: typeof ru = {
     importSaveError: "{total} bobdan {saved} tasi saqlandi. Yana bosing — faqat qolganlari saqlanadi.",
     storySaveError: "O'zgarishlarni saqlab bo'lmadi. Qayta urinib ko'ring.",
     chapterSaveError: "Bobni saqlab bo'lmadi. Matn joyida — qayta urinib ko'ring.",
-    chapterTooLong: "Bir bobga koʻpi bilan 6000 soʻz. Matn tahrirlagichda saqlanib qoldi — bir qismini boshqa bobga koʻchiring.",
+    chapterTooLong: "Bir bobga koʻpi bilan 4000 soʻz. Matn tahrirlagichda saqlanib qoldi — bir qismini boshqa bobga koʻchiring.",
     markChapterStart: "Bob boshlanishini belgilash",
     splitAndPreview: "Ajratish va ko'rish",
     previewTitleN: "Boblar ({n})",

@@ -12,13 +12,16 @@ function toProfile(row: typeof profiles.$inferSelect): Profile {
     onboarded_at: row.onboarded_at ? row.onboarded_at.toISOString() : null,
     created_at: row.created_at.toISOString(),
     last_seen_at: row.last_seen_at ? row.last_seen_at.toISOString() : null,
+    username_changed_at: row.username_changed_at ? row.username_changed_at.toISOString() : null,
   };
 }
 
 export async function getProfileByUsername(username: string): Promise<Profile | null> {
   try {
     const db = getDb();
-    const [row] = await db.select().from(profiles).where(eq(profiles.username, username)).limit(1);
+    // Case-insensitive: usernames are stored with the case the owner chose,
+    // but /author/<name> must resolve however the link was cased.
+    const [row] = await db.select().from(profiles).where(sql`lower(${profiles.username}) = ${username.toLowerCase()}`).limit(1);
     return row ? toProfile(row) : null;
   } catch (err) {
     logQueryError("getProfileByUsername", err);

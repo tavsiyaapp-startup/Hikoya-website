@@ -51,6 +51,9 @@ export interface Profile {
   telegram_handle: string | null;
   created_at: string;
   last_seen_at: string | null;
+  // Last @username change (src/lib/actions/profile.ts). Optional: older
+  // hand-built Profile literals don't set it. Added 28.10.2026.
+  username_changed_at?: string | null;
 }
 
 export interface Story {

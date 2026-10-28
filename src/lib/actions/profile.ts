@@ -12,6 +12,7 @@ import { setCredentialPassword } from "@/server/auth/set-password";
 import { loadViewer } from "@/server/data/viewer";
 import { canEditOwnProfile } from "@/server/authz/policy";
 import { uploadUrlPrefix } from "@/server/storage/local";
+import { USERNAME_COOLDOWN_MS, isUsernameTaken, validateUsername } from "@/server/data/username";
 import { ROUTES } from "@/lib/constants";
 
 // Accepts a bare handle ("name"), a "@name", or a pasted full profile URL
@@ -30,11 +31,22 @@ const MAX_DISPLAY_NAME = 60;
 const MAX_BIO = 1000;
 const MAX_HANDLE = 60;
 
-// Returns true only when the profile was actually saved, so the form knows
-// whether it is safe to clean up the previous avatar file — before, an empty
-// name made this return silently while the form still deleted the old
-// avatar, leaving the profile pointing at a missing file.
-export async function updateProfile(username: string, formData: FormData): Promise<boolean> {
+// Why the save was refused, so the form can tell the user which field to fix
+// instead of a single generic error. `cooldownDays` is how many whole days
+// are still left before the username may change again.
+export type UpdateProfileResult =
+  | { ok: true; username: string }
+  | { ok: false; error: "generic" }
+  | { ok: false; error: "username_format" | "username_reserved" | "username_taken" }
+  | { ok: false; error: "username_cooldown"; cooldownDays: number };
+
+// Returns ok:true (with the saved username) only when the profile was
+// actually saved, so the form knows whether it is safe to clean up the
+// previous avatar file — before, an empty name made this return silently
+// while the form still deleted the old avatar, leaving the profile pointing
+// at a missing file. `currentUsername` is the handle the page was opened
+// under, used for revalidation.
+export async function updateProfile(currentUsername: string, formData: FormData): Promise<UpdateProfileResult> {
   const session = await getAuth().api.getSession({ headers: await headers() });
   if (!session) redirect(ROUTES.onboarding);
 
@@ -42,15 +54,47 @@ export async function updateProfile(username: string, formData: FormData): Promi
   // A blocked account can't rename itself or change its avatar to dodge a
   // block (policy.ts canEditOwnProfile requires an active account).
   const viewer = await loadViewer(db, session.user.id);
-  if (!viewer || !canEditOwnProfile(viewer, session.user.id)) return false;
+  if (!viewer || !canEditOwnProfile(viewer, session.user.id)) return { ok: false, error: "generic" };
 
   const displayName = String(formData.get("displayName") ?? "").trim();
   const bio = String(formData.get("bio") ?? "").trim();
   const avatarUrl = formData.get("avatarUrl");
   const instagramHandle = normalizeHandle(String(formData.get("instagramHandle") ?? ""));
   const telegramHandle = normalizeHandle(String(formData.get("telegramHandle") ?? ""));
-  if (!displayName || displayName.length > MAX_DISPLAY_NAME || bio.length > MAX_BIO) return false;
-  if ((instagramHandle?.length ?? 0) > MAX_HANDLE || (telegramHandle?.length ?? 0) > MAX_HANDLE) return false;
+  if (!displayName || displayName.length > MAX_DISPLAY_NAME || bio.length > MAX_BIO) return { ok: false, error: "generic" };
+  if ((instagramHandle?.length ?? 0) > MAX_HANDLE || (telegramHandle?.length ?? 0) > MAX_HANDLE) return { ok: false, error: "generic" };
+
+  // Username: optional field. The current @handle is read from the row (not
+  // trusted from the page), so the once-a-week limit and the "unchanged?"
+  // check can't be fooled by a stale or edited prop.
+  const [row] = await db
+    .select({ username: profiles.username, changedAt: profiles.username_changed_at })
+    .from(profiles)
+    .where(eq(profiles.id, session.user.id))
+    .limit(1);
+  if (!row) return { ok: false, error: "generic" };
+
+  let nextUsername: string | null = null;
+  const rawUsername = formData.get("username");
+  if (typeof rawUsername === "string" && rawUsername.trim() !== row.username) {
+    const valid = validateUsername(rawUsername);
+    if (!valid.ok) return { ok: false, error: valid.error === "reserved" ? "username_reserved" : "username_format" };
+    // A case-only change (Ali → ali) is still a real change — but skip the
+    // weekly limit and the taken check when the handle is effectively the
+    // same word the user already owns.
+    if (valid.value.toLowerCase() !== row.username.toLowerCase()) {
+      if (row.changedAt) {
+        const elapsed = Date.now() - row.changedAt.getTime();
+        if (elapsed < USERNAME_COOLDOWN_MS) {
+          const cooldownDays = Math.ceil((USERNAME_COOLDOWN_MS - elapsed) / (24 * 60 * 60 * 1000));
+          return { ok: false, error: "username_cooldown", cooldownDays };
+        }
+      }
+      if (await isUsernameTaken(valid.value, session.user.id)) return { ok: false, error: "username_taken" };
+    }
+    nextUsername = valid.value;
+  }
+
   // Only an avatar this user uploaded themselves (src/lib/actions/uploads.ts)
   // is accepted — not an arbitrary URL, which could point at a tracking
   // server or at someone else's file.
@@ -61,19 +105,30 @@ export async function updateProfile(username: string, formData: FormData): Promi
       ? avatarUrl
       : null;
 
-  await db
-    .update(profiles)
-    .set({
-      display_name: displayName,
-      bio: bio || null,
-      instagram_handle: instagramHandle,
-      telegram_handle: telegramHandle,
-      ...(ownAvatar ? { avatar_url: ownAvatar } : {}),
-    })
-    .where(eq(profiles.id, session.user.id));
+  try {
+    await db
+      .update(profiles)
+      .set({
+        display_name: displayName,
+        bio: bio || null,
+        instagram_handle: instagramHandle,
+        telegram_handle: telegramHandle,
+        ...(ownAvatar ? { avatar_url: ownAvatar } : {}),
+        ...(nextUsername ? { username: nextUsername, username_changed_at: new Date() } : {}),
+      })
+      .where(eq(profiles.id, session.user.id));
+  } catch (err) {
+    // Two people claiming the same handle at the same moment: the unique
+    // index (profiles_username_key, Postgres code 23505) catches whoever
+    // loses the race even though isUsernameTaken had just passed.
+    if (nextUsername && (err as { code?: string })?.code === "23505") return { ok: false, error: "username_taken" };
+    throw err;
+  }
 
-  revalidatePath(ROUTES.author(username));
-  return true;
+  const savedUsername = nextUsername ?? row.username;
+  revalidatePath(ROUTES.author(currentUsername));
+  if (savedUsername !== currentUsername) revalidatePath(ROUTES.author(savedUsername));
+  return { ok: true, username: savedUsername };
 }
 
 // Sets a password for an already-signed-in account that doesn't have one

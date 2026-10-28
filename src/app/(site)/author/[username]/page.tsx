@@ -223,6 +223,7 @@ export default async function AuthorPage({
           <EditProfileForm
             userId={profile.id}
             username={profile.username}
+            usernameChangedAt={profile.username_changed_at ?? null}
             displayName={profile.display_name}
             avatarUrl={profile.avatar_url}
             email={user?.email ?? null}

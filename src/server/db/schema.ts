@@ -117,6 +117,11 @@ export const profiles = pgTable("profiles", {
   // minute) — admin "online / last seen". Added 20.10.2026
   // (D:/QIZLAB/backups/profiles_last_seen_at.sql).
   last_seen_at: timestamp("last_seen_at", { withTimezone: true }),
+  // When the user last changed their @username — a change is allowed only
+  // once a week (src/lib/actions/profile.ts). NULL = never changed, so the
+  // first change is always allowed. Added 28.10.2026
+  // (D:/QIZLAB/backups/profiles_username_changed_at.sql).
+  username_changed_at: timestamp("username_changed_at", { withTimezone: true }),
 }, (table) => [
   unique("profiles_telegram_id_key").on(table.telegram_id),
   unique("profiles_username_key").on(table.username),

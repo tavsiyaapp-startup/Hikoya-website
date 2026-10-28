@@ -43,6 +43,7 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
       onboarded_at: row.onboarded_at ? row.onboarded_at.toISOString() : null,
       created_at: row.created_at.toISOString(),
       last_seen_at: row.last_seen_at ? row.last_seen_at.toISOString() : null,
+      username_changed_at: row.username_changed_at ? row.username_changed_at.toISOString() : null,
     };
 
     // "Last seen" for the admin users list — written at most once a minute

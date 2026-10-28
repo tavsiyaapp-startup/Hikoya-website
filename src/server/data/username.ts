@@ -1,8 +1,39 @@
 import "server-only";
 import { randomBytes } from "crypto";
-import { sql } from "drizzle-orm";
+import { and, ne, sql } from "drizzle-orm";
 import { getDb } from "@/server/db/client";
 import { profiles } from "@/server/db/schema";
+
+// A user may change their own @username once a week (profile.ts enforces it).
+export const USERNAME_COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000;
+export const USERNAME_MIN = 3;
+export const USERNAME_MAX = 30;
+
+export type UsernameError = "format" | "reserved" | "taken";
+
+// Validates a user-chosen @handle and returns the trimmed value or why it
+// was rejected. Letters, digits and "_", 3–30 chars. Case is PRESERVED
+// (a pseudonym may want a capital), but uniqueness and every lookup compare
+// case-insensitively (isUsernameTaken below, getProfileByUsername), so two
+// handles differing only in case can't both exist.
+export function validateUsername(raw: string): { ok: true; value: string } | { ok: false; error: UsernameError } {
+  const value = raw.trim();
+  if (!new RegExp(`^[A-Za-z0-9_]{${USERNAME_MIN},${USERNAME_MAX}}$`).test(value)) {
+    return { ok: false, error: "format" };
+  }
+  if (isReserved(value)) return { ok: false, error: "reserved" };
+  return { ok: true, value };
+}
+
+// True when some OTHER account already holds this handle (case-insensitive).
+export async function isUsernameTaken(name: string, excludeId: string): Promise<boolean> {
+  const [row] = await getDb()
+    .select({ id: profiles.id })
+    .from(profiles)
+    .where(and(sql`lower(${profiles.username}) = ${name.toLowerCase()}`, ne(profiles.id, excludeId)))
+    .limit(1);
+  return Boolean(row);
+}
 
 // Handles that would let someone pass for staff or the site itself.
 const RESERVED = new Set([

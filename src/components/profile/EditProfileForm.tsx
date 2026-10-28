@@ -19,9 +19,14 @@ import { SignOutButton } from "@/components/profile/SignOutButton";
 import { TelegramLoginButton } from "@/components/auth/TelegramLoginButton";
 import { isTelegramPlaceholderEmail } from "@/lib/telegram-account";
 
+// How long after a username change the next one is blocked — must match
+// USERNAME_COOLDOWN_MS in src/server/data/username.ts.
+const USERNAME_COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000;
+
 export function EditProfileForm({
   userId,
   username,
+  usernameChangedAt,
   displayName,
   avatarUrl,
   email,
@@ -33,6 +38,9 @@ export function EditProfileForm({
 }: {
   userId: string;
   username: string;
+  // When this user last changed their @username (ISO string), or null if
+  // never — used to lock the field until a week has passed.
+  usernameChangedAt: string | null;
   displayName: string;
   avatarUrl: string | null;
   email: string | null;
@@ -60,6 +68,13 @@ export function EditProfileForm({
   const [accountMessages, setAccountMessages] = useState<string[]>([]);
   const [accountErrors, setAccountErrors] = useState<string[]>([]);
   const [pending, startTransition] = useTransition();
+  // Typed @handle; only letters, digits and "_" are kept as the user types,
+  // so the field can't hold something the server would reject on format.
+  const [usernameValue, setUsernameValue] = useState(username);
+  const cooldownDaysLeft = usernameChangedAt
+    ? Math.ceil((USERNAME_COOLDOWN_MS - (Date.now() - new Date(usernameChangedAt).getTime())) / 86_400_000)
+    : 0;
+  const usernameLocked = cooldownDaysLeft > 0;
 
   useEffect(() => {
     if (!open) return;
@@ -104,9 +119,18 @@ export function EditProfileForm({
 
   function handleSubmit(formData: FormData) {
     startTransition(async () => {
-      const saved = await updateProfile(username, formData);
-      if (!saved) {
-        setAccountErrors([t.onboarding.saveError]);
+      const result = await updateProfile(username, formData);
+      if (!result.ok) {
+        const map: Record<string, string> = {
+          username_format: t.profile.usernameErrorFormat,
+          username_reserved: t.profile.usernameErrorReserved,
+          username_taken: t.profile.usernameErrorTaken,
+          username_cooldown: t.profile.usernameCooldown.replace(
+            "{n}",
+            String("cooldownDays" in result ? result.cooldownDays : "")
+          ),
+        };
+        setAccountErrors([map[result.error] ?? t.onboarding.saveError]);
         return;
       }
       if (avatarUrl && preview !== avatarUrl) {
@@ -140,6 +164,12 @@ export function EditProfileForm({
 
       setAccountMessages(messages);
       setAccountErrors(errors);
+      // The handle changed — this page's URL (/author/<old>) no longer
+      // resolves, so move to the new one (it re-renders with fresh data).
+      if (result.username !== username) {
+        router.replace(ROUTES.author(result.username));
+        return;
+      }
       if (messages.length === 0 && errors.length === 0) setOpen(false);
     });
   }
@@ -175,8 +205,22 @@ export function EditProfileForm({
 
       <div>
         <label className="mb-1.5 block text-[13px] font-bold">{t.profile.usernameLabel}</label>
-        <Input value={`@${username}`} disabled className="opacity-60" />
-        <p className="mt-1 text-[12px] text-muted-2">{t.profile.usernameHint}</p>
+        <div className="relative">
+          <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[15px] text-muted-2">@</span>
+          <Input
+            name="username"
+            value={usernameValue}
+            onChange={(e) => setUsernameValue(e.target.value.replace(/[^A-Za-z0-9_]/g, ""))}
+            disabled={usernameLocked}
+            maxLength={30}
+            className={usernameLocked ? "pl-8 opacity-60" : "pl-8"}
+          />
+        </div>
+        <p className="mt-1 text-[12px] text-muted-2">
+          {usernameLocked
+            ? t.profile.usernameCooldown.replace("{n}", String(cooldownDaysLeft))
+            : t.profile.usernameHint}
+        </p>
       </div>
 
       <div>

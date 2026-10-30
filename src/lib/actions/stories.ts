@@ -239,6 +239,31 @@ export async function deleteChapter(chapterId: string, storyId: string, storySlu
   return true;
 }
 
+// Move a chapter one place up or down. Returns false when it couldn't move
+// (already at the edge, forbidden, or a database error) so the list just
+// stays as it is.
+export async function moveChapter(
+  chapterId: string,
+  storyId: string,
+  storySlug: string,
+  direction: "up" | "down"
+): Promise<boolean> {
+  const { db, viewer } = await requireViewer();
+  let moved = false;
+  try {
+    moved = await chaptersData.moveChapter(db, viewer, chapterId, direction);
+  } catch (err) {
+    console.error("[stories] moveChapter failed", chapterId, err);
+    return false;
+  }
+  if (!moved) return false;
+
+  updateTag("stories");
+  revalidatePath(ROUTES.manage(storySlug));
+  revalidatePath(ROUTES.story(storySlug));
+  return true;
+}
+
 // Returns false when the chapter wasn't saved (empty, forbidden, database
 // error) so the form can keep the text and say so — it used to throw or
 // return nothing, and every caller closed the form either way.

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { updateChapter, deleteChapter, submitChapterForReview } from "@/lib/actions/stories";
+import { updateChapter, deleteChapter, submitChapterForReview, moveChapter } from "@/lib/actions/stories";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 import { Badge } from "@/components/ui/Chip";
 import { Input } from "@/components/ui/Input";
@@ -14,11 +14,13 @@ export function ChapterRow({
   chapter,
   storyId,
   storySlug,
+  isFirst,
   isLast,
 }: {
   chapter: Chapter;
   storyId: string;
   storySlug: string;
+  isFirst: boolean;
   isLast: boolean;
 }) {
   const { t } = useLocale();
@@ -34,6 +36,13 @@ export function ChapterRow({
     setError(false);
     startTransition(async () => {
       if (!(await deleteChapter(chapter.id, storyId, storySlug))) setError(true);
+    });
+  }
+
+  function handleMove(direction: "up" | "down") {
+    setError(false);
+    startTransition(async () => {
+      if (!(await moveChapter(chapter.id, storyId, storySlug, direction))) setError(true);
     });
   }
 
@@ -128,6 +137,28 @@ export function ChapterRow({
             {t.manage.submitForReview}
           </button>
         )}
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            disabled={pending || isFirst}
+            onClick={() => handleMove("up")}
+            title={t.manage.moveUp}
+            aria-label={t.manage.moveUp}
+            className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-[8px] border border-border bg-card text-ink-soft hover:bg-surface disabled:cursor-default disabled:opacity-30"
+          >
+            ↑
+          </button>
+          <button
+            type="button"
+            disabled={pending || isLast}
+            onClick={() => handleMove("down")}
+            title={t.manage.moveDown}
+            aria-label={t.manage.moveDown}
+            className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-[8px] border border-border bg-card text-ink-soft hover:bg-surface disabled:cursor-default disabled:opacity-30"
+          >
+            ↓
+          </button>
+        </div>
         <button
           type="button"
           onClick={() => setEditing(true)}

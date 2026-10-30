@@ -289,6 +289,8 @@ const uz: typeof ru = {
     takeInWork: "Ishga olish",
     noChaptersYet: "Hozircha boblar yoʻq — birinchisini qoʻshing.",
     editChapter: "Tahrirlash",
+    moveUp: "Yuqoriga koʻchirish",
+    moveDown: "Pastga koʻchirish",
     delete: "Oʻchirish",
     confirmDeleteChapter: "Bobni oʻchirasizmi? Bu amalni bekor qilib boʻlmaydi.",
     chapterBackToReview: "Bob saqlandi va qayta moderatsiyaga yuborildi — tasdiqlanmaguncha oʻquvchilarga koʻrinmaydi.",

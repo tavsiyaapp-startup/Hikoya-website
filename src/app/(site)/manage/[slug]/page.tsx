@@ -158,6 +158,7 @@ export default async function ManagePage({
                 chapter={ch}
                 storyId={story.id}
                 storySlug={slug}
+                isFirst={i === 0}
                 isLast={i === chapters.length - 1}
               />
             ))

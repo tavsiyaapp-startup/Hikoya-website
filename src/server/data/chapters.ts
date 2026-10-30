@@ -1,5 +1,5 @@
 import "server-only";
-import { and, eq, gt, max, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, lt, max, sql } from "drizzle-orm";
 import { sanitizeHtml } from "@/lib/sanitize";
 import {
   canAddChapter,
@@ -139,6 +139,48 @@ export async function updateChapter(db: DbOrTx, viewer: Viewer | null, chapterId
     })
     .where(eq(chapters.id, chapter.id));
   return { status: backToReview ? ("pending_review" as const) : chapter.status, wentBackToReview: backToReview };
+}
+
+// Move a chapter one place up or down by swapping its order_index with its
+// neighbour's. Author (or staff) only, via requireEditableChapter. The story
+// row is locked for the swap so a concurrent add/delete/move can't interleave,
+// and the two rows swap through a temporary -1 (real order_index starts at 1)
+// to never collide on unique(story_id, order_index) mid-update.
+export async function moveChapter(
+  db: DbOrTx,
+  viewer: Viewer | null,
+  chapterId: string,
+  direction: "up" | "down"
+): Promise<boolean> {
+  const { chapter } = await requireEditableChapter(db, viewer, chapterId);
+  return db.transaction(async (tx) => {
+    await tx.select({ id: stories.id }).from(stories).where(eq(stories.id, chapter.story_id)).for("update");
+
+    const [cur] = await tx
+      .select({ id: chapters.id, order_index: chapters.order_index })
+      .from(chapters)
+      .where(eq(chapters.id, chapterId))
+      .limit(1);
+    if (!cur) return false;
+
+    const neighbourWhere =
+      direction === "up"
+        ? and(eq(chapters.story_id, chapter.story_id), lt(chapters.order_index, cur.order_index))
+        : and(eq(chapters.story_id, chapter.story_id), gt(chapters.order_index, cur.order_index));
+    const [neighbour] = await tx
+      .select({ id: chapters.id, order_index: chapters.order_index })
+      .from(chapters)
+      .where(neighbourWhere)
+      .orderBy(direction === "up" ? desc(chapters.order_index) : asc(chapters.order_index))
+      .limit(1);
+    // Already at the top/bottom — nothing to swap with.
+    if (!neighbour) return false;
+
+    await tx.update(chapters).set({ order_index: -1 }).where(eq(chapters.id, cur.id));
+    await tx.update(chapters).set({ order_index: cur.order_index }).where(eq(chapters.id, neighbour.id));
+    await tx.update(chapters).set({ order_index: neighbour.order_index }).where(eq(chapters.id, cur.id));
+    return true;
+  });
 }
 
 // The reorder after a delete was previously a loop of one UPDATE per chapter

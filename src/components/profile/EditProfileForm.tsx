@@ -71,9 +71,14 @@ export function EditProfileForm({
   // Typed @handle; only letters, digits and "_" are kept as the user types,
   // so the field can't hold something the server would reject on format.
   const [usernameValue, setUsernameValue] = useState(username);
-  const cooldownDaysLeft = usernameChangedAt
-    ? Math.ceil((USERNAME_COOLDOWN_MS - (Date.now() - new Date(usernameChangedAt).getTime())) / 86_400_000)
-    : 0;
+  // Read the clock once, in a lazy state initializer, rather than on every
+  // render (impure in render). The server still enforces the real weekly
+  // limit, so this is only the field's enabled/disabled hint.
+  const [cooldownDaysLeft] = useState(() =>
+    usernameChangedAt
+      ? Math.max(0, Math.ceil((USERNAME_COOLDOWN_MS - (Date.now() - new Date(usernameChangedAt).getTime())) / 86_400_000))
+      : 0
+  );
   const usernameLocked = cooldownDaysLeft > 0;
 
   useEffect(() => {

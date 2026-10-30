@@ -15,9 +15,10 @@ import { liveImageUrl } from "@/lib/images";
 // Solid-color pill, distinct from the shared Badge component's softer
 // pastel tones (Badge stays pastel everywhere else it's used) — this one's
 // meant to read as a small graphic accent overlaid on the cover image, so
-// it needs real contrast against any cover art behind it.
+// it needs real contrast against any cover art behind it. Ongoing green is
+// #15803D (not #16A34A) so white text on it clears WCAG AA (4.5:1).
 const progressBadgeClasses: Record<StoryProgressStatus, string> = {
-  ongoing: "bg-[#16A34A] text-white",
+  ongoing: "bg-[#15803D] text-white",
   finished: "bg-[#7C3AED] text-white",
   dropped: "bg-[#DC2626] text-white",
 };
@@ -75,67 +76,88 @@ export async function StoryCard({
     );
   }
 
+  // The cover image is the book's front face — unchanged crop/colours, just
+  // the existing placeholder when there's no picture.
+  const cover = liveImageUrl(story.cover_url) ? (
+    <Image
+      src={liveImageUrl(story.cover_url)!}
+      alt=""
+      fill
+      sizes="(max-width: 1023px) 25vw, 12.5vw"
+      className="object-cover"
+    />
+  ) : (
+    <GeneratedCover seed={story.id} title={story.title} author={story.author?.display_name} />
+  );
+
+  const showProgressMark = !ribbonLabel;
+
   return (
-    <div className="relative">
+    // The card IS the book: a transparent wrapper, no border/background/
+    // shadow. `book3d-link` drives the hover/focus turn (src/app/globals.css).
+    <Link
+      prefetch={false}
+      href={isBlocked && adminHref ? adminHref : (href ?? ROUTES.story(story.slug))}
+      className="book3d-link relative block text-inherit no-underline"
+    >
+      {/* Status — outside the 3D book, on top of it, never rotates. */}
       <span
-        className={`absolute -left-1 -top-3.5 z-10 inline-flex items-center rounded-[8px] px-2 py-1 text-[10.5px] font-bold shadow-[0_2px_6px_rgba(0,0,0,0.2)] ${
+        className={`absolute -top-2 left-[2px] z-20 inline-flex items-center gap-1.5 rounded-[8px] px-2 py-1 text-[10.5px] font-bold shadow-[0_2px_6px_rgba(0,0,0,0.2)] ${
           ribbonLabel ? "bg-primary-600 text-white" : progressBadgeClasses[story.progress_status]
         }`}
       >
-        {ribbonLabel ?? storyProgressLabel(t, story.progress_status)}
+        {showProgressMark && story.progress_status === "ongoing" && <span className="book3d-dot" aria-hidden />}
+        {showProgressMark && story.progress_status === "finished" && (
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <path d="M5 12.5l4.5 4.5L19 7.5" />
+          </svg>
+        )}
+        <span>{ribbonLabel ?? storyProgressLabel(t, story.progress_status)}</span>
       </span>
-      <Link prefetch={false}
-        href={isBlocked && adminHref ? adminHref : (href ?? ROUTES.story(story.slug))}
-        className="block overflow-hidden rounded-[12px] border border-border bg-card shadow-[0_2px_10px_rgba(60,40,120,0.05)] transition hover:-translate-y-0.5 hover:shadow-[0_14px_30px_rgba(60,40,120,0.12)]"
-      >
-        <div className="relative flex aspect-[3/4] items-center justify-center bg-primary-200 p-3">
-          {liveImageUrl(story.cover_url) ? (
-            <Image
-              src={liveImageUrl(story.cover_url)!}
-              alt=""
-              fill
-              sizes="(max-width: 1023px) 25vw, 12.5vw"
-              className="object-cover"
-            />
-          ) : (
-            <GeneratedCover seed={story.id} title={story.title} author={story.author?.display_name} />
-          )}
-          {story.deleted_at ? (
-            <div className="absolute right-2 top-2">
-              <Badge tone="danger">{t.admin.deletedByAuthor}</Badge>
-            </div>
-          ) : (
-            story.status !== "published" && (
+
+      <div className="book3d-stage">
+        <div className="book3d">
+          <div className="book3d-face book3d-back" />
+          <div className="book3d-pages" />
+          <div className="book3d-face book3d-front">
+            {cover}
+            {story.deleted_at ? (
               <div className="absolute right-2 top-2">
-                <Badge tone="neutral">{story.status === "draft" ? t.common.draft : t.common.unlisted}</Badge>
+                <Badge tone="danger">{t.admin.deletedByAuthor}</Badge>
               </div>
-            )
-          )}
-        </div>
-        <div className="p-2.5">
-          <h3 className="mb-0.5 line-clamp-2 min-h-8 text-[12.5px] font-bold leading-tight">
-            {story.title}
-          </h3>
-          <div className="mb-1.5 truncate text-[11px] text-muted-2">{story.author?.display_name}</div>
-          {/* justify-between + small gaps so all three stats fit inside a
-              narrow mobile card — before, large counts (e.g. 1.6K) pushed the
-              comment count past the card's edge, where it was clipped. */}
-          <div className="flex items-center justify-between gap-1 text-[11px] font-semibold text-muted-3">
-            <span className="flex items-center gap-0.5">
-              <HeartIcon width={12} height={12} filled />
-              {formatCompactCount(story.like_count)}
-            </span>
-            <span className="flex items-center gap-0.5">
-              <EyeIcon width={12} height={12} />
-              {formatCompactCount(story.view_count)}
-            </span>
-            <span className="flex items-center gap-0.5">
-              <CommentsIcon width={12} height={12} />
-              {formatCompactCount(story.comment_count)}
-            </span>
+            ) : (
+              story.status !== "published" && (
+                <div className="absolute right-2 top-2">
+                  <Badge tone="neutral">{story.status === "draft" ? t.common.draft : t.common.unlisted}</Badge>
+                </div>
+              )
+            )}
           </div>
         </div>
-      </Link>
-    </div>
+      </div>
+
+      {/* Info — aligned to the book edge, no card chrome. The title always
+          takes exactly two lines so author + counts line up across a row. */}
+      <div className="px-[6%] pt-1">
+        <h3 className="book3d-title mb-0.5 line-clamp-2 h-[2.5em] font-display text-[14px] font-bold leading-[1.25] text-[var(--book-card-title)] transition-colors">
+          {story.title}
+        </h3>
+        <div className="mb-1.5 truncate text-[11px] text-[var(--book-card-author)]">{story.author?.display_name}</div>
+        <div className="flex items-center justify-between gap-1 text-[11px] font-semibold text-[var(--book-card-stat)]">
+          <span className="flex items-center gap-0.5">
+            <HeartIcon width={12} height={12} filled />
+            {formatCompactCount(story.like_count)}
+          </span>
+          <span className="flex items-center gap-0.5">
+            <EyeIcon width={12} height={12} />
+            {formatCompactCount(story.view_count)}
+          </span>
+          <span className="flex items-center gap-0.5">
+            <CommentsIcon width={12} height={12} />
+            {formatCompactCount(story.comment_count)}
+          </span>
+        </div>
+      </div>
+    </Link>
   );
 }

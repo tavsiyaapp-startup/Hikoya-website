@@ -441,3 +441,144 @@ button:not(:disabled):active {
   color: var(--color-muted-3);
   pointer-events: none;
 }
+
+/* ---------- 3D book story card (src/components/story/StoryCard.tsx) ----------
+   The card is the book: a transparent link wrapper, a stage with perspective
+   and a soft oval shadow, and a preserve-3d book that turns on hover/focus
+   (and sits slightly turned on touch so its thickness shows). The status
+   badge lives outside the 3D so it never rotates. Info colours are their own
+   tokens, darkened to meet WCAG AA under the book (the shared muted-2/3 are
+   lighter). */
+:root {
+  --book-thickness: 22px;
+  --book-pages: #F6F1E7;
+  --book-pages-line: #E2D9C6;
+  --book-card-title: #1E1830;
+  --book-card-author: #6B6480;
+  --book-card-stat: #6E6787;
+  --book-card-title-hover: #6D28D9;
+}
+[data-theme="dark"] {
+  --book-pages: #D9D1C2;
+  --book-pages-line: #BFB49F;
+  --book-card-title: #F1EEF8;
+  --book-card-author: #A79FBD;
+  --book-card-stat: #9A93B2;
+  --book-card-title-hover: #C4B0FF;
+}
+
+.book3d-stage {
+  position: relative;
+  padding: 6px 6% 14px;
+  perspective: 800px;
+}
+.book3d-stage::after {
+  content: "";
+  position: absolute;
+  left: 14%;
+  right: 14%;
+  bottom: 4px;
+  height: 12px;
+  background: radial-gradient(closest-side, rgba(40, 20, 90, 0.3), transparent);
+  filter: blur(2px);
+  transition: transform 0.72s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.72s;
+}
+.book3d {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 2 / 3;
+  transform-style: preserve-3d;
+  transform: rotateY(0deg);
+  transition: transform 0.72s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.book3d-link:hover .book3d,
+.book3d-link:focus-visible .book3d {
+  transform: rotateY(-28deg) translateY(-4px);
+}
+.book3d-link:hover .book3d-stage::after,
+.book3d-link:focus-visible .book3d-stage::after {
+  transform: scaleX(1.15);
+  opacity: 0.75;
+}
+.book3d-face {
+  position: absolute;
+  inset: 0;
+  border-radius: 2px 5px 5px 2px;
+  overflow: hidden;
+}
+.book3d-front {
+  transform: translateZ(calc(var(--book-thickness) / 2));
+  box-shadow: 0 6px 14px rgba(30, 15, 70, 0.25);
+}
+.book3d-front::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    rgba(0, 0, 0, 0.28) 0%,
+    rgba(255, 255, 255, 0.18) 3%,
+    rgba(0, 0, 0, 0.1) 6%,
+    transparent 10%,
+    transparent 85%,
+    rgba(255, 255, 255, 0.08) 100%
+  );
+}
+.book3d-back {
+  transform: translateZ(calc(var(--book-thickness) / -2)) rotateY(180deg);
+  background: #2a2140;
+}
+.book3d-pages {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  width: var(--book-thickness);
+  left: calc(100% - var(--book-thickness) / 2);
+  transform: rotateY(90deg);
+  background:
+    repeating-linear-gradient(90deg, var(--book-pages) 0 2px, var(--book-pages-line) 2px 3px),
+    var(--book-pages);
+  box-shadow: inset 0 0 6px rgba(0, 0, 0, 0.18);
+}
+.book3d-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #fff;
+  flex: none;
+  animation: hk-book-dot 2s ease-in-out infinite;
+}
+@keyframes hk-book-dot {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+/* Touch: no hover, so the book rests slightly turned to show thickness,
+   and a tap turns it fully. */
+@media (hover: none) {
+  .book3d {
+    transform: rotateY(-14deg);
+  }
+  .book3d-link:active .book3d {
+    transform: rotateY(-28deg) translateY(-4px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .book3d,
+  .book3d-stage::after {
+    transition: none;
+  }
+  .book3d-dot {
+    animation: none;
+  }
+}
+
+.book3d-link:hover .book3d-title,
+.book3d-link:focus-visible .book3d-title {
+  color: var(--book-card-title-hover);
+}

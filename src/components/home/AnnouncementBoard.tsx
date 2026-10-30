@@ -49,7 +49,8 @@ export function AnnouncementBoard({ announcements: all }: { announcements: Annou
             <>
               {announcement.image_url && (
                 <Image
-                  src={announcement.image_url}
+                  // Resized, cached WebP via /thumb instead of the full upload.
+                  src={announcement.image_url.startsWith("/uploads/") ? `${announcement.image_url.replace("/uploads/", "/thumb/")}?w=720` : announcement.image_url}
                   alt=""
                   fill
                   sizes="(max-width: 639px) 90vw, 25vw"

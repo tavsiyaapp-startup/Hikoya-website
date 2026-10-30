@@ -11,6 +11,12 @@ import type { HeroSlide } from "@/types/database";
 
 const AUTO_ADVANCE_MS = 15000;
 
+// Hero banners are wide full-size uploads (a 457 KB PNG in practice). Serve a
+// resized, cached WebP via /thumb instead — ~10x smaller for the page's LCP.
+function heroThumb(url: string, width: number): string {
+  return url.startsWith("/uploads/") ? `${url.replace("/uploads/", "/thumb/")}?w=${width}` : url;
+}
+
 export function HeroCarousel({ slides: allSlides }: { slides: HeroSlide[] }) {
   const { locale } = useLocale();
   // A slide whose picture was lost (old Supabase storage, see
@@ -182,7 +188,7 @@ function Slide({ slide, locale, isFirst }: { slide: HeroSlide; locale: "ru" | "u
               carousel's likely LCP element and Next's own guidance is to
               never mark more than one image priority on a page. */}
           <Image
-            src={(slide.image_url_mobile || slide.image_url) as string}
+            src={heroThumb((slide.image_url_mobile || slide.image_url) as string, 720)}
             alt=""
             fill
             sizes="100vw"
@@ -191,7 +197,7 @@ function Slide({ slide, locale, isFirst }: { slide: HeroSlide; locale: "ru" | "u
             className={clsx("object-cover sm:hidden", hasText ? "object-right" : "object-center")}
           />
           <Image
-            src={slide.image_url as string}
+            src={heroThumb(slide.image_url as string, 1080)}
             alt=""
             fill
             sizes={hasText ? "46vw" : "100vw"}

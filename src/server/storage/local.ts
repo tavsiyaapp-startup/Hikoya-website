@@ -142,7 +142,7 @@ export async function readUpload(relative: string): Promise<{ data: Buffer; cont
 // are a fixed set (no arbitrary sizes a caller could use to fill the disk).
 // Works for already-uploaded covers too — it resizes on first request. GIFs
 // are served whole (animation); everything else becomes WebP.
-export const THUMB_WIDTHS = [240, 360, 480, 720] as const;
+export const THUMB_WIDTHS = [240, 360, 480, 720, 1080] as const;
 const THUMBS_ROOT = path.join(UPLOADS_ROOT, ".thumbs");
 
 export async function readUploadThumb(relative: string, width: number): Promise<{ data: Buffer; contentType: string } | null> {

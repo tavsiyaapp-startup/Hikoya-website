@@ -2,6 +2,7 @@ import "server-only";
 import { mkdir, readFile, readdir, stat, unlink, writeFile } from "fs/promises";
 import path from "path";
 import { randomBytes } from "crypto";
+import sharp from "sharp";
 
 // Replaces Supabase Storage now that the public site's auth moved to Better
 // Auth (its browser SDK upload calls relied on a Supabase session that no
@@ -133,6 +134,40 @@ export async function readUpload(relative: string): Promise<{ data: Buffer; cont
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code !== "ENOENT") console.error("[uploads] read failed", relative, err);
     return null;
+  }
+}
+
+// Card-sized thumbnails, made once and cached on disk, so a list of covers
+// no longer ships the full 1080px upload for a ~180px card. Allowed widths
+// are a fixed set (no arbitrary sizes a caller could use to fill the disk).
+// Works for already-uploaded covers too — it resizes on first request. GIFs
+// are served whole (animation); everything else becomes WebP.
+export const THUMB_WIDTHS = [240, 360, 480, 720] as const;
+const THUMBS_ROOT = path.join(UPLOADS_ROOT, ".thumbs");
+
+export async function readUploadThumb(relative: string, width: number): Promise<{ data: Buffer; contentType: string } | null> {
+  if (!UPLOAD_PATH_PATTERN.test(relative)) return null;
+  if (!(THUMB_WIDTHS as readonly number[]).includes(width)) return null;
+  if (relative.endsWith(".gif")) return null; // keep animation — serve the original
+
+  const cacheFile = path.join(THUMBS_ROOT, String(width), `${relative}.webp`);
+  if (!cacheFile.startsWith(THUMBS_ROOT + path.sep)) return null;
+  try {
+    return { data: await readFile(cacheFile), contentType: "image/webp" };
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code !== "ENOENT") console.error("[uploads] thumb read failed", relative, err);
+  }
+
+  const original = await readUpload(relative);
+  if (!original) return null;
+  try {
+    const data = await sharp(original.data).rotate().resize({ width, withoutEnlargement: true }).webp({ quality: 78 }).toBuffer();
+    await mkdir(path.dirname(cacheFile), { recursive: true });
+    await writeFile(cacheFile, data);
+    return { data, contentType: "image/webp" };
+  } catch (err) {
+    console.error("[uploads] thumb resize failed", relative, err);
+    return original; // fall back to the full image rather than a broken one
   }
 }
 

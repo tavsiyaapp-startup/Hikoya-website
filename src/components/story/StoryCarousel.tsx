@@ -1,6 +1,6 @@
 "use client";
 
-import { Children, useRef } from "react";
+import { Children, useEffect, useRef } from "react";
 import { ChevronLeftIcon, ChevronRightIcon } from "@/components/ui/icons";
 
 const SCROLL_AMOUNT = 640;
@@ -17,6 +17,33 @@ export function StoryCarousel({ children }: { children: React.ReactNode }) {
     trackRef.current?.scrollBy({ left: direction * SCROLL_AMOUNT, behavior: "smooth" });
   }
 
+  // Cards fade/rise in as they scroll into view. The hidden start state only
+  // applies once JS adds `reveal-ready` (so with JS off the cards stay
+  // visible), and prefers-reduced-motion disables it (src/app/globals.css).
+  useEffect(() => {
+    const track = trackRef.current;
+    if (!track) return;
+    const cards = Array.from(track.querySelectorAll<HTMLElement>(".reveal-card"));
+    if (!("IntersectionObserver" in window)) {
+      cards.forEach((c) => c.classList.add("is-revealed"));
+      return;
+    }
+    track.classList.add("reveal-ready");
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) {
+          if (e.isIntersecting) {
+            e.target.classList.add("is-revealed");
+            io.unobserve(e.target);
+          }
+        }
+      },
+      { rootMargin: "0px 120px 0px 0px", threshold: 0.08 }
+    );
+    cards.forEach((c) => io.observe(c));
+    return () => io.disconnect();
+  }, [items.length]);
+
   return (
     <div className="relative">
       {/* pt-4: StoryCard's status ribbon pokes up 14px above the card itself
@@ -28,7 +55,7 @@ export function StoryCarousel({ children }: { children: React.ReactNode }) {
           no left padding that got clipped by the track's own left edge too. */}
       <div ref={trackRef} className="no-scrollbar flex gap-4 overflow-x-auto scroll-smooth pl-2 pt-4 sm:gap-5.5">
         {items.map((child, i) => (
-          <div key={i} className="w-[132px] shrink-0 xs:w-[148px] sm:w-[158px] lg:w-[172px]">
+          <div key={i} className="reveal-card w-[132px] shrink-0 xs:w-[148px] sm:w-[158px] lg:w-[172px]">
             {child}
           </div>
         ))}

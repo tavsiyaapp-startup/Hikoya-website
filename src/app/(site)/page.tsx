@@ -38,8 +38,8 @@ import { HOME_TABS, type HomeTab } from "@/lib/homeTabs";
 // in (each section keeps its own page number in the URL, independent of
 // the others). The feed tabs aren't paginated — each is its own
 // StoryCarousel, so this is just how many items get pulled into each row.
-const PAGE_SIZE_FEED = 24;
-const PAGE_SIZE_WEEK = 24; // also a carousel now, not paginated — see PAGE_SIZE_FEED
+const PAGE_SIZE_FEED = 12;
+const PAGE_SIZE_WEEK = 12; // also a carousel now, not paginated — see PAGE_SIZE_FEED
 const PAGE_SIZE_COLLECTIONS = 6;
 
 function toPage(raw: string | undefined): number {

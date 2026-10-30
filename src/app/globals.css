@@ -582,3 +582,24 @@ button:not(:disabled):active {
 .book3d-link:focus-visible .book3d-title {
   color: var(--book-card-title-hover);
 }
+
+/* ---------- Card reveal on scroll (StoryCarousel) ----------
+   The hidden start state applies only under `.reveal-ready`, which the
+   carousel adds via JS on mount — so with JS off the cards stay visible.
+   Cards fade and rise in when they scroll into view (is-revealed). */
+.reveal-ready .reveal-card {
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity 0.5s ease, transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.reveal-ready .reveal-card.is-revealed {
+  opacity: 1;
+  transform: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .reveal-ready .reveal-card {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}

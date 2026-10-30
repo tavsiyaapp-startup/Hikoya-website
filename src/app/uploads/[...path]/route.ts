@@ -1,4 +1,4 @@
-import { readUpload } from "@/server/storage/local";
+import { readUpload, readUploadThumb } from "@/server/storage/local";
 
 // Serves user uploads (covers, avatars, chapter and banner images) from
 // public/uploads/ on every request. `next start` only serves public/ files
@@ -6,9 +6,13 @@ import { readUpload } from "@/server/storage/local";
 // broken image until the next restart. Files that were already there at
 // startup are still served by Next's static handler before this runs.
 // next.config.ts adds the strict Content-Security-Policy for /uploads/*.
-export async function GET(_request: Request, { params }: { params: Promise<{ path: string[] }> }) {
+export async function GET(request: Request, { params }: { params: Promise<{ path: string[] }> }) {
   const { path } = await params;
-  const file = await readUpload(path.join("/"));
+  const rel = path.join("/");
+  // `?w=` asks for a cached, card-sized WebP thumbnail; an unknown width or a
+  // GIF falls back to the full original.
+  const width = Number(new URL(request.url).searchParams.get("w"));
+  const file = width ? ((await readUploadThumb(rel, width)) ?? (await readUpload(rel))) : await readUpload(rel);
   if (!file) return new Response("Not found", { status: 404 });
   return new Response(new Uint8Array(file.data), {
     headers: {

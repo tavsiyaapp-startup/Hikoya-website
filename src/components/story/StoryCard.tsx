@@ -80,7 +80,8 @@ export async function StoryCard({
   // the existing placeholder when there's no picture.
   const cover = liveImageUrl(story.cover_url) ? (
     <Image
-      src={liveImageUrl(story.cover_url)!}
+      // Card-sized thumbnail (src/app/uploads route ?w=), not the full upload.
+      src={`${liveImageUrl(story.cover_url)!}?w=360`}
       alt=""
       fill
       sizes="(max-width: 1023px) 25vw, 12.5vw"

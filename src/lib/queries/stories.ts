@@ -76,21 +76,32 @@ async function queryPublicStories(
   orderBy: ReturnType<typeof desc>,
   limit: number,
   offset: number,
-  extraFilter?: ReturnType<typeof and>
+  extraFilter?: ReturnType<typeof and>,
+  // Home carousels only need the rows; skipping the extra count(*) over all
+  // public stories halves their DB work (important for the genre rows, whose
+  // filter isn't index-backed). Paginated views keep the real total.
+  withTotal = true
 ): Promise<Paginated<StoryCard>> {
   try {
     const db = getDb();
     const where = extraFilter ? and(PUBLIC_STORY_FILTER, extraFilter) : PUBLIC_STORY_FILTER;
 
+    const rowsQuery = db
+      .select({ story: stories, author: AUTHOR_COLUMNS })
+      .from(stories)
+      .innerJoin(profiles, eq(stories.author_id, profiles.id))
+      .where(where)
+      .orderBy(orderBy, desc(stories.id))
+      .limit(limit)
+      .offset(offset);
+
+    if (!withTotal) {
+      const rows = await rowsQuery;
+      return { items: rows.map((r) => toStoryCard(r.story, r.author)), total: offset + rows.length };
+    }
+
     const [rows, [{ total }]] = await Promise.all([
-      db
-        .select({ story: stories, author: AUTHOR_COLUMNS })
-        .from(stories)
-        .innerJoin(profiles, eq(stories.author_id, profiles.id))
-        .where(where)
-        .orderBy(orderBy, desc(stories.id))
-        .limit(limit)
-        .offset(offset),
+      rowsQuery,
       db.select({ total: count() }).from(stories).where(where),
     ]);
 
@@ -115,7 +126,7 @@ export const getFinishedStories = withFallback(
   "getFinishedStories",
   unstable_cache(
   (limit = 8, offset = 0) =>
-    queryPublicStories(desc(stories.like_count), limit, offset, eq(stories.progress_status, "finished")),
+    queryPublicStories(desc(stories.like_count), limit, offset, eq(stories.progress_status, "finished"), false),
   ["finished-stories"],
   { revalidate: CACHE_SECONDS, tags: ["stories"] }
   ),
@@ -140,7 +151,7 @@ export const getFantasyStories = withFallback(
   "getFantasyStories",
   unstable_cache(
   (limit = 8, offset = 0) =>
-    queryPublicStories(desc(stories.like_count), limit, offset, and(genreNameMatches(["%fantasy%", "%fantastika%", "%fentezi%", "%фэнтези%", "%фантастика%"]))),
+    queryPublicStories(desc(stories.like_count), limit, offset, and(genreNameMatches(["%fantasy%", "%fantastika%", "%fentezi%", "%фэнтези%", "%фантастика%"])), false),
   ["fantasy-stories"],
   { revalidate: CACHE_SECONDS, tags: ["stories"] }
   ),
@@ -153,7 +164,7 @@ export const getRomanceDramaStories = withFallback(
   "getRomanceDramaStories",
   unstable_cache(
   (limit = 8, offset = 0) =>
-    queryPublicStories(desc(stories.like_count), limit, offset, and(genreNameMatches(["%romanti%", "%романти%", "%romance%", "%drama%", "%драма%"]))),
+    queryPublicStories(desc(stories.like_count), limit, offset, and(genreNameMatches(["%romanti%", "%романти%", "%romance%", "%drama%", "%драма%"])), false),
   ["romance-drama-stories"],
   { revalidate: CACHE_SECONDS, tags: ["stories"] }
   ),
@@ -165,7 +176,7 @@ export const getHistoricalStories = withFallback(
   "getHistoricalStories",
   unstable_cache(
   (limit = 8, offset = 0) =>
-    queryPublicStories(desc(stories.like_count), limit, offset, and(genreNameMatches(["%tarix%", "%историческ%", "%histor%"]))),
+    queryPublicStories(desc(stories.like_count), limit, offset, and(genreNameMatches(["%tarix%", "%историческ%", "%histor%"])), false),
   ["historical-stories"],
   { revalidate: CACHE_SECONDS, tags: ["stories"] }
   ),
@@ -177,7 +188,7 @@ export const getDetectiveStories = withFallback(
   "getDetectiveStories",
   unstable_cache(
   (limit = 8, offset = 0) =>
-    queryPublicStories(desc(stories.like_count), limit, offset, and(genreNameMatches(["%detektiv%", "%детектив%", "%detective%"]))),
+    queryPublicStories(desc(stories.like_count), limit, offset, and(genreNameMatches(["%detektiv%", "%детектив%", "%detective%"])), false),
   ["detective-stories"],
   { revalidate: CACHE_SECONDS, tags: ["stories"] }
   ),

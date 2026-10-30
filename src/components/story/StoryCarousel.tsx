@@ -51,7 +51,11 @@ export function StoryCarousel({ children }: { children: React.ReactNode }) {
   }, [items.length]);
 
   return (
-    <div className="relative">
+    // content-visibility: the browser skips rendering (and loading the images
+    // of) rows still below the fold until they're scrolled near — lazy-loads
+    // the lower home sections. The first row is on screen, so it renders at
+    // once. See .home-lazy-row in src/app/globals.css.
+    <div className="home-lazy-row relative">
       {/* pt-4: StoryCard's status ribbon pokes up 14px above the card itself
           (-top-3.5). Setting overflow-x without an explicit overflow-y makes
           the browser treat overflow-y as auto too (CSS overflow spec), which

@@ -603,3 +603,12 @@ button:not(:disabled):active {
     transition: none;
   }
 }
+
+/* Lazy render of lower home rows (StoryCarousel): off-screen carousels are
+   skipped by the browser — no layout, no image loading — until scrolled near.
+   contain-intrinsic-size reserves an approximate row height so the scrollbar
+   stays stable before a row is rendered. */
+.home-lazy-row {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 340px;
+}

@@ -30,7 +30,13 @@ const nextConfig: NextConfig = {
       },
       {
         source: "/uploads/:path*",
-        headers: [{ key: "Content-Security-Policy", value: "default-src 'none'; img-src 'self'; sandbox" }],
+        headers: [
+          { key: "Content-Security-Policy", value: "default-src 'none'; img-src 'self'; sandbox" },
+          // Upload filenames are unique and never rewritten, so the browser
+          // can keep them for good instead of re-fetching every visit
+          // (Next's static handler was sending them with max-age=0).
+          { key: "Cache-Control", value: "public, max-age=31536000, immutable" },
+        ],
       },
     ];
   },

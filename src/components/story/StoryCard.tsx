@@ -78,10 +78,16 @@ export async function StoryCard({
 
   // The cover image is the book's front face — unchanged crop/colours, just
   // the existing placeholder when there's no picture.
-  const cover = liveImageUrl(story.cover_url) ? (
+  // Card-sized WebP thumbnail via /thumb (src/app/thumb route) instead of the
+  // full upload — /uploads is served as a static file, so a thumbnail request
+  // there would be ignored; /thumb always resizes and caches for a year.
+  const liveCover = liveImageUrl(story.cover_url);
+  const coverSrc = liveCover?.startsWith("/uploads/")
+    ? `${liveCover.replace("/uploads/", "/thumb/")}?w=360`
+    : liveCover;
+  const cover = coverSrc ? (
     <Image
-      // Card-sized thumbnail (src/app/uploads route ?w=), not the full upload.
-      src={`${liveImageUrl(story.cover_url)!}?w=360`}
+      src={coverSrc}
       alt=""
       fill
       sizes="(max-width: 1023px) 25vw, 12.5vw"

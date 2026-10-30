@@ -41,7 +41,13 @@ export function StoryCarousel({ children }: { children: React.ReactNode }) {
       { rootMargin: "0px 120px 0px 0px", threshold: 0.08 }
     );
     cards.forEach((c) => io.observe(c));
-    return () => io.disconnect();
+    // Safety net: never leave content hidden if hydration/observer is slow —
+    // reveal everything shortly after mount regardless.
+    const fallback = window.setTimeout(() => cards.forEach((c) => c.classList.add("is-revealed")), 900);
+    return () => {
+      io.disconnect();
+      window.clearTimeout(fallback);
+    };
   }, [items.length]);
 
   return (

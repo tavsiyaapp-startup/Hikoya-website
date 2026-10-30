@@ -13,6 +13,7 @@ import {
   getHeroSlides,
   getAnnouncements,
   getFinishedStories,
+  getFantasyStories,
   // getTopStories, // TODO: re-enable along with the "Топ" section below
 } from "@/lib/queries/stories";
 import { StoryCard } from "@/components/story/StoryCard";
@@ -107,16 +108,18 @@ async function HomeSections({
   // are genuinely public.
   const feedTabs: readonly HomeTab[] = user ? HOME_TABS : HOME_TABS.filter((k) => k === "popular" || k === "new");
 
-  const [feedResults, weeklyResult, finishedResult, collectionsResult] = await Promise.all([
+  const [feedResults, weeklyResult, finishedResult, fantasyResult, collectionsResult] = await Promise.all([
     Promise.all(feedTabs.map((key) => getFeedForTab(key, user?.id, PAGE_SIZE_FEED, 0))),
     getRecentPublishedChapters(PAGE_SIZE_WEEK, 0),
     getFinishedStories(PAGE_SIZE_FEED, 0),
+    getFantasyStories(PAGE_SIZE_FEED, 0),
     getFeaturedCollections(PAGE_SIZE_COLLECTIONS, (collectionsPage - 1) * PAGE_SIZE_COLLECTIONS),
     // getTopStories(topTier, 8),
   ]);
 
   const weeklyGroups = weeklyResult.items;
   const finishedStories = finishedResult.items;
+  const fantasyStories = fantasyResult.items;
   const collections = collectionsResult.items;
 
   const collectionsTotalPages = Math.max(1, Math.ceil(collectionsResult.total / PAGE_SIZE_COLLECTIONS));
@@ -189,6 +192,28 @@ async function HomeSections({
             {/* Right after "Новинки" — readers who want a complete story to
                 binge, not an ongoing one they'd have to wait on. */}
             {key === "new" && (
+              <>
+              {/* Fantasy family (Фэнтези / fantastika / dark & romantic
+                  fantasy…) right after "New". */}
+              <div>
+                <div className="mb-4.5 flex items-baseline gap-3.5">
+                  <h2 className="text-2xl font-extrabold tracking-tight">{t.home.fantasyTitle}</h2>
+                  <Link prefetch={false} href={`${ROUTES.search}?genre=${encodeURIComponent(t.genres[1])}`} className="ml-auto text-[14px] font-semibold">
+                    {t.common.all}
+                  </Link>
+                </div>
+                {fantasyStories.length > 0 ? (
+                  <div className="mb-11">
+                    <StoryCarousel>
+                      {fantasyStories.map((story) => (
+                        <StoryCard key={story.id} story={story} />
+                      ))}
+                    </StoryCarousel>
+                  </div>
+                ) : (
+                  <EmptyRow className="mb-11" />
+                )}
+              </div>
               <div>
                 <div className="mb-4.5 flex items-baseline gap-3.5">
                   <h2 className="text-2xl font-extrabold tracking-tight">{t.home.finishedTitle}</h2>
@@ -208,6 +233,7 @@ async function HomeSections({
                   <EmptyRow className="mb-11" />
                 )}
               </div>
+              </>
             )}
           </Fragment>
         );

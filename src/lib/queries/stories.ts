@@ -122,6 +122,32 @@ export const getFinishedStories = withFallback(
   () => ({ items: [], total: 0 })
 );
 
+// Stories in the fantasy family: any genre whose name contains fantasy /
+// fantastika (so "Фэнтези", "Научная фантастика", "Fentezi", "Ilmiy
+// fantastika", and author-typed ones like "romantic fantasy" / "dark
+// fantasy" all count), matched case-insensitively in either script.
+// Home-page carousel after "New".
+export const getFantasyStories = withFallback(
+  "getFantasyStories",
+  unstable_cache(
+  (limit = 8, offset = 0) =>
+    queryPublicStories(
+      desc(stories.like_count),
+      limit,
+      offset,
+      and(
+        sql`exists (select 1 from unnest(${stories.genres}) as g where ${sql.join(
+          ["%fantasy%", "%fantastika%", "%fentezi%", "%фэнтези%", "%фантастика%"].map((p) => sql`g ilike ${p}`),
+          sql` or `
+        )})`
+      )
+    ),
+  ["fantasy-stories"],
+  { revalidate: CACHE_SECONDS, tags: ["stories"] }
+  ),
+  () => ({ items: [], total: 0 })
+);
+
 export const getNewestStories = withFallback(
   "getNewestStories",
   unstable_cache(

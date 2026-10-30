@@ -122,27 +122,63 @@ export const getFinishedStories = withFallback(
   () => ({ items: [], total: 0 })
 );
 
-// Stories in the fantasy family: any genre whose name contains fantasy /
-// fantastika (so "Фэнтези", "Научная фантастика", "Fentezi", "Ilmiy
-// fantastika", and author-typed ones like "romantic fantasy" / "dark
-// fantasy" all count), matched case-insensitively in either script.
-// Home-page carousel after "New".
+// True for a story that has any genre whose name matches one of the ILIKE
+// patterns — used for the home-page genre carousels. Matching by name (not a
+// fixed id) means author-typed genres like "romantic fantasy" count too, and
+// patterns in both scripts catch ru and uz labels. The unnest is correlated
+// to the outer `stories` row.
+function genreNameMatches(patterns: string[]) {
+  return sql`exists (select 1 from unnest(${stories.genres}) as g where ${sql.join(
+    patterns.map((p) => sql`g ilike ${p}`),
+    sql` or `
+  )})`;
+}
+
+// Fantasy family: "Фэнтези", "Научная фантастика", "Fentezi", "Ilmiy
+// fantastika", plus author-typed "romantic fantasy" / "dark fantasy", etc.
 export const getFantasyStories = withFallback(
   "getFantasyStories",
   unstable_cache(
   (limit = 8, offset = 0) =>
-    queryPublicStories(
-      desc(stories.like_count),
-      limit,
-      offset,
-      and(
-        sql`exists (select 1 from unnest(${stories.genres}) as g where ${sql.join(
-          ["%fantasy%", "%fantastika%", "%fentezi%", "%фэнтези%", "%фантастика%"].map((p) => sql`g ilike ${p}`),
-          sql` or `
-        )})`
-      )
-    ),
+    queryPublicStories(desc(stories.like_count), limit, offset, and(genreNameMatches(["%fantasy%", "%fantastika%", "%fentezi%", "%фэнтези%", "%фантастика%"]))),
   ["fantasy-stories"],
+  { revalidate: CACHE_SECONDS, tags: ["stories"] }
+  ),
+  () => ({ items: [], total: 0 })
+);
+
+// Romance + drama together: "Романтика"/"Romantika", "Драма"/"Drama" and any
+// author genre built on them (e.g. "romantic …").
+export const getRomanceDramaStories = withFallback(
+  "getRomanceDramaStories",
+  unstable_cache(
+  (limit = 8, offset = 0) =>
+    queryPublicStories(desc(stories.like_count), limit, offset, and(genreNameMatches(["%romanti%", "%романти%", "%romance%", "%drama%", "%драма%"]))),
+  ["romance-drama-stories"],
+  { revalidate: CACHE_SECONDS, tags: ["stories"] }
+  ),
+  () => ({ items: [], total: 0 })
+);
+
+// Historical: "Исторические"/"Tarixiy".
+export const getHistoricalStories = withFallback(
+  "getHistoricalStories",
+  unstable_cache(
+  (limit = 8, offset = 0) =>
+    queryPublicStories(desc(stories.like_count), limit, offset, and(genreNameMatches(["%tarix%", "%историческ%", "%histor%"]))),
+  ["historical-stories"],
+  { revalidate: CACHE_SECONDS, tags: ["stories"] }
+  ),
+  () => ({ items: [], total: 0 })
+);
+
+// Detective: "Детектив"/"Detektiv".
+export const getDetectiveStories = withFallback(
+  "getDetectiveStories",
+  unstable_cache(
+  (limit = 8, offset = 0) =>
+    queryPublicStories(desc(stories.like_count), limit, offset, and(genreNameMatches(["%detektiv%", "%детектив%", "%detective%"]))),
+  ["detective-stories"],
   { revalidate: CACHE_SECONDS, tags: ["stories"] }
   ),
   () => ({ items: [], total: 0 })

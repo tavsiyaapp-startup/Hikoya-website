@@ -1,19 +1,26 @@
 import Link from "next/link";
-import Image from "next/image";
-import { GeneratedCover } from "@/components/story/GeneratedCover";
 import { getServerLocale } from "@/lib/i18n/locale-server";
 import { getDictionary } from "@/lib/i18n";
 import { searchStories, getCustomLanguages, getAllGenres, getAllTags, type SearchFilters } from "@/lib/queries/stories";
-import { localizeGenre, genreVariants } from "@/lib/genre";
+import { genreVariants } from "@/lib/genre";
 import { languageLabel } from "@/lib/language";
 import { storyProgressLabel } from "@/lib/storyProgress";
-import { Chip } from "@/components/ui/Chip";
 import { LinkChip } from "@/components/ui/LinkChip";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { SearchIcon } from "@/components/ui/icons";
 import { RELATIONSHIP_TYPES } from "@/lib/relationshipTypes";
-import { liveImageUrl } from "@/lib/images";
+import { StoryCard } from "@/components/story/StoryCard";
+import { Pagination } from "@/components/ui/Pagination";
+
+// Results are tiles, 5 columns on desktop. One "page" is 5 desktop rows shown
+// right away (SEARCH_INITIAL) plus 5 more revealed by the "show more" button
+// (so SEARCH_PAGE_SIZE total), after which real pagination kicks in. The counts
+// are fixed (computed for desktop) so mobile shows the same number of stories,
+// just reflowed into more rows — not fewer stories.
+const SEARCH_COLS_DESKTOP = 5;
+const SEARCH_INITIAL = 5 * SEARCH_COLS_DESKTOP; // 25
+const SEARCH_PAGE_SIZE = SEARCH_INITIAL * 2; // 50
 
 type Query = { [key: string]: string | string[] | undefined };
 
@@ -41,7 +48,11 @@ function localizedLabel(value: string | undefined, locale: "ru" | "uz"): string 
 
 function buildHref(current: Query, patch: Record<string, string | string[] | undefined>) {
   const params = new URLSearchParams();
-  const merged = { ...current, ...patch };
+  // Any filter/sort change resets paging back to the first page (only the
+  // pagination links below pass an explicit `page` in `patch`).
+  const base: Query = { ...current };
+  delete base.page;
+  const merged = { ...base, ...patch };
   for (const [key, value] of Object.entries(merged)) {
     if (!value) continue;
     if (Array.isArray(value)) value.forEach((v) => params.append(key, v));
@@ -80,12 +91,19 @@ export default async function SearchPage({
     sort: (one(sp.sort) as SearchFilters["sort"]) ?? "popular",
   };
 
-  const [results, customLanguages, allGenres, allTags] = await Promise.all([
-    searchStories(filters),
+  const pageParam = Number(one(sp.page));
+  const page = Number.isFinite(pageParam) && pageParam >= 1 ? Math.floor(pageParam) : 1;
+
+  const [search, customLanguages, allGenres, allTags] = await Promise.all([
+    searchStories(filters, SEARCH_PAGE_SIZE, (page - 1) * SEARCH_PAGE_SIZE),
     getCustomLanguages(),
     getAllGenres(),
     getAllTags(),
   ]);
+  const { items, total } = search;
+  const totalPages = Math.max(1, Math.ceil(total / SEARCH_PAGE_SIZE));
+  const firstBatch = items.slice(0, SEARCH_INITIAL);
+  const restBatch = items.slice(SEARCH_INITIAL);
 
   // Genre chips: the fixed, translated list plus any genre an author typed
   // themselves (present in the DB but in no locale's dictionary list), with
@@ -266,10 +284,10 @@ export default async function SearchPage({
       <div className="min-w-0 w-full flex-1">
         <div className="mb-5 flex flex-wrap items-center gap-3.5">
           <h1 className="text-2xl font-extrabold tracking-tight">{t.search.title}</h1>
-          <span className="text-[14px] text-muted-2">{results.length}</span>
+          <span className="text-[14px] text-muted-2">{total}</span>
           <form action="/search" className="order-3 flex w-full gap-1.5 sm:order-none sm:ml-auto sm:w-auto">
             {Object.entries(sp)
-              .filter(([k]) => k !== "q")
+              .filter(([k]) => k !== "q" && k !== "page")
               .flatMap(([k, v]) =>
                 (Array.isArray(v) ? v : [v]).filter(Boolean).map((val, i) => (
                   <input key={`${k}-${i}`} type="hidden" name={k} value={val as string} />
@@ -347,48 +365,44 @@ export default async function SearchPage({
           </div>
         )}
 
-        {results.length > 0 ? (
-          <div className="flex flex-col gap-3.5">
-            {results.map((story) => (
-              <Link prefetch={false}
-                key={story.id}
-                href={`/story/${story.slug}`}
-                className="flex gap-3.5 rounded-[14px] border border-border bg-card p-3.5 hover:border-primary-300 hover:shadow-[0_12px_28px_rgba(60,40,120,0.09)] sm:gap-5 sm:p-4.5"
-              >
-                <div className="relative h-28 w-20 shrink-0 overflow-hidden rounded-[14px] bg-primary-200 sm:h-38.75 sm:w-29">
-                  {liveImageUrl(story.cover_url) ? (
-                    <Image
-                      src={liveImageUrl(story.cover_url)!}
-                      alt=""
-                      fill
-                      sizes="(max-width: 639px) 80px, 116px"
-                      className="object-cover"
-                    />
-                  ) : (
-                    <GeneratedCover seed={story.id} title={story.title} author={story.author?.display_name} />
-                  )}
+        {total > 0 ? (
+          <>
+            <div className="grid grid-cols-2 gap-x-4 gap-y-6 min-[480px]:grid-cols-3 sm:grid-cols-4 lg:grid-cols-5">
+              {firstBatch.map((story) => (
+                <StoryCard key={story.id} story={story} />
+              ))}
+            </div>
+
+            {restBatch.length > 0 && (
+              <>
+                {/* Pure-CSS "show more" (same peer-checkbox trick as the mobile
+                    filter panel): the next 5 desktop rows stay display:none —
+                    so their lazy covers never load — until the button reveals
+                    them. After that, the pagination below steps through the
+                    rest. */}
+                <input id="search-show-more" type="checkbox" className="peer sr-only" />
+                <div className="mt-6 hidden grid-cols-2 gap-x-4 gap-y-6 peer-checked:grid min-[480px]:grid-cols-3 sm:grid-cols-4 lg:grid-cols-5">
+                  {restBatch.map((story) => (
+                    <StoryCard key={story.id} story={story} />
+                  ))}
                 </div>
-                <div className="flex min-w-0 flex-1 flex-col">
-                  <div className="mb-1.5 flex items-center gap-2">
-                    <h3 className="text-[18.5px] font-extrabold tracking-tight">{story.title}</h3>
-                  </div>
-                  <div className="mb-2.5 text-[13.5px] text-ink-soft">
-                    {story.author?.display_name} · {languageLabel(t, story.language)}
-                  </div>
-                  <p className="mb-3 line-clamp-2 max-w-160 text-[14px] leading-relaxed text-ink-soft">
-                    {story.description}
-                  </p>
-                  <div className="mt-auto flex flex-wrap gap-1.5">
-                    {story.genres.map((g) => (
-                      <Chip key={g} active className="pointer-events-none">
-                        {localizeGenre(g, locale)}
-                      </Chip>
-                    ))}
-                  </div>
+                <div className="mt-7 flex justify-center peer-checked:hidden">
+                  <label
+                    htmlFor="search-show-more"
+                    className="cursor-pointer rounded-full border border-border bg-card px-6 py-2.5 text-[14px] font-semibold text-ink-soft transition hover:border-primary-300"
+                  >
+                    {t.search.showMore}
+                  </label>
                 </div>
-              </Link>
-            ))}
-          </div>
+              </>
+            )}
+
+            <Pagination
+              page={page}
+              totalPages={totalPages}
+              buildHref={(p) => buildHref(sp, { page: p > 1 ? String(p) : undefined })}
+            />
+          </>
         ) : (
           <div className="rounded-[14px] border border-dashed border-border-soft bg-card px-8 py-16 text-center">
             <div className="mb-2 text-[17px] font-bold">{t.search.noResultsTitle}</div>

@@ -783,7 +783,7 @@ async function storyIdsForTagLabel(label: string): Promise<string[]> {
 export const searchStories = withFallback(
   "searchStories",
   unstable_cache(
-  async (filters: SearchFilters): Promise<StoryCard[]> => {
+  async (filters: SearchFilters, limit = 25, offset = 0): Promise<Paginated<StoryCard>> => {
     try {
       const db = getDb();
       const conditions = [PUBLIC_STORY_FILTER];
@@ -808,19 +808,19 @@ export const searchStories = withFallback(
 
       if (filters.style) {
         const ids = await storyIdsForTag("style", filters.style);
-        if (ids.length === 0) return [];
+        if (ids.length === 0) return { items: [], total: 0 };
         conditions.push(inArray(stories.id, ids));
       }
 
       for (const warning of filters.warnings ?? []) {
         const ids = await storyIdsForTag("warning", warning);
-        if (ids.length === 0) return [];
+        if (ids.length === 0) return { items: [], total: 0 };
         conditions.push(inArray(stories.id, ids));
       }
 
       for (const tag of filters.tags ?? []) {
         const ids = await storyIdsForTagLabel(tag);
-        if (ids.length === 0) return [];
+        if (ids.length === 0) return { items: [], total: 0 };
         conditions.push(inArray(stories.id, ids));
       }
 
@@ -831,39 +831,29 @@ export const searchStories = withFallback(
             ? desc(stories.view_count)
             : desc(stories.like_count);
 
-      const rows = await db
-        .select({ story: stories, author: AUTHOR_COLUMNS })
-        .from(stories)
-        .innerJoin(profiles, eq(stories.author_id, profiles.id))
-        .where(and(...conditions))
-        .orderBy(orderBy, desc(stories.id))
-        .limit(40);
-      const results = rows.map((r) => toStoryCard(r.story, r.author));
-      if (results.length === 0) return results;
+      const where = and(...conditions);
 
       // Staff-pinned stories (any tier — featured_stories, /admin/featured)
-      // that appear in the results move to the front, earliest-pinned first;
-      // everything else keeps its existing relative order (stable sort).
-      const pins = await db
-        .select({ story_id: featuredStories.story_id, featured_at: featuredStories.featured_at })
-        .from(featuredStories);
-      if (pins.length === 0) return results;
-      const ranks = new Map<string, number>();
-      for (const pin of pins) {
-        const ts = pin.featured_at.getTime();
-        const existing = ranks.get(pin.story_id);
-        if (existing === undefined || ts < existing) ranks.set(pin.story_id, ts);
-      }
-      if (!results.some((s) => ranks.has(s.id))) return results;
+      // sort to the very front, earliest-pinned first, then the chosen order.
+      // Done in SQL (a correlated min(featured_at)) rather than in JS so it
+      // stays correct across pages — a pin ranked past the first page still
+      // surfaces at the top instead of only being floated within whatever
+      // page happened to contain it.
+      const pinOrder = sql`(select min(${featuredStories.featured_at}) from ${featuredStories} where ${featuredStories.story_id} = ${stories.id}) asc nulls last`;
 
-      return [...results].sort((a, b) => {
-        const ra = ranks.get(a.id);
-        const rb = ranks.get(b.id);
-        if (ra !== undefined && rb !== undefined) return ra - rb;
-        if (ra !== undefined) return -1;
-        if (rb !== undefined) return 1;
-        return 0;
-      });
+      const [rows, [{ total }]] = await Promise.all([
+        db
+          .select({ story: stories, author: AUTHOR_COLUMNS })
+          .from(stories)
+          .innerJoin(profiles, eq(stories.author_id, profiles.id))
+          .where(where)
+          .orderBy(pinOrder, orderBy, desc(stories.id))
+          .limit(limit)
+          .offset(offset),
+        db.select({ total: count() }).from(stories).innerJoin(profiles, eq(stories.author_id, profiles.id)).where(where),
+      ]);
+
+      return { items: rows.map((r) => toStoryCard(r.story, r.author)), total };
     } catch (err) {
       logQueryError("searchStories", err);
       throw err;
@@ -872,7 +862,7 @@ export const searchStories = withFallback(
   ["search-stories"],
   { revalidate: CACHE_SECONDS, tags: ["stories"] }
   ),
-  () => ([])
+  () => ({ items: [], total: 0 })
 );
 
 // A bookmark or reading status outlives the story's visibility — once a story

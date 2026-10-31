@@ -107,6 +107,7 @@ const uz: typeof ru = {
     sortPopular: "Mashhurligi boʻyicha",
     sortNewest: "Avval yangilari",
     sortViews: "Koʻrishlar boʻyicha",
+    showMore: "Koʻproq koʻrish",
   },
   story: {
     read: "Oʻqish",

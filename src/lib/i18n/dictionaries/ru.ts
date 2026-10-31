@@ -105,6 +105,7 @@ const ru = {
     sortPopular: "По популярности",
     sortNewest: "Сначала новые",
     sortViews: "По просмотрам",
+    showMore: "Показать ещё",
   },
   story: {
     read: "Читать",

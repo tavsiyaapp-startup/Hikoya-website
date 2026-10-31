@@ -9,6 +9,7 @@ import { getDb } from "@/server/db/client";
 import { bookmarks, chapters, comments, follows, likes } from "@/server/db/schema";
 import { loadViewer } from "@/server/data/viewer";
 import { getStoryRecord } from "@/server/data/stories";
+import { getStoryComments, type StoryCommentThread } from "@/lib/queries/social";
 import {
   canCommentOnChapter,
   canCommentOnStory,
@@ -50,6 +51,22 @@ async function requireViewer(): Promise<Viewer | null> {
   const viewerId = await getSessionUserId();
   if (!viewerId) return null;
   return loadViewer(getDb(), viewerId);
+}
+
+// Lazy-loaded by the story page's Comments tab (StoryTabs), so the comments
+// query no longer runs on every story view — only when a reader opens the tab,
+// and again right after they post one (so a new comment shows immediately).
+// Comments are as public as the story page itself, so this gates on the same
+// visibility rule: a hidden/draft/deleted story returns nothing for a viewer
+// who couldn't open it.
+export async function fetchStoryComments(storyId: string): Promise<StoryCommentThread[]> {
+  const db = getDb();
+  const storyRecord = await getStoryRecord(db, storyId);
+  if (!storyRecord) return [];
+  const viewerId = await getSessionUserId();
+  const viewer = viewerId ? await loadViewer(db, viewerId) : null;
+  if (!canViewStory(viewer, storyRecord)) return [];
+  return getStoryComments(storyId);
 }
 
 export async function toggleStoryLike(storyId: string, path: string): Promise<ToggleResult> {

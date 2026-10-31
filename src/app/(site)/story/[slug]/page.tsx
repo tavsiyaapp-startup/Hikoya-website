@@ -10,14 +10,11 @@ import {
   getUserStoryState,
   isFollowingAuthor,
   getFollowerCount,
-  getStoryComments,
   getReadChapterIds,
 } from "@/lib/queries/social";
-import type { StoryCommentRow } from "@/lib/queries/social";
-import type { Dictionary } from "@/lib/i18n";
 import { getDb } from "@/server/db/client";
 import { getSorovPostIdForStory } from "@/server/data/forum";
-import { formatDateTime, formatDate } from "@/lib/format";
+import { formatDateTime } from "@/lib/format";
 import { ROUTES } from "@/lib/constants";
 import { RELATIONSHIP_TYPES } from "@/lib/relationshipTypes";
 import { localizeGenre } from "@/lib/genre";
@@ -25,13 +22,10 @@ import { languageLabel } from "@/lib/language";
 import { storyProgressTone, storyProgressLabel } from "@/lib/storyProgress";
 import { Avatar } from "@/components/ui/Avatar";
 import { Badge } from "@/components/ui/Chip";
-import { LinkChip } from "@/components/ui/LinkChip";
 import { Button } from "@/components/ui/Button";
 import { LikeBookmarkRow, FollowButton, ReadingStatusSelect } from "@/components/story/StoryActions";
 import { ImageZoom } from "@/components/story/ImageZoom";
-import { CommentGuidelines } from "@/components/story/CommentGuidelines";
-import { CommentForm } from "@/components/story/CommentForm";
-import { ReportCommentButton } from "@/components/story/ReportCommentButton";
+import { StoryTabs } from "@/components/story/StoryTabs";
 import { LockIcon } from "@/components/ui/icons";
 import type { ReadingStatus } from "@/types/database";
 import { liveImageUrl } from "@/lib/images";
@@ -43,19 +37,12 @@ function relationshipLabel(value: string, locale: "ru" | "uz"): string {
   return RELATIONSHIP_TYPES.find(([ru]) => ru === value)?.[1] ?? value;
 }
 
-const TABS = ["chapters", "comments"] as const;
-type Tab = (typeof TABS)[number];
-
 export default async function StoryPage({
   params,
-  searchParams,
 }: {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ tab?: string }>;
 }) {
   const { slug } = await params;
-  const { tab: rawTab } = await searchParams;
-  const tab: Tab = TABS.includes(rawTab as Tab) ? (rawTab as Tab) : "chapters";
   const locale = await getServerLocale();
   const t = getDictionary(locale);
   const user = await getCurrentUser();
@@ -74,7 +61,7 @@ export default async function StoryPage({
     if (!exempt && !(expiry && expiry > new Date())) lockedFrom = free + 1;
   }
 
-  const [chapters, social, following, followerCount, linkedRequestId, myCollections, storyComments, readChapterIds] =
+  const [chapters, social, following, followerCount, linkedRequestId, myCollections, readChapterIds] =
     await Promise.all([
       getChaptersForStory(story.id),
       getUserStoryState(user?.id, story.id),
@@ -83,7 +70,6 @@ export default async function StoryPage({
       // getDb() inside the promise: if it throws, .catch still gets it.
     Promise.resolve().then(() => getSorovPostIdForStory(getDb(), story.id)).catch(() => null),
       user ? getMyCollectionsWithStory(user.id, story.id) : Promise.resolve([]),
-      tab === "comments" ? getStoryComments(story.id) : Promise.resolve([]),
       getReadChapterIds(user?.id, story.id),
     ]);
 
@@ -244,95 +230,59 @@ export default async function StoryPage({
           {story.description}
         </p>
 
-        <div className="mb-4 flex items-center gap-2.5 overflow-x-auto">
-          <LinkChip href={`?tab=chapters`} scroll={false} active={tab === "chapters"} shrink>
-            {t.story.chapters} <span className="ml-1 opacity-70">{chapters.length}</span>
-          </LinkChip>
-          <LinkChip href={`?tab=comments`} scroll={false} active={tab === "comments"} shrink>
-            {t.common.comments} <span className="ml-1 opacity-70">{story.comment_count}</span>
-          </LinkChip>
-        </div>
-
-        {tab === "chapters" && (
-          <div className="overflow-hidden rounded-[18px] border border-border bg-card">
-            {chapters.length > 0 ? (
-              chapters.map((ch, i) => {
-                const isRead = readChapterIds.has(ch.id);
-                return (
-                  <Link prefetch={false}
-                    key={ch.id}
-                    href={ROUTES.chapter(slug, ch.order_index)}
-                    className={clsxRow(i, chapters.length)}
-                  >
-                    <span className="w-9 shrink-0 font-display text-[19px] font-semibold tabular-nums text-primary-400">
-                      {String(ch.order_index).padStart(2, "0")}
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <span className={`font-display text-[16.5px] font-semibold leading-snug ${isRead ? "text-muted-2" : "text-ink"}`}>{ch.title}</span>
-                      <div className="mt-1 text-[12.5px] text-muted-3">
-                        {formatDateTime(ch.published_at ?? ch.created_at, locale)} · {ch.comment_count ?? 0} {t.common.comments}
-                      </div>
-                    </div>
-                    {isRead && (
-                      <span
-                        title={t.story.chapterRead}
-                        className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-success-bg text-[11px] font-bold text-success"
-                      >
-                        ✓
+        <StoryTabs
+          storyId={story.id}
+          slug={slug}
+          path={path}
+          isLoggedIn={Boolean(user)}
+          isBlocked={user?.profile?.status === "blocked"}
+          viewerId={user?.id ?? null}
+          chaptersCount={chapters.length}
+          initialCommentsCount={story.comment_count}
+          chapters={
+            <div className="overflow-hidden rounded-[18px] border border-border bg-card">
+              {chapters.length > 0 ? (
+                chapters.map((ch, i) => {
+                  const isRead = readChapterIds.has(ch.id);
+                  return (
+                    <Link prefetch={false}
+                      key={ch.id}
+                      href={ROUTES.chapter(slug, ch.order_index)}
+                      className={clsxRow(i, chapters.length)}
+                    >
+                      <span className="w-9 shrink-0 font-display text-[19px] font-semibold tabular-nums text-primary-400">
+                        {String(ch.order_index).padStart(2, "0")}
                       </span>
-                    )}
-                    {lockedFrom !== null && ch.order_index >= lockedFrom ? (
-                      <LockIcon className="h-4 w-4 shrink-0 text-muted-2" aria-label={t.paywall.badge} />
-                    ) : (
-                      ch.is_free && <Badge tone="primary">{t.common.read}</Badge>
-                    )}
-                  </Link>
-                );
-              })
-            ) : (
-              <div className="px-6 py-10 text-center text-[14px] text-muted-2">
-                {t.story.noChaptersBody}
-              </div>
-            )}
-          </div>
-        )}
-
-        {tab === "comments" && (
-          <div className="flex flex-col gap-3.5">
-            {user ? (
-              <div className="mb-1.5">
-                <CommentGuidelines />
-                <CommentForm storyId={story.id} chapterId={null} path={path} blocked={user?.profile?.status === "blocked"} />
-              </div>
-            ) : (
-              <div className="mb-1.5 flex flex-wrap items-center gap-3 rounded-[12px] border border-dashed border-primary-300 bg-card px-5 py-4">
-                <LockIcon className="text-muted-2" />
-                <span className="text-[14px] text-ink-soft">{t.reader.commentsLocked}</span>
-                <Link prefetch={false} href={ROUTES.onboarding} className="ml-auto">
-                  <Button size="sm">{t.common.login}</Button>
-                </Link>
-              </div>
-            )}
-            {storyComments.length > 0 ? (
-              storyComments.map((c) => (
-                <div key={c.id} className="flex flex-col gap-2.5">
-                  <StoryCommentCard comment={c} slug={slug} locale={locale} t={t} viewerId={user?.id ?? null} />
-                  {c.replies.length > 0 && (
-                    <div className="ml-10.5 flex flex-col gap-2.5">
-                      {c.replies.map((r) => (
-                        <StoryCommentCard key={r.id} comment={r} slug={slug} locale={locale} t={t} isReply viewerId={user?.id ?? null} />
-                      ))}
-                    </div>
-                  )}
+                      <div className="min-w-0 flex-1">
+                        <span className={`font-display text-[16.5px] font-semibold leading-snug ${isRead ? "text-muted-2" : "text-ink"}`}>{ch.title}</span>
+                        <div className="mt-1 text-[12.5px] text-muted-3">
+                          {formatDateTime(ch.published_at ?? ch.created_at, locale)} · {ch.comment_count ?? 0} {t.common.comments}
+                        </div>
+                      </div>
+                      {isRead && (
+                        <span
+                          title={t.story.chapterRead}
+                          className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-success-bg text-[11px] font-bold text-success"
+                        >
+                          ✓
+                        </span>
+                      )}
+                      {lockedFrom !== null && ch.order_index >= lockedFrom ? (
+                        <LockIcon className="h-4 w-4 shrink-0 text-muted-2" aria-label={t.paywall.badge} />
+                      ) : (
+                        ch.is_free && <Badge tone="primary">{t.common.read}</Badge>
+                      )}
+                    </Link>
+                  );
+                })
+              ) : (
+                <div className="px-6 py-10 text-center text-[14px] text-muted-2">
+                  {t.story.noChaptersBody}
                 </div>
-              ))
-            ) : (
-              <div className="rounded-[14px] border border-border bg-card px-6 py-10 text-center text-[14px] text-muted-2">
-                {t.story.noCommentsYet}
-              </div>
-            )}
-          </div>
-        )}
+              )}
+            </div>
+          }
+        />
 
         {!user && (
           <div className="mt-7 flex flex-col items-start gap-4 rounded-[14px] border border-primary-100 bg-linear-to-br from-primary-50 to-pink-bg px-5 py-5 sm:flex-row sm:items-center sm:gap-5 sm:px-7 sm:py-6">
@@ -354,61 +304,4 @@ export default async function StoryPage({
 function clsxRow(index: number, total: number) {
   const border = index < total - 1 ? "border-b border-border-soft" : "";
   return `group flex items-center gap-4 px-5.5 py-4.5 transition hover:bg-primary-50/60 ${border}`;
-}
-
-function StoryCommentCard({
-  comment,
-  slug,
-  locale,
-  t,
-  isReply,
-  viewerId,
-}: {
-  comment: StoryCommentRow;
-  slug: string;
-  locale: "ru" | "uz";
-  t: Dictionary;
-  isReply?: boolean;
-  viewerId?: string | null;
-}) {
-  const className = `flex gap-3.5 rounded-[12px] border border-border p-4.5 ${isReply ? "bg-surface" : "bg-card"}`;
-  const content = (
-    <>
-      <Avatar name={comment.user?.display_name ?? "?"} size={isReply ? 32 : 38} />
-      <div className="min-w-0 flex-1">
-        <div className="mb-1.5 flex flex-wrap items-center gap-2.5">
-          <span className="text-[14px] font-bold">{comment.user?.display_name}</span>
-          <span className="text-[12.5px] text-muted-3">
-            {formatDate(comment.created_at, locale)}
-          </span>
-          {!isReply && comment.chapter && (
-            <Badge tone="neutral">
-              {t.story.chapterBadge} {comment.chapter.order_index}
-            </Badge>
-          )}
-        </div>
-        <p className="text-[14.5px] leading-relaxed text-ink-soft">{comment.text}</p>
-        {!comment.chapter && viewerId && viewerId !== comment.user_id && (
-          <div className="mt-2">
-            <ReportCommentButton commentId={comment.id} />
-          </div>
-        )}
-      </div>
-    </>
-  );
-
-  // A general comment (posted from this tab, not under any one chapter) has
-  // nowhere to jump to — render it as a plain block instead of a dead link.
-  if (!comment.chapter) {
-    return <div className={className}>{content}</div>;
-  }
-
-  return (
-    <Link prefetch={false}
-      href={`${ROUTES.chapter(slug, comment.chapter.order_index)}#comment-${comment.id}`}
-      className={`${className} hover:border-primary-300`}
-    >
-      {content}
-    </Link>
-  );
 }

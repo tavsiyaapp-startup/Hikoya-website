@@ -109,7 +109,7 @@ export async function StoryCard({
     >
       {/* Status — outside the 3D book, on top of it, never rotates. */}
       <span
-        className={`absolute -top-2 left-[2px] z-20 inline-flex items-center gap-1.5 rounded-[8px] px-2 py-1 text-[10.5px] font-bold shadow-[0_2px_6px_rgba(0,0,0,0.2)] ${
+        className={`absolute -top-2 left-[2px] z-10 inline-flex items-center gap-1.5 rounded-[8px] px-2 py-1 text-[10.5px] font-bold shadow-[0_2px_6px_rgba(0,0,0,0.2)] ${
           ribbonLabel ? "bg-primary-600 text-white" : progressBadgeClasses[story.progress_status]
         }`}
       >

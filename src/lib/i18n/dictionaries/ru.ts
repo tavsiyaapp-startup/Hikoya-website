@@ -862,6 +862,8 @@ const ru = {
     trash: "Корзина",
     deletedByAuthor: "Автор удалил",
     deletedOnLabel: "Удалено автором",
+    publishedOnLabel: "Опубликовано",
+    editedOnLabel: "Изменено",
     restoreStory: "Восстановить",
     permanentlyDelete: "Удалить полностью",
     permanentDeleteWarning:

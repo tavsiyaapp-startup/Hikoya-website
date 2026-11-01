@@ -654,7 +654,7 @@ export async function getStoryForModeration(id: string): Promise<StoryForModerat
 
 export type ChapterListItem = Pick<
   Chapter,
-  "id" | "story_id" | "order_index" | "title" | "word_count" | "status" | "rejection_reason" | "updated_at"
+  "id" | "story_id" | "order_index" | "title" | "word_count" | "status" | "rejection_reason" | "published_at" | "updated_at"
 >;
 
 export async function getChaptersForModeration(storyId: string): Promise<ChapterListItem[]> {
@@ -669,12 +669,17 @@ export async function getChaptersForModeration(storyId: string): Promise<Chapter
         word_count: chapters.word_count,
         status: chapters.status,
         rejection_reason: chapters.rejection_reason,
+        published_at: chapters.published_at,
         updated_at: chapters.updated_at,
       })
       .from(chapters)
       .where(eq(chapters.story_id, storyId))
       .orderBy(asc(chapters.order_index));
-    return rows.map((r) => ({ ...r, updated_at: toISO(r.updated_at) }));
+    return rows.map((r) => ({
+      ...r,
+      published_at: r.published_at ? toISO(r.published_at) : null,
+      updated_at: toISO(r.updated_at),
+    }));
   } catch (err) {
     logQueryError("getChaptersForModeration", err);
     return [];

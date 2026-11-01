@@ -864,6 +864,8 @@ const uz: typeof ru = {
     trash: "Chiqindilar",
     deletedByAuthor: "Muallif oʻchirdi",
     deletedOnLabel: "Muallif tomonidan oʻchirilgan",
+    publishedOnLabel: "Nashr qilingan",
+    editedOnLabel: "Oxirgi tahrir",
     restoreStory: "Qaytarish",
     permanentlyDelete: "Butunlay oʻchirish",
     permanentDeleteWarning:

@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/Chip";
 import { ChevronLeftIcon } from "@/components/ui/icons";
 import { ChapterModerateActions } from "../../ChapterModerateActions";
 import { plural } from "@/lib/plural";
+import { formatDateTime } from "@/lib/format";
 
 export default async function AdminChapterModeratePage({
   params,
@@ -55,6 +56,10 @@ export default async function AdminChapterModeratePage({
           <span>
             {chapter.word_count} {plural(chapter.word_count, t.reader.wordsLabel)}
           </span>
+          {chapter.published_at && (
+            <span>{t.admin.publishedOnLabel}: {formatDateTime(chapter.published_at, locale)}</span>
+          )}
+          <span>{t.admin.editedOnLabel}: {formatDateTime(chapter.updated_at, locale)}</span>
         </div>
 
         {chapter.status === "draft" && chapter.rejection_reason && (

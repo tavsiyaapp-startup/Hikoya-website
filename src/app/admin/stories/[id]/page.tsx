@@ -7,7 +7,7 @@ import { getDictionary } from "@/lib/i18n";
 import { getStoryForModeration, getChaptersForModeration } from "@/lib/queries/admin";
 import { ROUTES } from "@/lib/constants";
 import { localizeGenre } from "@/lib/genre";
-import { formatTimestamp } from "@/lib/format";
+import { formatTimestamp, formatDateTime } from "@/lib/format";
 import { Badge } from "@/components/ui/Chip";
 import { ChevronLeftIcon } from "@/components/ui/icons";
 import { StoryModerateActions } from "./StoryModerateActions";
@@ -111,6 +111,11 @@ export default async function AdminStoryModeratePage({ params }: { params: Promi
                 "—"
               )}
             </div>
+            {story.published_at && (
+              <div className="mb-3.5 text-[13px] text-muted-2">
+                {t.admin.publishedOnLabel}: <span className="font-semibold text-ink-soft">{formatDateTime(story.published_at, locale)}</span>
+              </div>
+            )}
             <p className="mb-4.5 max-w-160 text-[14.5px] leading-relaxed text-ink-soft">{story.description}</p>
 
             {story.deleted_at && (
@@ -161,6 +166,12 @@ export default async function AdminStoryModeratePage({ params }: { params: Promi
                     <div className="text-[14.5px] font-bold">{ch.title}</div>
                     <div className="text-[12.5px] text-muted-3">
                       {ch.word_count} {plural(ch.word_count, t.reader.wordsLabel)}
+                    </div>
+                    <div className="mt-0.5 flex flex-wrap gap-x-3.5 gap-y-0.5 text-[11.5px] text-muted-3">
+                      {ch.published_at && (
+                        <span>{t.admin.publishedOnLabel}: {formatDateTime(ch.published_at, locale)}</span>
+                      )}
+                      <span>{t.admin.editedOnLabel}: {formatDateTime(ch.updated_at, locale)}</span>
                     </div>
                   </div>
                   <Badge tone={statusTone(ch.status)}>{statusLabel[ch.status] ?? ch.status}</Badge>

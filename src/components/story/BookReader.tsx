@@ -142,33 +142,44 @@ export function BookReader({
 
   const fraction = useCallback(() => (totalRef.current > 1 ? spreadRef.current / (totalRef.current - 1) : 0), []);
 
-  // First layout: after the fonts arrive, open where the reader stopped (or
-  // at the end, when they came back from the next chapter's first page).
+  // First layout: measure and SHOW the text straight away, with whatever font
+  // is available this instant — open where the reader stopped (or at the end,
+  // when they came back from the next chapter's first page). This used to wait
+  // on document.fonts.ready first, but on a slow mobile connection that waits
+  // for every web font on the page (Manrope's weights, Literata, Kaushan) and
+  // left the reader staring at a blank page — the flow is opacity-0 until
+  // `ready` — for several seconds. Once the real reading font has finished
+  // downloading the text may paginate a little differently, so re-measure then
+  // and keep the reader on the same spot (by fraction).
   useLayoutEffect(() => {
     let cancelled = false;
+    layout(0);
+    let start = 0;
+    try {
+      if (sessionStorage.getItem(OPEN_AT_END_KEY) === window.location.pathname) {
+        sessionStorage.removeItem(OPEN_AT_END_KEY);
+        start = totalRef.current - 1;
+      } else {
+        const saved = readSaved(chapterId);
+        // Never straight onto the «what's next» page.
+        if (saved !== null && saved < 0.97) start = Math.min(totalRef.current - 2, Math.round(saved * (totalRef.current - 1)));
+      }
+    } catch {
+      // storage off — start at the beginning
+    }
+    show(Math.max(0, start), false);
+    setReady(true);
+
+    // Correct the pagination once web fonts settle (page breaks depend on the
+    // final font metrics); if it never resolves, the text is already visible.
     (document.fonts?.ready ?? Promise.resolve()).then(() => {
       if (cancelled) return;
-      layout(0);
-      let start = 0;
-      try {
-        if (sessionStorage.getItem(OPEN_AT_END_KEY) === window.location.pathname) {
-          sessionStorage.removeItem(OPEN_AT_END_KEY);
-          start = totalRef.current - 1;
-        } else {
-          const saved = readSaved(chapterId);
-          // Never straight onto the «what's next» page.
-          if (saved !== null && saved < 0.97) start = Math.min(totalRef.current - 2, Math.round(saved * (totalRef.current - 1)));
-        }
-      } catch {
-        // storage off — start at the beginning
-      }
-      show(Math.max(0, start), false);
-      setReady(true);
+      layout(fraction());
     });
     return () => {
       cancelled = true;
     };
-  }, [chapterId, layout, show]);
+  }, [chapterId, layout, show, fraction]);
 
   // Font changes reflow the text; a resize changes the page size; a picture
   // finishing loading changes how much fits.

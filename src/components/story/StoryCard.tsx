@@ -29,6 +29,7 @@ export async function StoryCard({
   adminHref,
   href,
   ribbonLabel,
+  priority = false,
 }: {
   story: StoryCardData;
   // Only ever true from the author's own "stories" tab on their own profile
@@ -50,6 +51,13 @@ export async function StoryCard({
   // pill styling/position) — e.g. "5 chapters added" instead of a status,
   // again for the "this week" carousel.
   ribbonLabel?: string;
+  // Above-the-fold cards (the first few of the first home row) set this so
+  // their cover is fetched eagerly with fetchpriority=high and preloaded,
+  // instead of next/image's default loading=lazy / low priority. The cover
+  // is the LCP element on the home page; left lazy it isn't even requested
+  // until layout runs (~900ms load delay in a trace). Only ever true for a
+  // handful of cards — a page full of priority images would defeat the point.
+  priority?: boolean;
 }) {
   const locale = await getServerLocale();
   const t = getDictionary(locale);
@@ -92,6 +100,7 @@ export async function StoryCard({
       fill
       sizes="(max-width: 1023px) 25vw, 12.5vw"
       className="object-cover"
+      priority={priority}
     />
   ) : (
     <GeneratedCover seed={story.id} title={story.title} author={story.author?.display_name} />

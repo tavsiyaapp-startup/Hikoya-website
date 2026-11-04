@@ -188,8 +188,12 @@ async function HomeSections({
               {items.length > 0 ? (
                 <div className="mb-11">
                   <StoryCarousel>
-                    {items.map((story) => (
-                      <StoryCard key={story.id} story={story} />
+                    {items.map((story, idx) => (
+                      // Only the first home row is above the fold; its leading
+                      // covers are the LCP candidate, so fetch them eagerly
+                      // (priority) instead of lazily. Every other row is below
+                      // the fold (content-visibility) and stays lazy.
+                      <StoryCard key={story.id} story={story} priority={i === 0 && idx < 3} />
                     ))}
                   </StoryCarousel>
                 </div>

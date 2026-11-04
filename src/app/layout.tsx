@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Manrope, Kaushan_Script, Literata } from "next/font/google";
-import { GoogleAnalytics } from "@next/third-parties/google";
+import { DeferredAnalytics } from "@/components/layout/DeferredAnalytics";
 import "./globals.css";
 import { LocaleProvider } from "@/lib/i18n/LocaleProvider";
 import { getServerLocale } from "@/lib/i18n/locale-server";
@@ -70,7 +70,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           </LocaleProvider>
         </ThemeProvider>
       </body>
-      {gaId && <GoogleAnalytics gaId={gaId} />}
+      {gaId && <DeferredAnalytics gaId={gaId} />}
     </html>
   );
 }

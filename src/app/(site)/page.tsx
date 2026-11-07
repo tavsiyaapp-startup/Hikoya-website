@@ -38,14 +38,14 @@ import { HOME_TABS, type HomeTab } from "@/lib/homeTabs";
 // in (each section keeps its own page number in the URL, independent of
 // the others). The feed tabs aren't paginated — each is its own
 // StoryCarousel, so this is just how many items get pulled into each row.
-// Kept small (6) on purpose: every card is a heavy DOM subtree (the 3D book
-// + stats), and ~7 of these rows together dominated the home page's DOM
-// (~3000 nodes → ~6s LCP render-delay on a mid-range phone, which is what
-// makes the installed PWA feel slow). The rows are horizontally scrolled, so
-// the first few visible cards are unchanged; we just don't ship 12 when the
-// reader only sees ~3 at a time. "Все" links open the full, paginated list.
-const PAGE_SIZE_FEED = 6;
-const PAGE_SIZE_WEEK = 6; // also a carousel now, not paginated — see PAGE_SIZE_FEED
+// 10 per row: enough to fill a wide desktop carousel (fewer left an empty
+// gap on the right) while still trimming the home page's DOM versus the old
+// 12 across ~7 rows. The rows scroll horizontally, so phones still only
+// paint the first few; the heavier lever for mobile is each card's layout
+// cost (the 3D book), handled separately, not the raw count. "Все" links
+// open the full, paginated list.
+const PAGE_SIZE_FEED = 10;
+const PAGE_SIZE_WEEK = 10; // also a carousel now, not paginated — see PAGE_SIZE_FEED
 const PAGE_SIZE_COLLECTIONS = 6;
 
 function toPage(raw: string | undefined): number {

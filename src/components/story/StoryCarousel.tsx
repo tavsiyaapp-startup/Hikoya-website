@@ -77,7 +77,7 @@ export function StoryCarousel({ children }: { children: React.ReactNode }) {
             type="button"
             onClick={() => scroll(-1)}
             aria-label="Previous"
-            className="absolute -left-3.5 top-[calc(42%+8px)] z-10 hidden h-9 w-9 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full border border-border bg-card text-ink-soft shadow-[0_4px_14px_rgba(60,40,120,0.16)] transition hover:bg-surface sm:flex"
+            className="absolute left-1 top-[calc(42%+8px)] z-10 hidden h-9 w-9 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full border border-border bg-card/90 text-ink-soft shadow-[0_4px_14px_rgba(60,40,120,0.16)] backdrop-blur-sm transition hover:bg-surface sm:flex"
           >
             <ChevronLeftIcon />
           </button>
@@ -85,7 +85,7 @@ export function StoryCarousel({ children }: { children: React.ReactNode }) {
             type="button"
             onClick={() => scroll(1)}
             aria-label="Next"
-            className="absolute -right-3.5 top-[calc(42%+8px)] z-10 hidden h-9 w-9 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full border border-border bg-card text-ink-soft shadow-[0_4px_14px_rgba(60,40,120,0.16)] transition hover:bg-surface sm:flex"
+            className="absolute right-1 top-[calc(42%+8px)] z-10 hidden h-9 w-9 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full border border-border bg-card/90 text-ink-soft shadow-[0_4px_14px_rgba(60,40,120,0.16)] backdrop-blur-sm transition hover:bg-surface sm:flex"
           >
             <ChevronRightIcon />
           </button>

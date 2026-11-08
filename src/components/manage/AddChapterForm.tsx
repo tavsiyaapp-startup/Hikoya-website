@@ -7,8 +7,11 @@ import { useLocale } from "@/lib/i18n/LocaleProvider";
 import { Input } from "@/components/ui/Input";
 import { RichTextEditor } from "@/components/ui/RichTextEditor";
 import { Button } from "@/components/ui/Button";
+import { MangaChapterUploader } from "@/components/manga/MangaChapterUploader";
+import type { MangaPageData } from "@/types/database";
 
-export function AddChapterForm({ storyId, storySlug }: { storyId: string; storySlug: string }) {
+export function AddChapterForm({ storyId, storySlug, kind = "text" }: { storyId: string; storySlug: string; kind?: "text" | "manga" }) {
+  const isManga = kind === "manga";
   const { t } = useLocale();
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -16,6 +19,8 @@ export function AddChapterForm({ storyId, storySlug }: { storyId: string; storyS
   const [error, setError] = useState<string | null>(null);
   // Saved as a draft because publishing needs a subscription («Obuna»).
   const [savedAsDraft, setSavedAsDraft] = useState(false);
+  // Manga chapters: ordered, already-uploaded page images.
+  const [pages, setPages] = useState<MangaPageData[]>([]);
   const formRef = useRef<HTMLFormElement>(null);
 
   if (!open) {
@@ -37,6 +42,13 @@ export function AddChapterForm({ storyId, storySlug }: { storyId: string; storyS
       onSubmit={(e) => {
         e.preventDefault();
         const formData = new FormData(e.currentTarget);
+        if (isManga) {
+          if (pages.length === 0) {
+            setError(t.manage.chapterSaveError);
+            return;
+          }
+          formData.set("pages", JSON.stringify(pages));
+        }
         startTransition(async () => {
           setError(null);
           const saved = await addChapter(storyId, storySlug, formData).catch(() => false);
@@ -52,6 +64,7 @@ export function AddChapterForm({ storyId, storySlug }: { storyId: string; storyS
           }
           setSavedAsDraft(saved === "draft");
           formRef.current?.reset();
+          setPages([]);
           setOpen(false);
           // revalidatePath alone didn't always redraw the list in place
           // (seen in QA: the new chapter appeared only after a reload).
@@ -61,7 +74,11 @@ export function AddChapterForm({ storyId, storySlug }: { storyId: string; storyS
       className="mb-6 w-full rounded-[12px] border border-border bg-card p-5.5"
     >
       <Input name="title" placeholder={t.create.chapterTitlePlaceholder} className="mb-3.5" required />
-      <RichTextEditor name="content" placeholder={t.create.chapterTextPlaceholder} />
+      {isManga ? (
+        <MangaChapterUploader pages={pages} onChange={setPages} />
+      ) : (
+        <RichTextEditor name="content" placeholder={t.create.chapterTextPlaceholder} />
+      )}
       {error && <p className="mt-3 text-[13px] text-danger">{error}</p>}
       <div className="mt-3.5 flex gap-2.5">
         <Button type="submit" disabled={pending}>

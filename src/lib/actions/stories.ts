@@ -17,7 +17,7 @@ import { getPublishGate, loadPaywallState } from "@/server/data/paywall";
 import type { Viewer } from "@/server/authz/policy";
 import { uploadUrlPrefix } from "@/server/storage/local";
 import { ROUTES } from "@/lib/constants";
-import type { AgeRating, StoryProgressStatus, StoryVisibility } from "@/types/database";
+import type { AgeRating, MangaPageData, StoryKind, StoryProgressStatus, StoryVisibility } from "@/types/database";
 
 // Identity comes from Better Auth now, not Supabase — the actual authz
 // (who may create/edit/delete what) moved to src/server/authz/policy.ts +
@@ -55,6 +55,27 @@ function isOwnCoverUpload(url: string, userId: string): boolean {
   return url.startsWith(uploadUrlPrefix("covers", userId)) && !url.includes("..");
 }
 
+// Manga pages must be files this author uploaded to their own chapter-images
+// folder — same reasoning as isOwnCoverUpload (never trust an arbitrary URL,
+// which could be a tracking pixel or point at someone else's upload).
+function ownChapterPages(pages: MangaPageData[] | undefined, userId: string): MangaPageData[] {
+  if (!Array.isArray(pages)) return [];
+  const prefix = uploadUrlPrefix("chapter-images", userId);
+  return pages.filter((p) => p && typeof p.url === "string" && p.url.startsWith(prefix) && !p.url.includes(".."));
+}
+
+// Manga pages can arrive as a JSON string in a FormData field (addChapter).
+function pagesFromForm(formData: FormData): MangaPageData[] | undefined {
+  const raw = formData.get("pages");
+  if (typeof raw !== "string" || !raw) return undefined;
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 async function getAuthorDisplayName(db: DbOrTx, userId: string): Promise<string> {
   const [row] = await db.select({ display_name: profiles.display_name }).from(profiles).where(eq(profiles.id, userId)).limit(1);
   return row?.display_name ?? "Автор";
@@ -88,6 +109,9 @@ export interface CreateStoryInput {
   chapterText: string;
   visibility: StoryVisibility;
   announce: string | null;
+  // Manga/comic: work type + the first chapter's page images.
+  kind?: StoryKind;
+  chapterPages?: MangaPageData[];
 }
 
 // Returns null when nothing was created (blocked, a field too long, database
@@ -113,6 +137,8 @@ export async function createStory(input: CreateStoryInput): Promise<{ id: string
       language,
       ageRating: input.ageRating,
       isTranslation: input.isTranslation,
+      kind: input.kind,
+      chapterPages: ownChapterPages(input.chapterPages, viewer.id),
       chapterTitle: input.chapterTitle,
       chapterText: input.chapterText,
       visibility,
@@ -272,11 +298,15 @@ export async function addChapter(storyId: string, storySlug: string, formData: F
   const { db, viewer } = await requireViewer();
   const title = String(formData.get("title") ?? "").trim();
   const content = String(formData.get("content") ?? "").trim();
-  if (!title || !content) return false;
+  // Manga chapters send their page images as JSON instead of text content.
+  const pages = ownChapterPages(pagesFromForm(formData), viewer.id);
+  const isManga = pages.length > 0;
+  if (!title) return false;
+  if (!isManga && !content) return false;
 
   let chapter: Awaited<ReturnType<typeof chaptersData.addChapter>>;
   try {
-    chapter = await chaptersData.addChapter(db, viewer, storyId, { title, content }, { asDraft: !(await canPublishNow(db, viewer)) });
+    chapter = await chaptersData.addChapter(db, viewer, storyId, { title, content, pages: isManga ? pages : undefined }, { asDraft: !(await canPublishNow(db, viewer)) });
   } catch (err) {
     if (err instanceof ChapterTooLongError) return "too_long";
     console.error("[stories] addChapter failed", storyId, err);

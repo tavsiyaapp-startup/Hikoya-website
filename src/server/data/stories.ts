@@ -2,7 +2,7 @@ import "server-only";
 import { and, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 import { sanitizeHtml } from "@/lib/sanitize";
 import { slugify, withRandomSuffix } from "@/lib/slug";
-import type { AgeRating, StoryProgressStatus, StoryVisibility } from "@/types/database";
+import type { AgeRating, MangaPageData, StoryKind, StoryProgressStatus, StoryVisibility } from "@/types/database";
 import {
   canDeleteStory,
   canEditStory,
@@ -15,7 +15,7 @@ import type { DbOrTx } from "@/server/db/client";
 import { chapters, profiles, stories, storyTags, tags } from "@/server/db/schema";
 import { ChapterTooLongError, ForbiddenError, NotFoundError } from "@/server/data/errors";
 import { getRequiresReview } from "@/server/data/settings";
-import { computeStoryStatus, sanitizeNewTagLabels, wordCount } from "@/server/data/logic";
+import { computeStoryStatus, normalizeMangaPages, sanitizeNewTagLabels, wordCount } from "@/server/data/logic";
 import { MAX_CHAPTER_WORDS } from "@/lib/constants";
 
 const storyRecordColumns = {
@@ -133,6 +133,10 @@ export interface CreateStoryInput {
   chapterText: string;
   visibility: StoryVisibility;
   announce: string | null;
+  // Manga/comic: when kind === "manga", the first chapter is built from
+  // chapterPages (images) instead of chapterText.
+  kind?: StoryKind;
+  chapterPages?: MangaPageData[];
 }
 
 export async function createStory(db: DbOrTx, viewer: Viewer | null, input: CreateStoryInput) {
@@ -153,9 +157,12 @@ export async function createStory(db: DbOrTx, viewer: Viewer | null, input: Crea
     const status = computeStoryStatus(input.visibility, requiresReview);
     const slug = withRandomSuffix(slugify(title));
     const language = input.language.trim() || "ru";
-    const chapterContent = sanitizeHtml(input.chapterText);
-    // The story's first chapter is a new chapter — same word limit as any other.
-    if (wordCount(chapterContent) > MAX_CHAPTER_WORDS) throw new ChapterTooLongError();
+    const isManga = input.kind === "manga";
+    const chapterPages = isManga ? normalizeMangaPages(input.chapterPages) : [];
+    const chapterContent = isManga ? "" : sanitizeHtml(input.chapterText);
+    // The story's first chapter is a new chapter — same word limit as any
+    // other text chapter. Manga chapters carry images, not words.
+    if (!isManga && wordCount(chapterContent) > MAX_CHAPTER_WORDS) throw new ChapterTooLongError();
 
     const [story] = await tx
       .insert(stories)
@@ -170,6 +177,7 @@ export async function createStory(db: DbOrTx, viewer: Viewer | null, input: Crea
         language,
         age_rating: input.ageRating,
         is_translation: input.isTranslation,
+        kind: isManga ? "manga" : "text",
         status,
         visibility: input.visibility,
         announce: input.announce,
@@ -182,7 +190,8 @@ export async function createStory(db: DbOrTx, viewer: Viewer | null, input: Crea
       order_index: 1,
       title: input.chapterTitle,
       content: chapterContent,
-      word_count: wordCount(chapterContent),
+      pages: chapterPages,
+      word_count: isManga ? 0 : wordCount(chapterContent),
       status,
       is_free: true,
       published_at: status === "published" ? new Date() : null,

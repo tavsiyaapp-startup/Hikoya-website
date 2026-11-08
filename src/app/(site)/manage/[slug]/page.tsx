@@ -145,7 +145,7 @@ export default async function ManagePage({
           <Link prefetch={false} href={`${ROUTES.manage(slug)}/import`}>
             <Button variant="secondary">{t.manage.importDocument}</Button>
           </Link>
-          <AddChapterForm storyId={story.id} storySlug={slug} />
+          <AddChapterForm storyId={story.id} storySlug={slug} kind={story.kind} />
         </div>
       )}
 

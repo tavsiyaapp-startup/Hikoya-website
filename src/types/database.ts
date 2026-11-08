@@ -56,6 +56,18 @@ export interface Profile {
   username_changed_at?: string | null;
 }
 
+// Work type: a normal text work, or a manga/comic (chapters are page images).
+export type StoryKind = "text" | "manga";
+
+// One manga/comic page stored on a chapter (chapters.pages jsonb). `url` is an
+// /uploads path; w/h/bytes are the stored image's dimensions and size.
+export interface MangaPageData {
+  url: string;
+  w?: number;
+  h?: number;
+  bytes?: number;
+}
+
 export interface Story {
   id: string;
   author_id: string;
@@ -83,6 +95,8 @@ export interface Story {
   rejection_reason: string | null;
   deleted_at: string | null;
   is_translation: boolean;
+  // Optional: older hand-built Story literals and existing rows default to text.
+  kind?: StoryKind;
 }
 
 export interface Chapter {
@@ -100,6 +114,9 @@ export interface Chapter {
   published_at: string | null;
   rejection_reason: string | null;
   comment_count: number;
+  // Manga/comic chapters: ordered page images (chapters.pages). Optional —
+  // text chapters and older literals omit it.
+  pages?: MangaPageData[];
 }
 
 export interface Comment {

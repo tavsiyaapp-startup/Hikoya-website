@@ -15,8 +15,9 @@ import { chapters, stories } from "@/server/db/schema";
 import { ChapterTooLongError, ForbiddenError, NotFoundError } from "@/server/data/errors";
 import { getStoryRecord } from "@/server/data/stories";
 import { getRequiresReview } from "@/server/data/settings";
-import { computeChapterStatus, nextOrderIndex, wordCount } from "@/server/data/logic";
+import { computeChapterStatus, nextOrderIndex, normalizeMangaPages, wordCount } from "@/server/data/logic";
 import { MAX_CHAPTER_WORDS } from "@/lib/constants";
+import type { MangaPageData } from "@/types/database";
 
 // Upper bounds well above any real chapter (a whole novel is ~1-2 MB of
 // text); without them one request could store tens of megabytes per field.
@@ -55,6 +56,9 @@ async function requireEditableChapter(db: DbOrTx, viewer: Viewer | null, chapter
 export interface ChapterInput {
   title: string;
   content: string;
+  // Manga/comic chapters: ordered page images. When present (length > 0) the
+  // chapter is a manga chapter — `content` is ignored and no word limit applies.
+  pages?: MangaPageData[];
 }
 
 // Locks the story row for the duration of the transaction so two concurrent
@@ -70,11 +74,15 @@ export async function addChapter(
   options: { asDraft?: boolean } = {}
 ) {
   const title = input.title.trim();
-  const content = sanitizeHtml(input.content.trim());
-  if (!title || !content) throw new Error("Title and content are required");
+  const pages = normalizeMangaPages(input.pages);
+  const isManga = pages.length > 0;
+  const content = isManga ? "" : sanitizeHtml(input.content.trim());
+  if (!title) throw new Error("Title is required");
+  if (!isManga && !content) throw new Error("Title and content are required");
   if (title.length > MAX_CHAPTER_TITLE || content.length > MAX_CHAPTER_CONTENT) throw new Error("Chapter too long");
-  // A brand-new chapter over the word limit is refused outright.
-  if (wordCount(content) > MAX_CHAPTER_WORDS) throw new ChapterTooLongError();
+  // A brand-new text chapter over the word limit is refused outright. Manga
+  // chapters carry images, not words, so the limit never applies to them.
+  if (!isManga && wordCount(content) > MAX_CHAPTER_WORDS) throw new ChapterTooLongError();
 
   return db.transaction(async (tx) => {
     const [storyRow] = await tx
@@ -97,7 +105,8 @@ export async function addChapter(
         order_index: orderIndex,
         title,
         content,
-        word_count: wordCount(content),
+        pages,
+        word_count: isManga ? 0 : wordCount(content),
         status,
         is_free: false,
         published_at: status === "published" ? new Date() : null,

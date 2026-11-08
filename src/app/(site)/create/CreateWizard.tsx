@@ -22,7 +22,8 @@ import { RELATIONSHIP_TYPES } from "@/lib/relationshipTypes";
 import { genreVariants } from "@/lib/genre";
 import { languageLabel } from "@/lib/language";
 import type { SplitChapter } from "@/lib/editor/splitChapters";
-import type { AgeRating, StoryVisibility } from "@/types/database";
+import type { AgeRating, MangaPageData, StoryVisibility } from "@/types/database";
+import { MangaChapterUploader } from "@/components/manga/MangaChapterUploader";
 
 export function CreateWizard({
   userId,
@@ -40,6 +41,8 @@ export function CreateWizard({
   const { t, locale } = useLocale();
   const router = useRouter();
   const [step, setStep] = useState(1);
+  // Work type: a normal text work, or a manga/comic (chapters = page images).
+  const [kind, setKind] = useState<"text" | "manga">("text");
 
   const [coverUrl, setCoverUrl] = useState<string | null>(null);
   const [coverUploading, setCoverUploading] = useState(false);
@@ -89,6 +92,8 @@ export function CreateWizard({
   const [chapterMode, setChapterMode] = useState<"manual" | "import">("manual");
   const [chapterTitle, setChapterTitle] = useState("");
   const [chapterText, setChapterText] = useState("");
+  // Manga/comic first chapter: ordered, already-uploaded page images.
+  const [mangaPages, setMangaPages] = useState<MangaPageData[]>([]);
   const [importedChapters, setImportedChapters] = useState<SplitChapter[]>([]);
 
   const [visibility, setVisibility] = useState<StoryVisibility>("public");
@@ -120,18 +125,22 @@ export function CreateWizard({
 
   const step1Valid = title.trim().length > 0 && description.trim().length > 0 && genres.length > 0;
   const step2Valid =
-    chapterMode === "manual"
-      ? chapterTitle.trim().length > 0 && chapterText.trim().length > 0
-      : importedChapters.length > 0 && importedChapters.every((c) => c.title.trim().length > 0);
+    kind === "manga"
+      ? chapterTitle.trim().length > 0 && mangaPages.length > 0
+      : chapterMode === "manual"
+        ? chapterTitle.trim().length > 0 && chapterText.trim().length > 0
+        : importedChapters.length > 0 && importedChapters.every((c) => c.title.trim().length > 0);
 
   function handlePublish() {
     setPublishFailed(false);
     setTooLong(false);
     startTransition(async () => {
       const firstChapter =
-        chapterMode === "manual"
-          ? { title: chapterTitle, text: chapterText }
-          : { title: importedChapters[0].title, text: importedChapters[0].html };
+        kind === "manga"
+          ? { title: chapterTitle, text: "" }
+          : chapterMode === "manual"
+            ? { title: chapterTitle, text: chapterText }
+            : { title: importedChapters[0].title, text: importedChapters[0].html };
 
       const story = await createStory({
         title,
@@ -143,6 +152,8 @@ export function CreateWizard({
         language,
         ageRating,
         isTranslation,
+        kind,
+        chapterPages: kind === "manga" ? mangaPages : undefined,
         chapterTitle: firstChapter.title,
         chapterText: firstChapter.text,
         visibility,
@@ -217,6 +228,36 @@ export function CreateWizard({
         <div className="min-w-0 w-full lg:max-w-190 lg:flex-1">
           {step === 1 && (
             <>
+              {/* Work type: text vs manga/comic — decides step 2 (text editor
+                  vs page uploader) and later the reader. */}
+              <div className="mb-5 rounded-[16px] border border-border bg-card p-5 sm:p-7.5">
+                <h2 className="mb-1.5 text-[22px] font-extrabold">Asar turi</h2>
+                <p className="mb-4 text-[14px] text-muted">
+                  Matnli asarmi yoki manga/komiksmi — shunga qarab bob qo‘shish va o‘qish o‘zgaradi.
+                </p>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {(
+                    [
+                      ["text", "Matn (hikoya / kitob)", "Boblar matn sifatida yoziladi"],
+                      ["manga", "Komiks / Manga", "Boblar sahifa-rasmlardan iborat"],
+                    ] as const
+                  ).map(([value, label, hint]) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => setKind(value)}
+                      className={clsx(
+                        "flex flex-col items-start gap-0.5 rounded-[12px] border px-4 py-3 text-left transition",
+                        kind === value ? "border-primary-500 bg-primary-50 ring-1 ring-primary-300" : "border-border bg-card hover:border-primary-300"
+                      )}
+                    >
+                      <span className="text-[15px] font-bold">{label}</span>
+                      <span className="text-[12.5px] text-muted">{hint}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <div className="mb-5 rounded-[16px] border border-border bg-card p-5 sm:p-7.5">
                 <h2 className="mb-1.5 text-[22px] font-extrabold">{t.create.coverTitle}</h2>
                 <p className="mb-5.5 text-[14px] text-muted">{t.create.coverBody}</p>
@@ -353,6 +394,19 @@ export function CreateWizard({
             <div className="rounded-[16px] border border-border bg-card p-5 sm:p-7.5">
               <h2 className="mb-4 text-[22px] font-extrabold">{t.create.step2}</h2>
 
+              {kind === "manga" ? (
+                <>
+                  <label className="mb-2 block text-[14px] font-bold">{t.create.chapterTitleLabel} *</label>
+                  <Input
+                    value={chapterTitle}
+                    onChange={(e) => setChapterTitle(e.target.value)}
+                    placeholder={t.create.chapterTitlePlaceholder}
+                    className="mb-5"
+                  />
+                  <MangaChapterUploader pages={mangaPages} onChange={setMangaPages} />
+                </>
+              ) : (
+                <>
               <div className="mb-5.5 flex gap-2.5">
                 <Chip active={chapterMode === "manual"} onClick={() => setChapterMode("manual")}>
                   {t.create.chapterModeManual}
@@ -407,6 +461,8 @@ export function CreateWizard({
                   onConfirm={setImportedChapters}
                   confirmLabel={(count) => t.create.chapterModeImportConfirm.replace("{n}", String(count))}
                 />
+              )}
+                </>
               )}
             </div>
           )}

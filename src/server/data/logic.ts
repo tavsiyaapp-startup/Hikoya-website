@@ -1,4 +1,4 @@
-import type { ChapterStatus, StoryVisibility } from "@/types/database";
+import type { ChapterStatus, MangaPageData, StoryVisibility } from "@/types/database";
 
 // Pure rules shared by the data-access layer. No database, no I/O — easy to
 // test directly and to read next to the SQL that uses them.
@@ -53,4 +53,22 @@ export type ReportReason = (typeof REPORT_REASONS)[number];
 
 export function isValidReportReason(reason: string): reason is ReportReason {
   return (REPORT_REASONS as readonly string[]).includes(reason);
+}
+
+// Manga/comic pages: keep only well-formed /uploads image paths and cap the
+// count. The upload action already scopes writes to the author's own
+// chapter-images folder; this just guards shape and size so one chapter can't
+// carry tens of thousands of urls. Shared by addChapter and createStory.
+export const MAX_MANGA_PAGES = 400;
+export function normalizeMangaPages(pages: MangaPageData[] | undefined): MangaPageData[] {
+  if (!Array.isArray(pages)) return [];
+  const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) && v >= 0 ? v : undefined);
+  const out: MangaPageData[] = [];
+  for (const p of pages) {
+    if (!p || typeof p.url !== "string") continue;
+    if (!p.url.startsWith("/uploads/chapter-images/") || p.url.includes("..")) continue;
+    out.push({ url: p.url, w: num(p.w), h: num(p.h), bytes: num(p.bytes) });
+    if (out.length >= MAX_MANGA_PAGES) break;
+  }
+  return out;
 }

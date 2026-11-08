@@ -21,6 +21,10 @@ export const storyProgressStatus = pgEnum("story_progress_status", ["ongoing", "
 export const storyStatus = pgEnum("story_status", ["draft", "published", "unlisted", "pending_review"]);
 export const storyTopTier = pgEnum("story_top_tier", ["day", "week", "month"]);
 export const storyVisibility = pgEnum("story_visibility", ["public", "unlisted", "draft"]);
+// Work type: a normal text work, or a manga/comic whose chapters are page
+// images instead of text. Added by the manga migration (see the manga SQL:
+// CREATE TYPE story_kind ...; ALTER TABLE stories ADD COLUMN kind ...).
+export const storyKind = pgEnum("story_kind", ["text", "manga"]);
 export const tagCategory = pgEnum("tag_category", ["genre", "relationship", "warning", "style", "age_rating"]);
 export const userRole = pgEnum("user_role", ["reader", "author", "moderator", "admin"]);
 export const userStatus = pgEnum("user_status", ["active", "blocked"]);
@@ -170,6 +174,9 @@ export const stories = pgTable("stories", {
   age_rating: ageRating("age_rating").default("0+").notNull(),
   relationship_type: text("relationship_type"),
   style: text("style"),
+  // text (default, current behaviour) or manga/comic. Manga chapters store
+  // page images in chapters.pages instead of chapters.content.
+  kind: storyKind("kind").default("text").notNull(),
   status: storyStatus("status").default("draft").notNull(),
   visibility: storyVisibility("visibility").default("draft").notNull(),
   announce: text("announce"),
@@ -212,6 +219,9 @@ export const chapters = pgTable("chapters", {
   order_index: integer("order_index").notNull(),
   title: text("title").notNull(),
   content: text("content").default("").notNull(),
+  // Manga/comic chapters: ordered page images. Empty [] for text chapters
+  // (which use `content`). Each item: { url, w?, h?, bytes? }.
+  pages: jsonb("pages").$type<{ url: string; w?: number; h?: number; bytes?: number }[]>().default(sql`'[]'::jsonb`).notNull(),
   word_count: integer("word_count").default(0).notNull(),
   status: chapterStatus("status").default("draft").notNull(),
   is_free: boolean("is_free").default(false).notNull(),

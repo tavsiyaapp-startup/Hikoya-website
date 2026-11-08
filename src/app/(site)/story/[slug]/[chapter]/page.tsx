@@ -18,6 +18,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { FollowButton } from "@/components/story/StoryActions";
 import { ReaderContent } from "@/components/story/ReaderContent";
+import { MangaReaderMount } from "@/components/manga/MangaReaderMount";
 import { ChapterReadingRecorder } from "@/components/story/ChapterReadingRecorder";
 import { ReaderChrome } from "@/components/story/ReaderChrome";
 import { BookReader } from "@/components/story/BookReader";
@@ -93,7 +94,9 @@ export default async function ReaderPage({
   const paragraphs = isRichContent ? [] : ch.content.split(/\n+/).filter(Boolean);
   // «Sahifalab» (Aa → reading mode): the book reader covers this page; the
   // header, author card and comments below stay for «Izohlar».
-  const bookMode = isUnlocked && readerPrefs.mode === "pages";
+  const isManga = story.kind === "manga";
+  // «Sahifalab» book mode is a text-reader feature; manga has its own reader.
+  const bookMode = !isManga && isUnlocked && readerPrefs.mode === "pages";
   const tocChapters = allChapters.map((c) => ({ order_index: c.order_index, title: c.title, read: readIds.has(c.id) }));
 
   return (
@@ -138,8 +141,14 @@ export default async function ReaderPage({
         </div>
         <h1 className="mb-4.5 text-[28px] font-bold leading-tight tracking-tight sm:text-[34px] lg:text-[42px]">{ch.title}</h1>
         <div className="mb-7.5 flex flex-wrap gap-5 border-b border-border pb-5.5 text-[13.5px] text-muted-2">
-          <span>{ch.word_count} {plural(ch.word_count, t.reader.wordsLabel)}</span>
-          <span>{readMinutes} {t.reader.readTimeLabel}</span>
+          {isManga ? (
+            <span>{ch.pages?.length ?? 0} sahifa</span>
+          ) : (
+            <>
+              <span>{ch.word_count} {plural(ch.word_count, t.reader.wordsLabel)}</span>
+              <span>{readMinutes} {t.reader.readTimeLabel}</span>
+            </>
+          )}
           {isUnlocked && !user && (
             <span className="font-bold text-success">{t.reader.freeLabel}</span>
           )}
@@ -165,11 +174,15 @@ export default async function ReaderPage({
             commentsCount={allCommentIds.length}
           />
         ) : isUnlocked ? (
-          <ReaderContent
-            initialPrefs={readerPrefs}
-            htmlContent={isRichContent ? sanitizeHtml(ch.content) : null}
-            paragraphs={isRichContent ? null : paragraphs}
-          />
+          isManga ? (
+            <MangaReaderMount pages={ch.pages ?? []} title={ch.title} />
+          ) : (
+            <ReaderContent
+              initialPrefs={readerPrefs}
+              htmlContent={isRichContent ? sanitizeHtml(ch.content) : null}
+              paragraphs={isRichContent ? null : paragraphs}
+            />
+          )
         ) : access === "subscribe" ? (
           <SubscribeGate
             offer={paywallOffer(paywall.settings, locale)}

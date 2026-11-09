@@ -24,6 +24,7 @@ import { StoryCarousel } from "@/components/story/StoryCarousel";
 import { CollectionCard } from "@/components/collections/CollectionCard";
 import { HeroCarousel } from "@/components/home/HeroCarousel";
 import { AnnouncementBoard } from "@/components/home/AnnouncementBoard";
+import { FallingLeavesLayer } from "@/components/seasonal/FallingLeavesLayer";
 import { CardRowSkeleton } from "@/components/ui/Skeletons";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Chip";
@@ -84,6 +85,10 @@ export default async function HomePage({
 
   return (
     <div>
+      {/* Seasonal autumn leaves — home page only. Full-screen, non-interactive,
+          pauses on prefers-reduced-motion. */}
+      <FallingLeavesLayer />
+
       {/* flex-[3] vs. AnnouncementBoard's flex-1 (in AnnouncementBoard.tsx) —
           a 3:1 ratio, so the board takes ~25% of the row on any screen
           rather than a fixed pixel width that'd look disproportionate at

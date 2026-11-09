@@ -744,6 +744,8 @@ export async function getContinueReading(userId: string, limit = 3): Promise<Con
 export interface SearchFilters {
   q?: string;
   language?: string;
+  // Work type: book/text vs comic/manga. Undefined = both.
+  kind?: "text" | "manga";
   genre?: string;
   progressStatus?: string;
   age?: string;
@@ -800,6 +802,7 @@ export const searchStories = withFallback(
         );
       }
       if (filters.language) conditions.push(eq(stories.language, filters.language));
+      if (filters.kind) conditions.push(eq(stories.kind, filters.kind));
       if (filters.genre) conditions.push(arrayOverlaps(stories.genres, genreVariants(filters.genre)));
       if (filters.progressStatus)
         conditions.push(eq(stories.progress_status, filters.progressStatus as typeof stories.$inferSelect.progress_status));

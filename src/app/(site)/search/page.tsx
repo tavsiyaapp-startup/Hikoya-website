@@ -78,9 +78,13 @@ export default async function SearchPage({
   const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
   const many = (v: string | string[] | undefined) => (Array.isArray(v) ? v : v ? [v] : []);
 
+  const kindParam = one(sp.kind);
+  const kind: SearchFilters["kind"] = kindParam === "manga" || kindParam === "text" ? kindParam : undefined;
+
   const filters: SearchFilters = {
     q: one(sp.q),
     language: one(sp.lang),
+    kind,
     genre: one(sp.genre),
     progressStatus: one(sp.progress),
     age: one(sp.age),
@@ -137,6 +141,7 @@ export default async function SearchPage({
   }
   const hasActive = Boolean(
     filters.language ||
+      filters.kind ||
       filters.genre ||
       filters.progressStatus ||
       filters.age ||
@@ -148,6 +153,7 @@ export default async function SearchPage({
 
   const activeCount = [
     filters.language,
+    filters.kind,
     filters.genre,
     filters.progressStatus,
     filters.age,
@@ -186,6 +192,25 @@ export default async function SearchPage({
         </div>
 
         <div className="hidden peer-checked:block lg:block">
+        <FilterGroup label={t.search.workType} wrap>
+          {(
+            [
+              ["text", t.search.workTypeText],
+              ["manga", t.search.workTypeManga],
+            ] as const
+          ).map(([value, label]) => (
+            <LinkChip
+              key={value}
+              href={buildHref(sp, { kind: filters.kind === value ? undefined : value })}
+              active={filters.kind === value}
+            >
+              {label}
+            </LinkChip>
+          ))}
+        </FilterGroup>
+
+        <div className="my-1 h-px bg-border-soft" />
+
         <FilterGroup label={t.search.language} wrap>
           {["uz", "ru", ...customLanguages].map((code) => (
             <LinkChip key={code} href={buildHref(sp, { lang: filters.language === code ? undefined : code })} active={filters.language === code}>
@@ -318,6 +343,7 @@ export default async function SearchPage({
             {(
               [
                 ["lang", filters.language],
+                ["kind", filters.kind],
                 ["genre", filters.genre],
                 ["progress", filters.progressStatus],
                 ["age", filters.age],
@@ -337,7 +363,11 @@ export default async function SearchPage({
                       ? localizedLabel(value, locale)
                       : key === "progress"
                         ? storyProgressLabel(t, value as "ongoing" | "finished" | "dropped")
-                        : value}
+                        : key === "kind"
+                          ? value === "manga"
+                            ? t.search.workTypeManga
+                            : t.search.workTypeText
+                          : value}
                   </span>
                   <span className="text-[14px] leading-none">×</span>
                 </Link>

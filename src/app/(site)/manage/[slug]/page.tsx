@@ -93,6 +93,9 @@ export default async function ManagePage({
                 <Badge tone="primary">{t.story.requestBadge}</Badge>
               </Link>
             )}
+            {story.kind === "manga" && (
+              <Badge tone="danger" className="ml-auto">Komiks / Manga</Badge>
+            )}
           </div>
           <h1 className="mb-4.5 text-[24px] font-extrabold tracking-tight sm:text-[34px]">{story.title}</h1>
           <div className="mb-4.5 flex flex-wrap gap-6 sm:gap-10">
@@ -160,6 +163,7 @@ export default async function ManagePage({
                 storySlug={slug}
                 isFirst={i === 0}
                 isLast={i === chapters.length - 1}
+                kind={story.kind}
               />
             ))
           ) : (

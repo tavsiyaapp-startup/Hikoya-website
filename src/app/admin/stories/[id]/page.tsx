@@ -100,6 +100,9 @@ export default async function AdminStoryModeratePage({ params }: { params: Promi
               {story.genres.map((g) => (
                 <Badge key={g} tone="pink">{localizeGenre(g, locale)}</Badge>
               ))}
+              {story.kind === "manga" && (
+                <Badge tone="danger" className="ml-auto">Komiks / Manga</Badge>
+              )}
             </div>
             <div className="mb-3.5 text-[13.5px] text-muted-2">
               {t.admin.colAuthor}:{" "}

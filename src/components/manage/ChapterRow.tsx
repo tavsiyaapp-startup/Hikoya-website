@@ -7,7 +7,8 @@ import { Badge } from "@/components/ui/Chip";
 import { Input } from "@/components/ui/Input";
 import { RichTextEditor } from "@/components/ui/RichTextEditor";
 import { Button } from "@/components/ui/Button";
-import type { Chapter } from "@/types/database";
+import { MangaChapterUploader } from "@/components/manga/MangaChapterUploader";
+import type { Chapter, MangaPageData } from "@/types/database";
 import { plural } from "@/lib/plural";
 
 export function ChapterRow({
@@ -16,12 +17,14 @@ export function ChapterRow({
   storySlug,
   isFirst,
   isLast,
+  kind = "text",
 }: {
   chapter: Chapter;
   storyId: string;
   storySlug: string;
   isFirst: boolean;
   isLast: boolean;
+  kind?: "text" | "manga";
 }) {
   const { t } = useLocale();
   const [editing, setEditing] = useState(false);
@@ -30,6 +33,10 @@ export function ChapterRow({
   const [tooLong, setTooLong] = useState(false);
   const [note, setNote] = useState(false);
   const [needsSubscription, setNeedsSubscription] = useState(false);
+  // Manga chapter: edit the ordered page images, not rich text. Detect from the
+  // story's kind or from the chapter already carrying pages.
+  const isManga = kind === "manga" || (chapter.pages?.length ?? 0) > 0;
+  const [pages, setPages] = useState<MangaPageData[]>(chapter.pages ?? []);
 
   function handleDelete() {
     if (!window.confirm(t.manage.confirmDeleteChapter)) return;
@@ -60,6 +67,14 @@ export function ChapterRow({
   function handleSave(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
+    if (isManga) {
+      // A manga chapter can't be left with no pages.
+      if (pages.length === 0) {
+        setError(true);
+        return;
+      }
+      formData.set("pages", JSON.stringify(pages));
+    }
     setError(false);
     setTooLong(false);
     setNote(false);
@@ -91,7 +106,11 @@ export function ChapterRow({
         className={`flex flex-col gap-2.5 px-5.5 py-4 ${border}`}
       >
         <Input name="title" defaultValue={chapter.title} required />
-        <RichTextEditor name="content" defaultValue={chapter.content} />
+        {isManga ? (
+          <MangaChapterUploader pages={pages} onChange={setPages} />
+        ) : (
+          <RichTextEditor name="content" defaultValue={chapter.content} />
+        )}
         <div className="flex gap-2">
           <Button type="submit" size="sm" disabled={pending}>
             {pending ? t.common.loading : t.common.save}

@@ -125,13 +125,18 @@ export async function addChapter(
 export async function updateChapter(db: DbOrTx, viewer: Viewer | null, chapterId: string, input: ChapterInput) {
   const { chapter } = await requireEditableChapter(db, viewer, chapterId);
   const title = input.title.trim();
-  const content = sanitizeHtml(input.content.trim());
-  if (!title || !content) throw new Error("Title and content are required");
+  // Manga chapters carry page images instead of text — same rule as addChapter:
+  // pages present (length > 0) ⇒ manga, content is ignored and no word limit.
+  const pages = normalizeMangaPages(input.pages);
+  const isManga = pages.length > 0;
+  const content = isManga ? "" : sanitizeHtml(input.content.trim());
+  if (!title) throw new Error("Title is required");
+  if (!isManga && !content) throw new Error("Title and content are required");
   if (title.length > MAX_CHAPTER_TITLE || content.length > MAX_CHAPTER_CONTENT) throw new Error("Chapter too long");
   // Word limit, but grandfathered: a chapter that was already over the limit
   // (saved before it existed) stays editable — the limit only blocks pushing
-  // a within-limit chapter over it, so existing works aren't broken.
-  if (wordCount(content) > MAX_CHAPTER_WORDS) {
+  // a within-limit chapter over it, so existing works aren't broken. Text only.
+  if (!isManga && wordCount(content) > MAX_CHAPTER_WORDS) {
     const [cur] = await db.select({ wc: chapters.word_count }).from(chapters).where(eq(chapters.id, chapter.id)).limit(1);
     if ((cur?.wc ?? 0) <= MAX_CHAPTER_WORDS) throw new ChapterTooLongError();
   }
@@ -142,7 +147,8 @@ export async function updateChapter(db: DbOrTx, viewer: Viewer | null, chapterId
     .set({
       title,
       content,
-      word_count: wordCount(content),
+      pages,
+      word_count: isManga ? 0 : wordCount(content),
       updated_at: new Date(),
       ...(backToReview ? { status: "pending_review" as const } : {}),
     })

@@ -11,6 +11,14 @@ import { ChapterModerateActions } from "../../ChapterModerateActions";
 import { plural } from "@/lib/plural";
 import { formatDateTime } from "@/lib/format";
 
+/* eslint-disable @next/next/no-img-element */
+
+// Manga page images go through /thumb at reading width (same as the public
+// reader) so the admin preview stays light.
+function readSrc(url: string, w: number): string {
+  return url.startsWith("/uploads/") ? `/thumb/${url.slice("/uploads/".length)}?w=${w}` : url;
+}
+
 export default async function AdminChapterModeratePage({
   params,
 }: {
@@ -23,6 +31,8 @@ export default async function AdminChapterModeratePage({
   const [story, chapter] = await Promise.all([getStoryForModeration(id), getChapterForModeration(chapterId)]);
   if (!story || !chapter || chapter.story_id !== id) notFound();
 
+  const pages = chapter.pages ?? [];
+  const isManga = pages.length > 0;
   const isRichContent = /<[a-z][\s\S]*>/i.test(chapter.content);
   const paragraphs = isRichContent ? [] : chapter.content.split(/\n+/).filter(Boolean);
   const statusLabel: Record<string, string> = {
@@ -54,7 +64,9 @@ export default async function AdminChapterModeratePage({
             {statusLabel[chapter.status] ?? chapter.status}
           </Badge>
           <span>
-            {chapter.word_count} {plural(chapter.word_count, t.reader.wordsLabel)}
+            {isManga
+              ? `${pages.length} sahifa`
+              : `${chapter.word_count} ${plural(chapter.word_count, t.reader.wordsLabel)}`}
           </span>
           {chapter.published_at && (
             <span>{t.admin.publishedOnLabel}: {formatDateTime(chapter.published_at, locale)}</span>
@@ -69,7 +81,19 @@ export default async function AdminChapterModeratePage({
           </div>
         )}
 
-        {isRichContent ? (
+        {isManga ? (
+          <div className="mx-auto mb-9 flex max-w-[820px] flex-col overflow-hidden rounded-[12px] bg-[#0b0b0f]">
+            {pages.map((p, i) => (
+              <img
+                key={p.url}
+                src={readSrc(p.url, 1080)}
+                alt={`Sahifa ${i + 1}`}
+                loading={i < 2 ? "eager" : "lazy"}
+                className="block w-full"
+              />
+            ))}
+          </div>
+        ) : isRichContent ? (
           <div
             className="rich-content mb-9 text-[16px] leading-8 text-ink-soft"
             dangerouslySetInnerHTML={{ __html: sanitizeHtml(chapter.content) }}

@@ -229,11 +229,15 @@ export async function updateChapter(
   const { db, viewer } = await requireViewer();
   const title = String(formData.get("title") ?? "").trim();
   const content = String(formData.get("content") ?? "").trim();
-  if (!title || !content) return false;
+  // Manga chapters send their (reordered) page images as JSON, not text.
+  const pages = ownChapterPages(pagesFromForm(formData), viewer.id);
+  const isManga = pages.length > 0;
+  if (!title) return false;
+  if (!isManga && !content) return false;
 
   let updated: Awaited<ReturnType<typeof chaptersData.updateChapter>>;
   try {
-    updated = await chaptersData.updateChapter(db, viewer, chapterId, { title, content });
+    updated = await chaptersData.updateChapter(db, viewer, chapterId, { title, content, pages: isManga ? pages : undefined });
   } catch (err) {
     if (err instanceof ChapterTooLongError) return "too_long";
     console.error("[stories] updateChapter failed", chapterId, err);

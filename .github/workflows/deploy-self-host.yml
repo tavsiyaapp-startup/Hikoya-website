@@ -111,6 +111,16 @@ jobs:
           local-dir: ./deploy-stage/.next/static/
           server-dir: /www/hikoya.org/.next/static/
           state-name: .ftp-deploy-static-state-${{ github.run_id }}-${{ github.run_attempt }}.json
+          # Recovery hardening: wipe .next/static before each upload so a run
+          # that reset mid-transfer (FTP ECONNRESET) can't leave half-created
+          # dirs that make the next run's "first publish" choke on MKD of an
+          # already-existing folder (550 ... No such file or directory). Only
+          # ever touches build artifacts here — the server-dir is .next/static,
+          # never public/uploads or .next/server. Bonus: old content-hashed
+          # chunks no longer pile up on disk (what filled the quota to begin
+          # with). Trade-off: a viewer with a pre-deploy page still open loses
+          # its old chunks, so this reloads rather than hot-swaps for them.
+          dangerous-clean-slate: true
 
       - name: Retry static assets upload (attempt 2/3)
         id: ftp-static-2

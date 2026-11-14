@@ -24,6 +24,7 @@
     "docx": "^9.7.1",
     "drizzle-orm": "^0.45.3",
     "falling-leaves": "^0.1.0",
+    "heic2any": "^0.0.4",
     "htmlparser2": "^12.0.0",
     "mammoth": "^1.12.1",
     "next": "^16.4.3",

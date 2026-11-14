@@ -6,6 +6,7 @@ import Image from "next/image";
 import { clsx } from "clsx";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 import { resizeImageFile } from "@/lib/image-resize";
+import { coverErrorText } from "@/lib/upload-error";
 import { uploadUserImage, deleteUserImage } from "@/lib/actions/uploads";
 import { createStory, addChapter } from "@/lib/actions/stories";
 import { Input } from "@/components/ui/Input";
@@ -113,11 +114,14 @@ export function CreateWizard({
       const formData = new FormData();
       formData.set("file", resized, resized.name);
       const result = await uploadUserImage("covers", formData);
-      if ("error" in result) throw new Error(result.error);
+      if ("error" in result) {
+        setCoverError(coverErrorText(t, result.error));
+        return;
+      }
       await deleteUserImage("covers", coverUrl);
       setCoverUrl(result.url);
     } catch {
-      setCoverError(t.create.coverError);
+      setCoverError(coverErrorText(t));
     } finally {
       setCoverUploading(false);
     }

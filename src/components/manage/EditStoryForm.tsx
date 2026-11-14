@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import Image from "next/image";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 import { resizeImageFile } from "@/lib/image-resize";
+import { coverErrorText } from "@/lib/upload-error";
 import { uploadUserImage, deleteUserImage } from "@/lib/actions/uploads";
 import { updateStory } from "@/lib/actions/stories";
 import { Input } from "@/components/ui/Input";
@@ -106,7 +107,10 @@ export function EditStoryForm({
       const formData = new FormData();
       formData.set("file", resized, resized.name);
       const result = await uploadUserImage("covers", formData);
-      if ("error" in result) throw new Error(result.error);
+      if ("error" in result) {
+        setCoverError(coverErrorText(t, result.error));
+        return;
+      }
       // Only safe to clean up immediately when replacing an upload from
       // earlier in this same editing session — initialCoverUrl is still
       // what the story's cover_url points to in the DB until handleSave
@@ -118,7 +122,7 @@ export function EditStoryForm({
       }
       setCoverUrl(result.url);
     } catch {
-      setCoverError(t.create.coverError);
+      setCoverError(coverErrorText(t));
     } finally {
       setCoverUploading(false);
     }

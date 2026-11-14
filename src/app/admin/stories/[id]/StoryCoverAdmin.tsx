@@ -3,6 +3,7 @@
 import { useRef, useState, useTransition } from "react";
 import { setStoryCoverAdmin, removeStoryCoverAdmin } from "@/lib/actions/admin";
 import { resizeImageFile } from "@/lib/image-resize";
+import { coverErrorText } from "@/lib/upload-error";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 import { Button } from "@/components/ui/Button";
 
@@ -32,9 +33,9 @@ export function StoryCoverAdmin({
         const formData = new FormData();
         formData.set("file", resized, resized.name);
         const result = await setStoryCoverAdmin(storyId, storySlug, formData);
-        if ("error" in result) setError(t.create.coverError);
+        if ("error" in result) setError(coverErrorText(t, result.error));
       } catch {
-        setError(t.create.coverError);
+        setError(coverErrorText(t));
       }
     });
   }

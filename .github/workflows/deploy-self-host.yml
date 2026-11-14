@@ -100,69 +100,24 @@ jobs:
       # still fails the job loudly instead of silently leaving files
       # unuploaded. YAML anchors (&/*) keep the `with:` block defined once —
       # GitHub Actions has supported them since September 2025.
-      - name: Upload static assets via FTP (additive only, never deletes)
-        id: ftp-static-1
-        continue-on-error: true
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
-        with: &ftp-static-config
-          server: ${{ secrets.FTP_SERVER }}
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          local-dir: ./deploy-stage/.next/static/
-          server-dir: /www/hikoya.org/.next/static/
-          state-name: .ftp-deploy-static-state-${{ github.run_id }}-${{ github.run_attempt }}.json
-
-      - name: Retry static assets upload (attempt 2/3)
-        id: ftp-static-2
-        if: steps.ftp-static-1.outcome == 'failure'
-        continue-on-error: true
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
-        with: *ftp-static-config
-
-      - name: Retry static assets upload (attempt 3/3)
-        if: steps.ftp-static-1.outcome == 'failure' && steps.ftp-static-2.outcome == 'failure'
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
-        with: *ftp-static-config
-
-      # This step used to reuse one fixed remote state file across every
-      # deploy (incremental diff, deletes files no longer present locally —
-      # safe here, unlike the static step, since nothing holds a reference
-      # to an old server-side chunk by hash). Found live: after the FTP
-      # ECONNRESET retries this project needed around the Better Auth
-      # rollout, two brand-new route files (/auth-test, /api/auth/[...all])
-      # kept 404ing on the live server for several deploys in a row even
-      # though the job reported success and `next build` produced them
-      # locally — the shared state file had desynced from an earlier
-      # interrupted run and the diff logic concluded those files were
-      # already uploaded when they never actually were. Keying it per
-      # run/attempt (like the static step already does) forces a full,
-      # trustworthy reupload every time instead of trusting stale state.
-      # Trade-off: with no prior state file to diff against, this step no
-      # longer deletes server files removed from the repo — they just sit
-      # unused on disk (20GB available, not worth the risk to reinstate).
-      - name: Upload via FTP
-        id: ftp-main-1
-        continue-on-error: true
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
-        with: &ftp-main-config
-          server: ${{ secrets.FTP_SERVER }}
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          local-dir: ./deploy-stage/
-          server-dir: /www/hikoya.org/
-          state-name: .ftp-deploy-main-state-${{ github.run_id }}-${{ github.run_attempt }}.json
-          exclude: |
-            **/node_modules/**
-            .next/static/**
-
-      - name: Retry main upload (attempt 2/3)
-        id: ftp-main-2
-        if: steps.ftp-main-1.outcome == 'failure'
-        continue-on-error: true
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
-        with: *ftp-main-config
-
-      - name: Retry main upload (attempt 3/3)
-        if: steps.ftp-main-1.outcome == 'failure' && steps.ftp-main-2.outcome == 'failure'
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
-        with: *ftp-main-config
+      # One resilient lftp upload replaces the six SamKirkland FTP steps.
+      # This host's FTP constantly resets the data socket (ECONNRESET), and
+      # the old action re-sent EVERY file on each run with no resume — so a
+      # full first publish (e.g. after .next/static had to be cleared) could
+      # never finish: it kept resetting partway and starting over. lftp
+      # mirrors with per-file retries (net:max-retries) and --continue, so it
+      # skips what's already uploaded and keeps retrying the resets until the
+      # whole tree is up. It also creates remote directories itself from the
+      # existing web root, so a missing .next/static no longer wedges the
+      # deploy. Additive by design: NO --delete, so public/uploads (user
+      # data, server-only) and anything else on the server is never removed —
+      # only added/overwritten. One `mirror` of the whole deploy-stage covers
+      # both .next/static and the server bundle in a single resumable pass.
+      - name: Upload to server via lftp (resilient, resumable)
+        env:
+          FTP_SERVER: ${{ secrets.FTP_SERVER }}
+          FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
+          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq lftp
+          lftp -u "$FTP_USERNAME","$FTP_PASSWORD" "$FTP_SERVER" -e "set cmd:fail-exit yes; set ftp:ssl-allow no; set net:timeout 25; set net:max-retries 25; set net:persist-retries 25; set net:reconnect-interval-base 4; set net:reconnect-interval-max 15; set mirror:parallel-transfer-count 1; mirror -R --continue --no-perms ./deploy-stage/ /www/hikoya.org/; bye"

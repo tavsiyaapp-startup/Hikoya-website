@@ -100,24 +100,27 @@ jobs:
       # still fails the job loudly instead of silently leaving files
       # unuploaded. YAML anchors (&/*) keep the `with:` block defined once —
       # GitHub Actions has supported them since September 2025.
-      # One resilient lftp upload replaces the six SamKirkland FTP steps.
-      # This host's FTP constantly resets the data socket (ECONNRESET), and
-      # the old action re-sent EVERY file on each run with no resume — so a
-      # full first publish (e.g. after .next/static had to be cleared) could
-      # never finish: it kept resetting partway and starting over. lftp
-      # mirrors with per-file retries (net:max-retries) and --continue, so it
-      # skips what's already uploaded and keeps retrying the resets until the
-      # whole tree is up. It also creates remote directories itself from the
-      # existing web root, so a missing .next/static no longer wedges the
-      # deploy. Additive by design: NO --delete, so public/uploads (user
-      # data, server-only) and anything else on the server is never removed —
-      # only added/overwritten. One `mirror` of the whole deploy-stage covers
-      # both .next/static and the server bundle in a single resumable pass.
-      - name: Upload to server via lftp (resilient, resumable)
-        env:
-          FTP_SERVER: ${{ secrets.FTP_SERVER }}
-          FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
-          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+      # FTP bypass. This host's FTP is currently unusable for a full upload —
+      # it resets the data socket on nearly every transfer, so even lftp with
+      # retries/resume ran the full 6h job limit without finishing. Until FTP
+      # is healthy again we publish the build as a downloadable artifact:
+      # download hikoya-build.zip from this run and extract it into
+      # /www/hikoya.org/ through the ISPmanager file manager (HTTP, not FTP),
+      # then press Restart. .env.production.local is deleted before zipping so
+      # no secrets enter the artifact — it already lives on the server and is
+      # left untouched there.
+      - name: Package build for manual upload (FTP bypass)
         run: |
-          sudo apt-get update -qq && sudo apt-get install -y -qq lftp
-          lftp -u "$FTP_USERNAME","$FTP_PASSWORD" "$FTP_SERVER" -e "set cmd:fail-exit yes; set ftp:ssl-allow no; set net:timeout 25; set net:max-retries 25; set net:persist-retries 25; set net:reconnect-interval-base 4; set net:reconnect-interval-max 15; set mirror:parallel-transfer-count 1; mirror -R --continue --no-perms ./deploy-stage/ /www/hikoya.org/; bye"
+          rm -f deploy-stage/.env.production.local
+          # Source maps aren't needed to run the site and roughly double the
+          # archive size, so drop them.
+          find deploy-stage -name '*.map' -delete
+          ( cd deploy-stage && zip -rq ../hikoya-build.zip . )
+          ls -lh hikoya-build.zip
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: hikoya-build
+          path: hikoya-build.zip
+          retention-days: 7

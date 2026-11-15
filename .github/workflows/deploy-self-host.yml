@@ -44,6 +44,23 @@ jobs:
           GA4_PRIVATE_KEY=${{ secrets.GA4_PRIVATE_KEY }}
           EOF
 
+      # TEMPORARY recovery step. The server's .env.production.local was lost
+      # during the disk-quota cleanup, so the running app has no DATABASE_URL
+      # (and no other secret) and every DB query fails with "DATABASE_URL is
+      # not set". Publish the freshly-assembled env file once as its own
+      # artifact so it can be restored by hand through the ISPmanager file
+      # manager. include-hidden-files is required — upload-artifact@v4 skips
+      # dotfiles by default. retention-days 1 keeps the secret-bearing artifact
+      # around only long enough to download it. REMOVE this step, and delete
+      # the hikoya-env artifact, once the file is back on the server.
+      - name: Publish env for manual recovery (TEMPORARY — remove after)
+        uses: actions/upload-artifact@v4
+        with:
+          name: hikoya-env
+          path: .env.production.local
+          include-hidden-files: true
+          retention-days: 1
+
       - name: Build
         env:
           # Stable across builds so Server Actions from a page loaded just

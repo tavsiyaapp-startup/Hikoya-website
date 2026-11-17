@@ -1,0 +1,2 @@
+# The server fetches and runs this with bash; it must stay LF or it breaks.
+deploy/deploy-pull.sh text eol=lf

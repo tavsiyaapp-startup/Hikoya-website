@@ -7,6 +7,8 @@ on:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -44,23 +46,6 @@ jobs:
           GA4_PRIVATE_KEY=${{ secrets.GA4_PRIVATE_KEY }}
           EOF
 
-      # TEMPORARY recovery step. The server's .env.production.local was lost
-      # during the disk-quota cleanup, so the running app has no DATABASE_URL
-      # (and no other secret) and every DB query fails with "DATABASE_URL is
-      # not set". Publish the freshly-assembled env file once as its own
-      # artifact so it can be restored by hand through the ISPmanager file
-      # manager. include-hidden-files is required — upload-artifact@v4 skips
-      # dotfiles by default. retention-days 1 keeps the secret-bearing artifact
-      # around only long enough to download it. REMOVE this step, and delete
-      # the hikoya-env artifact, once the file is back on the server.
-      - name: Publish env for manual recovery (TEMPORARY — remove after)
-        uses: actions/upload-artifact@v4
-        with:
-          name: hikoya-env
-          path: .env.production.local
-          include-hidden-files: true
-          retention-days: 1
-
       - name: Build
         env:
           # Stable across builds so Server Actions from a page loaded just
@@ -90,52 +75,46 @@ jobs:
             }, null, 2));
           "
 
-      # Uploaded separately, with a state file unique to this run (never
-      # reused), so this action never sees these as "previously deployed"
-      # and never deletes any of them — only adds. Without this, its normal
-      # diff-sync deletes any chunk whose content-hashed filename changed
-      # since the last deploy, which breaks CSS/JS for anyone who still has
-      # an older page open (or a bfcache/back-forward restore) referencing
-      # the now-removed old hash — the actual cause of "some users get the
-      # site with no styling at all" after a run of frequent deploys.
+      # The server pulls the build itself. FTP on this host is unusable (it
+      # resets the data socket on nearly every transfer), and the account has
+      # no SSH — so instead of pushing files, we publish the build to a
+      # rolling GitHub Release ("deploy-latest") and a cron job on the server
+      # fetches and extracts it. The repo is public, so the release asset URLs
+      # need no token on the server side.
       #
-      # run_id-run_attempt (not just github.sha) — an FTP ECONNRESET mid-
-      # upload happens often on this host, and `gh run rerun --failed`
-      # reruns the same commit, so a sha-only key would make the retry
-      # reuse the previous attempt's state file and trust it as already
-      # uploaded for files whose transfer never actually completed,
-      # silently leaving them missing on the server (found live: several
-      # chunks 404ing after a run of retried deploys). Keying by attempt
-      # too means every retry starts with a clean slate.
+      # .env.production.local is stripped before zipping — it already lives on
+      # the server and must never enter a public artifact. The server extracts
+      # with overwrite-merge (never delete), so public/uploads/* and the
+      # server's own .env are left untouched, and old hashed .next chunks are
+      # kept for anyone with a stale page open (bfcache safety).
       #
-      # Both FTP steps below retry themselves up to 3 times in-job: the
-      # host's FTP server resets the data socket (ECONNRESET) often enough
-      # that nearly every deploy this project has done needed at least one
-      # manual `gh run rerun --failed`. continue-on-error on the first two
-      # attempts means a transient reset doesn't fail the job outright; the
-      # final attempt has no continue-on-error, so three resets in a row
-      # still fails the job loudly instead of silently leaving files
-      # unuploaded. YAML anchors (&/*) keep the `with:` block defined once —
-      # GitHub Actions has supported them since September 2025.
-      # FTP bypass. This host's FTP is currently unusable for a full upload —
-      # it resets the data socket on nearly every transfer, so even lftp with
-      # retries/resume ran the full 6h job limit without finishing. Until FTP
-      # is healthy again we publish the build as a downloadable artifact:
-      # download hikoya-build.zip from this run and extract it into
-      # /www/hikoya.org/ through the ISPmanager file manager (HTTP, not FTP),
-      # then press Restart. .env.production.local is deleted before zipping so
-      # no secrets enter the artifact — it already lives on the server and is
-      # left untouched there.
-      - name: Package build for manual upload (FTP bypass)
+      # BUILD_SHA.txt is the change gate: the cron downloads this tiny file and
+      # only pulls the (large) zip when its SHA differs from what it last
+      # deployed. The zip is uploaded BEFORE BUILD_SHA.txt so the gate can
+      # never point at a build that isn't fully uploaded yet.
+      - name: Package build for deploy
         run: |
           rm -f deploy-stage/.env.production.local
           # Source maps aren't needed to run the site and roughly double the
           # archive size, so drop them.
           find deploy-stage -name '*.map' -delete
           ( cd deploy-stage && zip -rq ../hikoya-build.zip . )
+          echo "${{ github.sha }}" > BUILD_SHA.txt
           ls -lh hikoya-build.zip
 
-      - name: Upload build artifact
+      - name: Publish build to rolling release (server cron pulls this)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG=deploy-latest
+          gh release view "$TAG" >/dev/null 2>&1 || \
+            gh release create "$TAG" --latest=false \
+              --title "Latest build (auto)" \
+              --notes "Rolling build the server cron deploy pulls. Replaced on every push to main."
+          # zip first, then the SHA gate, so the gate never leads the payload.
+          gh release upload "$TAG" hikoya-build.zip BUILD_SHA.txt --clobber
+
+      - name: Upload build artifact (manual fallback)
         uses: actions/upload-artifact@v4
         with:
           name: hikoya-build

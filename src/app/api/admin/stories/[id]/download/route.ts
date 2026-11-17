@@ -36,11 +36,21 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   }
 
   const filename = `${sanitizeFilename(story.title) || "story"}.docx`;
+  // The quoted `filename=` part of Content-Disposition is a raw HTTP header
+  // value, which must be Latin1 (a ByteString, char codes 0–255). A Cyrillic
+  // or Uzbek title — e.g. the "ʻ" (U+02BB, code 699) in "oʻ"/"gʻ" — has code
+  // points above 255, so building the response throws "Cannot convert argument
+  // to a ByteString" (uncaught here, since it happens after buildStoryDocx) and
+  // the admin just sees a 500 / failed download. So the quoted fallback is
+  // reduced to ASCII; the real UTF-8 name rides in the RFC 5987 filename*=
+  // field, which is percent-encoded (pure ASCII) and is what modern browsers
+  // actually use for the saved file name.
+  const asciiFilename = filename.replace(/[^\x20-\x7E]/g, "_");
 
   return new NextResponse(new Uint8Array(buffer), {
     headers: {
       "Content-Type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-      "Content-Disposition": `attachment; filename="${filename}"; filename*=UTF-8''${encodeURIComponent(filename)}`,
+      "Content-Disposition": `attachment; filename="${asciiFilename}"; filename*=UTF-8''${encodeURIComponent(filename)}`,
     },
   });
 }

@@ -72,6 +72,7 @@ const ru = {
     weekTitle: "Новые главы за неделю",
     weekChaptersAddedN: "Добавлено {n} глав(ы)",
     finishedTitle: "Завершённые истории",
+    mangaTitle: "Комиксы и манга",
     fantasyTitle: "Фэнтези и фантастика",
     romanceDramaTitle: "Романтика и драма",
     historicalTitle: "Исторические",

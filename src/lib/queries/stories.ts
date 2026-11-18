@@ -133,6 +133,19 @@ export const getFinishedStories = withFallback(
   () => ({ items: [], total: 0 })
 );
 
+// Comics/manga works (stories.kind = 'manga'), most-liked first — powers the
+// home "Komiks va manga" carousel. Same shape as the genre rows.
+export const getMangaStories = withFallback(
+  "getMangaStories",
+  unstable_cache(
+  (limit = 8, offset = 0) =>
+    queryPublicStories(desc(stories.like_count), limit, offset, eq(stories.kind, "manga"), false),
+  ["manga-stories"],
+  { revalidate: CACHE_SECONDS, tags: ["stories"] }
+  ),
+  () => ({ items: [], total: 0 })
+);
+
 // True for a story that has any genre whose name matches one of the ILIKE
 // patterns — used for the home-page genre carousels. Matching by name (not a
 // fixed id) means author-typed genres like "romantic fantasy" count too, and

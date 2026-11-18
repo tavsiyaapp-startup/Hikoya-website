@@ -13,6 +13,7 @@ import {
   getHeroSlides,
   getAnnouncements,
   getFinishedStories,
+  getMangaStories,
   getFantasyStories,
   getRomanceDramaStories,
   getHistoricalStories,
@@ -122,10 +123,11 @@ async function HomeSections({
   // are genuinely public.
   const feedTabs: readonly HomeTab[] = user ? HOME_TABS : HOME_TABS.filter((k) => k === "popular" || k === "new");
 
-  const [feedResults, weeklyResult, finishedResult, fantasyResult, romanceDramaResult, historicalResult, detectiveResult, collectionsResult] = await Promise.all([
+  const [feedResults, weeklyResult, finishedResult, mangaResult, fantasyResult, romanceDramaResult, historicalResult, detectiveResult, collectionsResult] = await Promise.all([
     Promise.all(feedTabs.map((key) => getFeedForTab(key, user?.id, PAGE_SIZE_FEED, 0))),
     getRecentPublishedChapters(PAGE_SIZE_WEEK, 0),
     getFinishedStories(PAGE_SIZE_FEED, 0),
+    getMangaStories(PAGE_SIZE_FEED, 0),
     getFantasyStories(PAGE_SIZE_FEED, 0),
     getRomanceDramaStories(PAGE_SIZE_FEED, 0),
     getHistoricalStories(PAGE_SIZE_FEED, 0),
@@ -136,6 +138,7 @@ async function HomeSections({
 
   const weeklyGroups = weeklyResult.items;
   const finishedStories = finishedResult.items;
+  const mangaStories = mangaResult.items;
   const fantasyStories = fantasyResult.items;
   const romanceDramaStories = romanceDramaResult.items;
   const historicalStories = historicalResult.items;
@@ -213,12 +216,53 @@ async function HomeSections({
               )}
             </div>
 
-            {/* Right after "Новинки" — readers who want a complete story to
-                binge, not an ongoing one they'd have to wait on. */}
+            {/* After "Новинки": comics/manga, then completed stories (a
+                binge for readers who want a finished work), then the genre
+                rows. */}
             {key === "new" && (
               <>
+              {/* Komiks/Manga — the comic/manga work type (stories.kind). */}
+              <div>
+                <div className="mb-4.5 flex items-baseline gap-3.5">
+                  <h2 className="text-2xl font-extrabold tracking-tight">{t.home.mangaTitle}</h2>
+                  <Link prefetch={false} href={`${ROUTES.search}?kind=manga`} className="ml-auto text-[14px] font-semibold">
+                    {t.common.all}
+                  </Link>
+                </div>
+                {mangaStories.length > 0 ? (
+                  <div className="mb-11">
+                    <StoryCarousel>
+                      {mangaStories.map((story) => (
+                        <StoryCard key={story.id} story={story} />
+                      ))}
+                    </StoryCarousel>
+                  </div>
+                ) : (
+                  <EmptyRow className="mb-11" />
+                )}
+              </div>
+              {/* Completed stories, right after Komiks/Manga. */}
+              <div>
+                <div className="mb-4.5 flex items-baseline gap-3.5">
+                  <h2 className="text-2xl font-extrabold tracking-tight">{t.home.finishedTitle}</h2>
+                  <Link prefetch={false} href={`${ROUTES.search}?progress=finished`} className="ml-auto text-[14px] font-semibold">
+                    {t.common.all}
+                  </Link>
+                </div>
+                {finishedStories.length > 0 ? (
+                  <div className="mb-11">
+                    <StoryCarousel>
+                      {finishedStories.map((story) => (
+                        <StoryCard key={story.id} story={story} />
+                      ))}
+                    </StoryCarousel>
+                  </div>
+                ) : (
+                  <EmptyRow className="mb-11" />
+                )}
+              </div>
               {/* Fantasy family (Фэнтези / fantastika / dark & romantic
-                  fantasy…) right after "New". */}
+                  fantasy…). */}
               <div>
                 <div className="mb-4.5 flex items-baseline gap-3.5">
                   <h2 className="text-2xl font-extrabold tracking-tight">{t.home.fantasyTitle}</h2>
@@ -287,25 +331,6 @@ async function HomeSections({
                   <div className="mb-11">
                     <StoryCarousel>
                       {detectiveStories.map((story) => (
-                        <StoryCard key={story.id} story={story} />
-                      ))}
-                    </StoryCarousel>
-                  </div>
-                ) : (
-                  <EmptyRow className="mb-11" />
-                )}
-              </div>
-              <div>
-                <div className="mb-4.5 flex items-baseline gap-3.5">
-                  <h2 className="text-2xl font-extrabold tracking-tight">{t.home.finishedTitle}</h2>
-                  <Link prefetch={false} href={`${ROUTES.search}?progress=finished`} className="ml-auto text-[14px] font-semibold">
-                    {t.common.all}
-                  </Link>
-                </div>
-                {finishedStories.length > 0 ? (
-                  <div className="mb-11">
-                    <StoryCarousel>
-                      {finishedStories.map((story) => (
                         <StoryCard key={story.id} story={story} />
                       ))}
                     </StoryCarousel>

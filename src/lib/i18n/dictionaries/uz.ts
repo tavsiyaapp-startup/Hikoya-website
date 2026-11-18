@@ -74,6 +74,7 @@ const uz: typeof ru = {
     weekTitle: "Hafta yangi boblari",
     weekChaptersAddedN: "{n} ta bob qoʻshildi",
     finishedTitle: "Yakunlangan hikoyalar",
+    mangaTitle: "Komiks va manga",
     fantasyTitle: "Fantastika va fentezi",
     romanceDramaTitle: "Romantika va drama",
     historicalTitle: "Tarixiy",

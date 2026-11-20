@@ -29,6 +29,21 @@ export type UploadBucket = "covers" | "avatars" | "chapter-images" | "hero-slide
 // XSS on hikoya.org. Only these raster formats are ever written to disk.
 const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
 
+// A browser-side resize runs before every upload (lib/image-resize.ts), but it
+// can be skipped — JS off, a decode failure in the browser, or a direct API
+// call — so the server bounds what it actually stores. Above this largest-side
+// an image is downscaled here before being written; an already client-resized
+// cover (<=1440) or manga page (<=2200) never reaches it. Without this, a
+// 6000x8000 upload sits on disk at full resolution and the thumbnailer (sharp,
+// in readUploadThumb) can exhaust memory decoding it on first view and take the
+// whole single-process site down.
+const SERVER_MAX_DIMENSION = 2600;
+
+// Hard ceiling on decoded pixels: sharp refuses to decode above this, so a tiny
+// "image bomb" (e.g. a 100 MP PNG in a few hundred KB) throws instead of
+// allocating gigabytes. ~6300x6300.
+const MAX_INPUT_PIXELS = 40_000_000;
+
 export class InvalidUploadError extends Error {
   constructor(message: string) {
     super(message);
@@ -86,11 +101,44 @@ export function uploadUrlPrefix(bucket: UploadBucket, ownerId: string): string {
   return `${PUBLIC_PREFIX}/${bucket}/${ownerId}/`;
 }
 
+// Server-side safety net: keep every stored image within SERVER_MAX_DIMENSION
+// so the on-view thumbnailer never has to decode a giant one. Only oversized
+// images are touched (and re-encoded to JPEG); a normal, already client-resized
+// upload is written through untouched. GIFs are left alone to preserve
+// animation. A metadata read that fails falls through to storing the original
+// (its magic bytes were already validated) rather than rejecting a real image.
+async function normalizeForStorage(buffer: Buffer, extension: string): Promise<{ buffer: Buffer; extension: string }> {
+  if (extension === ".gif") return { buffer, extension };
+  let width = 0;
+  let height = 0;
+  try {
+    const meta = await sharp(buffer, { limitInputPixels: MAX_INPUT_PIXELS }).metadata();
+    width = meta.width ?? 0;
+    height = meta.height ?? 0;
+  } catch {
+    return { buffer, extension };
+  }
+  if (Math.max(width, height) <= SERVER_MAX_DIMENSION) return { buffer, extension };
+  try {
+    const out = await sharp(buffer, { limitInputPixels: MAX_INPUT_PIXELS })
+      .rotate()
+      .resize({ width: SERVER_MAX_DIMENSION, height: SERVER_MAX_DIMENSION, fit: "inside", withoutEnlargement: true })
+      .jpeg({ quality: 82 })
+      .toBuffer();
+    return { buffer: out, extension: ".jpg" };
+  } catch {
+    // Oversized and we couldn't shrink it (over the pixel ceiling — an image
+    // bomb) — refuse it rather than store something that can OOM the server later.
+    throw new InvalidUploadError("image dimensions too large");
+  }
+}
+
 async function writeUpload(bucket: UploadBucket, ownerId: string, buffer: Buffer, extension: string): Promise<string> {
-  const fileName = `${Date.now()}-${randomSegment()}${extension}`;
+  const normalized = await normalizeForStorage(buffer, extension);
+  const fileName = `${Date.now()}-${randomSegment()}${normalized.extension}`;
   const dir = path.join(UPLOADS_ROOT, bucket, ownerId);
   await mkdir(dir, { recursive: true });
-  await writeFile(path.join(dir, fileName), buffer);
+  await writeFile(path.join(dir, fileName), normalized.buffer);
   return `${uploadUrlPrefix(bucket, ownerId)}${fileName}`;
 }
 
@@ -161,7 +209,7 @@ export async function readUploadThumb(relative: string, width: number): Promise<
   const original = await readUpload(relative);
   if (!original) return null;
   try {
-    const data = await sharp(original.data).rotate().resize({ width, withoutEnlargement: true }).webp({ quality: 78 }).toBuffer();
+    const data = await sharp(original.data, { limitInputPixels: MAX_INPUT_PIXELS }).rotate().resize({ width, withoutEnlargement: true }).webp({ quality: 78 }).toBuffer();
     await mkdir(path.dirname(cacheFile), { recursive: true });
     await writeFile(cacheFile, data);
     return { data, contentType: "image/webp" };

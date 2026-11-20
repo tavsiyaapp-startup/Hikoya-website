@@ -18,6 +18,28 @@ function thumb(url: string): string {
   return url.startsWith("/uploads/") ? `/thumb/${url.slice("/uploads/".length)}?w=240` : url;
 }
 
+// Why a given page didn't upload. Quota-full and rate-limit are handled
+// separately (they stop the whole batch), so they're not in here.
+type DropReason = "not_image" | "too_large" | "bad_format" | "failed";
+type Drop = { name: string; reason: DropReason };
+
+const DROP_REASON_TEXT: Record<DropReason, string> = {
+  not_image: "Rasm emas",
+  too_large: "Juda katta (10 MB dan oshiq)",
+  bad_format: "Formati qo‘llab-quvvatlanmaydi (JPG, PNG, WEBP yoki GIF kerak)",
+  failed: "Yuklab bo‘lmadi, qayta urinib ko‘ring",
+};
+
+function groupDrops(drops: Drop[]): [DropReason, string[]][] {
+  const map = new Map<DropReason, string[]>();
+  for (const d of drops) {
+    const names = map.get(d.reason) ?? [];
+    names.push(d.name);
+    map.set(d.reason, names);
+  }
+  return [...map.entries()];
+}
+
 export function MangaChapterUploader({
   pages,
   onChange,
@@ -26,7 +48,8 @@ export function MangaChapterUploader({
   onChange: (pages: MangaPageData[]) => void;
 }) {
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
-  const [skipped, setSkipped] = useState<string[]>([]);
+  const [skipped, setSkipped] = useState<Drop[]>([]);
+  const [blockMsg, setBlockMsg] = useState<"quota" | "rate" | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const dragFrom = useRef<number | null>(null);
 
@@ -38,14 +61,16 @@ export function MangaChapterUploader({
         a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" })
       );
       setSkipped([]);
+      setBlockMsg(null);
       setProgress({ done: 0, total: list.length });
-      const dropped: string[] = [];
+      const dropped: Drop[] = [];
       const added: MangaPageData[] = [];
+      let blocked: "quota" | "rate" | null = null;
       // Sequential: the upload action rate-limits per user, and this keeps the
       // 3-core server from a burst of parallel sharp thumbnailing later.
       for (const file of list) {
         if (!file.type.startsWith("image/")) {
-          dropped.push(file.name);
+          dropped.push({ name: file.name, reason: "not_image" });
           setProgress((p) => (p ? { ...p, done: p.done + 1 } : p));
           continue;
         }
@@ -56,13 +81,24 @@ export function MangaChapterUploader({
             quality: PAGE_JPEG_QUALITY,
           });
           if (resized.size > MAX_FILE_MB * 1024 * 1024) {
-            dropped.push(file.name);
+            dropped.push({ name: file.name, reason: "too_large" });
           } else {
             const fd = new FormData();
             fd.set("file", resized, resized.name);
             const res = await uploadUserImage("chapter-images", fd);
             if ("error" in res) {
-              dropped.push(file.name);
+              // Quota-full and rate-limit are chapter-level — every remaining
+              // page fails the same way, so stop and show one clear message
+              // instead of a wall of identical per-file errors.
+              if (res.error === "quota_exceeded") {
+                blocked = "quota";
+                break;
+              }
+              if (res.error === "rate_limited") {
+                blocked = "rate";
+                break;
+              }
+              dropped.push({ name: file.name, reason: res.error === "invalid_file" ? "bad_format" : "failed" });
             } else {
               let w: number | undefined;
               let h: number | undefined;
@@ -78,12 +114,13 @@ export function MangaChapterUploader({
             }
           }
         } catch {
-          dropped.push(file.name);
+          dropped.push({ name: file.name, reason: "failed" });
         }
         setProgress((p) => (p ? { ...p, done: p.done + 1 } : p));
       }
       if (added.length > 0) onChange([...pages, ...added]);
       setSkipped(dropped);
+      setBlockMsg(blocked);
       setProgress(null);
       if (inputRef.current) inputRef.current.value = "";
     },
@@ -145,10 +182,24 @@ export function MangaChapterUploader({
         Rasmlar ~{PAGE_MAX_WIDTH}px gacha kichraytirilib yuklanadi.
       </p>
 
-      {skipped.length > 0 && (
+      {blockMsg === "quota" && (
         <p className="mb-4 rounded-[10px] bg-danger-bg px-3.5 py-2.5 text-[12.5px] text-danger">
-          Yuklanmadi (rasm emas yoki juda katta): {skipped.join(", ")}
+          Saqlash joyi to‘ldi (hisobingiz uchun 300 MB chegara). Eski sahifa yoki muqovalarni o‘chiring, yoki administratorga murojaat qiling.
         </p>
+      )}
+      {blockMsg === "rate" && (
+        <p className="mb-4 rounded-[10px] bg-danger-bg px-3.5 py-2.5 text-[12.5px] text-danger">
+          Qisqa vaqtda juda ko‘p rasm yuklandi. Bir ozdan so‘ng qolgan sahifalarni “Yana sahifa qo‘shish” orqali davom ettiring.
+        </p>
+      )}
+      {skipped.length > 0 && (
+        <div className="mb-4 space-y-1 rounded-[10px] bg-danger-bg px-3.5 py-2.5 text-[12.5px] text-danger">
+          {groupDrops(skipped).map(([reason, names]) => (
+            <p key={reason}>
+              <span className="font-semibold">{DROP_REASON_TEXT[reason]}:</span> {names.join(", ")}
+            </p>
+          ))}
+        </div>
       )}
 
       {pages.length === 0 ? (

@@ -22,8 +22,11 @@ const USER_BUCKETS: readonly string[] = ["covers", "avatars", "chapter-images"];
 const STAFF_BUCKETS: readonly string[] = ["hero-slides", "announcements"];
 
 // Burst cap per account per hour; the total-on-disk cap lives in
-// server/storage/local.ts (USER_UPLOAD_QUOTA_BYTES).
-const USER_UPLOADS_PER_HOUR = 60;
+// server/storage/local.ts (USER_UPLOAD_QUOTA_BYTES). Set high enough for a
+// manga/comic chapter, which uploads one request per page — dozens of pages,
+// and a retry re-sends them all — so a legitimate chapter can't trip it; disk
+// is still bounded by the 300 MB per-user quota regardless of this number.
+const USER_UPLOADS_PER_HOUR = 300;
 
 async function requireViewerId(): Promise<string | null> {
   const session = await getAuth().api.getSession({ headers: await headers() });

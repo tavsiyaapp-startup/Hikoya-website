@@ -6,6 +6,7 @@ import { getCurrentUser } from "@/lib/current-user";
 import { logQueryError, withFallback } from "@/lib/queries/query-errors";
 import { getDb } from "@/server/db/client";
 import {
+  ageRating,
   bookmarks,
   chapters,
   collectionItems,
@@ -22,6 +23,7 @@ import {
   readingStatuses,
   savedCollections,
   stories,
+  storyProgressStatus,
   storyTags,
   tags,
 } from "@/server/db/schema";
@@ -817,9 +819,17 @@ export const searchStories = withFallback(
       if (filters.language) conditions.push(eq(stories.language, filters.language));
       if (filters.kind) conditions.push(eq(stories.kind, filters.kind));
       if (filters.genre) conditions.push(arrayOverlaps(stories.genres, genreVariants(filters.genre)));
-      if (filters.progressStatus)
+      // Validate enum filters against their allowed values before they reach
+      // Postgres. A stray value from a crawler or a mangled link — notably
+      // "0+" in a URL, where "+" decodes to a space, giving "0 " — would
+      // otherwise throw 22P02 ("invalid input value for enum") on every single
+      // request and get logged (twice, via the inner catch and withFallback) —
+      // a steady, pointless drip into the server logs. Invalid values are just
+      // ignored, exactly as `kind` already is.
+      if (filters.progressStatus && (storyProgressStatus.enumValues as readonly string[]).includes(filters.progressStatus))
         conditions.push(eq(stories.progress_status, filters.progressStatus as typeof stories.$inferSelect.progress_status));
-      if (filters.age) conditions.push(eq(stories.age_rating, filters.age as typeof stories.$inferSelect.age_rating));
+      if (filters.age && (ageRating.enumValues as readonly string[]).includes(filters.age))
+        conditions.push(eq(stories.age_rating, filters.age as typeof stories.$inferSelect.age_rating));
       if (filters.relationship) conditions.push(eq(stories.relationship_type, filters.relationship));
 
       if (filters.style) {

@@ -226,6 +226,38 @@ export async function postComment(
   return { ok: true };
 }
 
+// Edit one's OWN comment. Ownership is enforced in the WHERE clause (user_id =
+// viewer.id) as well as the up-front check, so a crafted call can't touch
+// anyone else's. A hidden (moderator-removed) comment can't be edited back into
+// view. edited_at is stamped so the UI can show an "(edited)" marker.
+export async function editComment(
+  commentId: string,
+  text: string,
+  isSpoiler: boolean,
+  path: string
+): Promise<PostCommentResult> {
+  const viewer = await requireActiveViewer();
+  if (!viewer) return { error: "unauthorized" };
+  const trimmed = text.trim();
+  if (!trimmed) return { error: "empty" };
+  if (trimmed.length > MAX_COMMENT_LENGTH) return { error: "too_long" };
+
+  const db = getDb();
+  const [row] = await db
+    .select({ user_id: comments.user_id, hidden_at: comments.hidden_at })
+    .from(comments)
+    .where(eq(comments.id, commentId))
+    .limit(1);
+  if (!row || row.user_id !== viewer.id || row.hidden_at) return { error: "not_allowed" };
+
+  await db
+    .update(comments)
+    .set({ text: trimmed, is_spoiler: Boolean(isSpoiler), edited_at: new Date() })
+    .where(and(eq(comments.id, commentId), eq(comments.user_id, viewer.id)));
+  revalidateClientPath(path);
+  return { ok: true };
+}
+
 export async function toggleCommentLike(commentId: string, path: string): Promise<ToggleResult> {
   const viewer = await requireActiveViewer();
   if (!viewer) return null;

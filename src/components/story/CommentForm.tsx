@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
-import { postComment } from "@/lib/actions/social";
+import { postComment, editComment } from "@/lib/actions/social";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 import { Button } from "@/components/ui/Button";
 import { Textarea } from "@/components/ui/Textarea";
@@ -16,6 +16,11 @@ export function CommentForm({
   onSuccess,
   autoFocus,
   blocked,
+  editCommentId,
+  initialText,
+  initialSpoiler,
+  onCancel,
+  onEdited,
 }: {
   storyId: string;
   // null when posting from the story page's own "Комментарии" tab (all
@@ -27,10 +32,19 @@ export function CommentForm({
   autoFocus?: boolean;
   // Blocked accounts see a notice instead of the form.
   blocked?: boolean;
+  // Edit mode: when set, the form edits this existing comment (its own author
+  // only, enforced server-side) instead of posting a new one.
+  editCommentId?: string;
+  initialText?: string;
+  initialSpoiler?: boolean;
+  onCancel?: () => void;
+  // Called after a successful edit with the saved values, so the parent can
+  // update what it shows without a refetch.
+  onEdited?: (text: string, isSpoiler: boolean) => void;
 }) {
   const { t } = useLocale();
-  const [text, setText] = useState("");
-  const [isSpoiler, setIsSpoiler] = useState(false);
+  const [text, setText] = useState(initialText ?? "");
+  const [isSpoiler, setIsSpoiler] = useState(initialSpoiler ?? false);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const formRef = useRef<HTMLFormElement>(null);
@@ -44,13 +58,21 @@ export function CommentForm({
       // The text is only cleared once the server confirms the comment was
       // saved. Before, a refused comment (too long, blocked account, story
       // no longer visible) was silently dropped and the text vanished.
-      const result = await postComment(storyId, chapterId, text, path, parentId, isSpoiler);
+      const result = editCommentId
+        ? await editComment(editCommentId, text, isSpoiler, path)
+        : await postComment(storyId, chapterId, text, path, parentId, isSpoiler);
       if ("error" in result) {
         setError(result.error === "too_long" ? t.reader.commentTooLong : t.reader.commentPostError);
         return;
       }
-      setText("");
-      setIsSpoiler(false);
+      // Keep the text in edit mode (the parent closes the form on success); only
+      // the new-comment/reply form resets itself for the next one.
+      if (editCommentId) {
+        onEdited?.(text.trim(), isSpoiler);
+      } else {
+        setText("");
+        setIsSpoiler(false);
+      }
       onSuccess?.();
     });
   }
@@ -98,9 +120,20 @@ export function CommentForm({
           />
           {t.reader.spoilerCheckboxLabel}
         </label>
-        <Button type="submit" disabled={pending || !text.trim()} className="shrink-0">
-          {parentId ? t.manage.reply : t.reader.commentSubmit}
-        </Button>
+        <div className="flex shrink-0 items-center gap-2">
+          {editCommentId && onCancel && (
+            <button
+              type="button"
+              onClick={onCancel}
+              className="shrink-0 px-2 text-[13px] font-semibold text-muted-2 hover:text-ink-soft"
+            >
+              {t.common.cancel}
+            </button>
+          )}
+          <Button type="submit" disabled={pending || !text.trim()} className="shrink-0">
+            {editCommentId ? t.common.save : parentId ? t.manage.reply : t.reader.commentSubmit}
+          </Button>
+        </div>
       </div>
       {error && <p className="text-[12.5px] text-danger">{error}</p>}
     </form>

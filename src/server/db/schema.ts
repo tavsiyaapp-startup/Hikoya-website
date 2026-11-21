@@ -278,6 +278,10 @@ export const comments = pgTable("comments", {
   text: text("text").notNull(),
   like_count: integer("like_count").default(0).notNull(),
   created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  // Set when the author edits their own comment; null = never edited. Drives
+  // the "(edited)" marker in the UI. Nullable with no default, so the matching
+  // `ALTER TABLE comments ADD COLUMN edited_at timestamptz;` is instant.
+  edited_at: timestamp("edited_at", { withTimezone: true }),
   is_spoiler: boolean("is_spoiler").default(false).notNull(),
   story_id: uuid("story_id").notNull().references(() => stories.id, { onDelete: "cascade" }),
   hidden_at: timestamp("hidden_at", { withTimezone: true }),

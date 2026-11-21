@@ -158,6 +158,7 @@ export type CommentRow = {
   text: string;
   like_count: number;
   created_at: string;
+  edited_at: string | null;
   is_spoiler: boolean;
   user: { display_name: string } | null;
 };
@@ -194,6 +195,7 @@ const COMMENT_COLUMNS = {
   text: comments.text,
   like_count: comments.like_count,
   created_at: comments.created_at,
+  edited_at: comments.edited_at,
   is_spoiler: comments.is_spoiler,
   user: { display_name: profiles.display_name },
 };
@@ -229,7 +231,11 @@ async function loadThreads(scope: ReturnType<typeof eq>) {
 export async function getChapterComments(chapterId: string): Promise<CommentWithReplies[]> {
   try {
     const rows = await loadThreads(eq(comments.chapter_id, chapterId));
-    const all: CommentRow[] = rows.map((r) => ({ ...r, created_at: r.created_at.toISOString() }));
+    const all: CommentRow[] = rows.map((r) => ({
+      ...r,
+      created_at: r.created_at.toISOString(),
+      edited_at: r.edited_at ? r.edited_at.toISOString() : null,
+    }));
     return buildThreads(all);
   } catch (err) {
     console.error("getChapterComments failed:", err);
@@ -261,6 +267,7 @@ export async function getStoryComments(storyId: string): Promise<StoryCommentThr
     const all: StoryCommentRow[] = rows.map((r) => ({
       ...r,
       created_at: r.created_at.toISOString(),
+      edited_at: r.edited_at ? r.edited_at.toISOString() : null,
       chapter: r.chapter_id ? chapterById.get(r.chapter_id) ?? null : null,
     }));
     return buildThreads(all);

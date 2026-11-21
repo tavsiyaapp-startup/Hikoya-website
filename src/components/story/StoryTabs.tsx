@@ -104,11 +104,29 @@ export function StoryTabs({
         ) : comments.length > 0 ? (
           comments.map((c) => (
             <div key={c.id} className="flex flex-col gap-2.5">
-              <StoryCommentCard comment={c} slug={slug} viewerId={viewerId} />
+              <StoryCommentCard
+                comment={c}
+                slug={slug}
+                viewerId={viewerId}
+                storyId={storyId}
+                path={path}
+                blocked={isBlocked}
+                onReplyPosted={reload}
+              />
               {c.replies.length > 0 && (
                 <div className="ml-10.5 flex flex-col gap-2.5">
                   {c.replies.map((r) => (
-                    <StoryCommentCard key={r.id} comment={r} slug={slug} isReply viewerId={viewerId} />
+                    <StoryCommentCard
+                      key={r.id}
+                      comment={r}
+                      slug={slug}
+                      isReply
+                      viewerId={viewerId}
+                      storyId={storyId}
+                      path={path}
+                      blocked={isBlocked}
+                      onReplyPosted={reload}
+                    />
                   ))}
                 </div>
               )}

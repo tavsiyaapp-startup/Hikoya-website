@@ -11,6 +11,8 @@ const ru = {
     reset: "Сбросить",
     save: "Сохранить",
     cancel: "Отмена",
+    edit: "Изменить",
+    edited: "изменено",
     back: "Назад",
     next: "Далее",
     showMore: "Показать ещё",

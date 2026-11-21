@@ -13,6 +13,8 @@ const uz: typeof ru = {
     reset: "Bekor qilish",
     save: "Saqlash",
     cancel: "Bekor qilish",
+    edit: "Oʻzgartirish",
+    edited: "tahrirlangan",
     back: "Orqaga",
     next: "Keyingi",
     showMore: "Yana koʻrsatish",

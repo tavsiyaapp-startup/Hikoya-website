@@ -43,6 +43,11 @@ export function CommentItem({
   const [replying, setReplying] = useState(false);
   const [spoilerRevealed, setSpoilerRevealed] = useState(false);
   const [, startTransition] = useTransition();
+  // Local copies so an edit shows immediately without a refetch.
+  const [text, setText] = useState(comment.text);
+  const [isSpoiler, setIsSpoiler] = useState(comment.is_spoiler);
+  const [editedAt, setEditedAt] = useState(comment.edited_at);
+  const [editing, setEditing] = useState(false);
 
   function handleLike() {
     const previous = liked;
@@ -69,8 +74,28 @@ export function CommentItem({
             <span className="text-[12.5px] text-muted-3">
               {formatDate(comment.created_at, locale)}
             </span>
+            {editedAt && <span className="text-[12px] text-muted-3">({t.common.edited})</span>}
           </div>
-          {comment.is_spoiler && !spoilerRevealed ? (
+          {editing ? (
+            <div className="mb-2.5">
+              <CommentForm
+                storyId={storyId}
+                chapterId={chapterId}
+                path={path}
+                editCommentId={comment.id}
+                initialText={text}
+                initialSpoiler={isSpoiler}
+                autoFocus
+                onCancel={() => setEditing(false)}
+                onEdited={(newText, newSpoiler) => {
+                  setText(newText);
+                  setIsSpoiler(newSpoiler);
+                  setEditedAt(new Date().toISOString());
+                }}
+                onSuccess={() => setEditing(false)}
+              />
+            </div>
+          ) : isSpoiler && !spoilerRevealed ? (
             <button
               type="button"
               onClick={() => setSpoilerRevealed(true)}
@@ -82,14 +107,14 @@ export function CommentItem({
           ) : (
             <div className="mb-2.5">
               <p className="text-[14.5px] leading-relaxed text-ink-soft">
-                {comment.is_spoiler && (
+                {isSpoiler && (
                   <span className="mr-1.5 rounded-md bg-danger-bg px-1.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-danger">
                     {t.reader.spoilerBadge}
                   </span>
                 )}
-                {comment.text}
+                {text}
               </p>
-              {comment.is_spoiler && (
+              {isSpoiler && (
                 <button
                   type="button"
                   onClick={() => setSpoilerRevealed(false)}
@@ -101,29 +126,40 @@ export function CommentItem({
               )}
             </div>
           )}
-          <div className="flex flex-wrap items-center gap-4">
-            <button
-              type="button"
-              onClick={handleLike}
-              className={clsx(
-                "flex cursor-pointer items-center gap-1.5 text-[13px] font-bold transition",
-                liked ? "text-primary-700" : "text-muted-2"
-              )}
-            >
-              <HeartIcon filled={liked} width={15} height={15} />
-              <span>{count > 0 ? count : ""}</span>
-            </button>
-            {!isReply && (
+          {!editing && (
+            <div className="flex flex-wrap items-center gap-4">
               <button
                 type="button"
-                onClick={() => setReplying((v) => !v)}
-                className="cursor-pointer text-[13px] font-bold text-muted-2 hover:text-primary-800"
+                onClick={handleLike}
+                className={clsx(
+                  "flex cursor-pointer items-center gap-1.5 text-[13px] font-bold transition",
+                  liked ? "text-primary-700" : "text-muted-2"
+                )}
               >
-                {t.manage.reply}
+                <HeartIcon filled={liked} width={15} height={15} />
+                <span>{count > 0 ? count : ""}</span>
               </button>
-            )}
-            {viewerId && viewerId !== comment.user_id && <ReportCommentButton commentId={comment.id} />}
-          </div>
+              {!isReply && (
+                <button
+                  type="button"
+                  onClick={() => setReplying((v) => !v)}
+                  className="cursor-pointer text-[13px] font-bold text-muted-2 hover:text-primary-800"
+                >
+                  {t.manage.reply}
+                </button>
+              )}
+              {viewerId === comment.user_id && (
+                <button
+                  type="button"
+                  onClick={() => setEditing(true)}
+                  className="cursor-pointer text-[13px] font-bold text-muted-2 hover:text-primary-800"
+                >
+                  {t.common.edit}
+                </button>
+              )}
+              {viewerId && viewerId !== comment.user_id && <ReportCommentButton commentId={comment.id} />}
+            </div>
+          )}
         </div>
       </div>
 

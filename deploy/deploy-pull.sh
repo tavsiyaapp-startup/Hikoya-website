@@ -95,6 +95,10 @@ else
   log "ERROR: neither 'unzip' nor 'python3' is available; cannot extract"; exit 0
 fi
 
+# --- clear Next.js runtime cache so it can't grow without bound across deploys
+# and exhaust the file-count (inode) quota; it is regenerated on demand. ---
+rm -rf "${WEBROOT}/.next/cache" 2>/dev/null || true
+
 # --- warn (do not auto-install) if dependencies changed ---
 if command -v sha1sum >/dev/null 2>&1 && [ -f "${WEBROOT}/package.json" ]; then
   NEWH="$(sha1sum "${WEBROOT}/package.json" | cut -d' ' -f1)"

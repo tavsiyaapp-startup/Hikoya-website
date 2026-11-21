@@ -410,6 +410,8 @@ const ru = {
     tabStories: "Истории",
     tabCollections: "Рекомендованные подборки",
     tabMyTopics: "Мои темы",
+    tabFollowers: "Подписчики",
+    noFollowersYet: "У вас пока нет подписчиков.",
     noStoriesYet: "Здесь пока нет опубликованных историй.",
     noCollectionsYet: "Пока нет подборок с историями этого автора.",
   },

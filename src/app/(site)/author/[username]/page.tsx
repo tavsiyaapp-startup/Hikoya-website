@@ -1,10 +1,11 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getServerLocale } from "@/lib/i18n/locale-server";
 import { getDictionary } from "@/lib/i18n";
 import { getCurrentUser } from "@/lib/current-user";
 import { getProfileByUsername, getAuthorStoryCount, getAuthorAchievements, getAuthorTotals } from "@/lib/queries/profiles";
 import { getAuthorStories, getCollectionsFeaturingAuthor } from "@/lib/queries/stories";
-import { getFollowerCount, isFollowingAuthor } from "@/lib/queries/social";
+import { getFollowerCount, isFollowingAuthor, getFollowers } from "@/lib/queries/social";
 import { getDb } from "@/server/db/client";
 import { listForumPostsByAuthor } from "@/server/data/forum";
 import { getDonation } from "@/server/data/donations";
@@ -30,7 +31,7 @@ import { formatDateTime } from "@/lib/format";
 import { VerifiedIcon, SparkleIcon, InstagramIcon, SendIcon } from "@/components/ui/icons";
 import { plural } from "@/lib/plural";
 
-const TABS = ["stories", "collections", "myTopics", "notifications"] as const;
+const TABS = ["stories", "collections", "myTopics", "notifications", "followers"] as const;
 type Tab = (typeof TABS)[number];
 
 export default async function AuthorPage({
@@ -52,7 +53,7 @@ export default async function AuthorPage({
   if (!profile) notFound();
 
   const isOwner = user?.id === profile.id;
-  const [storyCount, followerCount, following, stories, myTopics, achievements, notifications, totals, featuringCollections, chatSummary, donation] =
+  const [storyCount, followerCount, following, stories, myTopics, achievements, notifications, totals, featuringCollections, chatSummary, donation, followers] =
     await Promise.all([
       getAuthorStoryCount(profile.id),
       getFollowerCount(profile.id),
@@ -75,6 +76,8 @@ export default async function AuthorPage({
         logQueryError("getDonation", err);
         return undefined;
       }),
+      // Private: the follower list is only loaded for the profile's own owner.
+      isOwner && tab === "followers" ? getFollowers(profile.id) : Promise.resolve([]),
     ]);
 
   // «Donat»: settings only for an author with a published story; the
@@ -88,9 +91,10 @@ export default async function AuthorPage({
     : [null, null];
   const subscriptionActive = Boolean(subscriptionExpiry && subscriptionExpiry > new Date());
 
-  const stats = [
+  const stats: { label: string; value: string | number; href?: string }[] = [
     { label: plural(storyCount, t.author.stories), value: storyCount },
-    { label: plural(followerCount, t.author.subscribers), value: followerCount },
+    // The follower list is private, so only the owner gets a link into it.
+    { label: plural(followerCount, t.author.subscribers), value: followerCount, href: isOwner && followerCount > 0 ? "?tab=followers" : undefined },
     { label: plural(totals.totalLikes, t.author.totalLikes), value: formatCompactCount(totals.totalLikes) },
   ];
 
@@ -149,12 +153,19 @@ export default async function AuthorPage({
             </div>
           )}
           <div className="mb-4.5 flex flex-wrap gap-6 sm:gap-8.5">
-            {stats.map((s) => (
-              <div key={s.label}>
-                <div className="font-display text-[24px] font-bold tabular-nums">{s.value}</div>
-                <div className="text-[12.5px] text-muted-2">{s.label}</div>
-              </div>
-            ))}
+            {stats.map((s) =>
+              s.href ? (
+                <Link key={s.label} href={s.href} scroll={false} className="group -m-1 rounded-lg p-1 transition hover:bg-primary-50">
+                  <div className="font-display text-[24px] font-bold tabular-nums group-hover:text-primary-700">{s.value}</div>
+                  <div className="text-[12.5px] text-muted-2 group-hover:text-primary-700">{s.label}</div>
+                </Link>
+              ) : (
+                <div key={s.label}>
+                  <div className="font-display text-[24px] font-bold tabular-nums">{s.value}</div>
+                  <div className="text-[12.5px] text-muted-2">{s.label}</div>
+                </div>
+              )
+            )}
           </div>
           {(profile.is_verified || achievements.length > 0) && (
             <div className="flex flex-wrap gap-2">
@@ -253,6 +264,7 @@ export default async function AuthorPage({
             ["collections", t.author.tabCollections],
             ...(isOwner ? [["myTopics", t.author.tabMyTopics] as const] : []),
             ...(isOwner ? [["notifications", t.nav.notifications] as const] : []),
+            ...(isOwner ? [["followers", t.author.tabFollowers] as const] : []),
           ] as const
         ).map(([key, label]) => (
           <LinkChip key={key} href={`?tab=${key}`} active={tab === key} shrink>
@@ -296,6 +308,30 @@ export default async function AuthorPage({
           </div>
         ) : (
           <EmptyState text={t.forum.myTopicsEmpty} />
+        ))}
+
+      {tab === "followers" && isOwner &&
+        (followers.length > 0 ? (
+          <div className="flex max-w-225 flex-col gap-2.5">
+            {followers.map((f) => (
+              <Link
+                key={f.id}
+                href={ROUTES.author(f.username)}
+                className="flex items-center gap-3.5 rounded-[14px] border border-border bg-card p-3.5 transition hover:border-primary-300"
+              >
+                <Avatar name={f.display_name} src={f.avatar_url} size={46} />
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5 font-bold leading-tight">
+                    <span className="truncate">{f.display_name}</span>
+                    {f.is_verified && <VerifiedIcon className="shrink-0 text-primary-600" aria-label={t.author.verified} />}
+                  </div>
+                  <div className="text-[13px] text-muted-2">@{f.username}</div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        ) : (
+          <EmptyState text={t.author.noFollowersYet} />
         ))}
     </div>
   );

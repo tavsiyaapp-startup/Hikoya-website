@@ -98,6 +98,38 @@ export async function getFollowerCount(authorId: string) {
   }
 }
 
+export type FollowerRow = {
+  id: string;
+  username: string;
+  display_name: string;
+  avatar_url: string | null;
+  is_verified: boolean;
+};
+
+// Who follows this profile — the follower accounts, newest first. Used by the
+// profile's owner-only "Подписчики" tab (the list is private; everyone else
+// sees only the count).
+export async function getFollowers(profileId: string): Promise<FollowerRow[]> {
+  try {
+    const db = getDb();
+    return await db
+      .select({
+        id: profiles.id,
+        username: profiles.username,
+        display_name: profiles.display_name,
+        avatar_url: profiles.avatar_url,
+        is_verified: profiles.is_verified,
+      })
+      .from(follows)
+      .innerJoin(profiles, eq(follows.follower_id, profiles.id))
+      .where(eq(follows.author_id, profileId))
+      .orderBy(desc(follows.created_at));
+  } catch (err) {
+    logQueryError("getFollowers", err);
+    return [];
+  }
+}
+
 export type FollowedAuthorGroup = {
   author: { id: string; username: string; display_name: string; avatar_url: string | null };
   stories: StoryCard[];
@@ -160,7 +192,7 @@ export type CommentRow = {
   created_at: string;
   edited_at: string | null;
   is_spoiler: boolean;
-  user: { display_name: string } | null;
+  user: { display_name: string; username: string } | null;
 };
 
 export type CommentWithReplies = CommentRow & { replies: CommentRow[] };
@@ -197,7 +229,7 @@ const COMMENT_COLUMNS = {
   created_at: comments.created_at,
   edited_at: comments.edited_at,
   is_spoiler: comments.is_spoiler,
-  user: { display_name: profiles.display_name },
+  user: { display_name: profiles.display_name, username: profiles.username },
 };
 
 async function loadThreads(scope: ReturnType<typeof eq>) {

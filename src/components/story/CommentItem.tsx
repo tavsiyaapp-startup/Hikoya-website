@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Link from "next/link";
 import { clsx } from "clsx";
+import { ROUTES } from "@/lib/constants";
 import { toggleCommentLike } from "@/lib/actions/social";
 import { formatDate } from "@/lib/format";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
@@ -67,10 +69,22 @@ export function CommentItem({
   return (
     <div id={`comment-${comment.id}`} className="scroll-mt-24 rounded-[12px] [&:target]:bg-primary-50 [&:target]:ring-2 [&:target]:ring-primary-300">
       <div className="flex gap-3.5 rounded-[12px] border border-border bg-card p-4.5">
-        <Avatar name={comment.user?.display_name ?? "?"} size={38} />
+        {comment.user?.username ? (
+          <Link href={ROUTES.author(comment.user.username)}>
+            <Avatar name={comment.user.display_name} size={38} />
+          </Link>
+        ) : (
+          <Avatar name={comment.user?.display_name ?? "?"} size={38} />
+        )}
         <div className="min-w-0 flex-1">
           <div className="mb-1.5 flex items-center gap-2.5">
-            <span className="text-[14px] font-bold">{comment.user?.display_name}</span>
+            {comment.user?.username ? (
+              <Link href={ROUTES.author(comment.user.username)} className="text-[14px] font-bold hover:text-primary-700">
+                {comment.user.display_name}
+              </Link>
+            ) : (
+              <span className="text-[14px] font-bold">{comment.user?.display_name}</span>
+            )}
             <span className="text-[12.5px] text-muted-3">
               {formatDate(comment.created_at, locale)}
             </span>

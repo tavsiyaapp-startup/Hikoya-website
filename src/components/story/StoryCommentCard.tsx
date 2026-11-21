@@ -57,7 +57,13 @@ export function StoryCommentCard({
       <Avatar name={comment.user?.display_name ?? "?"} size={isReply ? 32 : 38} />
       <div className="min-w-0 flex-1">
         <div className="mb-1.5 flex flex-wrap items-center gap-2.5">
-          <span className="text-[14px] font-bold">{comment.user?.display_name}</span>
+          {!comment.chapter && comment.user?.username ? (
+            <Link href={ROUTES.author(comment.user.username)} className="text-[14px] font-bold hover:text-primary-700">
+              {comment.user.display_name}
+            </Link>
+          ) : (
+            <span className="text-[14px] font-bold">{comment.user?.display_name}</span>
+          )}
           <span className="text-[12.5px] text-muted-3">{formatDate(comment.created_at, locale)}</span>
           {editedAt && <span className="text-[12px] text-muted-3">({t.common.edited})</span>}
           {!isReply && comment.chapter && (

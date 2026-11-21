@@ -412,6 +412,8 @@ const uz: typeof ru = {
     tabStories: "Hikoyalar",
     tabCollections: "Tavsiya etilgan tanlanmalar",
     tabMyTopics: "Mening mavzularim",
+    tabFollowers: "Obunachilar",
+    noFollowersYet: "Sizda hali obunachilar yoʻq.",
     noStoriesYet: "Bu yerda hozircha chop etilgan hikoyalar yoʻq.",
     noCollectionsYet: "Bu muallifning hikoyalari kirgan tanlanmalar hali yoʻq.",
   },

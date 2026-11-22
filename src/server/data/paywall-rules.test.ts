@@ -72,25 +72,21 @@ describe("chapterAccess", () => {
     freeChapters: 3,
     subscribed: false,
   };
-  test("first chapters are free for signed-in readers", () => {
+  test("reading is free for signed-in readers — no subscription barrier", () => {
     assert.equal(chapterAccess({ ...base, orderIndex: 3 }), "open");
+    assert.equal(chapterAccess({ ...base, orderIndex: 4 }), "open");
+    assert.equal(chapterAccess({ ...base, orderIndex: 40 }), "open");
   });
-  test("chapter after the free ones needs a subscription", () => {
-    assert.equal(chapterAccess({ ...base, orderIndex: 4 }), "subscribe");
-    assert.equal(chapterAccess({ ...base, orderIndex: 4, subscribed: true }), "open");
-  });
-  test("guests keep the old sign-up rule inside the free chapters", () => {
+  test("guests keep the sign-up rule beyond the free preview", () => {
     assert.equal(chapterAccess({ ...base, signedIn: false, orderIndex: 1 }), "open");
     assert.equal(chapterAccess({ ...base, signedIn: false, orderIndex: 2 }), "signup");
-    assert.equal(chapterAccess({ ...base, signedIn: false, orderIndex: 5 }), "subscribe");
+    assert.equal(chapterAccess({ ...base, signedIn: false, orderIndex: 5 }), "signup");
+    assert.equal(chapterAccess({ ...base, signedIn: false, isFreeChapter: true, orderIndex: 9 }), "open");
   });
   test("owner and staff always read", () => {
     assert.equal(chapterAccess({ ...base, orderIndex: 9, ownerOrStaff: true }), "open");
   });
-  test("per-story free count", () => {
-    assert.equal(chapterAccess({ ...base, orderIndex: 5, freeChapters: 5 }), "open");
-  });
-  test("with the subscription off everything works as before", () => {
+  test("with the subscription off, same free reading + guest sign-up", () => {
     assert.equal(chapterAccess({ ...base, live: false, orderIndex: 20 }), "open");
     assert.equal(chapterAccess({ ...base, live: false, signedIn: false, orderIndex: 20 }), "signup");
   });

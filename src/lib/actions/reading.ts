@@ -11,6 +11,7 @@ import { ROUTES, GUEST_READ_COOKIE } from "@/lib/constants";
 import { loadViewer } from "@/server/data/viewer";
 import { getStoryRecord } from "@/server/data/stories";
 import { canViewChapter, canViewStory } from "@/server/authz/policy";
+import { engageGate } from "@/server/authz/subscription-gate";
 import type { ReadingStatus } from "@/types/database";
 
 const GUEST_READ_MAX_CHAPTERS = 50;
@@ -174,14 +175,16 @@ const READING_STATUSES: readonly string[] = ["want_to_read", "read", "dropped"];
 
 // Returns false if refused (signed out, unknown status, story not visible).
 export async function setReadingStatus(storyId: string, status: ReadingStatus | null, path: string): Promise<boolean> {
-  const session = await getAuth().api.getSession({ headers: await headers() });
-  const userId = session?.user.id;
-  if (!userId) return false;
+  // Reading statuses are a paid action now (library organization).
+  const gate = await engageGate();
+  if (!gate.ok) return false;
+  const viewer = gate.viewer;
+  const userId = viewer.id;
 
   const db = getDb();
   if (status !== null) {
     if (!READING_STATUSES.includes(status)) return false;
-    const [viewer, story] = await Promise.all([loadViewer(db, userId), getStoryRecord(db, storyId)]);
+    const story = await getStoryRecord(db, storyId);
     if (!story || !canViewStory(viewer, story)) return false;
   }
   if (status === null) {

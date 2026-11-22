@@ -8,6 +8,7 @@ import { getDb } from "@/server/db/client";
 import { loadViewer } from "@/server/data/viewer";
 import { AlreadyResolvedError, ForbiddenError, NotFoundError } from "@/server/data/errors";
 import { isActive, type Viewer } from "@/server/authz/policy";
+import { engageGate } from "@/server/authz/subscription-gate";
 import { takeRateLimit } from "@/server/rate-limit";
 import { createNotification } from "@/lib/actions/create-notification";
 import { isValidReportReason, type ReportAction } from "@/server/data/logic";
@@ -48,6 +49,13 @@ async function currentViewer(): Promise<Viewer | null> {
   return loadViewer(getDb(), session?.user.id);
 }
 
+// Paid forum actions (new topic, comment, vote, like) go through the
+// subscription gate; delete-your-own, reports and moderation stay free.
+async function engagedViewer(): Promise<Viewer | null> {
+  const gate = await engageGate();
+  return gate.ok ? gate.viewer : null;
+}
+
 function refreshForum(postId?: string) {
   revalidatePath(ROUTES.forum);
   if (postId) revalidatePath(ROUTES.forumPost(postId));
@@ -59,7 +67,7 @@ export async function createForumPostAction(input: {
   body: string;
   storyRef?: string;
 }): Promise<ForumPostResult> {
-  const viewer = await currentViewer();
+  const viewer = await engagedViewer();
   if (!viewer) return { error: "unauthorized" };
   if (!isActive(viewer)) return { error: "blocked" };
   if (!takeRateLimit(`forum-topic:${viewer.id}`, TOPICS_PER_DAY, DAY_MS)) return { error: "rate_limited" };
@@ -87,7 +95,7 @@ export async function postForumComment(
   parentId?: string | null,
   storyId?: string | null
 ): Promise<ForumCommentResult> {
-  const viewer = await currentViewer();
+  const viewer = await engagedViewer();
   if (!viewer) return { error: "unauthorized" };
   if (!isActive(viewer)) return { error: "blocked" };
   if (!takeRateLimit(`forum-comment-burst:${viewer.id}`, 1, COMMENT_EVERY_MS)) return { error: "too_fast" };
@@ -134,7 +142,7 @@ export async function postForumComment(
 // Toggles return the settled state, or null when refused (signed out,
 // blocked, own topic...) so the optimistic button can roll back.
 export async function toggleForumVoteAction(postId: string): Promise<{ voted: boolean; count: number } | null> {
-  const viewer = await currentViewer();
+  const viewer = await engagedViewer();
   if (!viewer) return null;
   try {
     const result = await toggleForumVote(getDb(), viewer, String(postId));
@@ -147,7 +155,7 @@ export async function toggleForumVoteAction(postId: string): Promise<{ voted: bo
 }
 
 export async function toggleForumCommentLikeAction(commentId: string): Promise<{ liked: boolean; count: number } | null> {
-  const viewer = await currentViewer();
+  const viewer = await engagedViewer();
   if (!viewer) return null;
   try {
     return await toggleForumCommentLike(getDb(), viewer, String(commentId));

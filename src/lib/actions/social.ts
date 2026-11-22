@@ -15,9 +15,8 @@ import {
   canCommentOnStory,
   canViewChapter,
   canViewStory,
-  isActive,
-  type Viewer,
 } from "@/server/authz/policy";
+import { engageGate } from "@/server/authz/subscription-gate";
 
 // Toggle actions return the resulting state (true = now liked/bookmarked/
 // followed, false = now removed) or null when the action was refused
@@ -27,7 +26,7 @@ import {
 // was saved.
 export type ToggleResult = boolean | null;
 
-export type PostCommentResult = { ok: true } | { error: "unauthorized" | "too_long" | "empty" | "not_allowed" };
+export type PostCommentResult = { ok: true } | { error: "unauthorized" | "too_long" | "empty" | "not_allowed" | "subscription_required" };
 
 async function getSessionUserId(): Promise<string | null> {
   const session = await getAuth().api.getSession({ headers: await headers() });
@@ -36,22 +35,9 @@ async function getSessionUserId(): Promise<string | null> {
 
 const MAX_COMMENT_LENGTH = 5000;
 
-// Likes, comments and follows are public actions — a blocked account
-// (profiles.status = 'blocked') may still read and bookmark, but not do
-// these (owner's rule; see src/server/authz/policy.ts isActive). Returns the
-// viewer only when signed in AND active.
-async function requireActiveViewer(): Promise<Viewer | null> {
-  const viewerId = await getSessionUserId();
-  if (!viewerId) return null;
-  const viewer = await loadViewer(getDb(), viewerId);
-  return viewer && isActive(viewer) ? viewer : null;
-}
-
-async function requireViewer(): Promise<Viewer | null> {
-  const viewerId = await getSessionUserId();
-  if (!viewerId) return null;
-  return loadViewer(getDb(), viewerId);
-}
+// Paid actions below go through engageGate() (subscription-gate.ts): signed in
+// AND active AND (paywall off, or staff, or an active subscription). Reading is
+// free and never gated.
 
 // Lazy-loaded by the story page's Comments tab (StoryTabs), so the comments
 // query no longer runs on every story view — only when a reader opens the tab,
@@ -70,8 +56,9 @@ export async function fetchStoryComments(storyId: string): Promise<StoryCommentT
 }
 
 export async function toggleStoryLike(storyId: string, path: string): Promise<ToggleResult> {
-  const viewer = await requireActiveViewer();
-  if (!viewer) return null;
+  const gate = await engageGate();
+  if (!gate.ok) return null;
+  const viewer = gate.viewer;
 
   const db = getDb();
   const removed = await db
@@ -105,8 +92,9 @@ export async function toggleStoryLike(storyId: string, path: string): Promise<To
 // on stories it can actually see (otherwise a crafted id would put a draft's
 // title/cover into the library list).
 export async function toggleStoryBookmark(storyId: string, path: string): Promise<ToggleResult> {
-  const viewer = await requireViewer();
-  if (!viewer) return null;
+  const gate = await engageGate();
+  if (!gate.ok) return null;
+  const viewer = gate.viewer;
 
   const db = getDb();
   const removed = await db
@@ -127,8 +115,10 @@ export async function toggleStoryBookmark(storyId: string, path: string): Promis
 }
 
 export async function toggleFollowAuthor(authorId: string, path: string): Promise<ToggleResult> {
-  const viewer = await requireActiveViewer();
-  if (!viewer || viewer.id === authorId) return null;
+  const gate = await engageGate();
+  if (!gate.ok) return null;
+  const viewer = gate.viewer;
+  if (viewer.id === authorId) return null;
 
   const db = getDb();
   const removed = await db
@@ -154,8 +144,9 @@ export async function postComment(
   parentId?: string,
   isSpoiler?: boolean
 ): Promise<PostCommentResult> {
-  const viewer = await requireActiveViewer();
-  if (!viewer) return { error: "unauthorized" };
+  const gate = await engageGate();
+  if (!gate.ok) return { error: gate.reason };
+  const viewer = gate.viewer;
   const trimmed = text.trim();
   if (!trimmed) return { error: "empty" };
   if (trimmed.length > MAX_COMMENT_LENGTH) return { error: "too_long" };
@@ -236,8 +227,9 @@ export async function editComment(
   isSpoiler: boolean,
   path: string
 ): Promise<PostCommentResult> {
-  const viewer = await requireActiveViewer();
-  if (!viewer) return { error: "unauthorized" };
+  const gate = await engageGate();
+  if (!gate.ok) return { error: gate.reason };
+  const viewer = gate.viewer;
   const trimmed = text.trim();
   if (!trimmed) return { error: "empty" };
   if (trimmed.length > MAX_COMMENT_LENGTH) return { error: "too_long" };
@@ -259,8 +251,9 @@ export async function editComment(
 }
 
 export async function toggleCommentLike(commentId: string, path: string): Promise<ToggleResult> {
-  const viewer = await requireActiveViewer();
-  if (!viewer) return null;
+  const gate = await engageGate();
+  if (!gate.ok) return null;
+  const viewer = gate.viewer;
 
   const db = getDb();
   const removed = await db

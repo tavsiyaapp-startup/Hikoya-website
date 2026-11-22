@@ -3,12 +3,10 @@
 import { revalidatePath, updateTag } from "next/cache";
 import { revalidateClientPath } from "@/lib/revalidate-client-path";
 import { redirect } from "next/navigation";
-import { headers } from "next/headers";
 import { and, eq } from "drizzle-orm";
-import { getAuth } from "@/server/auth/config";
 import { getDb, type DbOrTx } from "@/server/db/client";
 import { collectionItems, collections, profiles, savedCollections } from "@/server/db/schema";
-import { loadViewer } from "@/server/data/viewer";
+import { engageGate } from "@/server/authz/subscription-gate";
 import { canCreateCollection, canManageCollection, canSaveCollection, canViewStory, type CollectionRecord } from "@/server/authz/policy";
 import { getStoryRecord } from "@/server/data/stories";
 import { ROUTES } from "@/lib/constants";
@@ -21,11 +19,12 @@ import { ROUTES } from "@/lib/constants";
 // so), relying entirely on RLS to silently no-op a foreign collectionId;
 // that check is added below since RLS no longer exists at all.
 async function requireViewer() {
-  const db = getDb();
-  const session = await getAuth().api.getSession({ headers: await headers() });
-  const viewer = await loadViewer(db, session?.user.id);
-  if (!viewer) redirect(ROUTES.onboarding);
-  return { db, viewer };
+  // Collections (create/update/save/add-to) are paid actions now — gate on the
+  // subscription. Not signed in or not subscribed → bounce to onboarding; the
+  // UI prevents the click for non-subscribers, so this is only a backstop.
+  const gate = await engageGate();
+  if (!gate.ok) redirect(ROUTES.onboarding);
+  return { db: getDb(), viewer: gate.viewer };
 }
 
 async function getCollectionRecord(db: DbOrTx, collectionId: string): Promise<CollectionRecord | null> {

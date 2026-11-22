@@ -57,9 +57,11 @@ export function chapterAccess(input: {
 }): ChapterAccess {
   if (input.ownerOrStaff) return "open";
   const guestCanRead = input.isFreeChapter || input.orderIndex <= input.guestFreeChapters;
-  if (input.live && input.orderIndex > input.freeChapters) {
-    return input.subscribed ? "open" : "subscribe";
-  }
+  // Reading is free for registered users — no subscription barrier on chapters
+  // (the paywall now gates actions like liking/commenting/publishing, not
+  // reading). The only gate left here is the guest sign-up prompt beyond the
+  // free preview. `live`/`freeChapters`/`subscribed` are kept in the input for
+  // callers but no longer affect read access.
   if (input.signedIn || guestCanRead) return "open";
   return "signup";
 }

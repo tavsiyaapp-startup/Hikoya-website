@@ -10,6 +10,7 @@ import { HeartIcon, BookmarkIcon, CollectionsIcon, ChevronDownIcon, ShareIcon } 
 import { copyText } from "@/lib/copy-text";
 import { ROUTES } from "@/lib/constants";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
+import { useSubscribeGate } from "@/components/paywall/SubscribeGateProvider";
 import type { ReadingStatus } from "@/types/database";
 import type { CollectionPickerItem } from "@/lib/queries/stories";
 
@@ -37,6 +38,7 @@ export function LikeBookmarkRow({
   title: string;
 }) {
   const { t } = useLocale();
+  const { guard } = useSubscribeGate();
   const [liked, setLiked] = useState(initialLiked);
   const [bookmarked, setBookmarked] = useState(initialBookmarked);
   const [, startTransition] = useTransition();
@@ -68,14 +70,16 @@ export function LikeBookmarkRow({
     <div className="mb-4.5 flex gap-2.5">
       <button
         type="button"
-        onClick={() => {
-          const previous = liked;
-          setLiked(!previous);
-          startTransition(async () => {
-            const result = await toggleStoryLike(storyId, path);
-            setLiked(result ?? previous);
-          });
-        }}
+        onClick={() =>
+          guard(() => {
+            const previous = liked;
+            setLiked(!previous);
+            startTransition(async () => {
+              const result = await toggleStoryLike(storyId, path);
+              setLiked(result ?? previous);
+            });
+          })
+        }
         className={clsx(
           "flex h-11 flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl border text-[13.5px] font-bold transition",
           liked ? "border-primary-300 bg-primary-50 text-primary-900" : "border-border bg-card text-ink-soft"
@@ -86,14 +90,16 @@ export function LikeBookmarkRow({
       </button>
       <button
         type="button"
-        onClick={() => {
-          const previous = bookmarked;
-          setBookmarked(!previous);
-          startTransition(async () => {
-            const result = await toggleStoryBookmark(storyId, path);
-            setBookmarked(result ?? previous);
-          });
-        }}
+        onClick={() =>
+          guard(() => {
+            const previous = bookmarked;
+            setBookmarked(!previous);
+            startTransition(async () => {
+              const result = await toggleStoryBookmark(storyId, path);
+              setBookmarked(result ?? previous);
+            });
+          })
+        }
         className={clsx(
           "flex h-11 flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl border text-[13.5px] font-bold transition",
           bookmarked
@@ -173,6 +179,7 @@ function CollectionPickerButton({
   path: string;
 }) {
   const { t } = useLocale();
+  const { guard } = useSubscribeGate();
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState(collections);
   const [creating, setCreating] = useState(false);
@@ -226,7 +233,7 @@ function CollectionPickerButton({
       <button
         type="button"
         title={t.story.addToCollection}
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => guard(() => setOpen((v) => !v))}
         className={clsx(
           "flex h-11 w-11 cursor-pointer items-center justify-center rounded-xl border transition",
           open ? "border-primary-300 bg-primary-50 text-primary-900" : "border-border bg-card text-ink-soft"
@@ -317,6 +324,7 @@ export function ReadingStatusSelect({
   path: string;
 }) {
   const { t } = useLocale();
+  const { guard } = useSubscribeGate();
   const [status, setStatus] = useState<ReadingStatus | null>(initialStatus);
   const [open, setOpen] = useState(false);
   const [, startTransition] = useTransition();
@@ -352,7 +360,7 @@ export function ReadingStatusSelect({
     <div ref={ref} className="relative mb-4.5">
       <button
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => guard(() => setOpen((v) => !v))}
         className={clsx(
           "flex h-11 w-full cursor-pointer items-center justify-between rounded-xl border px-3.5 text-[13.5px] font-bold transition",
           status ? "border-primary-300 bg-primary-50 text-primary-900" : "border-border bg-card text-ink-soft"
@@ -395,6 +403,7 @@ export function FollowButton({
   path: string;
 }) {
   const { t } = useLocale();
+  const { guard } = useSubscribeGate();
   const [following, setFollowing] = useState(initialFollowing);
   const [, startTransition] = useTransition();
 
@@ -414,14 +423,16 @@ export function FollowButton({
   return (
     <button
       type="button"
-      onClick={() => {
-        const previous = following;
-        setFollowing(!previous);
-        startTransition(async () => {
-          const result = await toggleFollowAuthor(authorId, path);
-          setFollowing(result ?? previous);
-        });
-      }}
+      onClick={() =>
+        guard(() => {
+          const previous = following;
+          setFollowing(!previous);
+          startTransition(async () => {
+            const result = await toggleFollowAuthor(authorId, path);
+            setFollowing(result ?? previous);
+          });
+        })
+      }
       className={clsx(
         "flex h-10.5 w-full cursor-pointer items-center justify-center rounded-xl border text-[14px] font-bold transition",
         following ? "border-border bg-card text-ink-soft" : "border-primary-200 bg-primary-50 text-primary-900"

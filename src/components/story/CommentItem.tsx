@@ -11,6 +11,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { HeartIcon, EyeIcon, EyeOffIcon } from "@/components/ui/icons";
 import { CommentForm } from "@/components/story/CommentForm";
 import { ReportCommentButton } from "@/components/story/ReportCommentButton";
+import { useSubscribeGate } from "@/components/paywall/SubscribeGateProvider";
 import type { CommentRow } from "@/lib/queries/social";
 
 export function CommentItem({
@@ -40,6 +41,7 @@ export function CommentItem({
   viewerId?: string | null;
 }) {
   const { t } = useLocale();
+  const { guard } = useSubscribeGate();
   const [liked, setLiked] = useState(likedByMe);
   const [count, setCount] = useState(comment.like_count);
   const [replying, setReplying] = useState(false);
@@ -52,6 +54,7 @@ export function CommentItem({
   const [editing, setEditing] = useState(false);
 
   function handleLike() {
+    if (!guard()) return;
     const previous = liked;
     const next = !previous;
     setLiked(next);
@@ -156,7 +159,7 @@ export function CommentItem({
               {!isReply && (
                 <button
                   type="button"
-                  onClick={() => setReplying((v) => !v)}
+                  onClick={() => guard(() => setReplying((v) => !v))}
                   className="cursor-pointer text-[13px] font-bold text-muted-2 hover:text-primary-800"
                 >
                   {t.manage.reply}
@@ -165,7 +168,7 @@ export function CommentItem({
               {viewerId === comment.user_id && (
                 <button
                   type="button"
-                  onClick={() => setEditing(true)}
+                  onClick={() => guard(() => setEditing(true))}
                   className="cursor-pointer text-[13px] font-bold text-muted-2 hover:text-primary-800"
                 >
                   {t.common.edit}

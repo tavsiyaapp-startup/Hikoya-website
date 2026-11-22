@@ -3,6 +3,7 @@
 import { useRef, useState, useTransition } from "react";
 import { postComment, editComment } from "@/lib/actions/social";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
+import { useSubscribeGate } from "@/components/paywall/SubscribeGateProvider";
 import { Button } from "@/components/ui/Button";
 import { Textarea } from "@/components/ui/Textarea";
 import { EmojiPickerButton } from "@/components/story/EmojiPickerButton";
@@ -43,6 +44,7 @@ export function CommentForm({
   onEdited?: (text: string, isSpoiler: boolean) => void;
 }) {
   const { t } = useLocale();
+  const { guard } = useSubscribeGate();
   const [text, setText] = useState(initialText ?? "");
   const [isSpoiler, setIsSpoiler] = useState(initialSpoiler ?? false);
   const [error, setError] = useState<string | null>(null);
@@ -53,6 +55,8 @@ export function CommentForm({
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!text.trim()) return;
+    // Commenting is a paid action — a non-subscriber gets the subscribe dialog.
+    if (!guard()) return;
     setError(null);
     startTransition(async () => {
       // The text is only cleared once the server confirms the comment was

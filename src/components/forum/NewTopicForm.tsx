@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { clsx } from "clsx";
 import { createForumPostAction } from "@/lib/actions/forum";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
+import { useSubscribeGate } from "@/components/paywall/SubscribeGateProvider";
 import { ROUTES } from "@/lib/constants";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -23,6 +24,7 @@ export function NewTopicForm({
   defaultCategory: ForumCategory;
 }) {
   const { t } = useLocale();
+  const { guard } = useSubscribeGate();
   const router = useRouter();
   const [category, setCategory] = useState<ForumCategory>(defaultCategory);
   const [title, setTitle] = useState("");
@@ -46,6 +48,7 @@ export function NewTopicForm({
       setError(t.forum.errTitle);
       return;
     }
+    if (!guard()) return;
     setError(null);
     startTransition(async () => {
       const result = await createForumPostAction({ category, title, body, storyRef: storyRef.trim() || undefined });

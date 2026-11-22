@@ -12,6 +12,7 @@ import {
   toggleForumCommentLikeAction,
 } from "@/lib/actions/forum";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
+import { useSubscribeGate } from "@/components/paywall/SubscribeGateProvider";
 import { formatRelativeTime } from "@/lib/format";
 import { ROUTES } from "@/lib/constants";
 import { Avatar } from "@/components/ui/Avatar";
@@ -53,6 +54,7 @@ function CommentForm({
   onDone?: () => void;
 }) {
   const { t } = useLocale();
+  const { guard } = useSubscribeGate();
   const router = useRouter();
   const [text, setText] = useState("");
   const [storyId, setStoryId] = useState("");
@@ -62,6 +64,7 @@ function CommentForm({
   function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!text.trim()) return;
+    if (!guard()) return;
     setError(null);
     startTransition(async () => {
       const result = await postForumComment(postId, text, parentId ?? null, storyId || null);
@@ -140,6 +143,7 @@ function CommentCard({
 }) {
   const { t, locale } = useLocale();
   const router = useRouter();
+  const { guard } = useSubscribeGate();
   const [liked, setLiked] = useState(comment.likedByMe);
   const [likes, setLikes] = useState(comment.like_count);
   const [pending, startTransition] = useTransition();
@@ -149,6 +153,7 @@ function CommentCard({
 
   function like() {
     if (!canLike) return;
+    if (!guard()) return;
     const next = !liked;
     setLiked(next);
     setLikes((n) => n + (next ? 1 : -1));

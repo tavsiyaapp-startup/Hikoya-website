@@ -5,6 +5,7 @@ import Link from "next/link";
 import { clsx } from "clsx";
 import { toggleSavedCollection } from "@/lib/actions/collections";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
+import { useSubscribeGate } from "@/components/paywall/SubscribeGateProvider";
 import { ROUTES } from "@/lib/constants";
 
 export function SaveCollectionButton({
@@ -19,6 +20,7 @@ export function SaveCollectionButton({
   path: string;
 }) {
   const { t } = useLocale();
+  const { guard } = useSubscribeGate();
   const [saved, setSaved] = useState(initialSaved);
   const [, startTransition] = useTransition();
 
@@ -36,14 +38,16 @@ export function SaveCollectionButton({
   return (
     <button
       type="button"
-      onClick={() => {
-        const previous = saved;
-        setSaved(!previous);
-        startTransition(async () => {
-          const result = await toggleSavedCollection(collectionId, path);
-          setSaved(result ?? previous);
-        });
-      }}
+      onClick={() =>
+        guard(() => {
+          const previous = saved;
+          setSaved(!previous);
+          startTransition(async () => {
+            const result = await toggleSavedCollection(collectionId, path);
+            setSaved(result ?? previous);
+          });
+        })
+      }
       className={clsx(
         "inline-flex h-10 cursor-pointer items-center rounded-xl border px-4 text-[13.5px] font-bold transition",
         saved ? "border-primary-300 bg-primary-50 text-primary-900" : "border-border bg-card text-ink-soft"

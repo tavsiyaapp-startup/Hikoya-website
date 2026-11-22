@@ -5,6 +5,7 @@ import { useState, useTransition } from "react";
 import { clsx } from "clsx";
 import { toggleForumVoteAction } from "@/lib/actions/forum";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
+import { useSubscribeGate } from "@/components/paywall/SubscribeGateProvider";
 import { ROUTES } from "@/lib/constants";
 
 function UpArrow({ filled }: { filled: boolean }) {
@@ -32,6 +33,7 @@ export function VoteButton({
   horizontal?: boolean;
 }) {
   const { t } = useLocale();
+  const { guard } = useSubscribeGate();
   const [isVoted, setVoted] = useState(voted);
   const [total, setTotal] = useState(count);
   const [pending, startTransition] = useTransition();
@@ -61,6 +63,7 @@ export function VoteButton({
   }
 
   function toggle() {
+    if (!guard()) return;
     const next = !isVoted;
     setVoted(next);
     setTotal((n) => n + (next ? 1 : -1));

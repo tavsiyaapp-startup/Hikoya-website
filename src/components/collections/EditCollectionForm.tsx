@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { updateCollection } from "@/lib/actions/collections";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
+import { useSubscribeGate } from "@/components/paywall/SubscribeGateProvider";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { Button } from "@/components/ui/Button";
@@ -10,6 +11,7 @@ import type { Collection } from "@/types/database";
 
 export function EditCollectionForm({ collection }: { collection: Collection }) {
   const { t } = useLocale();
+  const { guard } = useSubscribeGate();
   const [editing, setEditing] = useState(false);
   const [pending, startTransition] = useTransition();
 
@@ -17,7 +19,7 @@ export function EditCollectionForm({ collection }: { collection: Collection }) {
     return (
       <button
         type="button"
-        onClick={() => setEditing(true)}
+        onClick={() => guard(() => setEditing(true))}
         className="mb-7 cursor-pointer text-[13px] font-bold text-primary-800"
       >
         {t.collections.editCollection}

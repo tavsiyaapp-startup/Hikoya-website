@@ -35,3 +35,13 @@ export async function engageGate(): Promise<EngageResult> {
   const subscribed = await hasActiveSubscription(db, userId);
   return subscribed ? { ok: true, viewer } : { ok: false, reason: "subscription_required" };
 }
+
+// Whether the current viewer may perform paid actions right now — used to drive
+// the client UI (show the real control vs. a "subscribe" prompt). When the
+// paywall is off, everyone can engage (nothing is gated, guests included);
+// when it's live, the same rule as engageGate applies.
+export async function canEngageNow(): Promise<boolean> {
+  const state = await getPaywallState();
+  if (!state.live) return true;
+  return (await engageGate()).ok;
+}

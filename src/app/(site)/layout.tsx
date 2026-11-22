@@ -5,7 +5,9 @@ import { BackButton } from "@/components/layout/BackButton";
 import { getCurrentUser } from "@/lib/current-user";
 import { getPendingAnnouncement, getUnreadNotificationCount } from "@/lib/queries/notifications";
 import { AnnouncementPopup } from "@/components/notifications/AnnouncementPopup";
-import { getPaywallState } from "@/lib/queries/paywall";
+import { getPaywallState, paywallOffer } from "@/lib/queries/paywall";
+import { canEngageNow } from "@/server/authz/subscription-gate";
+import { SubscribeGateProvider } from "@/components/paywall/SubscribeGateProvider";
 import { getServerLocale } from "@/lib/i18n/locale-server";
 import { getDictionary } from "@/lib/i18n";
 import { formatDateTime } from "@/lib/format";
@@ -20,6 +22,9 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
   // until it starts.
   const paywall = await getPaywallState();
   const locale = await getServerLocale();
+  // Drives the client "subscribe" prompt on paid-action buttons.
+  const canEngage = await canEngageNow();
+  const offer = paywallOffer(paywall.settings, locale);
   const paywallNotice =
     paywall.announced && paywall.config?.startsAt
       ? getDictionary(locale)
@@ -37,7 +42,9 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
       {/* pb-24 on phones: room below the last block for the floating menu button (TopNav), which otherwise covered buttons like "Вы подписаны" at the end of a page. */}
       <main className="mx-auto w-full min-w-0 max-w-[1440px] flex-1 px-4 pb-24 pt-5 sm:px-6 sm:pb-14 lg:px-9 lg:pb-18 lg:pt-7">
         <BackButton />
-        {children}
+        <SubscribeGateProvider canEngage={canEngage} signedIn={Boolean(user)} offer={offer}>
+          {children}
+        </SubscribeGateProvider>
       </main>
       <Footer />
       {announcement && <AnnouncementPopup id={announcement.id} message={announcement.message} />}

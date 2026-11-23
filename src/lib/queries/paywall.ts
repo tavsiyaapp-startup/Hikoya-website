@@ -40,6 +40,16 @@ export const getMySubscriptionExpiry = cache(async (userId: string | null | unde
   }
 });
 
+// The viewer's subscription expiry, but only when it's still active AND within
+// `withinMs` of now — powers the "expiring soon" reminder popup. Kept as a
+// plain helper (not a React render) so reading the current time is fine.
+export async function getExpiringSoon(userId: string | null | undefined, withinMs: number): Promise<Date | null> {
+  const expiry = await getMySubscriptionExpiry(userId);
+  if (!expiry) return null;
+  const left = expiry.getTime() - Date.now();
+  return left > 0 && left <= withinMs ? expiry : null;
+}
+
 export async function getFreeChaptersForStory(storyId: string, state: PaywallState): Promise<number> {
   const fallback = state.config?.readerFreeChapters ?? 3;
   if (!state.live) return fallback;

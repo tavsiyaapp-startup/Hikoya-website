@@ -5,9 +5,10 @@ import { BackButton } from "@/components/layout/BackButton";
 import { getCurrentUser } from "@/lib/current-user";
 import { getPendingAnnouncement, getUnreadNotificationCount } from "@/lib/queries/notifications";
 import { AnnouncementPopup } from "@/components/notifications/AnnouncementPopup";
-import { getPaywallState, paywallOffer } from "@/lib/queries/paywall";
+import { getPaywallState, paywallOffer, getExpiringSoon } from "@/lib/queries/paywall";
 import { canEngageNow } from "@/server/authz/subscription-gate";
 import { SubscribeGateProvider } from "@/components/paywall/SubscribeGateProvider";
+import { SubscriptionExpiringPopup } from "@/components/paywall/SubscriptionExpiringPopup";
 import { getServerLocale } from "@/lib/i18n/locale-server";
 import { getDictionary } from "@/lib/i18n";
 import { formatDateTime } from "@/lib/format";
@@ -25,6 +26,8 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
   // Drives the client "subscribe" prompt on paid-action buttons.
   const canEngage = await canEngageNow();
   const offer = paywallOffer(paywall.settings, locale);
+  // Remind a subscriber a few days before their subscription runs out.
+  const expiringExpiry = paywall.live && user ? await getExpiringSoon(user.id, 3 * 24 * 60 * 60 * 1000) : null;
   const paywallNotice =
     paywall.announced && paywall.config?.startsAt
       ? getDictionary(locale)
@@ -47,6 +50,7 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
       </main>
       <Footer />
       {announcement && <AnnouncementPopup id={announcement.id} message={announcement.message} />}
+      {expiringExpiry && <SubscriptionExpiringPopup expiresAt={expiringExpiry.toISOString()} offer={offer} />}
     </div>
   );
 }

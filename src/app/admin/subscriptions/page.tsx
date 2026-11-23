@@ -81,7 +81,6 @@ export default async function AdminSubscriptionsPage() {
             initial={{
               enabled: s.enabled,
               startsAt: toLocalInput(s.starts_at),
-              endsAt: toLocalInput(s.ends_at),
               authorFreeChapters: s.author_free_chapters,
               periodDays: s.period_days,
               quoteTrials: s.quote_trials,

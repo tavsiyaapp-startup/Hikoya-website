@@ -11,7 +11,6 @@ import { Button } from "@/components/ui/Button";
 type Initial = {
   enabled: boolean;
   startsAt: string;
-  endsAt: string;
   authorFreeChapters: number;
   periodDays: number;
   quoteTrials: number;
@@ -48,17 +47,10 @@ export function PaywallSettingsForm({ initial }: { initial: Initial }) {
         <input type="checkbox" name="enabled" defaultChecked={initial.enabled} className="h-5 w-5 shrink-0" />
       </label>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div>
-          <label className={label}>{p.adminStartsAt}</label>
-          <Input type="datetime-local" name="startsAt" defaultValue={initial.startsAt} />
-          <p className={hint}>{p.adminStartsAtHint}</p>
-        </div>
-        <div>
-          <label className={label}>{p.adminEndsAt}</label>
-          <Input type="datetime-local" name="endsAt" defaultValue={initial.endsAt} />
-          <p className={hint}>{p.adminEndsAtHint}</p>
-        </div>
+      <div>
+        <label className={label}>{p.adminStartsAt}</label>
+        <Input type="datetime-local" name="startsAt" defaultValue={initial.startsAt} />
+        <p className={hint}>{p.adminStartsAtHint}</p>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">

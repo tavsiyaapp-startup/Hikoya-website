@@ -146,12 +146,11 @@ export async function savePaywallSettings(_prev: PaywallAdminResult | null, form
 
   const enabled = formData.get("enabled") === "on";
   let startsAt = parseLocalDate(formData.get("startsAt"));
-  const endsAt = parseLocalDate(formData.get("endsAt"));
-  if (startsAt === "invalid" || endsAt === "invalid") return { ok: false, error: "date" };
+  if (startsAt === "invalid") return { ok: false, error: "date" };
   // The start date also marks who counts as an "existing" author, so turning
-  // it on always fixes one.
+  // it on always fixes one. There is no end date anymore — the subscription
+  // mode runs until it's switched off via the "enabled" toggle.
   if (enabled && !startsAt) startsAt = new Date();
-  if (startsAt && endsAt && endsAt <= startsAt) return { ok: false, error: "dateOrder" };
 
   // Reading is free now, so reader_free_chapters is no longer edited here (the
   // column is left as-is in the DB). authorFreeChapters still drives the
@@ -176,7 +175,7 @@ export async function savePaywallSettings(_prev: PaywallAdminResult | null, form
       .set({
         enabled,
         starts_at: startsAt,
-        ends_at: endsAt,
+        ends_at: null,
         author_free_chapters: authorFree,
         period_days: periodDays,
         quote_trials: quoteTrials,

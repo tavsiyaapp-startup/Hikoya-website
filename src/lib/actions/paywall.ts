@@ -153,11 +153,13 @@ export async function savePaywallSettings(_prev: PaywallAdminResult | null, form
   if (enabled && !startsAt) startsAt = new Date();
   if (startsAt && endsAt && endsAt <= startsAt) return { ok: false, error: "dateOrder" };
 
-  const readerFree = intField(formData, "readerFreeChapters", 0, 1000);
+  // Reading is free now, so reader_free_chapters is no longer edited here (the
+  // column is left as-is in the DB). authorFreeChapters still drives the
+  // new-author publishing taster.
   const authorFree = intField(formData, "authorFreeChapters", 0, 1000);
   const periodDays = intField(formData, "periodDays", 1, 3660);
   const quoteTrials = intField(formData, "quoteTrials", 0, 1000);
-  if (readerFree === null || authorFree === null || periodDays === null || quoteTrials === null) return { ok: false, error: "number" };
+  if (authorFree === null || periodDays === null || quoteTrials === null) return { ok: false, error: "number" };
 
   const price = String(formData.get("price") ?? "").trim().slice(0, 60);
   const cardNumber = normalizeCardNumber(String(formData.get("cardNumber") ?? ""));
@@ -175,7 +177,6 @@ export async function savePaywallSettings(_prev: PaywallAdminResult | null, form
         enabled,
         starts_at: startsAt,
         ends_at: endsAt,
-        reader_free_chapters: readerFree,
         author_free_chapters: authorFree,
         period_days: periodDays,
         quote_trials: quoteTrials,

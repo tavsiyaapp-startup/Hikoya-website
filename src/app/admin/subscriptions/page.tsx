@@ -82,7 +82,6 @@ export default async function AdminSubscriptionsPage() {
               enabled: s.enabled,
               startsAt: toLocalInput(s.starts_at),
               endsAt: toLocalInput(s.ends_at),
-              readerFreeChapters: s.reader_free_chapters,
               authorFreeChapters: s.author_free_chapters,
               periodDays: s.period_days,
               quoteTrials: s.quote_trials,

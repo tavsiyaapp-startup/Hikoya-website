@@ -12,7 +12,6 @@ type Initial = {
   enabled: boolean;
   startsAt: string;
   endsAt: string;
-  readerFreeChapters: number;
   authorFreeChapters: number;
   periodDays: number;
   quoteTrials: number;
@@ -62,11 +61,7 @@ export function PaywallSettingsForm({ initial }: { initial: Initial }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <div>
-          <label className={label}>{p.adminReaderFree}</label>
-          <Input type="number" min={0} max={1000} name="readerFreeChapters" defaultValue={initial.readerFreeChapters} required />
-        </div>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <div>
           <label className={label}>{p.adminAuthorFree}</label>
           <Input type="number" min={0} max={1000} name="authorFreeChapters" defaultValue={initial.authorFreeChapters} required />

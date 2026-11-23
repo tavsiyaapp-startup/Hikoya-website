@@ -29,7 +29,6 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
     paywall.announced && paywall.config?.startsAt
       ? getDictionary(locale)
           .paywall.announce.replace("{date}", formatDateTime(paywall.config.startsAt.toISOString(), locale))
-          .replace("{n}", String(paywall.config.readerFreeChapters))
       : null;
 
   return (
